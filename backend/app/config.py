@@ -15,6 +15,10 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://mood:mood@localhost:5432/mood_tracker",
         validation_alias="DATABASE_URL",
     )
+    test_database_url: str = Field(
+        default="postgresql+psycopg://mood:mood@localhost:5432/mood_tracker_test",
+        validation_alias="TEST_DATABASE_URL",
+    )
     db_table_prefix: str = Field(default="mt_", validation_alias="DB_TABLE_PREFIX")
     minio_endpoint: str = Field(default="localhost:9000", validation_alias="MINIO_ENDPOINT")
     minio_access_key: str = Field(default="mood", validation_alias="MINIO_ACCESS_KEY")

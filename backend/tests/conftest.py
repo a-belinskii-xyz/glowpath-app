@@ -3,7 +3,6 @@ from collections.abc import Generator
 
 import pytest
 from app.api.deps import get_email_service
-from app.config import settings
 from app.db.session import get_db
 from app.main import app
 from app.services.email_service import EmailService, SentEmail
@@ -12,9 +11,18 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from tests.db_safety import assert_safe_test_database, get_test_database_url
+
+TEST_DATABASE_URL = get_test_database_url()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _ensure_test_database_only() -> None:
+    assert_safe_test_database(TEST_DATABASE_URL)
+
 
 def _database_available() -> bool:
-    engine = create_engine(settings.database_url, pool_pre_ping=True)
+    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
@@ -57,7 +65,7 @@ def client() -> TestClient:
 def db_engine():
     if not _database_available():
         pytest.skip("PostgreSQL is not available for auth integration tests")
-    engine = create_engine(settings.database_url, pool_pre_ping=True)
+    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
     yield engine
     engine.dispose()
 
