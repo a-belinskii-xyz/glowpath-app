@@ -3,7 +3,10 @@ VENV := $(BACKEND)/.venv
 BIN := $(CURDIR)/$(VENV)/bin
 MARKER := $(VENV)/.installed
 
-.PHONY: install lint format typecheck test run up down migrate migrate-down venv reinstall pre-commit-install pre-commit
+-include .env
+APP_PORT ?= 8000
+
+.PHONY: install lint format typecheck test run up down migrate migrate-create migrate-down venv reinstall pre-commit-install pre-commit
 
 REV ?= -1
 
@@ -42,7 +45,7 @@ pre-commit: $(MARKER)
 	$(BIN)/pre-commit run --all-files
 
 run: $(MARKER)
-	cd $(BACKEND) && $(BIN)/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd $(BACKEND) && $(BIN)/uvicorn app.main:app --reload --host 0.0.0.0 --port $(APP_PORT)
 
 up:
 	docker compose up --build
@@ -52,6 +55,9 @@ down:
 
 migrate: $(MARKER)
 	cd $(BACKEND) && $(BIN)/alembic upgrade head
+
+migrate-create: $(MARKER)
+	cd $(BACKEND) && $(BIN)/alembic revision --autogenerate -m "$(MSG)"
 
 migrate-down: $(MARKER)
 	cd $(BACKEND) && $(BIN)/alembic downgrade $(REV)
