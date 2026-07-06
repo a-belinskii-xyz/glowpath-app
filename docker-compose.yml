@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: mood
       POSTGRES_DB: mood_tracker
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,6 +19,8 @@ services:
     build: ./backend
     env_file:
       - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
     depends_on:
       db:
         condition: service_healthy
@@ -28,9 +30,11 @@ services:
   app:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:8000"
     env_file:
       - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -38,5 +42,18 @@ services:
       - ./backend/app:/app/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: mood
+      MINIO_ROOT_PASSWORD: moodsecret
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
 volumes:
   postgres_data:
+  minio_data:

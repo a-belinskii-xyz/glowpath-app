@@ -5,13 +5,17 @@ Multi-user REST API for daily mood logging. Built with FastAPI, PostgreSQL, and 
 ## Quick start (Docker)
 
 ```bash
+cp .env.example .env          # Docker host ports (edit if 9000/5432/etc. are taken)
 cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
+Host ports are set in `.env` (`POSTGRES_PORT`, `APP_PORT`, `MINIO_API_PORT`, `MINIO_CONSOLE_PORT`). Defaults match the examples below.
+
 - API: http://localhost:8000
 - OpenAPI docs: http://localhost:8000/docs
 - Health: http://localhost:8000/health
+- MinIO console: http://localhost:9001
 
 ```bash
 curl http://localhost:8000/v1/health
