@@ -11,7 +11,7 @@ from tests.conftest import FakeEmailService
 def _register(auth_client: TestClient, mailer: FakeEmailService, email: str) -> None:
     response = auth_client.post(
         "/v1/auth/register",
-        json={"email": email, "password": "password123"},
+        json={"email": email, "password": "password123", "password_confirm": "password123"},
     )
     assert response.status_code == 201
     assert len(mailer.outbox) == 1
@@ -43,6 +43,6 @@ def test_register_duplicate_email_returns_409(
     _register(auth_client, mailer, email)
     response = auth_client.post(
         "/v1/auth/register",
-        json={"email": email, "password": "password123"},
+        json={"email": email, "password": "password123", "password_confirm": "password123"},
     )
     assert response.status_code == 409

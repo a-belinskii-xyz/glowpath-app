@@ -14,6 +14,7 @@ from app.schemas.auth import (
     GoogleIdTokenRequest,
     LoginRequest,
     MessageResponse,
+    RefreshTokenRequest,
     RegisterRequest,
     ResetPasswordRequest,
     TokenResponse,
@@ -22,9 +23,11 @@ from app.schemas.user import UserPublic
 from app.services.auth_service import (
     AuthError,
     GoogleProfile,
+    TokenPair,
     authenticate_google_profile,
     forgot_password,
     login_user,
+    refresh_access_token,
     register_user,
     resend_verification_email,
     reset_password,
@@ -50,6 +53,10 @@ def _handle_auth_error(exc: AuthError) -> None:
     from fastapi import HTTPException
 
     raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+def _to_token_response(tokens: TokenPair) -> TokenResponse:
+    return TokenResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=MessageResponse)
@@ -105,10 +112,19 @@ def resend_verification_endpoint(
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     try:
-        access_token = login_user(db, email=body.email, password=body.password)
+        tokens = login_user(db, email=body.email, password=body.password)
     except AuthError as exc:
         _handle_auth_error(exc)
-    return TokenResponse(access_token=access_token)
+    return _to_token_response(tokens)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh(body: RefreshTokenRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    try:
+        tokens = refresh_access_token(db, refresh_token=body.refresh_token)
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    return _to_token_response(tokens)
 
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
@@ -172,10 +188,10 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> To
         email_verified=bool(user_info.get("email_verified")),
     )
     try:
-        access_token = authenticate_google_profile(db, profile)
+        tokens = authenticate_google_profile(db, profile)
     except AuthError as exc:
         _handle_auth_error(exc)
-    return TokenResponse(access_token=access_token)
+    return _to_token_response(tokens)
 
 
 @router.post("/google", response_model=TokenResponse)
@@ -185,10 +201,10 @@ def google_id_token_login(
 ) -> TokenResponse:
     try:
         profile = verify_google_id_token(body.id_token)
-        access_token = authenticate_google_profile(db, profile)
+        tokens = authenticate_google_profile(db, profile)
     except AuthError as exc:
         _handle_auth_error(exc)
-    return TokenResponse(access_token=access_token)
+    return _to_token_response(tokens)
 
 
 @router.get("/me", response_model=UserPublic)

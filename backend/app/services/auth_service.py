@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, cast
 
+import jwt
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from sqlalchemy import select, update
@@ -13,6 +14,8 @@ from app.core.auth_token_purpose import AuthTokenPurpose
 from app.core.security import (
     auth_token_expires_at,
     create_access_token,
+    create_refresh_token,
+    decode_refresh_token,
     generate_raw_token,
     hash_password,
     hash_token,
@@ -41,6 +44,19 @@ class GoogleProfile:
     sub: str
     email: str
     email_verified: bool
+
+
+@dataclass(frozen=True, slots=True)
+class TokenPair:
+    access_token: str
+    refresh_token: str
+
+
+def issue_token_pair(user_id: uuid.UUID) -> TokenPair:
+    return TokenPair(
+        access_token=create_access_token(user_id),
+        refresh_token=create_refresh_token(user_id),
+    )
 
 
 def normalize_email(email: str) -> str:
@@ -81,7 +97,7 @@ def register_user(
     return user
 
 
-def login_user(db: Session, *, email: str, password: str) -> str:
+def login_user(db: Session, *, email: str, password: str) -> TokenPair:
     normalized_email = normalize_email(email)
     user = db.scalar(select(User).where(User.email == normalized_email))
     if user is None or user.password_hash is None:
@@ -90,7 +106,21 @@ def login_user(db: Session, *, email: str, password: str) -> str:
         raise AuthError("Invalid email or password", status_code=401)
     if user.email_verified_at is None:
         raise EmailNotVerifiedError()
-    return create_access_token(user.id)
+    return issue_token_pair(user.id)
+
+
+def refresh_access_token(db: Session, *, refresh_token: str) -> TokenPair:
+    try:
+        user_id = decode_refresh_token(refresh_token)
+    except jwt.PyJWTError as exc:
+        raise AuthError("Invalid or expired refresh token", status_code=401) from exc
+
+    user = get_user_by_id(db, user_id)
+    if user is None:
+        raise AuthError("Invalid or expired refresh token", status_code=401)
+    if user.email_verified_at is None:
+        raise EmailNotVerifiedError()
+    return issue_token_pair(user.id)
 
 
 def verify_email(db: Session, *, token: str) -> None:
@@ -157,14 +187,14 @@ def reset_password(db: Session, *, token: str, new_password: str) -> None:
     db.commit()
 
 
-def authenticate_google_profile(db: Session, profile: GoogleProfile) -> str:
+def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPair:
     if not profile.email:
         raise AuthError("Google account has no email", status_code=400)
 
     normalized_email = normalize_email(profile.email)
     user_by_google = db.scalar(select(User).where(User.google_sub == profile.sub))
     if user_by_google is not None:
-        return create_access_token(user_by_google.id)
+        return issue_token_pair(user_by_google.id)
 
     user_by_email = db.scalar(select(User).where(User.email == normalized_email))
     if user_by_email is not None:
@@ -174,7 +204,7 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> str:
         if profile.email_verified and user_by_email.email_verified_at is None:
             user_by_email.email_verified_at = datetime.now(UTC)
         db.commit()
-        return create_access_token(user_by_email.id)
+        return issue_token_pair(user_by_email.id)
 
     user = User(
         email=normalized_email,
@@ -185,7 +215,7 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> str:
     db.flush()
     provision_default_tags(db, user.id)
     db.commit()
-    return create_access_token(user.id)
+    return issue_token_pair(user.id)
 
 
 def verify_google_id_token(id_token: str) -> GoogleProfile:

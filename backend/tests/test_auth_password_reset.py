@@ -10,7 +10,7 @@ def test_forgot_reset_and_login_with_new_password(
     email = "reset@example.com"
     auth_client.post(
         "/v1/auth/register",
-        json={"email": email, "password": "password123"},
+        json={"email": email, "password": "password123", "password_confirm": "password123"},
     )
     verify_token = extract_token_from_email(mailer.outbox[-1].body)
     auth_client.get(f"/v1/auth/verify-email?token={verify_token}")
@@ -27,7 +27,7 @@ def test_forgot_reset_and_login_with_new_password(
 
     old_login = auth_client.post(
         "/v1/auth/login",
-        json={"email": email, "password": "password123"},
+        json={"email": email, "password": "password123", "password_confirm": "password123"},
     )
     assert old_login.status_code == 401
 

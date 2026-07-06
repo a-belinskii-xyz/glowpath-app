@@ -30,6 +30,10 @@ class Settings(BaseSettings):
         default=60,
         validation_alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES",
     )
+    jwt_refresh_token_expire_days: int = Field(
+        default=30,
+        validation_alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS",
+    )
     auth_token_expire_hours: int = Field(default=24, validation_alias="AUTH_TOKEN_EXPIRE_HOURS")
 
     google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")

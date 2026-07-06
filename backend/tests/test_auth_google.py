@@ -43,7 +43,7 @@ def test_google_id_token_links_existing_email_account(
     email = "link-google@example.com"
     auth_client.post(
         "/v1/auth/register",
-        json={"email": email, "password": "password123"},
+        json={"email": email, "password": "password123", "password_confirm": "password123"},
     )
 
     mock_verify.return_value = GoogleProfile(
