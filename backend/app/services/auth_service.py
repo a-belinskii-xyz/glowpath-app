@@ -176,6 +176,10 @@ def forgot_password(
     db.commit()
 
 
+def validate_password_reset_token(db: Session, *, token: str) -> None:
+    _get_active_token(db, raw_token=token, purpose=AuthTokenPurpose.PASSWORD_RESET)
+
+
 def reset_password(db: Session, *, token: str, new_password: str) -> None:
     auth_token = _get_active_token(db, raw_token=token, purpose=AuthTokenPurpose.PASSWORD_RESET)
     user = db.get(User, auth_token.user_id)

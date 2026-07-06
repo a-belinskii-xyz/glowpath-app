@@ -1,7 +1,6 @@
 from typing import cast
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
-from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_email_service
@@ -78,25 +77,16 @@ def register(
     return MessageResponse(message="Check your email to verify your account")
 
 
-@router.get("/verify-email", response_class=HTMLResponse)
+@router.get("/verify-email", response_model=MessageResponse)
 def verify_email_endpoint(
     token: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
-) -> HTMLResponse:
+) -> MessageResponse:
     try:
         verify_email(db, token=token)
     except AuthError as exc:
-        return HTMLResponse(
-            content=f"<html><body><p>{exc.message}</p></body></html>",
-            status_code=exc.status_code,
-        )
-    return HTMLResponse(
-        content=(
-            "<html><body>"
-            "<p>Email verified successfully. You can close this page and log in.</p>"
-            "</body></html>"
-        ),
-    )
+        _handle_auth_error(exc)
+    return MessageResponse(message="Email verified successfully")
 
 
 @router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)

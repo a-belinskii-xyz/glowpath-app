@@ -42,12 +42,9 @@ class FakeEmailService(EmailService):
 
 
 def extract_token_from_email(body: str) -> str:
-    match = re.search(r"verify-email\?token=([^\s&]+)", body)
+    match = re.search(r"(?:verify-email|reset-password)\?token=([^\s&]+)", body)
     if match is not None:
         return match.group(1)
-    match = re.search(r"Or use this token directly: (.+)$", body, flags=re.MULTILINE)
-    if match is not None:
-        return match.group(1).strip()
     raise AssertionError(f"Token not found in email body: {body}")
 
 

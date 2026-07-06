@@ -21,9 +21,14 @@ def test_forgot_reset_and_login_with_new_password(
 
     reset_response = auth_client.post(
         "/v1/auth/reset-password",
-        json={"token": reset_token, "new_password": "newpassword99"},
+        json={
+            "token": reset_token,
+            "new_password": "newpassword99",
+            "password_confirm": "newpassword99",
+        },
     )
     assert reset_response.status_code == 200
+    assert reset_response.json()["message"] == "Password reset successfully"
 
     old_login = auth_client.post(
         "/v1/auth/login",

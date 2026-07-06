@@ -23,13 +23,20 @@ class TokenRequest(BaseModel):
     token: str = Field(min_length=1)
 
 
-class EmailRequest(BaseModel):
-    email: EmailStr
-
-
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=1)
     new_password: str = Field(min_length=8, max_length=128)
+    password_confirm: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "ResetPasswordRequest":
+        if self.new_password != self.password_confirm:
+            raise ValueError("Passwords do not match")
+        return self
+
+
+class EmailRequest(BaseModel):
+    email: EmailStr
 
 
 class GoogleIdTokenRequest(BaseModel):

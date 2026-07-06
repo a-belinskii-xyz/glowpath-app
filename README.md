@@ -38,8 +38,11 @@ curl -s -X POST http://localhost:8000/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"email":"you@example.com","password":"password123"}'
 
-# Open the verification link from MailHog UI (http://localhost:8025) or email body, e.g.:
-# http://localhost:8000/v1/auth/verify-email?token=PASTE_TOKEN_HERE
+# Open the verification link from MailHog UI (http://localhost:8025) or email body.
+# With APP_DEBUG=true, the link opens a simple HTML page at:
+# http://localhost:8000/v1/dev/auth/verify-email?token=PASTE_TOKEN_HERE
+# Or verify via API:
+# curl -s "http://localhost:8000/v1/auth/verify-email?token=PASTE_TOKEN_HERE"
 
 # Login
 curl -s -X POST http://localhost:8000/v1/auth/login \
@@ -58,9 +61,13 @@ curl -s -X POST http://localhost:8000/v1/auth/forgot-password \
   -H 'Content-Type: application/json' \
   -d '{"email":"you@example.com"}'
 
-curl -s -X POST http://localhost:8000/v1/auth/reset-password \
-  -H 'Content-Type: application/json' \
-  -d '{"token":"PASTE_TOKEN","new_password":"newpassword99"}'
+# Open the reset link from MailHog UI (http://localhost:8025) or email body.
+# With APP_DEBUG=true, the link opens a simple HTML form at:
+# http://localhost:8000/v1/dev/auth/reset-password?token=PASTE_TOKEN_HERE
+# Or reset via API:
+# curl -s -X POST http://localhost:8000/v1/auth/reset-password \
+#   -H 'Content-Type: application/json' \
+#   -d '{"token":"PASTE_TOKEN_HERE","new_password":"newpassword99","password_confirm":"newpassword99"}'
 ```
 
 ### Google OAuth

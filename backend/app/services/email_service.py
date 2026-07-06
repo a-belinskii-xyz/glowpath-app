@@ -24,7 +24,7 @@ class EmailService:
         self._outbox.clear()
 
     def send_verification_email(self, *, to: str, token: str) -> None:
-        verify_url = f"{settings.app_public_url}/v1/auth/verify-email?token={token}"
+        verify_url = f"{settings.app_public_url}/v1/dev/auth/verify-email?token={token}"
         body = (
             "Confirm your Mood Tracker account.\n\n"
             f"Click the link below to verify your email:\n\n"
@@ -33,12 +33,11 @@ class EmailService:
         self._send(to=to, subject="Verify your Mood Tracker email", body=body)
 
     def send_password_reset_email(self, *, to: str, token: str) -> None:
-        reset_url = f"{settings.app_public_url}/v1/auth/reset-password"
+        reset_url = f"{settings.app_public_url}/v1/dev/auth/reset-password?token={token}"
         body = (
             "Reset your Mood Tracker password.\n\n"
-            f"POST {reset_url}\n"
-            f'Body: {{"token": "{token}", "new_password": "your-new-password"}}\n\n'
-            f"Or use this token directly: {token}\n"
+            f"Click the link below to choose a new password:\n\n"
+            f"{reset_url}\n"
         )
         self._send(to=to, subject="Reset your Mood Tracker password", body=body)
 
