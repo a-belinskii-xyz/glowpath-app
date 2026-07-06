@@ -37,7 +37,7 @@ def test_verify_then_login_and_me(
     email = "verified@example.com"
     token = _register_and_get_verify_token(auth_client, mailer, email)
 
-    verify_response = auth_client.post("/v1/auth/verify-email", json={"token": token})
+    verify_response = auth_client.get(f"/v1/auth/verify-email?token={token}")
     assert verify_response.status_code == 200
 
     login_response = auth_client.post(

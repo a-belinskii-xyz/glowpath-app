@@ -24,12 +24,11 @@ class EmailService:
         self._outbox.clear()
 
     def send_verification_email(self, *, to: str, token: str) -> None:
-        verify_url = f"{settings.app_public_url}/v1/auth/verify-email"
+        verify_url = f"{settings.app_public_url}/v1/auth/verify-email?token={token}"
         body = (
             "Confirm your Mood Tracker account.\n\n"
-            f"POST {verify_url}\n"
-            f'Body: {{"token": "{token}"}}\n\n'
-            f"Or use this token directly: {token}\n"
+            f"Click the link below to verify your email:\n\n"
+            f"{verify_url}\n"
         )
         self._send(to=to, subject="Verify your Mood Tracker email", body=body)
 

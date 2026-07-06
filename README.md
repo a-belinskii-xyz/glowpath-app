@@ -38,10 +38,8 @@ curl -s -X POST http://localhost:8000/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"email":"you@example.com","password":"password123"}'
 
-# Copy verification token from MailHog UI (http://localhost:8025) or email body, then:
-curl -s -X POST http://localhost:8000/v1/auth/verify-email \
-  -H 'Content-Type: application/json' \
-  -d '{"token":"PASTE_TOKEN_HERE"}'
+# Open the verification link from MailHog UI (http://localhost:8025) or email body, e.g.:
+# http://localhost:8000/v1/auth/verify-email?token=PASTE_TOKEN_HERE
 
 # Login
 curl -s -X POST http://localhost:8000/v1/auth/login \
