@@ -13,10 +13,14 @@ from app.schemas.auth import (
     GoogleIdTokenRequest,
     LoginRequest,
     MessageResponse,
+    PasswordResetRequestResponse,
+    PasswordResetRequestStatus,
     RefreshTokenRequest,
     RegisterRequest,
     ResetPasswordRequest,
     TokenResponse,
+    VerificationResendResponse,
+    VerificationResendStatus,
 )
 from app.schemas.user import UserPublic
 from app.services.auth_service import (
@@ -89,14 +93,17 @@ def verify_email_endpoint(
     return MessageResponse(message="Email verified successfully")
 
 
-@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/resend-verification", response_model=VerificationResendResponse)
 def resend_verification_endpoint(
     body: EmailRequest,
     db: Session = Depends(get_db),
     mailer: EmailService = Depends(get_email_service),
-) -> Response:
-    resend_verification_email(db, email=body.email, email_service=mailer)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+) -> VerificationResendResponse:
+    result = resend_verification_email(db, email=body.email, email_service=mailer)
+    return VerificationResendResponse(
+        message=result.message,
+        status=VerificationResendStatus(result.status),
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -117,14 +124,17 @@ def refresh(body: RefreshTokenRequest, db: Session = Depends(get_db)) -> TokenRe
     return _to_token_response(tokens)
 
 
-@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/forgot-password", response_model=PasswordResetRequestResponse)
 def forgot_password_endpoint(
     body: EmailRequest,
     db: Session = Depends(get_db),
     mailer: EmailService = Depends(get_email_service),
-) -> Response:
-    forgot_password(db, email=body.email, email_service=mailer)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+) -> PasswordResetRequestResponse:
+    result = forgot_password(db, email=body.email, email_service=mailer)
+    return PasswordResetRequestResponse(
+        message=result.message,
+        status=PasswordResetRequestStatus(result.status),
+    )
 
 
 @router.post("/reset-password", response_model=MessageResponse)

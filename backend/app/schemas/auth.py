@@ -1,4 +1,17 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, EmailStr, Field, model_validator
+
+
+class VerificationResendStatus(StrEnum):
+    EMAIL_SENT = "email_sent"
+    ALREADY_VERIFIED = "already_verified"
+    REQUEST_ACCEPTED = "request_accepted"
+
+
+class PasswordResetRequestStatus(StrEnum):
+    EMAIL_SENT = "email_sent"
+    REQUEST_ACCEPTED = "request_accepted"
 
 
 class RegisterRequest(BaseModel):
@@ -55,3 +68,13 @@ class TokenResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class VerificationResendResponse(BaseModel):
+    message: str
+    status: VerificationResendStatus
+
+
+class PasswordResetRequestResponse(BaseModel):
+    message: str
+    status: PasswordResetRequestStatus

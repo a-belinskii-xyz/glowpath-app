@@ -52,6 +52,18 @@ class TokenPair:
     refresh_token: str
 
 
+@dataclass(frozen=True, slots=True)
+class VerificationResendResult:
+    status: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class PasswordResetRequestResult:
+    status: str
+    message: str
+
+
 def issue_token_pair(user_id: uuid.UUID) -> TokenPair:
     return TokenPair(
         access_token=create_access_token(user_id),
@@ -139,11 +151,22 @@ def resend_verification_email(
     *,
     email: str,
     email_service: EmailService,
-) -> None:
+) -> VerificationResendResult:
     normalized_email = normalize_email(email)
     user = db.scalar(select(User).where(User.email == normalized_email))
-    if user is None or user.email_verified_at is not None:
-        return
+    if user is None:
+        return VerificationResendResult(
+            status="request_accepted",
+            message=(
+                "If an account with this email exists and is unverified, "
+                "we sent a verification link."
+            ),
+        )
+    if user.email_verified_at is not None:
+        return VerificationResendResult(
+            status="already_verified",
+            message="Your email is already verified. You can log in.",
+        )
 
     _invalidate_active_tokens(db, user_id=user.id, purpose=AuthTokenPurpose.EMAIL_VERIFY)
     _create_auth_token(
@@ -153,6 +176,10 @@ def resend_verification_email(
         email_service=email_service,
     )
     db.commit()
+    return VerificationResendResult(
+        status="email_sent",
+        message="Verification email sent. Check your inbox.",
+    )
 
 
 def forgot_password(
@@ -160,11 +187,14 @@ def forgot_password(
     *,
     email: str,
     email_service: EmailService,
-) -> None:
+) -> PasswordResetRequestResult:
     normalized_email = normalize_email(email)
     user = db.scalar(select(User).where(User.email == normalized_email))
     if user is None or user.password_hash is None:
-        return
+        return PasswordResetRequestResult(
+            status="request_accepted",
+            message=("If an account with this email exists, we sent a password reset link."),
+        )
 
     _invalidate_active_tokens(db, user_id=user.id, purpose=AuthTokenPurpose.PASSWORD_RESET)
     _create_auth_token(
@@ -174,6 +204,10 @@ def forgot_password(
         email_service=email_service,
     )
     db.commit()
+    return PasswordResetRequestResult(
+        status="email_sent",
+        message="Password reset email sent. Check your inbox.",
+    )
 
 
 def validate_password_reset_token(db: Session, *, token: str) -> None:

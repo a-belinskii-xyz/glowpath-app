@@ -100,3 +100,49 @@ def test_register_rejects_mismatched_passwords(auth_client: TestClient) -> None:
         },
     )
     assert response.status_code == 422
+
+
+def test_resend_verification_sends_email(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    email = "resend@example.com"
+    _register_and_get_verify_token(auth_client, mailer, email)
+    mailer.clear_outbox()
+
+    response = auth_client.post("/v1/auth/resend-verification", json={"email": email})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "email_sent"
+    assert "Verification email sent" in body["message"]
+    assert len(mailer.outbox) == 1
+
+
+def test_resend_verification_already_verified(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    email = "verified-resend@example.com"
+    token = _register_and_get_verify_token(auth_client, mailer, email)
+    auth_client.get(f"/v1/auth/verify-email?token={token}")
+    mailer.clear_outbox()
+
+    response = auth_client.post("/v1/auth/resend-verification", json={"email": email})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "already_verified"
+    assert "already verified" in body["message"].lower()
+    assert len(mailer.outbox) == 0
+
+
+def test_resend_verification_unknown_email_returns_request_accepted(
+    auth_client: TestClient,
+) -> None:
+    response = auth_client.post(
+        "/v1/auth/resend-verification",
+        json={"email": "missing@example.com"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "request_accepted"
+    assert "verification link" in body["message"]

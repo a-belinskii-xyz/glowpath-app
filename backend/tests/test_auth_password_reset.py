@@ -16,7 +16,10 @@ def test_forgot_reset_and_login_with_new_password(
     auth_client.get(f"/v1/auth/verify-email?token={verify_token}")
 
     forgot_response = auth_client.post("/v1/auth/forgot-password", json={"email": email})
-    assert forgot_response.status_code == 204
+    assert forgot_response.status_code == 200
+    forgot_body = forgot_response.json()
+    assert forgot_body["status"] == "email_sent"
+    assert "Password reset email sent" in forgot_body["message"]
     reset_token = extract_token_from_email(mailer.outbox[-1].body)
 
     reset_response = auth_client.post(
@@ -44,9 +47,12 @@ def test_forgot_reset_and_login_with_new_password(
     assert "access_token" in new_login.json()
 
 
-def test_forgot_password_always_returns_204(auth_client: TestClient) -> None:
+def test_forgot_password_unknown_email_returns_request_accepted(auth_client: TestClient) -> None:
     response = auth_client.post(
         "/v1/auth/forgot-password",
         json={"email": "missing@example.com"},
     )
-    assert response.status_code == 204
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "request_accepted"
+    assert "password reset link" in body["message"]
