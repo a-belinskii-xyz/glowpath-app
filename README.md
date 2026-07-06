@@ -37,6 +37,7 @@ make lint
 make typecheck
 make test
 make migrate              # alembic upgrade head
+make migrate-create MSG="add users table"  # autogenerate migration
 make migrate-down         # alembic downgrade -1 (or REV=base / REV=<revision>)
 ```
 

@@ -3,7 +3,7 @@ VENV := $(BACKEND)/.venv
 BIN := $(CURDIR)/$(VENV)/bin
 MARKER := $(VENV)/.installed
 
-.PHONY: install lint format typecheck test run up down migrate migrate-down venv reinstall pre-commit-install pre-commit
+.PHONY: install lint format typecheck test run up down migrate migrate-create migrate-down venv reinstall pre-commit-install pre-commit
 
 REV ?= -1
 
@@ -52,6 +52,9 @@ down:
 
 migrate: $(MARKER)
 	cd $(BACKEND) && $(BIN)/alembic upgrade head
+
+migrate-create: $(MARKER)
+	cd $(BACKEND) && $(BIN)/alembic revision --autogenerate -m "$(MSG)"
 
 migrate-down: $(MARKER)
 	cd $(BACKEND) && $(BIN)/alembic downgrade $(REV)
