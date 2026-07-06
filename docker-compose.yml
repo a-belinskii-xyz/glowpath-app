@@ -27,6 +27,12 @@ services:
     command: alembic upgrade head
     restart: "no"
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+
   app:
     build: ./backend
     ports:
@@ -35,9 +41,13 @@ services:
       - backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
     depends_on:
       migrations:
         condition: service_completed_successfully
+      mailhog:
+        condition: service_started
     volumes:
       - ./backend/app:/app/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
