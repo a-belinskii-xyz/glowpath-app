@@ -31,13 +31,16 @@ make run
 ## Tooling
 
 ```bash
-make install        # creates backend/.venv on first run; skips pip if already installed
+make install              # creates backend/.venv on first run; skips pip if already installed
+make pre-commit-install   # install git hooks (run once per clone)
 make lint
 make typecheck
 make test
-make migrate        # alembic upgrade head
-make migrate-down   # alembic downgrade -1 (or REV=base / REV=<revision>)
+make migrate              # alembic upgrade head
+make migrate-down         # alembic downgrade -1 (or REV=base / REV=<revision>)
 ```
+
+Before each `git commit`, pre-commit runs formatting (ruff), lint, mypy, and pytest. To run hooks manually: `make pre-commit`.
 
 To force a clean reinstall: `make reinstall`
 
