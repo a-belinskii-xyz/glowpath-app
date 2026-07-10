@@ -6,7 +6,9 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit
+.PHONY: install lint format typecheck test run up down migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build
+
+FRONTEND := frontend
 
 REV ?= -1
 TEST_DATABASE_URL ?= postgresql+psycopg://mood:mood@localhost:5432/mood_tracker_test
@@ -65,5 +67,14 @@ migrate-create: $(MARKER)
 
 migrate-down: $(MARKER)
 	cd $(BACKEND) && $(BIN)/alembic downgrade $(REV)
+
+frontend-install:
+	cd $(FRONTEND) && npm install
+
+frontend-dev:
+	cd $(FRONTEND) && npm run dev
+
+frontend-build:
+	cd $(FRONTEND) && npm run build
 
 venv: $(VENV)/bin/python

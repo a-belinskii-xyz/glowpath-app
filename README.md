@@ -1,25 +1,103 @@
 # Mood Tracker
 
-Multi-user REST API for daily mood logging. Built with FastAPI, PostgreSQL, and Docker Compose.
+Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and Docker Compose.
 
-## Quick start (Docker)
+## Prerequisites
+
+- **Docker** and **Docker Compose** — backend services (API, PostgreSQL, MinIO, MailHog)
+- **Python 3.12+** — local backend development (`make install`, `make run`)
+- **Node.js 20+** and **npm** — frontend dev server and build
+
+## Quick start (full stack)
+
+### 1. Environment files
 
 ```bash
-cp .env.example .env          # Docker host ports (edit if 9000/5432/etc. are taken)
+cp .env.example .env              # Docker host ports
 cp backend/.env.example backend/.env
-docker compose up --build
+cp frontend/.env.example frontend/.env   # optional for now
 ```
 
-Host ports are set in `.env` (`POSTGRES_PORT`, `APP_PORT`, `MINIO_API_PORT`, `MINIO_CONSOLE_PORT`, `MAILHOG_SMTP_PORT`, `MAILHOG_UI_PORT`). Defaults match the examples below.
+Edit `.env` if ports are already in use (`POSTGRES_PORT`, `APP_PORT`, `MINIO_*`, `MAILHOG_*`).
 
-- API: http://localhost:8000
-- OpenAPI docs: http://localhost:8000/docs
-- Health: http://localhost:8000/health
-- MinIO console: http://localhost:9001
-- MailHog UI (dev email): http://localhost:8025
+### 2. Backend (Docker)
+
+```bash
+docker compose up --build
+# or
+make up
+```
+
+Wait until the API is up, then check:
 
 ```bash
 curl http://localhost:8000/v1/health
+```
+
+### 3. Frontend (local dev server)
+
+In a **second terminal**:
+
+```bash
+make frontend-install   # first time only
+make frontend-dev
+```
+
+Open http://localhost:5173 — default Vite + React shell (no API wiring yet).
+
+### Service URLs
+
+| Service | URL |
+|---------|-----|
+| Frontend (dev) | http://localhost:5173 |
+| API | http://localhost:8000 |
+| OpenAPI docs | http://localhost:8000/docs |
+| Health | http://localhost:8000/health |
+| MinIO console | http://localhost:9001 |
+| MailHog UI (dev email) | http://localhost:8025 |
+
+Host ports come from root `.env` (defaults above).
+
+## Frontend
+
+Scaffold only — auth and mood CRUD will be added in follow-up steps.
+
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # output in frontend/dist/
+npm run preview  # serve production build locally
+```
+
+From the repo root:
+
+```bash
+make frontend-install
+make frontend-dev
+make frontend-build
+```
+
+`frontend/.env.example`:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+Copy to `frontend/.env` when you start calling the API.
+
+### Roadmap
+
+1. **Scaffold** (current) — empty React app, dev tooling
+2. **Auth UI** — register, login, email verification, password reset, Google OAuth
+3. **Mood CRUD** — entries, tags, attachments
+
+## Backend quick start (Docker only)
+
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+docker compose up --build
 ```
 
 ## Auth (stage 2)
@@ -91,36 +169,46 @@ curl -s -X POST http://localhost:8000/v1/auth/google \
   -d '{"id_token":"GOOGLE_ID_TOKEN"}'
 ```
 
-## Local development
+## Local development (backend without Docker for the app)
 
 `make` creates `backend/.venv` automatically (required on Debian/Ubuntu with PEP 668).
 
 ```bash
 make install
 cp backend/.env.example backend/.env
-# Start PostgreSQL + MailHog (e.g. docker compose up db mailhog)
+# Start PostgreSQL + MailHog (e.g. docker compose up db mailhog minio)
 make migrate
 make run
 ```
 
 Integration tests require a running PostgreSQL with migrations applied (`make migrate`).
 
+Typical full-stack local workflow:
+
+```text
+Terminal 1: docker compose up db mailhog minio app   # or make up
+Terminal 2: make frontend-dev
+```
+
 ## Tooling
 
 ```bash
-make install              # creates backend/.venv on first run; skips pip if already installed
+make install              # backend: creates .venv on first run
 make pre-commit-install   # install git hooks (run once per clone)
 make lint
 make typecheck
 make test
 make migrate              # alembic upgrade head
-make migrate-create MSG="add users table"  # autogenerate migration
+make migrate-create MSG="add users table"
 make migrate-down         # alembic downgrade -1 (or REV=base / REV=<revision>)
+make frontend-install
+make frontend-dev
+make frontend-build
 ```
 
 Before each `git commit`, pre-commit runs formatting (ruff), lint, mypy, and pytest. To run hooks manually: `make pre-commit`.
 
-To force a clean reinstall: `make reinstall`
+To force a clean backend reinstall: `make reinstall`
 
 ## Project layout
 
@@ -135,4 +223,8 @@ backend/
     services/     # business logic
   alembic/        # database migrations
   tests/          # pytest
+frontend/
+  src/            # React app (Vite + TypeScript)
+  public/         # static assets
+docker/           # Postgres init scripts
 ```
