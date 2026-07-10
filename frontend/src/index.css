@@ -753,6 +753,86 @@ code {
   gap: 0.75rem;
   padding: 0.35rem 0;
   border-top: 1px solid #f3f4f6;
+  cursor: grab;
+}
+
+.tag-list li.is-dragging,
+.tag-group-card.is-dragging {
+  opacity: 0.55;
+}
+
+.tag-list-add {
+  border-top: 1px solid #f3f4f6;
+  justify-content: flex-start;
+  cursor: default;
+  padding-top: 0.65rem;
+}
+
+.tag-drag-hint {
+  font-size: 0.75rem;
+  letter-spacing: -0.08em;
+  user-select: none;
+}
+
+.popup-menu {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.popup-menu-trigger {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.popup-menu-trigger h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.popup-menu-trigger:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.popup-menu-panel {
+  left: 0;
+  right: auto;
+}
+
+.icon-button-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-button-add:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.tag-editor {
+  margin-bottom: 1.25rem;
+}
+
+.tag-editor h2 {
+  margin: 0;
+  font-size: 1.15rem;
 }
 
 .mood-entry-form {

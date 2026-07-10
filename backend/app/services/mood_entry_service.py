@@ -16,7 +16,6 @@ from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MAX_PHOTOS_PER_ENTRY, MoodEntryAttachment
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
-from app.models.tag_group import TagGroup
 from app.services.storage import ObjectStorage, StorageError
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
@@ -335,17 +334,6 @@ def delete_attachment(
         storage.delete_object(key=storage_key)
 
 
-def list_tag_groups(db: Session, *, user_id: uuid.UUID) -> list[TagGroup]:
-    return list(
-        db.scalars(
-            select(TagGroup)
-            .options(selectinload(TagGroup.tags))
-            .where(TagGroup.user_id == user_id)
-            .order_by(TagGroup.sort_order, TagGroup.slug)
-        ).all()
-    )
-
-
 def serialize_mood_entry(entry: MoodEntry, *, locale: str) -> dict[str, Any]:
     score = MoodScore(entry.score)
     tags = [
@@ -384,27 +372,3 @@ def serialize_mood_entry(entry: MoodEntry, *, locale: str) -> dict[str, Any]:
         "created_at": entry.created_at,
         "updated_at": entry.updated_at,
     }
-
-
-def serialize_tag_groups(groups: list[TagGroup], *, locale: str) -> list[dict[str, Any]]:
-    items: list[dict[str, Any]] = []
-    for group in groups:
-        tags = [
-            {
-                "id": tag.id,
-                "slug": tag.slug,
-                "label": resolve_label(tag.labels, locale),
-                "group_id": tag.group_id,
-            }
-            for tag in sorted(group.tags, key=lambda item: (item.sort_order, item.slug))
-        ]
-        items.append(
-            {
-                "id": group.id,
-                "slug": group.slug,
-                "label": resolve_label(group.labels, locale),
-                "sort_order": group.sort_order,
-                "tags": tags,
-            }
-        )
-    return items

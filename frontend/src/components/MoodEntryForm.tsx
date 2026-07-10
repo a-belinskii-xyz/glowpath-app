@@ -1,5 +1,5 @@
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 import {
   createMoodEntry,
@@ -214,28 +214,16 @@ export function MoodEntryForm({ mode, initialEntry }: MoodEntryFormProps) {
       <section className="tag-sections">
         <div className="tag-sections-header">
           <h2 className="section-title">Tags</h2>
-          {/* TODO: tag CRUD API — enable add/edit tag actions */}
-          <button type="button" className="button button-secondary button-small" disabled title="TODO: tag CRUD API">
-            Add tag
-          </button>
+          <Link to="/tags" className="button button-secondary button-small">
+            Manage tags
+          </Link>
         </div>
         {isLoadingTags ? (
           <p className="muted">Loading tags…</p>
         ) : (
           tagGroups.map((group) => (
             <fieldset key={group.id} className="tag-group">
-              <legend className="tag-group-label">
-                {group.label}
-                {/* TODO: tag CRUD API — enable edit group/tags */}
-                <button
-                  type="button"
-                  className="link-button tag-edit-stub"
-                  disabled
-                  title="TODO: tag CRUD API"
-                >
-                  Edit
-                </button>
-              </legend>
+              <legend className="tag-group-label">{group.label}</legend>
               <div className="tag-chips">
                 {group.tags.map((tag) => {
                   const selected = selectedTagIds.includes(tag.id)
