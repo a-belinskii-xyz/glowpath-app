@@ -35,18 +35,24 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
 
 export function TagsPage() {
   const [groups, setGroups] = useState<TagGroupPublic[]>([])
+  const [visibleLimit, setVisibleLimit] = useState(6)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [editor, setEditor] = useState<EditorMode | null>(null)
   const [name, setName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
   const [draggingTag, setDraggingTag] = useState<{ groupId: string; tagId: string } | null>(null)
 
   const reload = async () => {
     const response = await listTagGroups()
     setGroups(response.items)
+    setVisibleLimit(response.entry_visible_tag_group_limit)
   }
+
+  const visibleCount = groups.filter((group) => group.show_on_entry).length
+  const atVisibleLimit = visibleCount >= visibleLimit
 
   useEffect(() => {
     const load = async () => {
@@ -125,6 +131,31 @@ export function TagsPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete group')
+    }
+  }
+
+  const handleToggleShowOnEntry = async (group: TagGroupPublic) => {
+    const nextValue = !group.show_on_entry
+    if (nextValue && atVisibleLimit) {
+      setError(`You can show at most ${visibleLimit} tag groups on the entry form.`)
+      return
+    }
+    setError(null)
+    setTogglingGroupId(group.id)
+    const previous = groups
+    setGroups((current) =>
+      current.map((item) =>
+        item.id === group.id ? { ...item, show_on_entry: nextValue } : item,
+      ),
+    )
+    try {
+      const updated = await patchTagGroup(group.id, { show_on_entry: nextValue })
+      setGroups((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+    } catch (err) {
+      setGroups(previous)
+      setError(err instanceof Error ? err.message : 'Failed to update group visibility')
+    } finally {
+      setTogglingGroupId(null)
     }
   }
 
@@ -212,6 +243,11 @@ export function TagsPage() {
         </button>
       </header>
 
+      <p className="muted tag-visibility-hint">
+        Choose up to {visibleLimit} groups to show when creating an entry ({visibleCount}/
+        {visibleLimit} selected). Other groups stay available under “Other”.
+      </p>
+
       {error ? <Alert variant="error">{error}</Alert> : null}
       {isLoading ? <p className="muted">Loading tags…</p> : null}
 
@@ -256,6 +292,17 @@ export function TagsPage() {
                 onEdit={() => openEditor({ kind: 'edit-group', group })}
                 onDelete={() => void handleDeleteGroup(group)}
               />
+              <label className="tag-visibility-toggle">
+                <input
+                  type="checkbox"
+                  checked={group.show_on_entry}
+                  disabled={
+                    togglingGroupId === group.id || (!group.show_on_entry && atVisibleLimit)
+                  }
+                  onChange={() => void handleToggleShowOnEntry(group)}
+                />
+                <span>Show on entry</span>
+              </label>
             </header>
             <ul className="tag-list">
               {group.tags.map((tag) => (

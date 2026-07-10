@@ -49,17 +49,20 @@ class TagGroupPublic(BaseModel):
     label: str
     labels: dict[str, str]
     sort_order: int
+    show_on_entry: bool
     tags: list[TagPublic]
 
 
 class TagGroupListResponse(BaseModel):
     items: list[TagGroupPublic]
+    entry_visible_tag_group_limit: int
 
 
 class TagGroupCreate(BaseModel):
     labels: Labels
     slug: Slug | None = None
     sort_order: int | None = None
+    show_on_entry: bool = False
 
     @field_validator("slug")
     @classmethod
@@ -78,6 +81,7 @@ class TagGroupPatch(BaseModel):
     slug: Slug | None = None
     labels: Labels | None = None
     sort_order: int | None = None
+    show_on_entry: bool | None = None
 
     @field_validator("slug")
     @classmethod

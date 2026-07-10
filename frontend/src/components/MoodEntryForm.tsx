@@ -44,6 +44,7 @@ export function MoodEntryForm({ mode, initialEntry }: MoodEntryFormProps) {
     initialEntry?.tags.map((tag) => tag.id) ?? [],
   )
   const [tagGroups, setTagGroups] = useState<TagGroupPublic[]>([])
+  const [showOtherGroups, setShowOtherGroups] = useState(false)
   const [existingAttachments, setExistingAttachments] = useState<AttachmentPublic[]>(
     initialEntry?.attachments ?? [],
   )
@@ -58,6 +59,14 @@ export function MoodEntryForm({ mode, initialEntry }: MoodEntryFormProps) {
       try {
         const response = await listTagGroups()
         setTagGroups(response.items)
+        const selectedIds = new Set(initialEntry?.tags.map((tag) => tag.id) ?? [])
+        const hasSelectedOther = response.items.some(
+          (group) =>
+            !group.show_on_entry && group.tags.some((tag) => selectedIds.has(tag.id)),
+        )
+        if (hasSelectedOther) {
+          setShowOtherGroups(true)
+        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
           setError('Verify your email before managing mood entries.')
@@ -69,13 +78,38 @@ export function MoodEntryForm({ mode, initialEntry }: MoodEntryFormProps) {
       }
     }
     void loadTags()
-  }, [])
+  }, [initialEntry])
+
+  const primaryGroups = tagGroups.filter((group) => group.show_on_entry)
+  const otherGroups = tagGroups.filter((group) => !group.show_on_entry)
 
   const toggleTag = (tagId: string) => {
     setSelectedTagIds((current) =>
       current.includes(tagId) ? current.filter((id) => id !== tagId) : [...current, tagId],
     )
   }
+
+  const renderTagGroup = (group: TagGroupPublic) => (
+    <fieldset key={group.id} className="tag-group">
+      <legend className="tag-group-label">{group.label}</legend>
+      <div className="tag-chips">
+        {group.tags.map((tag) => {
+          const selected = selectedTagIds.includes(tag.id)
+          return (
+            <button
+              key={tag.id}
+              type="button"
+              className={`tag-chip${selected ? ' tag-chip-selected' : ''}`}
+              onClick={() => toggleTag(tag.id)}
+              aria-pressed={selected}
+            >
+              {tag.label}
+            </button>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
 
   const photoCount =
     existingAttachments.filter((item) => item.kind === 'photo').length + pendingPhotos.length
@@ -221,27 +255,22 @@ export function MoodEntryForm({ mode, initialEntry }: MoodEntryFormProps) {
         {isLoadingTags ? (
           <p className="muted">Loading tags…</p>
         ) : (
-          tagGroups.map((group) => (
-            <fieldset key={group.id} className="tag-group">
-              <legend className="tag-group-label">{group.label}</legend>
-              <div className="tag-chips">
-                {group.tags.map((tag) => {
-                  const selected = selectedTagIds.includes(tag.id)
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      className={`tag-chip${selected ? ' tag-chip-selected' : ''}`}
-                      onClick={() => toggleTag(tag.id)}
-                      aria-pressed={selected}
-                    >
-                      {tag.label}
-                    </button>
-                  )
-                })}
+          <>
+            {primaryGroups.map(renderTagGroup)}
+            {otherGroups.length > 0 ? (
+              <div className="tag-other-section">
+                <button
+                  type="button"
+                  className="button button-secondary button-small"
+                  onClick={() => setShowOtherGroups((current) => !current)}
+                  aria-expanded={showOtherGroups}
+                >
+                  {showOtherGroups ? 'Hide other' : 'Other'}
+                </button>
+                {showOtherGroups ? otherGroups.map(renderTagGroup) : null}
               </div>
-            </fieldset>
-          ))
+            ) : null}
+          </>
         )}
       </section>
 

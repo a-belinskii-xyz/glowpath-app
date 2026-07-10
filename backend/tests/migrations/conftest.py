@@ -26,4 +26,7 @@ def alembic_config() -> Config:
     assert_safe_test_database(TEST_DATABASE_URL)
     if not _database_available():
         pytest.skip("PostgreSQL is not available for migration tests")
-    return make_alembic_config(TEST_DATABASE_URL)
+    config = make_alembic_config(TEST_DATABASE_URL)
+    # Guard against alembic/env.py accidentally falling back to DATABASE_URL.
+    assert config.get_main_option("sqlalchemy.url") == TEST_DATABASE_URL
+    return config

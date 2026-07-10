@@ -188,3 +188,77 @@ def test_invalid_slug_rejected(
         headers=_auth_headers(token),
     )
     assert response.status_code == 422
+
+
+def test_default_groups_show_on_entry(
+    auth_client: TestClient,
+    mailer,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "tag-visible-default@example.com")
+    response = auth_client.get("/v1/tag-groups", headers=_auth_headers(token))
+    assert response.status_code == 200
+    payload = response.json()
+    limit = payload["entry_visible_tag_group_limit"]
+    assert limit >= 1
+    visible = [item for item in payload["items"] if item["show_on_entry"]]
+    hidden = [item for item in payload["items"] if not item["show_on_entry"]]
+    assert len(visible) == min(limit, len(payload["items"]))
+    assert len(visible) + len(hidden) == len(payload["items"])
+
+
+def test_show_on_entry_toggle_and_limit(
+    auth_client: TestClient,
+    mailer,
+    monkeypatch,
+) -> None:
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "entry_visible_tag_group_limit", 2)
+
+    token = register_verify_and_login(auth_client, mailer, "tag-visible-limit@example.com")
+    headers = _auth_headers(token)
+
+    listed = auth_client.get("/v1/tag-groups", headers=headers)
+    assert listed.status_code == 200
+    assert listed.json()["entry_visible_tag_group_limit"] == 2
+    groups = listed.json()["items"]
+    assert len(groups) >= 3
+    visible = [group for group in groups if group["show_on_entry"]]
+    hidden = [group for group in groups if not group["show_on_entry"]]
+    assert len(visible) == 2
+    assert len(hidden) >= 1
+
+    # Creating a custom group defaults to hidden.
+    created = auth_client.post(
+        "/v1/tag-groups",
+        json={"labels": {"en": "Custom hidden"}},
+        headers=headers,
+    )
+    assert created.status_code == 201
+    assert created.json()["show_on_entry"] is False
+    custom_id = created.json()["id"]
+
+    # Cannot enable another visible group when already at the limit.
+    blocked = auth_client.patch(
+        f"/v1/tag-groups/{custom_id}",
+        json={"show_on_entry": True},
+        headers=headers,
+    )
+    assert blocked.status_code == 400
+    assert "at most 2" in blocked.json()["detail"]
+
+    # Free a slot, then enable the custom group.
+    freed = auth_client.patch(
+        f"/v1/tag-groups/{visible[0]['id']}",
+        json={"show_on_entry": False},
+        headers=headers,
+    )
+    assert freed.status_code == 200
+
+    enabled = auth_client.patch(
+        f"/v1/tag-groups/{custom_id}",
+        json={"show_on_entry": True},
+        headers=headers,
+    )
+    assert enabled.status_code == 200
+    assert enabled.json()["show_on_entry"] is True

@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 import app.models  # noqa: F401 — register models on Base.metadata
 from app.config import settings
+from app.db.alembic_url import resolve_alembic_database_url
 from app.db.base import Base
 
 config = context.config
@@ -12,7 +13,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option(
+    "sqlalchemy.url",
+    resolve_alembic_database_url(
+        configured_url=config.get_main_option("sqlalchemy.url"),
+        settings_url=settings.database_url,
+    ),
+)
 
 target_metadata = Base.metadata
 

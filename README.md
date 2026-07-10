@@ -120,6 +120,7 @@ Environment variables in `backend/.env` (see `backend/.env.example`):
 - `JWT_SECRET_KEY` — required in production
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` — for Google OAuth
 - `SMTP_*`, `EMAIL_FROM` — email delivery (MailHog in Docker: `SMTP_HOST=mailhog`, port `1025`)
+- `ENTRY_VISIBLE_TAG_GROUP_LIMIT` — max tag groups pinned to the entry form (default `6`; rest under “Other”)
 
 ### Email registration flow
 

@@ -11,7 +11,8 @@ APP_PORT ?= 8000
 FRONTEND := frontend
 
 REV ?= -1
-TEST_DATABASE_URL ?= postgresql+psycopg://mood:mood@localhost:5432/mood_tracker_test
+POSTGRES_PORT ?= 5432
+TEST_DATABASE_URL ?= postgresql+psycopg://mood:mood@localhost:$(POSTGRES_PORT)/mood_tracker_test
 
 $(VENV)/bin/python:
 	python3 -m venv $(VENV)

@@ -695,6 +695,31 @@ code {
   color: #1d4ed8;
 }
 
+.tag-other-section {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+}
+
+.tag-visibility-hint {
+  margin: -0.5rem 0 1rem;
+}
+
+.tag-visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: #4b5563;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tag-visibility-toggle input {
+  margin: 0;
+}
+
 .tag-edit-stub {
   font-size: 0.875rem;
   font-weight: 400;

@@ -13,23 +13,27 @@ export type TagGroupPublic = {
   label: string
   labels: Record<string, string>
   sort_order: number
+  show_on_entry: boolean
   tags: TagPublic[]
 }
 
 export type TagGroupListResponse = {
   items: TagGroupPublic[]
+  entry_visible_tag_group_limit: number
 }
 
 export type TagGroupWrite = {
   labels: Record<string, string>
   slug?: string
   sort_order?: number
+  show_on_entry?: boolean
 }
 
 export type TagGroupPatch = {
   slug?: string
   labels?: Record<string, string>
   sort_order?: number
+  show_on_entry?: boolean
 }
 
 export type TagWrite = {

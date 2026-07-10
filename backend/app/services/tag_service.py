@@ -9,6 +9,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.config import settings
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
@@ -53,7 +54,10 @@ def create_tag_group(
     labels: dict[str, str],
     slug: str | None = None,
     sort_order: int | None = None,
+    show_on_entry: bool = False,
 ) -> TagGroup:
+    if show_on_entry:
+        _ensure_visible_slot_available(db, user_id=user_id)
     resolved_slug = slug or _unique_group_slug(db, user_id=user_id, base=_slugify(labels))
     resolved_order = (
         sort_order
@@ -68,6 +72,7 @@ def create_tag_group(
         slug=resolved_slug,
         labels=labels,
         sort_order=resolved_order,
+        show_on_entry=show_on_entry,
     )
     db.add(group)
     try:
@@ -86,6 +91,7 @@ def patch_tag_group(
     slug: str | None = None,
     labels: dict[str, str] | None = None,
     sort_order: int | None = None,
+    show_on_entry: bool | None = None,
 ) -> TagGroup:
     group = get_tag_group(db, user_id=user_id, group_id=group_id)
     if slug is not None:
@@ -94,6 +100,10 @@ def patch_tag_group(
         group.labels = labels
     if sort_order is not None:
         group.sort_order = sort_order
+    if show_on_entry is not None and show_on_entry != group.show_on_entry:
+        if show_on_entry:
+            _ensure_visible_slot_available(db, user_id=user_id)
+        group.show_on_entry = show_on_entry
     try:
         db.commit()
     except IntegrityError as exc:
@@ -259,12 +269,31 @@ def serialize_tag_group(group: TagGroup, *, locale: str) -> dict[str, Any]:
         "label": resolve_label(group.labels, locale),
         "labels": group.labels,
         "sort_order": group.sort_order,
+        "show_on_entry": group.show_on_entry,
         "tags": tags,
     }
 
 
 def serialize_tag_groups(groups: list[TagGroup], *, locale: str) -> list[dict[str, Any]]:
     return [serialize_tag_group(group, locale=locale) for group in groups]
+
+
+def _count_visible_groups(db: Session, *, user_id: uuid.UUID) -> int:
+    count = db.scalar(
+        select(func.count())
+        .select_from(TagGroup)
+        .where(TagGroup.user_id == user_id, TagGroup.show_on_entry.is_(True))
+    )
+    return int(count or 0)
+
+
+def _ensure_visible_slot_available(db: Session, *, user_id: uuid.UUID) -> None:
+    limit = settings.entry_visible_tag_group_limit
+    if _count_visible_groups(db, user_id=user_id) >= limit:
+        raise TagError(
+            f"You can show at most {limit} tag groups on the entry form",
+            status_code=400,
+        )
 
 
 def _get_owned_tag(db: Session, *, user_id: uuid.UUID, tag_id: uuid.UUID) -> Tag:

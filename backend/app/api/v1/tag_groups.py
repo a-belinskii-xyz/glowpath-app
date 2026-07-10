@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale
+from app.config import settings
 from app.db.session import get_db
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
@@ -50,6 +51,16 @@ def _to_tag_public(tag: Tag, *, locale: str) -> TagPublic:
     return TagPublic.model_validate(serialize_tag(tag, locale=locale))
 
 
+def _to_list_response(groups: list[TagGroup], *, locale: str) -> TagGroupListResponse:
+    items = [
+        TagGroupPublic.model_validate(item) for item in serialize_tag_groups(groups, locale=locale)
+    ]
+    return TagGroupListResponse(
+        items=items,
+        entry_visible_tag_group_limit=settings.entry_visible_tag_group_limit,
+    )
+
+
 @router.get("", response_model=TagGroupListResponse)
 def get_tag_groups(
     db: Session = Depends(get_db),
@@ -57,10 +68,7 @@ def get_tag_groups(
     locale: str = Depends(get_locale),
 ) -> TagGroupListResponse:
     groups = list_tag_groups(db, user_id=current_user.id)
-    items = [
-        TagGroupPublic.model_validate(item) for item in serialize_tag_groups(groups, locale=locale)
-    ]
-    return TagGroupListResponse(items=items)
+    return _to_list_response(groups, locale=locale)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=TagGroupPublic)
@@ -77,6 +85,7 @@ def create_group(
             slug=body.slug,
             labels=body.labels,
             sort_order=body.sort_order,
+            show_on_entry=body.show_on_entry,
         )
     except TagError as exc:
         _handle_tag_error(exc)
@@ -100,10 +109,7 @@ def reorder_groups(
     except TagError as exc:
         _handle_tag_error(exc)
         raise
-    items = [
-        TagGroupPublic.model_validate(item) for item in serialize_tag_groups(groups, locale=locale)
-    ]
-    return TagGroupListResponse(items=items)
+    return _to_list_response(groups, locale=locale)
 
 
 @router.patch("/{group_id}", response_model=TagGroupPublic)
@@ -122,6 +128,7 @@ def update_group(
             slug=body.slug,
             labels=body.labels,
             sort_order=body.sort_order,
+            show_on_entry=body.show_on_entry,
         )
     except TagError as exc:
         _handle_tag_error(exc)

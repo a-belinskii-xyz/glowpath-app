@@ -61,5 +61,12 @@ class Settings(BaseSettings):
     smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
     email_from: str = Field(default="noreply@mood-tracker.local", validation_alias="EMAIL_FROM")
 
+    # Max tag groups a user can pin to the entry form (rest under "Other")
+    entry_visible_tag_group_limit: int = Field(
+        default=6,
+        ge=1,
+        validation_alias="ENTRY_VISIBLE_TAG_GROUP_LIMIT",
+    )
+
 
 settings = Settings()
