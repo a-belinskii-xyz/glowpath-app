@@ -2,10 +2,11 @@ import re
 from collections.abc import Generator
 
 import pytest
-from app.api.deps import get_email_service
+from app.api.deps import get_email_service, get_storage_service
 from app.db.session import get_db
 from app.main import app
 from app.services.email_service import EmailService, SentEmail
+from app.services.storage import FakeStorage, ObjectStorage
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -56,6 +57,29 @@ def extract_token_from_email(body: str) -> str:
     raise AssertionError(f"Token not found in email body: {body}")
 
 
+def register_verify_and_login(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    email: str,
+    *,
+    password: str = "password123",
+) -> str:
+    register_response = auth_client.post(
+        "/v1/auth/register",
+        json={"email": email, "password": password, "password_confirm": password},
+    )
+    assert register_response.status_code == 201
+    token = extract_token_from_email(mailer.outbox[-1].body)
+    verify_response = auth_client.get(f"/v1/auth/verify-email?token={token}")
+    assert verify_response.status_code == 200
+    login_response = auth_client.post(
+        "/v1/auth/login",
+        json={"email": email, "password": password},
+    )
+    assert login_response.status_code == 200
+    return login_response.json()["access_token"]
+
+
 @pytest.fixture
 def client() -> TestClient:
     return TestClient(app)
@@ -89,15 +113,28 @@ def mailer() -> FakeEmailService:
 
 
 @pytest.fixture
-def auth_client(db: Session, mailer: FakeEmailService) -> Generator[TestClient, None, None]:
+def storage() -> FakeStorage:
+    return FakeStorage()
+
+
+@pytest.fixture
+def auth_client(
+    db: Session,
+    mailer: FakeEmailService,
+    storage: FakeStorage,
+) -> Generator[TestClient, None, None]:
     def override_get_db() -> Generator[Session, None, None]:
         yield db
 
     def override_get_email_service() -> EmailService:
         return mailer
 
+    def override_get_storage_service() -> ObjectStorage:
+        return storage
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_email_service] = override_get_email_service
+    app.dependency_overrides[get_storage_service] = override_get_storage_service
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
