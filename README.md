@@ -15,7 +15,7 @@ Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and D
 ```bash
 cp .env.example .env              # Docker host ports
 cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env   # optional for now
+cp frontend/.env.example frontend/.env
 ```
 
 Edit `.env` if ports are already in use (`POSTGRES_PORT`, `APP_PORT`, `MINIO_*`, `MAILHOG_*`).
@@ -43,7 +43,9 @@ make frontend-install   # first time only
 make frontend-dev
 ```
 
-Open http://localhost:5173 — default Vite + React shell (no API wiring yet).
+Open http://localhost:5173 — register, log in, view profile, verify email, reset password.
+
+Ensure `backend/.env` includes `FRONTEND_URL=http://localhost:5173` and `CORS_ORIGINS=http://localhost:5173` (see `backend/.env.example`). Email links and Google OAuth redirect use `FRONTEND_URL`.
 
 ### Service URLs
 
@@ -60,7 +62,18 @@ Host ports come from root `.env` (defaults above).
 
 ## Frontend
 
-Scaffold only — auth and mood CRUD will be added in follow-up steps.
+React app with routing and all auth flows wired to the API.
+
+| Route | Purpose |
+|-------|---------|
+| `/register` | Email registration |
+| `/login` | Email login + Google OAuth |
+| `/profile` | Current user (`GET /v1/auth/me`) |
+| `/verify-email?token=…` | Email verification (link from MailHog) |
+| `/resend-verification` | Resend verification email |
+| `/forgot-password` | Request password reset |
+| `/reset-password?token=…` | Set new password |
+| `/auth/google/callback` | Google OAuth return (redirect from backend) |
 
 ```bash
 cd frontend
@@ -84,12 +97,12 @@ make frontend-build
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-Copy to `frontend/.env` when you start calling the API.
+Copy to `frontend/.env`. Tokens are stored in `localStorage`; the client refreshes access tokens via `POST /v1/auth/refresh`.
 
 ### Roadmap
 
-1. **Scaffold** (current) — empty React app, dev tooling
-2. **Auth UI** — register, login, email verification, password reset, Google OAuth
+1. ~~**Scaffold**~~ — React app, dev tooling
+2. ~~**Auth UI**~~ — register, login, email verification, password reset, Google OAuth
 3. **Mood CRUD** — entries, tags, attachments
 
 ## Backend quick start (Docker only)

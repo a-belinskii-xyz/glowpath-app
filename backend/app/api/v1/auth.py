@@ -1,6 +1,7 @@
 from typing import cast
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_email_service
@@ -161,8 +162,8 @@ async def google_login(request: Request) -> Response:
     )
 
 
-@router.get("/google/callback", response_model=TokenResponse)
-async def google_callback(request: Request, db: Session = Depends(get_db)) -> TokenResponse:
+@router.get("/google/callback")
+async def google_callback(request: Request, db: Session = Depends(get_db)) -> RedirectResponse:
     from fastapi import HTTPException
 
     if not settings.google_client_id or not settings.google_client_secret:
@@ -191,7 +192,11 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> To
         tokens = authenticate_google_profile(db, profile)
     except AuthError as exc:
         _handle_auth_error(exc)
-    return _to_token_response(tokens)
+    redirect_url = (
+        f"{settings.frontend_url}/auth/google/callback"
+        f"#access_token={tokens.access_token}&refresh_token={tokens.refresh_token}"
+    )
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/google", response_model=TokenResponse)

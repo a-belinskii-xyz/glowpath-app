@@ -11,6 +11,14 @@ class Settings(BaseSettings):
         default="http://localhost:8000",
         validation_alias="APP_PUBLIC_URL",
     )
+    frontend_url: str = Field(
+        default="http://localhost:5173",
+        validation_alias="FRONTEND_URL",
+    )
+    cors_origins: str = Field(
+        default="http://localhost:5173",
+        validation_alias="CORS_ORIGINS",
+    )
     database_url: str = Field(
         default="postgresql+psycopg://mood:mood@localhost:5432/mood_tracker",
         validation_alias="DATABASE_URL",
