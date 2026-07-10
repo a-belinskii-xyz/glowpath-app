@@ -9,11 +9,27 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mood -d mood_tracker"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  db-init:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: mood
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - |
+        psql -h db -U mood -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'mood_tracker_test'" | grep -q 1 \
+          || psql -h db -U mood -d postgres -c "CREATE DATABASE mood_tracker_test"
+    restart: "no"
 
   migrations:
     build: ./backend
@@ -27,6 +43,24 @@ services:
     command: alembic upgrade head
     restart: "no"
 
+  migrations-test:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker_test
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    command: alembic upgrade head
+    restart: "no"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+
   app:
     build: ./backend
     ports:
@@ -35,9 +69,13 @@ services:
       - backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
     depends_on:
       migrations:
         condition: service_completed_successfully
+      mailhog:
+        condition: service_started
     volumes:
       - ./backend/app:/app/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

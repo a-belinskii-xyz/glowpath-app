@@ -6,9 +6,10 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down migrate migrate-create migrate-down venv reinstall pre-commit-install pre-commit
+.PHONY: install lint format typecheck test run up down migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit
 
 REV ?= -1
+TEST_DATABASE_URL ?= postgresql+psycopg://mood:mood@localhost:5432/mood_tracker_test
 
 $(VENV)/bin/python:
 	python3 -m venv $(VENV)
@@ -36,7 +37,10 @@ typecheck: $(MARKER)
 	cd $(BACKEND) && $(BIN)/mypy app
 
 test: $(MARKER)
-	cd $(BACKEND) && $(BIN)/pytest
+	cd $(BACKEND) && TEST_DATABASE_URL='$(TEST_DATABASE_URL)' $(BIN)/pytest
+
+migrate-test: $(MARKER)
+	cd $(BACKEND) && DATABASE_URL='$(TEST_DATABASE_URL)' $(BIN)/alembic upgrade head
 
 pre-commit-install: $(MARKER)
 	$(BIN)/pre-commit install
@@ -48,7 +52,7 @@ run: $(MARKER)
 	cd $(BACKEND) && $(BIN)/uvicorn app.main:app --reload --host 0.0.0.0 --port $(APP_PORT)
 
 up:
-	docker compose up --build
+	docker compose build --no-cache && docker compose up
 
 down:
 	docker compose down
