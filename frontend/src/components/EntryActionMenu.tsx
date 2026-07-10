@@ -1,29 +1,31 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Link } from 'react-router-dom'
 
 import type { MoodEntryPublic } from '../types/mood'
-import { formatTime } from '../lib/datetime'
 
 type EntryActionMenuProps = {
   entry: MoodEntryPublic
-  timeZone: string
-  onClose: () => void
   onDelete: (entryId: string) => void
 }
 
-export function EntryActionMenu({ entry, timeZone, onClose, onDelete }: EntryActionMenuProps) {
-  const dialogRef = useRef<HTMLDivElement>(null)
+export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
     const handleClick = (event: MouseEvent) => {
-      if (dialogRef.current && !dialogRef.current.contains(event.target as Node)) {
-        onClose()
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
       }
     }
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose()
+        setIsOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -32,37 +34,47 @@ export function EntryActionMenu({ entry, timeZone, onClose, onDelete }: EntryAct
       document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleKey)
     }
-  }, [onClose])
+  }, [isOpen])
 
   const handleDelete = () => {
     if (window.confirm('Delete this mood entry?')) {
       onDelete(entry.id)
     }
-    onClose()
+    setIsOpen(false)
   }
 
   return (
-    <div className="entry-menu-backdrop">
-      <div className="entry-menu" ref={dialogRef} role="dialog" aria-label="Entry actions">
-        <div className="entry-menu-header">
-          <span className="entry-menu-score">
-            {entry.score_emoji} {entry.score_label}
-          </span>
-          <span className="muted">{formatTime(entry.recorded_at, timeZone)}</span>
-        </div>
-        {entry.note ? <p className="entry-menu-note">{entry.note}</p> : null}
-        <div className="entry-menu-actions">
-          <Link className="button button-secondary" to={`/entries/${entry.id}/edit`} onClick={onClose}>
+    <div className="entry-overflow" ref={containerRef}>
+      <button
+        type="button"
+        className="entry-overflow-trigger"
+        aria-label="Entry actions"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        <span aria-hidden="true">⋮</span>
+      </button>
+      {isOpen ? (
+        <div className="entry-overflow-menu" role="menu" aria-label="Entry actions">
+          <Link
+            className="entry-overflow-item"
+            role="menuitem"
+            to={`/entries/${entry.id}/edit`}
+            onClick={() => setIsOpen(false)}
+          >
             Edit
           </Link>
-          <button type="button" className="button button-danger" onClick={handleDelete}>
+          <button
+            type="button"
+            className="entry-overflow-item entry-overflow-item-danger"
+            role="menuitem"
+            onClick={handleDelete}
+          >
             Delete
           </button>
-          <button type="button" className="button button-secondary" onClick={onClose}>
-            Cancel
-          </button>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 }

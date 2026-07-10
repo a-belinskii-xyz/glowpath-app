@@ -5,6 +5,7 @@ import { deleteMoodEntry, listMoodEntries } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryActionMenu } from '../components/EntryActionMenu'
+import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/errors'
 import {
@@ -33,7 +34,6 @@ export function EntriesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeEntry, setActiveEntry] = useState<MoodEntryPublic | null>(null)
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const loadingRef = useRef(false)
@@ -184,34 +184,28 @@ export function EntriesPage() {
             <ul className="entry-list">
               {dayEntries.map((entry) => (
                 <li key={entry.id}>
-                  <button
-                    type="button"
-                    className="entry-row"
-                    onClick={() => setActiveEntry(entry)}
-                  >
-                    <span className="entry-row-main">
+                  <article className="entry-row">
+                    <div className="entry-row-main">
                       <span className="entry-score">
                         {entry.score_emoji} {entry.score_label}
                       </span>
-                      <span className="entry-time">{formatTime(entry.recorded_at, timeZone)}</span>
-                    </span>
-                    {entry.note ? <span className="entry-note">{entry.note}</span> : null}
+                      <div className="entry-row-meta">
+                        <span className="entry-time">{formatTime(entry.recorded_at, timeZone)}</span>
+                        <EntryActionMenu entry={entry} onDelete={handleDelete} />
+                      </div>
+                    </div>
+                    {entry.note ? <p className="entry-note">{entry.note}</p> : null}
                     {entry.tags.length > 0 ? (
-                      <span className="entry-tags">
+                      <div className="entry-tags">
                         {entry.tags.map((tag) => (
                           <span key={tag.id} className="entry-tag">
                             {tag.label}
                           </span>
                         ))}
-                      </span>
+                      </div>
                     ) : null}
-                    {entry.attachments.length > 0 ? (
-                      <span className="entry-attachments muted">
-                        {entry.attachments.length} attachment
-                        {entry.attachments.length === 1 ? '' : 's'}
-                      </span>
-                    ) : null}
-                  </button>
+                    <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
+                  </article>
                 </li>
               ))}
             </ul>
@@ -223,15 +217,6 @@ export function EntriesPage() {
         <div ref={loadMoreRef} className="load-more-sentinel">
           {isLoadingMore ? <p className="muted">Loading more…</p> : null}
         </div>
-      ) : null}
-
-      {activeEntry ? (
-        <EntryActionMenu
-          entry={activeEntry}
-          timeZone={timeZone}
-          onClose={() => setActiveEntry(null)}
-          onDelete={handleDelete}
-        />
       ) : null}
     </section>
   )

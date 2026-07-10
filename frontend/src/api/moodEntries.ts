@@ -1,5 +1,7 @@
-import { apiRequest } from './client'
+import { ApiError, parseApiError } from '../lib/errors'
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/storage'
 import { apiLocaleHeaders } from '../lib/locale'
+import type { TokenResponse } from '../types/auth'
 import type {
   AttachmentKind,
   AttachmentPublic,
@@ -9,7 +11,36 @@ import type {
   MoodEntryPatch,
   MoodEntryPublic,
 } from '../types/mood'
+import { apiRequest, getApiBaseUrl } from './client'
 import { uploadAttachment } from './upload'
+
+let refreshPromise: Promise<boolean> | null = null
+
+async function refreshTokensOnce(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = getRefreshToken()
+      if (!refreshToken) {
+        return false
+      }
+      const response = await fetch(`${getApiBaseUrl()}/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      })
+      if (!response.ok) {
+        clearTokens()
+        return false
+      }
+      const tokens = (await response.json()) as TokenResponse
+      setTokens(tokens.access_token, tokens.refresh_token)
+      return true
+    })().finally(() => {
+      refreshPromise = null
+    })
+  }
+  return refreshPromise
+}
 
 function moodHeaders(): Record<string, string> {
   return apiLocaleHeaders()
@@ -90,6 +121,36 @@ export function deleteMoodEntryAttachment(entryId: string, attachmentId: string)
 }
 
 export function getMoodEntryAttachmentUrl(entryId: string, attachmentId: string): string {
-  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-  return `${base}/v1/mood-entries/${entryId}/attachments/${attachmentId}`
+  return `${getApiBaseUrl()}/v1/mood-entries/${entryId}/attachments/${attachmentId}`
+}
+
+export async function fetchMoodEntryAttachmentBlob(
+  entryId: string,
+  attachmentId: string,
+  retryOnUnauthorized = true,
+): Promise<Blob> {
+  const headers: Record<string, string> = { Accept: '*/*' }
+  const accessToken = getAccessToken()
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+
+  const response = await fetch(getMoodEntryAttachmentUrl(entryId, attachmentId), {
+    method: 'GET',
+    headers,
+  })
+
+  if (response.status === 401 && retryOnUnauthorized) {
+    const refreshed = await refreshTokensOnce()
+    if (refreshed) {
+      return fetchMoodEntryAttachmentBlob(entryId, attachmentId, false)
+    }
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new ApiError(parseApiError(response.status, payload), response.status)
+  }
+
+  return response.blob()
 }
