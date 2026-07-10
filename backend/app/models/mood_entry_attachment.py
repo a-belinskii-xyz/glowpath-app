@@ -59,7 +59,12 @@ class MoodEntryAttachment(TimestampMixin, Base):
         index=True,
     )
     kind: Mapped[AttachmentKind] = mapped_column(
-        Enum(AttachmentKind, name="attachment_kind", native_enum=False),
+        Enum(
+            AttachmentKind,
+            name="attachment_kind",
+            native_enum=False,
+            values_callable=lambda enum: [item.value for item in enum],
+        ),
     )
     storage_key: Mapped[str] = mapped_column(String(512))
     mime_type: Mapped[str] = mapped_column(String(127))

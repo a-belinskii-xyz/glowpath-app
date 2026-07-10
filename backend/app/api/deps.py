@@ -1,19 +1,34 @@
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.i18n import normalize_locale, parse_accept_language
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
 from app.services.auth_service import get_user_by_id
 from app.services.email_service import EmailService, email_service
+from app.services.storage import ObjectStorage, storage_service
 
 security_scheme = HTTPBearer(auto_error=False)
 
 
 def get_email_service() -> EmailService:
     return email_service
+
+
+def get_storage_service() -> ObjectStorage:
+    return storage_service
+
+
+def get_locale(
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    locale: str | None = Query(default=None),
+) -> str:
+    if locale is not None:
+        return normalize_locale(locale)
+    return parse_accept_language(accept_language)
 
 
 def get_current_user(
