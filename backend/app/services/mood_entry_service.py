@@ -153,13 +153,17 @@ def list_mood_entries(
     user_id: uuid.UUID,
     limit: int,
     offset: int,
+    recorded_from: datetime | None = None,
+    recorded_to: datetime | None = None,
 ) -> list[MoodEntry]:
+    stmt = select(MoodEntry).options(*_entry_load_options()).where(MoodEntry.user_id == user_id)
+    if recorded_from is not None:
+        stmt = stmt.where(MoodEntry.recorded_at >= _to_utc(recorded_from))
+    if recorded_to is not None:
+        stmt = stmt.where(MoodEntry.recorded_at < _to_utc(recorded_to))
     return list(
         db.scalars(
-            select(MoodEntry)
-            .options(*_entry_load_options())
-            .where(MoodEntry.user_id == user_id)
-            .order_by(MoodEntry.recorded_at.desc(), MoodEntry.created_at.desc())
+            stmt.order_by(MoodEntry.recorded_at.desc(), MoodEntry.created_at.desc())
             .limit(limit)
             .offset(offset)
         ).all()

@@ -14,6 +14,8 @@ export function Layout() {
         <nav className="nav-links">
           {isAuthenticated ? (
             <>
+              <Link to="/">Entries</Link>
+              <Link to="/tags">Tags</Link>
               <Link to="/profile">Profile</Link>
               <button type="button" className="link-button" onClick={logout}>
                 Log out

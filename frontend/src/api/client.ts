@@ -9,6 +9,7 @@ type RequestOptions = {
   body?: unknown
   auth?: boolean
   retryOnUnauthorized?: boolean
+  headers?: Record<string, string>
 }
 
 let refreshPromise: Promise<boolean> | null = null
@@ -50,10 +51,11 @@ export function getApiBaseUrl(): string {
 
 export async function apiRequest<T>(
   path: string,
-  { method = 'GET', body, auth = false, retryOnUnauthorized = true }: RequestOptions = {},
+  { method = 'GET', body, auth = false, retryOnUnauthorized = true, headers: extraHeaders }: RequestOptions = {},
 ): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...extraHeaders,
   }
 
   if (body !== undefined) {
@@ -76,7 +78,7 @@ export async function apiRequest<T>(
   if (response.status === 401 && auth && retryOnUnauthorized) {
     const refreshed = await refreshTokensOnce()
     if (refreshed) {
-      return apiRequest<T>(path, { method, body, auth, retryOnUnauthorized: false })
+      return apiRequest<T>(path, { method, body, auth, retryOnUnauthorized: false, headers: extraHeaders })
     }
   }
 

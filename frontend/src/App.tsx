@@ -4,6 +4,8 @@ import { AuthCardLayout } from './components/AuthCardLayout'
 import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
+import { CreateEntryPage } from './pages/CreateEntryPage'
+import { EditEntryPage } from './pages/EditEntryPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { GoogleCallbackPage } from './pages/GoogleCallbackPage'
 import { HomePage } from './pages/HomePage'
@@ -12,6 +14,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResendVerificationPage } from './pages/ResendVerificationPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { TagsPage } from './pages/TagsPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
 function App() {
@@ -33,6 +36,9 @@ function App() {
             </Route>
 
             <Route element={<ProtectedRoute />}>
+              <Route path="entries/new" element={<CreateEntryPage />} />
+              <Route path="entries/:id/edit" element={<EditEntryPage />} />
+              <Route path="tags" element={<TagsPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
 

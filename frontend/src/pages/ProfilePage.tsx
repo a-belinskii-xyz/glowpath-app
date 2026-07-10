@@ -1,3 +1,4 @@
+import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { useAuth } from '../context/AuthContext'
 
 function formatDate(value: string | null): string {
@@ -16,6 +17,7 @@ export function ProfilePage() {
 
   return (
     <section className="page">
+      <EmailVerificationBanner />
       <div className="page-header">
         <h1>Profile</h1>
         <button type="button" className="button button-secondary" onClick={() => void refreshUser()}>

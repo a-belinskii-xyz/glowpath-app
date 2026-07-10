@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Annotated
 from urllib.parse import quote
 
@@ -86,8 +87,17 @@ def list_entries(
     locale: str = Depends(get_locale),
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    recorded_from: Annotated[datetime | None, Query()] = None,
+    recorded_to: Annotated[datetime | None, Query()] = None,
 ) -> MoodEntryListResponse:
-    entries = list_mood_entries(db, user_id=current_user.id, limit=limit, offset=offset)
+    entries = list_mood_entries(
+        db,
+        user_id=current_user.id,
+        limit=limit,
+        offset=offset,
+        recorded_from=recorded_from,
+        recorded_to=recorded_to,
+    )
     return MoodEntryListResponse(
         items=[_to_public(entry, locale=locale) for entry in entries],
         limit=limit,

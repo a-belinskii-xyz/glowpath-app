@@ -31,7 +31,7 @@ export function GoogleCallbackPage() {
     const run = async () => {
       try {
         await completeLogin(tokens.accessToken, tokens.refreshToken)
-        navigate('/profile', { replace: true })
+        navigate('/', { replace: true })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Google sign-in failed')
       }

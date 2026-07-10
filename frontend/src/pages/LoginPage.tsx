@@ -23,7 +23,7 @@ export function LoginPage() {
 
     try {
       await login({ email, password })
-      navigate('/profile')
+      navigate('/')
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setError('Email is not verified yet. Resend the verification email and try again.')

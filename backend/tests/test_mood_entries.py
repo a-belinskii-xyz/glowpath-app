@@ -277,6 +277,71 @@ def test_tag_groups_list_localized(
     assert ru_items[0]["id"] == en_items[0]["id"]
 
 
+def test_list_filter_by_recorded_range(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-filter@example.com")
+
+    # July 2026 in Europe/Minsk (+03:00)
+    in_july = _create_entry(auth_client, token, recorded_at="2026-07-15T12:00:00+03:00")
+    assert in_july.status_code == 201
+    in_june = _create_entry(auth_client, token, recorded_at="2026-06-30T23:59:00+03:00")
+    assert in_june.status_code == 201
+    on_august_boundary = _create_entry(
+        auth_client,
+        token,
+        recorded_at="2026-08-01T00:00:00+03:00",
+    )
+    assert on_august_boundary.status_code == 201
+
+    july_from = "2026-07-01T00:00:00+03:00"
+    july_to = "2026-08-01T00:00:00+03:00"
+    response = auth_client.get(
+        "/v1/mood-entries",
+        params={"recorded_from": july_from, "recorded_to": july_to},
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    july_ids = {item["id"] for item in response.json()["items"]}
+    assert july_ids == {in_july.json()["id"]}
+
+    # recorded_to is exclusive: Aug 1 00:00 belongs to August, not July
+    august_only = auth_client.get(
+        "/v1/mood-entries",
+        params={
+            "recorded_from": "2026-08-01T00:00:00+03:00",
+            "recorded_to": "2026-09-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token),
+    )
+    assert august_only.status_code == 200
+    august_ids = {item["id"] for item in august_only.json()["items"]}
+    assert august_ids == {on_august_boundary.json()["id"]}
+
+
+def test_list_filter_isolated_between_users(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token_a = register_verify_and_login(auth_client, mailer, "mood-filter-a@example.com")
+    token_b = register_verify_and_login(auth_client, mailer, "mood-filter-b@example.com")
+
+    _create_entry(auth_client, token_a, recorded_at="2026-07-10T12:00:00+03:00")
+    _create_entry(auth_client, token_b, recorded_at="2026-07-11T12:00:00+03:00")
+
+    response = auth_client.get(
+        "/v1/mood-entries",
+        params={
+            "recorded_from": "2026-07-01T00:00:00+03:00",
+            "recorded_to": "2026-08-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token_a),
+    )
+    assert response.status_code == 200
+    assert len(response.json()["items"]) == 1
+
+
 def test_unauthenticated_cannot_create_entry(auth_client: TestClient) -> None:
     response = auth_client.post(
         "/v1/mood-entries",

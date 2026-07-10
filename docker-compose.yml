@@ -71,10 +71,13 @@ services:
       DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
+      MINIO_ENDPOINT: minio:9000
     depends_on:
       migrations:
         condition: service_completed_successfully
       mailhog:
+        condition: service_started
+      minio:
         condition: service_started
     volumes:
       - ./backend/app:/app/app
@@ -90,7 +93,7 @@ services:
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001"
+    command: server /data --address ":9000" --console-address ":9001"
 
 volumes:
   postgres_data:
