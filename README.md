@@ -2,6 +2,25 @@
 
 Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and Docker Compose.
 
+## Features
+
+| Feature | What it does |
+|---------|----------------|
+| Email registration & login | Create an account with email/password; JWT access + refresh tokens |
+| Email verification | Confirm email via link (MailHog in local Docker); resend if needed |
+| Password reset | Request a reset email and set a new password |
+| Google OAuth | Sign in with Google (browser redirect or ID token for API clients) |
+| Mood entries (CRUD) | Log several entries per day: score 1–5, date/time, markdown note (≤500 plain-text chars) |
+| Tags & tag groups | Per-user groups and tags with `en`/`ru` labels; create, edit, reorder, delete; pin groups on the entry form |
+| Attachments | Up to 5 photos + 1 audio per entry, stored in MinIO |
+| Note templates | Reusable markdown snippets for notes; CRUD + reorder; seeded defaults for new users |
+| Entry list & filters | Paginated feed filtered by date range in the user’s timezone |
+| Month calendar | Calendar of days with entries; jump to a day in the list |
+| Mood stats | Month mood index and month-over-month comparison (bar chart on home) |
+| Profile & locale | View account info; switch UI language (`en` / `ru`); IANA timezone on the user |
+| Multi-user isolation | Each user’s entries, tags, templates, and files are private |
+| Dev seed data | Deterministic demo users/entries/attachments for local UI work (`make seed`) |
+
 ## Prerequisites
 
 - **Docker** and **Docker Compose** — backend services (API, PostgreSQL, MinIO, MailHog)
@@ -62,13 +81,19 @@ Host ports come from root `.env` (defaults above).
 
 ## Frontend
 
-React app with routing and all auth flows wired to the API.
+React app with routing wired to the API.
 
 | Route | Purpose |
 |-------|---------|
+| `/` | Landing (guests) or entries home: calendar, stats, feed (signed in) |
 | `/register` | Email registration |
 | `/login` | Email login + Google OAuth |
-| `/profile` | Current user (`GET /v1/auth/me`) |
+| `/entries/new` | Create mood entry |
+| `/entries/:id` | Entry detail |
+| `/entries/:id/edit` | Edit mood entry |
+| `/tags` | Manage tag groups and tags |
+| `/templates` | Manage note templates |
+| `/profile` | Current user (`GET /v1/auth/me`), language switch |
 | `/verify-email?token=…` | Email verification (link from MailHog) |
 | `/resend-verification` | Resend verification email |
 | `/forgot-password` | Request password reset |
@@ -103,7 +128,8 @@ Copy to `frontend/.env`. Tokens are stored in `localStorage`; the client refresh
 
 1. ~~**Scaffold**~~ — React app, dev tooling
 2. ~~**Auth UI**~~ — register, login, email verification, password reset, Google OAuth
-3. **Mood CRUD** — entries, tags, attachments
+3. ~~**Mood CRUD**~~ — entries, tags, attachments, templates, calendar, month stats
+4. **Deploy** — production hosting when the local app is stable
 
 ## Backend quick start (Docker only)
 
