@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntry } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
+import { AttachmentAudio } from '../components/AttachmentAudio'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { useAuth } from '../context/AuthContext'
@@ -61,6 +62,8 @@ export function EntryDetailPage() {
     }
   }
 
+  const audioAttachment = entry?.attachments.find((attachment) => attachment.kind === 'audio')
+
   return (
     <section className="page">
       <EmailVerificationBanner />
@@ -100,7 +103,15 @@ export function EntryDetailPage() {
             </div>
           ) : null}
 
-          <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
+          {audioAttachment ? (
+            <AttachmentAudio entryId={entry.id} attachment={audioAttachment} />
+          ) : null}
+
+          <EntryAttachmentThumbs
+            entryId={entry.id}
+            attachments={entry.attachments}
+            showAudioCount={false}
+          />
 
           <div className="button-row">
             <Link className="button" to={`/entries/${entry.id}/edit`}>

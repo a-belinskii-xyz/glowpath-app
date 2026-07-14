@@ -350,10 +350,6 @@ code {
   background: #e5e7eb;
 }
 
-.month-calendar-cell-menu-open {
-  z-index: 5;
-}
-
 .month-calendar-day-button {
   width: 100%;
   min-height: 3.9rem;
@@ -368,6 +364,11 @@ code {
   gap: 0.15rem;
   color: inherit;
   font: inherit;
+  text-decoration: none;
+}
+
+.month-calendar-day-link:hover {
+  text-decoration: none;
 }
 
 .month-calendar-day {
@@ -401,27 +402,25 @@ code {
   margin-left: 0;
 }
 
-.month-calendar-day-menu {
-  position: absolute;
-  top: calc(100% + 0.25rem);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 30;
-  min-width: 11.5rem;
-  padding: 0.45rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
-  display: grid;
-  gap: 0.15rem;
+.month-calendar-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.15rem;
+  border: 1.5px solid #9ca3af;
+  border-radius: 999px;
+  color: #6b7280;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1;
 }
 
-.month-calendar-day-menu-text {
-  margin: 0 0 0.25rem;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  color: #6b7280;
+.month-calendar-day-link:hover .month-calendar-add {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
 }
 
 .entry-feed {
@@ -701,6 +700,37 @@ code {
 }
 
 .entry-audio-count {
+  font-size: 0.875rem;
+}
+
+.entry-audio-player {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.entry-audio-name {
+  margin: 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.entry-audio-player audio {
+  width: 100%;
+  max-width: 28rem;
+  height: 2.5rem;
+}
+
+.entry-audio-skeleton {
+  width: 100%;
+  max-width: 28rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: #e5e7eb;
+  animation: entry-thumb-pulse 1.2s ease-in-out infinite;
+}
+
+.entry-audio-error {
+  margin: 0;
   font-size: 0.875rem;
 }
 

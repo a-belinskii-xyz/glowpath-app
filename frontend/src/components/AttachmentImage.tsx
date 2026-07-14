@@ -1,41 +1,9 @@
 import { useEffect, useState } from 'react'
 
-import { fetchMoodEntryAttachmentBlob } from '../api/moodEntries'
-
-const blobUrlCache = new Map<string, string>()
-const blobUrlInflight = new Map<string, Promise<string>>()
-
-function cacheKey(entryId: string, attachmentId: string): string {
-  return `${entryId}:${attachmentId}`
-}
-
-async function getAttachmentObjectUrl(entryId: string, attachmentId: string): Promise<string> {
-  const key = cacheKey(entryId, attachmentId)
-  const cached = blobUrlCache.get(key)
-  if (cached) {
-    return cached
-  }
-
-  const inflight = blobUrlInflight.get(key)
-  if (inflight) {
-    return inflight
-  }
-
-  const request = fetchMoodEntryAttachmentBlob(entryId, attachmentId)
-    .then((blob) => {
-      const objectUrl = URL.createObjectURL(blob)
-      blobUrlCache.set(key, objectUrl)
-      blobUrlInflight.delete(key)
-      return objectUrl
-    })
-    .catch((error) => {
-      blobUrlInflight.delete(key)
-      throw error
-    })
-
-  blobUrlInflight.set(key, request)
-  return request
-}
+import {
+  getAttachmentObjectUrl,
+  getCachedAttachmentObjectUrl,
+} from '../lib/attachmentBlobUrl'
 
 type AttachmentImageProps = {
   entryId: string
@@ -46,14 +14,13 @@ type AttachmentImageProps = {
 
 export function AttachmentImage({ entryId, attachmentId, alt, className }: AttachmentImageProps) {
   const [src, setSrc] = useState<string | null>(
-    () => blobUrlCache.get(cacheKey(entryId, attachmentId)) ?? null,
+    () => getCachedAttachmentObjectUrl(entryId, attachmentId),
   )
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    const key = cacheKey(entryId, attachmentId)
-    const cached = blobUrlCache.get(key)
+    const cached = getCachedAttachmentObjectUrl(entryId, attachmentId)
     if (cached) {
       setSrc(cached)
       setFailed(false)

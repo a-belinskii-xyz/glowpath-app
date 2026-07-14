@@ -7,13 +7,20 @@ import type { AttachmentPublic } from '../types/mood'
 type EntryAttachmentThumbsProps = {
   entryId: string
   attachments: AttachmentPublic[]
+  showAudioCount?: boolean
 }
 
-export function EntryAttachmentThumbs({ entryId, attachments }: EntryAttachmentThumbsProps) {
+export function EntryAttachmentThumbs({
+  entryId,
+  attachments,
+  showAudioCount = true,
+}: EntryAttachmentThumbsProps) {
   const photos = attachments
     .filter((attachment) => attachment.kind === 'photo')
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-  const audioCount = attachments.filter((attachment) => attachment.kind === 'audio').length
+  const audioCount = showAudioCount
+    ? attachments.filter((attachment) => attachment.kind === 'audio').length
+    : 0
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   if (photos.length === 0 && audioCount === 0) {

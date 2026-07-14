@@ -1,12 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
-import {
-  buildMonthCalendarCells,
-  formatCalendarDate,
-  isFutureDate,
-  todayKey,
-} from '../lib/datetime'
+import { buildMonthCalendarCells, isFutureDate, todayKey } from '../lib/datetime'
 import type { CalendarDayPublic } from '../types/mood'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -36,44 +31,6 @@ export function MonthCalendar({
   }, [days])
   const today = todayKey(timeZone)
 
-  const [emptyDayMenu, setEmptyDayMenu] = useState<string | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!emptyDayMenu) {
-      return
-    }
-
-    const handleClick = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setEmptyDayMenu(null)
-      }
-    }
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setEmptyDayMenu(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('keydown', handleKey)
-    return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('keydown', handleKey)
-    }
-  }, [emptyDayMenu])
-
-  const handleDayClick = (date: string, entryCount: number) => {
-    if (isFutureDate(date, timeZone)) {
-      return
-    }
-    if (entryCount > 0) {
-      setEmptyDayMenu(null)
-      onDayWithEntries(date)
-      return
-    }
-    setEmptyDayMenu((current) => (current === date ? null : date))
-  }
-
   return (
     <div className="month-calendar" role="grid" aria-label="Mood calendar">
       <div className="month-calendar-weekdays" role="row">
@@ -90,8 +47,8 @@ export function MonthCalendar({
           const entryCount = dayData?.entry_count ?? 0
           const isToday = cell.date === today
           const isFuture = cell.date ? isFutureDate(cell.date, timeZone) : false
-          const isClickable = Boolean(cell.inMonth && cell.date && !isFuture)
-          const menuOpen = cell.date !== null && emptyDayMenu === cell.date
+          const canInteract = Boolean(cell.inMonth && cell.date && !isFuture)
+          const hasEntries = entryCount > 0
 
           return (
             <div
@@ -101,43 +58,51 @@ export function MonthCalendar({
                 cell.inMonth ? '' : 'month-calendar-cell-muted',
                 isToday ? 'month-calendar-cell-today' : '',
                 isFuture && cell.inMonth ? 'month-calendar-cell-future' : '',
-                isClickable ? 'month-calendar-cell-clickable' : '',
-                menuOpen ? 'month-calendar-cell-menu-open' : '',
+                canInteract ? 'month-calendar-cell-clickable' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
               role="gridcell"
               aria-label={
                 cell.date
-                  ? scores.length > 0
+                  ? hasEntries
                     ? `${cell.date}, ${entryCount} entries`
-                    : cell.date
+                    : canInteract
+                      ? `${cell.date}, add entry`
+                      : cell.date
                   : undefined
               }
             >
-              {isClickable && cell.date ? (
+              {canInteract && cell.date && hasEntries ? (
                 <button
                   type="button"
                   className="month-calendar-day-button"
-                  onClick={() => handleDayClick(cell.date!, entryCount)}
-                  aria-haspopup={entryCount === 0 ? 'menu' : undefined}
-                  aria-expanded={entryCount === 0 ? menuOpen : undefined}
+                  onClick={() => onDayWithEntries(cell.date!)}
                 >
                   <span className="month-calendar-day">{cell.day}</span>
-                  {scores.length > 0 ? (
-                    <span className="month-calendar-emojis" aria-hidden="true">
-                      {scores.map((item, index) => (
-                        <span
-                          key={`${cell.date}-${index}-${item.score}`}
-                          className="month-calendar-emoji"
-                          style={{ zIndex: scores.length - index }}
-                        >
-                          {item.score_emoji}
-                        </span>
-                      ))}
-                    </span>
-                  ) : null}
+                  <span className="month-calendar-emojis" aria-hidden="true">
+                    {scores.map((item, index) => (
+                      <span
+                        key={`${cell.date}-${index}-${item.score}`}
+                        className="month-calendar-emoji"
+                        style={{ zIndex: scores.length - index }}
+                      >
+                        {item.score_emoji}
+                      </span>
+                    ))}
+                  </span>
                 </button>
+              ) : canInteract && cell.date ? (
+                <Link
+                  className="month-calendar-day-button month-calendar-day-link"
+                  to={`/entries/new?date=${cell.date}`}
+                  aria-label={`Add entry on ${cell.date}`}
+                >
+                  <span className="month-calendar-day">{cell.day}</span>
+                  <span className="month-calendar-add" aria-hidden="true">
+                    +
+                  </span>
+                </Link>
               ) : (
                 <>
                   <span className="month-calendar-day">{cell.day}</span>
@@ -156,35 +121,6 @@ export function MonthCalendar({
                   ) : null}
                 </>
               )}
-
-              {menuOpen && cell.date ? (
-                <div
-                  className="month-calendar-day-menu"
-                  role="menu"
-                  aria-label={`Create entry for ${formatCalendarDate(cell.date)}`}
-                  ref={menuRef}
-                >
-                  <p className="month-calendar-day-menu-text">
-                    No entries on {formatCalendarDate(cell.date)}
-                  </p>
-                  <Link
-                    className="entry-overflow-item"
-                    role="menuitem"
-                    to={`/entries/new?date=${cell.date}`}
-                    onClick={() => setEmptyDayMenu(null)}
-                  >
-                    Create entry at 8:00 PM
-                  </Link>
-                  <button
-                    type="button"
-                    className="entry-overflow-item"
-                    role="menuitem"
-                    onClick={() => setEmptyDayMenu(null)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : null}
             </div>
           )
         })}
