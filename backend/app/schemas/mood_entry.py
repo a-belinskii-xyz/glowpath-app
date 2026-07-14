@@ -78,6 +78,19 @@ class MoodScoreStatPublic(BaseModel):
     count: int
 
 
+class MoodMonthComparisonPublic(BaseModel):
+    verdict: str
+    message: str
+    current_index: float | None
+    previous_index: float | None
+    delta: float | None
+    current_active_days: int
+    previous_active_days: int
+
+
 class MoodEntryStatsResponse(BaseModel):
     total_entries: int
     scores: list[MoodScoreStatPublic]
+    month_index: float | None
+    active_days: int
+    comparison: MoodMonthComparisonPublic

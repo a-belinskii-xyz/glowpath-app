@@ -8,11 +8,17 @@ from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.attachment_kind import AttachmentKind
 from app.core.i18n import resolve_label
+from app.core.mood_analytics import (
+    compare_month_indices,
+    group_scores_by_day,
+    period_index_from_day_scores,
+    previous_calendar_month_start,
+)
 from app.core.mood_scale import (
     MAX_MOOD_SCORE,
     MIN_MOOD_SCORE,
@@ -249,35 +255,71 @@ def get_mood_entry_stats(
     db: Session,
     *,
     user_id: uuid.UUID,
+    timezone_name: str,
     recorded_from: datetime,
     recorded_to: datetime,
     locale: str,
 ) -> dict[str, Any]:
-    """Return per-score entry counts for a recorded_at range.
+    """Return score histogram, month index, and previous-month comparison.
 
-    Always includes all scores from ``MIN_MOOD_SCORE`` to ``MAX_MOOD_SCORE``
-    (count may be zero) so charts have a stable axis.
+    Month index formulas live in ``app.core.mood_analytics`` (documented there).
     """
+    tz = _resolve_user_tz(timezone_name)
     from_utc = _to_utc(recorded_from)
     to_utc = _to_utc(recorded_to)
     if to_utc <= from_utc:
         raise MoodEntryError("recorded_to must be after recorded_from")
 
-    rows = db.execute(
-        select(MoodEntry.score, func.count())
-        .where(
-            MoodEntry.user_id == user_id,
-            MoodEntry.recorded_at >= from_utc,
-            MoodEntry.recorded_at < to_utc,
-        )
-        .group_by(MoodEntry.score)
-    ).all()
-    counts = {int(score): int(count) for score, count in rows}
+    current_month_start = from_utc.astimezone(tz).date().replace(day=1)
+    previous_month_start = previous_calendar_month_start(current_month_start)
+    prev_from_local = datetime(
+        previous_month_start.year,
+        previous_month_start.month,
+        previous_month_start.day,
+        tzinfo=tz,
+    )
+    curr_from_local = datetime(
+        current_month_start.year,
+        current_month_start.month,
+        current_month_start.day,
+        tzinfo=tz,
+    )
+    prev_from_utc = prev_from_local.astimezone(UTC)
+    curr_from_utc = curr_from_local.astimezone(UTC)
+
+    rows = list(
+        db.execute(
+            select(MoodEntry.recorded_at, MoodEntry.score)
+            .where(
+                MoodEntry.user_id == user_id,
+                MoodEntry.recorded_at >= prev_from_utc,
+                MoodEntry.recorded_at < to_utc,
+            )
+            .order_by(MoodEntry.recorded_at.asc(), MoodEntry.created_at.asc())
+        ).all()
+    )
+
+    current_rows: list[tuple[date, int, datetime]] = []
+    previous_rows: list[tuple[date, int, datetime]] = []
+    score_counts: dict[int, int] = defaultdict(int)
+
+    for recorded_at, score in rows:
+        score_int = int(score)
+        local_day = _local_date(recorded_at, tz)
+        instant = recorded_at if recorded_at.tzinfo is not None else recorded_at.replace(tzinfo=UTC)
+        instant_utc = instant.astimezone(UTC)
+        item = (local_day, score_int, instant_utc)
+
+        if from_utc <= instant_utc < to_utc:
+            current_rows.append(item)
+            score_counts[score_int] += 1
+        elif prev_from_utc <= instant_utc < curr_from_utc:
+            previous_rows.append(item)
 
     scores: list[dict[str, Any]] = []
     total_entries = 0
     for value in range(MIN_MOOD_SCORE, MAX_MOOD_SCORE + 1):
-        count = counts.get(value, 0)
+        count = score_counts.get(value, 0)
         total_entries += count
         mood = MoodScore(value)
         scores.append(
@@ -289,7 +331,25 @@ def get_mood_entry_stats(
             }
         )
 
-    return {"total_entries": total_entries, "scores": scores}
+    current_period = period_index_from_day_scores(group_scores_by_day(current_rows))
+    previous_period = period_index_from_day_scores(group_scores_by_day(previous_rows))
+    comparison = compare_month_indices(current_period, previous_period, locale=locale)
+
+    return {
+        "total_entries": total_entries,
+        "scores": scores,
+        "month_index": current_period.month_index,
+        "active_days": current_period.active_days,
+        "comparison": {
+            "verdict": comparison.verdict.value,
+            "message": comparison.message,
+            "current_index": comparison.current_index,
+            "previous_index": comparison.previous_index,
+            "delta": comparison.delta,
+            "current_active_days": comparison.current_active_days,
+            "previous_active_days": comparison.previous_active_days,
+        },
+    }
 
 
 def get_mood_entry(db: Session, *, user_id: uuid.UUID, entry_id: uuid.UUID) -> MoodEntry:

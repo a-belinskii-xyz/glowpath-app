@@ -437,6 +437,45 @@ def test_stats_counts_scores_for_range(
     assert by_score[4]["count"] == 0
     assert by_score[5]["count"] == 2
     assert by_score[5]["score_emoji"] == "😄"
+    assert body["active_days"] == 3
+    assert body["month_index"] is not None
+    assert body["comparison"]["verdict"] == "insufficient_data"
+    assert body["comparison"]["previous_active_days"] == 1
+
+
+def test_stats_compares_with_previous_month(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-stats-compare@example.com")
+
+    # Previous month: three soft days around neutral/low.
+    _create_entry(auth_client, token, score=2, recorded_at="2026-06-02T12:00:00+03:00")
+    _create_entry(auth_client, token, score=2, recorded_at="2026-06-10T12:00:00+03:00")
+    _create_entry(auth_client, token, score=3, recorded_at="2026-06-20T12:00:00+03:00")
+
+    # Current month: three strong days.
+    _create_entry(auth_client, token, score=5, recorded_at="2026-07-02T12:00:00+03:00")
+    _create_entry(auth_client, token, score=5, recorded_at="2026-07-10T12:00:00+03:00")
+    _create_entry(auth_client, token, score=4, recorded_at="2026-07-20T12:00:00+03:00")
+
+    response = auth_client.get(
+        "/v1/mood-entries/stats",
+        params={
+            "recorded_from": "2026-07-01T00:00:00+03:00",
+            "recorded_to": "2026-08-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    comparison = body["comparison"]
+    assert comparison["verdict"] in {"better", "much_better"}
+    assert comparison["delta"] is not None
+    assert comparison["delta"] > 0
+    assert comparison["current_active_days"] == 3
+    assert comparison["previous_active_days"] == 3
+    assert "better" in comparison["message"].lower()
 
 
 def test_stats_rejects_inverted_range(

@@ -142,6 +142,7 @@ def stats_entries(
         payload = get_mood_entry_stats(
             db,
             user_id=current_user.id,
+            timezone_name=current_user.timezone,
             recorded_from=recorded_from,
             recorded_to=recorded_to,
             locale=locale,

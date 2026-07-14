@@ -436,7 +436,7 @@ code {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.65rem;
 }
 
 .emotion-stats-title {
@@ -449,6 +449,35 @@ code {
 .emotion-stats-summary {
   margin: 0;
   font-size: 0.875rem;
+}
+
+.emotion-stats-comparison {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.emotion-stats-comparison-better {
+  color: #047857;
+}
+
+.emotion-stats-comparison-worse {
+  color: #b45309;
+}
+
+.emotion-stats-comparison-similar {
+  color: #374151;
+}
+
+.emotion-stats-comparison-muted {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.emotion-stats-indexes {
+  margin: -0.45rem 0 1rem;
+  font-size: 0.8rem;
 }
 
 .emotion-stats-chart {

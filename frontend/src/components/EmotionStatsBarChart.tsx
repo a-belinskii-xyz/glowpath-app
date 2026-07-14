@@ -1,8 +1,7 @@
-import type { MoodScoreStatPublic } from '../types/mood'
+import type { MoodEntryStatsResponse, MoodMonthComparisonPublic } from '../types/mood'
 
 type EmotionStatsBarChartProps = {
-  scores: MoodScoreStatPublic[]
-  totalEntries: number
+  stats: MoodEntryStatsResponse
 }
 
 const BAR_COLORS: Record<number, string> = {
@@ -13,8 +12,33 @@ const BAR_COLORS: Record<number, string> = {
   5: '#f59e0b',
 }
 
-export function EmotionStatsBarChart({ scores, totalEntries }: EmotionStatsBarChartProps) {
+function comparisonClassName(verdict: MoodMonthComparisonPublic['verdict']): string {
+  switch (verdict) {
+    case 'much_better':
+    case 'better':
+      return 'emotion-stats-comparison emotion-stats-comparison-better'
+    case 'much_worse':
+    case 'worse':
+      return 'emotion-stats-comparison emotion-stats-comparison-worse'
+    case 'similar':
+      return 'emotion-stats-comparison emotion-stats-comparison-similar'
+    default:
+      return 'emotion-stats-comparison emotion-stats-comparison-muted'
+  }
+}
+
+function formatIndex(value: number | null): string | null {
+  if (value === null) {
+    return null
+  }
+  return value.toFixed(2)
+}
+
+export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
+  const { scores, total_entries: totalEntries, month_index: monthIndex, comparison } = stats
   const maxCount = Math.max(1, ...scores.map((item) => item.count))
+  const currentLabel = formatIndex(comparison.current_index ?? monthIndex)
+  const previousLabel = formatIndex(comparison.previous_index)
 
   return (
     <section className="emotion-stats" aria-label="Emotion statistics for this month">
@@ -26,6 +50,16 @@ export function EmotionStatsBarChart({ scores, totalEntries }: EmotionStatsBarCh
             : `${totalEntries} entr${totalEntries === 1 ? 'y' : 'ies'}`}
         </p>
       </div>
+
+      <p className={comparisonClassName(comparison.verdict)}>{comparison.message}</p>
+      {currentLabel && previousLabel && comparison.verdict !== 'insufficient_data' ? (
+        <p className="emotion-stats-indexes muted">
+          Month index {currentLabel} vs {previousLabel} last month
+          {comparison.delta !== null
+            ? ` (${comparison.delta > 0 ? '+' : ''}${comparison.delta.toFixed(2)})`
+            : null}
+        </p>
+      ) : null}
 
       <div className="emotion-stats-chart" role="img" aria-label="Bar chart of emotion counts">
         {scores.map((item) => {

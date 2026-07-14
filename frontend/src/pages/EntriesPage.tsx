@@ -296,7 +296,7 @@ export function EntriesPage() {
         isStatsLoading ? (
           <p className="muted">Loading emotion stats…</p>
         ) : stats ? (
-          <EmotionStatsBarChart scores={stats.scores} totalEntries={stats.total_entries} />
+          <EmotionStatsBarChart stats={stats} />
         ) : null
       ) : null}
 

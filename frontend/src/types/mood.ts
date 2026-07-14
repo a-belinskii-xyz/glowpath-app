@@ -57,9 +57,30 @@ export type MoodScoreStatPublic = {
   count: number
 }
 
+export type MoodComparisonVerdict =
+  | 'much_better'
+  | 'better'
+  | 'similar'
+  | 'worse'
+  | 'much_worse'
+  | 'insufficient_data'
+
+export type MoodMonthComparisonPublic = {
+  verdict: MoodComparisonVerdict
+  message: string
+  current_index: number | null
+  previous_index: number | null
+  delta: number | null
+  current_active_days: number
+  previous_active_days: number
+}
+
 export type MoodEntryStatsResponse = {
   total_entries: number
   scores: MoodScoreStatPublic[]
+  month_index: number | null
+  active_days: number
+  comparison: MoodMonthComparisonPublic
 }
 
 export type MoodEntryCreate = {
