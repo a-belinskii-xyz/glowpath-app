@@ -104,6 +104,23 @@ def test_patch_partial_and_replace_tags(
     assert [tag["id"] for tag in body["tags"]] == [tag_ids[0]]
 
 
+def test_markdown_note_counts_plain_text_only(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-md-note@example.com")
+    marked = f"**{'x' * 500}**"
+    assert len(marked) > 500
+
+    ok = _create_entry(auth_client, token, note=marked)
+    assert ok.status_code == 201
+    assert ok.json()["note"] == marked
+
+    too_long = f"**{'x' * 501}**"
+    rejected = _create_entry(auth_client, token, note=too_long)
+    assert rejected.status_code == 422
+
+
 def test_list_get_delete_and_isolation(
     auth_client: TestClient,
     mailer: FakeEmailService,

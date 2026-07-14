@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, String, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,7 +44,7 @@ class MoodEntry(TimestampMixin, Base):
     )
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     score: Mapped[int] = mapped_column(SmallInteger)
-    note: Mapped[str | None] = mapped_column(String(500))
+    note: Mapped[str | None] = mapped_column(Text)
 
     user: Mapped["User"] = relationship(back_populates="mood_entries")
     tag_links: Mapped[list["MoodEntryTag"]] = relationship(

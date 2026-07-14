@@ -1,23 +1,45 @@
 import uuid
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
 
 from app.core.attachment_kind import AttachmentKind
+from app.core.markdown_plain_text import (
+    NOTE_CONTENT_MAX_LENGTH,
+    NOTE_RAW_MAX_LENGTH,
+    markdown_content_length,
+)
 from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE
+
+
+def _validate_note(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if len(value) > NOTE_RAW_MAX_LENGTH:
+        raise ValueError(f"Note must be at most {NOTE_RAW_MAX_LENGTH} characters")
+    if markdown_content_length(value) > NOTE_CONTENT_MAX_LENGTH:
+        raise ValueError(
+            f"Note content must be at most {NOTE_CONTENT_MAX_LENGTH} characters "
+            "(markdown formatting does not count)"
+        )
+    return value
+
+
+NoteField = Annotated[str | None, AfterValidator(_validate_note)]
 
 
 class MoodEntryCreate(BaseModel):
     score: int = Field(ge=MIN_MOOD_SCORE, le=MAX_MOOD_SCORE)
     recorded_at: datetime
-    note: str | None = Field(default=None, max_length=500)
+    note: NoteField = None
     tag_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class MoodEntryPatch(BaseModel):
     score: int | None = Field(default=None, ge=MIN_MOOD_SCORE, le=MAX_MOOD_SCORE)
     recorded_at: datetime | None = None
-    note: str | None = Field(default=None, max_length=500)
+    note: NoteField = None
     tag_ids: list[uuid.UUID] | None = None
 
 

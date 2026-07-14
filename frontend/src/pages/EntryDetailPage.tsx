@@ -6,6 +6,7 @@ import { Alert } from '../components/Alert'
 import { AttachmentAudio } from '../components/AttachmentAudio'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
+import { MarkdownNote } from '../components/MarkdownNote'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/errors'
 import { formatDayHeading, formatTime } from '../lib/datetime'
@@ -91,7 +92,9 @@ export function EntryDetailPage() {
             </div>
           </div>
 
-          {entry.note ? <p className="entry-detail-note">{entry.note}</p> : null}
+          {entry.note ? (
+            <MarkdownNote content={entry.note} className="entry-detail-note" />
+          ) : null}
 
           {entry.tags.length > 0 ? (
             <div className="entry-tags">

@@ -9,6 +9,7 @@ import {
 } from '../api/moodEntries'
 import { listTagGroups } from '../api/tagGroups'
 import { Alert } from './Alert'
+import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/errors'
 import {
@@ -236,18 +237,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
         />
       </label>
 
-      <label className="form-field">
-        <span className="form-label">Note</span>
-        <textarea
-          className="form-input form-textarea"
-          value={note}
-          maxLength={500}
-          rows={4}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Optional note (max 500 characters)"
-        />
-        <span className="form-hint">{note.length}/500</span>
-      </label>
+      <MarkdownNoteEditor value={note} onChange={setNote} />
 
       <section className="tag-sections">
         <div className="tag-sections-header">

@@ -7,6 +7,7 @@ import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
 import { EntryActionMenu } from '../components/EntryActionMenu'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
+import { MarkdownNote } from '../components/MarkdownNote'
 import { MonthCalendar } from '../components/MonthCalendar'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/errors'
@@ -321,7 +322,9 @@ export function EntriesPage() {
                         </span>
                         <span className="entry-time">{formatTime(entry.recorded_at, timeZone)}</span>
                       </div>
-                      {entry.note ? <p className="entry-note">{entry.note}</p> : null}
+                      {entry.note ? (
+                        <MarkdownNote content={entry.note} compact className="entry-note" />
+                      ) : null}
                       {entry.tags.length > 0 ? (
                         <div className="entry-tags">
                           {entry.tags.map((tag) => (

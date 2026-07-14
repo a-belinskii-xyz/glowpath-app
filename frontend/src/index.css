@@ -675,7 +675,6 @@ code {
 
 .entry-detail-note {
   margin: 0;
-  white-space: pre-wrap;
   color: #374151;
 }
 
@@ -759,7 +758,6 @@ code {
 .entry-note {
   margin: 0;
   color: #374151;
-  white-space: pre-wrap;
 }
 
 .entry-tags {
@@ -1011,6 +1009,212 @@ code {
 .form-textarea {
   resize: vertical;
   min-height: 6rem;
+}
+
+.markdown-editor {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.markdown-editor-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.markdown-editor-header .form-label {
+  margin: 0;
+}
+
+.markdown-editor-counter {
+  margin: 0;
+}
+
+.markdown-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.markdown-toolbar-btn {
+  min-width: 2rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.markdown-toolbar-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.markdown-toolbar-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.markdown-toolbar-btn-active {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.markdown-wysiwyg {
+  min-height: 8rem;
+  padding: 0;
+  overflow: auto;
+  cursor: text;
+}
+
+.markdown-wysiwyg .tiptap,
+.markdown-wysiwyg .ProseMirror {
+  min-height: 7rem;
+  padding: 0.65rem 0.75rem;
+  outline: none;
+}
+
+.markdown-wysiwyg .tiptap p,
+.markdown-wysiwyg .ProseMirror p {
+  margin: 0.35rem 0;
+}
+
+.markdown-wysiwyg .tiptap > :first-child,
+.markdown-wysiwyg .ProseMirror > :first-child {
+  margin-top: 0;
+}
+
+.markdown-wysiwyg .tiptap > :last-child,
+.markdown-wysiwyg .ProseMirror > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-wysiwyg .tiptap ul,
+.markdown-wysiwyg .ProseMirror ul,
+.markdown-wysiwyg .tiptap ol,
+.markdown-wysiwyg .ProseMirror ol {
+  margin: 0.35rem 0;
+  padding-left: 1.25rem;
+}
+
+.markdown-wysiwyg .tiptap blockquote,
+.markdown-wysiwyg .ProseMirror blockquote {
+  margin: 0.35rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid #d1d5db;
+  color: #4b5563;
+}
+
+.markdown-wysiwyg .tiptap code,
+.markdown-wysiwyg .ProseMirror code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: #f3f4f6;
+}
+
+.markdown-wysiwyg .tiptap a,
+.markdown-wysiwyg .ProseMirror a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.markdown-wysiwyg .tiptap p.is-editor-empty:first-child::before,
+.markdown-wysiwyg .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.markdown-note {
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+.markdown-note > :first-child {
+  margin-top: 0;
+}
+
+.markdown-note > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-note p,
+.markdown-note ul,
+.markdown-note ol,
+.markdown-note blockquote,
+.markdown-note pre {
+  margin: 0.4rem 0;
+}
+
+.markdown-note ul,
+.markdown-note ol {
+  padding-left: 1.25rem;
+}
+
+.markdown-note blockquote {
+  margin-left: 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid #d1d5db;
+  color: #4b5563;
+}
+
+.markdown-note code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: #f3f4f6;
+}
+
+.markdown-note pre {
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #f3f4f6;
+  overflow-x: auto;
+}
+
+.markdown-note pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-note a {
+  color: #2563eb;
+}
+
+.markdown-note h1,
+.markdown-note h2,
+.markdown-note h3,
+.markdown-note h4 {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.markdown-note-compact {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.markdown-note-compact p,
+.markdown-note-compact ul,
+.markdown-note-compact ol,
+.markdown-note-compact blockquote,
+.markdown-note-compact pre {
+  margin: 0.2rem 0;
 }
 
 .section-title {
