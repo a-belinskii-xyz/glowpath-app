@@ -54,3 +54,18 @@ class MoodEntryListResponse(BaseModel):
     items: list[MoodEntryPublic]
     limit: int
     offset: int
+
+
+class CalendarDayScore(BaseModel):
+    score: int
+    score_emoji: str
+
+
+class CalendarDayPublic(BaseModel):
+    date: str
+    entry_count: int
+    scores: list[CalendarDayScore]
+
+
+class MoodEntryCalendarResponse(BaseModel):
+    days: list[CalendarDayPublic]

@@ -60,6 +60,14 @@ export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
           <Link
             className="entry-overflow-item"
             role="menuitem"
+            to={`/entries/${entry.id}`}
+            onClick={() => setIsOpen(false)}
+          >
+            Open
+          </Link>
+          <Link
+            className="entry-overflow-item"
+            role="menuitem"
             to={`/entries/${entry.id}/edit`}
             onClick={() => setIsOpen(false)}
           >

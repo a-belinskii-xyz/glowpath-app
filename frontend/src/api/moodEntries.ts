@@ -6,6 +6,7 @@ import type {
   AttachmentKind,
   AttachmentPublic,
   ListMoodEntriesParams,
+  MoodEntryCalendarResponse,
   MoodEntryCreate,
   MoodEntryListResponse,
   MoodEntryPatch,
@@ -66,6 +67,16 @@ function buildListQuery(params: ListMoodEntriesParams = {}): string {
 
 export function listMoodEntries(params: ListMoodEntriesParams = {}): Promise<MoodEntryListResponse> {
   return apiRequest<MoodEntryListResponse>(`/v1/mood-entries${buildListQuery(params)}`, {
+    auth: true,
+    headers: moodHeaders(),
+  })
+}
+
+export function getMoodEntryCalendar(params: {
+  recorded_from: string
+  recorded_to: string
+}): Promise<MoodEntryCalendarResponse> {
+  return apiRequest<MoodEntryCalendarResponse>(`/v1/mood-entries/calendar${buildListQuery(params)}`, {
     auth: true,
     headers: moodHeaders(),
   })

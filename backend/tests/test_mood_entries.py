@@ -348,3 +348,56 @@ def test_unauthenticated_cannot_create_entry(auth_client: TestClient) -> None:
         json={"score": 3, "recorded_at": "2026-07-10T12:00:00+03:00", "tag_ids": []},
     )
     assert response.status_code == 401
+
+
+def test_calendar_groups_by_day_and_caps_scores(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-calendar@example.com")
+
+    # Four entries on the same local day (Europe/Minsk); newest first in response.
+    _create_entry(auth_client, token, score=1, recorded_at="2026-07-14T09:00:00+03:00")
+    _create_entry(auth_client, token, score=2, recorded_at="2026-07-14T12:00:00+03:00")
+    _create_entry(auth_client, token, score=3, recorded_at="2026-07-14T15:00:00+03:00")
+    _create_entry(auth_client, token, score=5, recorded_at="2026-07-14T18:00:00+03:00")
+    _create_entry(auth_client, token, score=4, recorded_at="2026-07-15T10:00:00+03:00")
+    # Outside range
+    _create_entry(auth_client, token, score=1, recorded_at="2026-06-30T23:00:00+03:00")
+
+    response = auth_client.get(
+        "/v1/mood-entries/calendar",
+        params={
+            "recorded_from": "2026-07-01T00:00:00+03:00",
+            "recorded_to": "2026-08-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    days = {day["date"]: day for day in response.json()["days"]}
+    assert set(days) == {"2026-07-14", "2026-07-15"}
+
+    july_14 = days["2026-07-14"]
+    assert july_14["entry_count"] == 4
+    assert [item["score"] for item in july_14["scores"]] == [5, 3, 2]
+    assert [item["score_emoji"] for item in july_14["scores"]] == ["😄", "😐", "😞"]
+
+    july_15 = days["2026-07-15"]
+    assert july_15["entry_count"] == 1
+    assert july_15["scores"] == [{"score": 4, "score_emoji": "🙂"}]
+
+
+def test_calendar_rejects_inverted_range(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-calendar-range@example.com")
+    response = auth_client.get(
+        "/v1/mood-entries/calendar",
+        params={
+            "recorded_from": "2026-08-01T00:00:00+03:00",
+            "recorded_to": "2026-07-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 400

@@ -285,6 +285,145 @@ code {
   text-align: center;
 }
 
+.month-calendar {
+  margin-bottom: 1.75rem;
+  padding: 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.month-calendar-weekdays,
+.month-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.month-calendar-weekdays {
+  margin-bottom: 0.35rem;
+}
+
+.month-calendar-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.month-calendar-cell {
+  position: relative;
+  min-height: 4.25rem;
+  padding: 0.15rem;
+  border-radius: 8px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.month-calendar-cell-muted {
+  background: transparent;
+  opacity: 0.4;
+}
+
+.month-calendar-cell-future {
+  background: #f3f4f6;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.month-calendar-cell-today {
+  outline: 2px solid #93c5fd;
+  outline-offset: -2px;
+  background: #eff6ff;
+}
+
+.month-calendar-cell-clickable .month-calendar-day-button {
+  cursor: pointer;
+}
+
+.month-calendar-cell-clickable .month-calendar-day-button:hover {
+  background: #e5e7eb;
+}
+
+.month-calendar-cell-menu-open {
+  z-index: 5;
+}
+
+.month-calendar-day-button {
+  width: 100%;
+  min-height: 3.9rem;
+  margin: 0;
+  padding: 0.25rem 0.15rem 0.35rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  color: inherit;
+  font: inherit;
+}
+
+.month-calendar-day {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  line-height: 1.2;
+}
+
+.month-calendar-cell-future .month-calendar-day {
+  color: #9ca3af;
+}
+
+.month-calendar-emojis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.15rem;
+  min-height: 1.5rem;
+}
+
+.month-calendar-emoji {
+  display: inline-flex;
+  font-size: 1.05rem;
+  line-height: 1;
+  margin-left: -0.45rem;
+  filter: drop-shadow(0 0 0.5px rgba(15, 23, 42, 0.25));
+}
+
+.month-calendar-emoji:first-child {
+  margin-left: 0;
+}
+
+.month-calendar-day-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  min-width: 11.5rem;
+  padding: 0.45rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  display: grid;
+  gap: 0.15rem;
+}
+
+.month-calendar-day-menu-text {
+  margin: 0 0 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
 .entry-feed {
   display: grid;
   gap: 1.5rem;
@@ -293,12 +432,27 @@ code {
 .day-section {
   display: grid;
   gap: 0.75rem;
+  scroll-margin-top: 1rem;
+  border-radius: 12px;
+  transition: box-shadow 0.35s ease, background-color 0.35s ease;
+}
+
+.day-section-highlight {
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px #93c5fd;
+  padding: 0.75rem;
+  margin: -0.75rem;
 }
 
 .day-heading {
   margin: 0;
   font-size: 1rem;
   color: #374151;
+}
+
+.day-section-footer {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .entry-list {
@@ -310,19 +464,44 @@ code {
 }
 
 .entry-row {
+  position: relative;
   width: 100%;
   text-align: left;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: #ffffff;
-  padding: 0.85rem 1rem;
   display: grid;
-  gap: 0.35rem;
 }
 
 .entry-row:hover {
   border-color: #93c5fd;
   background: #f8fafc;
+}
+
+.entry-row-link {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 2.75rem 0.35rem 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.entry-row-link:hover {
+  text-decoration: none;
+}
+
+.entry-row-media {
+  padding: 0 2.75rem 0.85rem 1rem;
+}
+
+.entry-row-media:empty {
+  display: none;
+}
+
+.entry-row-actions {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.45rem;
 }
 
 .entry-row-main {
@@ -337,6 +516,39 @@ code {
   align-items: center;
   gap: 0.15rem;
   flex-shrink: 0;
+}
+
+.entry-detail {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.entry-detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.entry-detail-emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.entry-detail-score {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.entry-detail-note {
+  margin: 0;
+  white-space: pre-wrap;
+  color: #374151;
 }
 
 .entry-score {

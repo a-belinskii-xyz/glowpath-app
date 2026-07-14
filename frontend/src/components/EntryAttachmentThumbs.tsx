@@ -33,6 +33,7 @@ export function EntryAttachmentThumbs({ entryId, attachments }: EntryAttachmentT
                 className="entry-photo-thumb-button"
                 aria-label={`View ${photo.original_name}`}
                 onClick={(event) => {
+                  event.preventDefault()
                   event.stopPropagation()
                   setLightboxIndex(index)
                 }}

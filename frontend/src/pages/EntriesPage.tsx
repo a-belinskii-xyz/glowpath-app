@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { deleteMoodEntry, listMoodEntries } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodEntryCalendar, listMoodEntries } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryActionMenu } from '../components/EntryActionMenu'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
+import { MonthCalendar } from '../components/MonthCalendar'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/errors'
 import {
@@ -16,7 +17,7 @@ import {
   getCurrentYearMonth,
   getMonthBounds,
 } from '../lib/datetime'
-import type { MoodEntryPublic } from '../types/mood'
+import type { CalendarDayPublic, MoodEntryPublic } from '../types/mood'
 
 const PAGE_SIZE = 20
 
@@ -28,6 +29,9 @@ export function EntriesPage() {
   const [year, setYear] = useState(initialMonth.year)
   const [month, setMonth] = useState(initialMonth.month)
 
+  const [calendarDays, setCalendarDays] = useState<CalendarDayPublic[]>([])
+  const [isCalendarLoading, setIsCalendarLoading] = useState(true)
+
   const [entries, setEntries] = useState<MoodEntryPublic[]>([])
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
@@ -37,8 +41,45 @@ export function EntriesPage() {
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const loadingRef = useRef(false)
+  const pendingScrollDayRef = useRef<string | null>(null)
 
   const monthBounds = useMemo(() => getMonthBounds(year, month, timeZone), [year, month, timeZone])
+
+  const scrollToDay = useCallback((date: string) => {
+    const node = document.getElementById(`day-${date}`)
+    if (!node) {
+      return false
+    }
+    node.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    node.classList.add('day-section-highlight')
+    window.setTimeout(() => node.classList.remove('day-section-highlight'), 1600)
+    pendingScrollDayRef.current = null
+    return true
+  }, [])
+
+  const loadCalendar = useCallback(async () => {
+    if (!user?.email_verified) {
+      setCalendarDays([])
+      setIsCalendarLoading(false)
+      return
+    }
+
+    setIsCalendarLoading(true)
+    try {
+      const response = await getMoodEntryCalendar({
+        recorded_from: monthBounds.recorded_from,
+        recorded_to: monthBounds.recorded_to,
+      })
+      setCalendarDays(response.days)
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 403)) {
+        setError(err instanceof Error ? err.message : 'Failed to load calendar')
+      }
+      setCalendarDays([])
+    } finally {
+      setIsCalendarLoading(false)
+    }
+  }, [monthBounds.recorded_from, monthBounds.recorded_to, user?.email_verified])
 
   const loadPage = useCallback(
     async (pageOffset: number, replace: boolean) => {
@@ -87,9 +128,14 @@ export function EntriesPage() {
   )
 
   useEffect(() => {
+    void loadCalendar()
+  }, [loadCalendar])
+
+  useEffect(() => {
     setEntries([])
     setOffset(0)
     setHasMore(true)
+    pendingScrollDayRef.current = null
     void loadPage(0, true)
   }, [loadPage])
 
@@ -111,6 +157,27 @@ export function EntriesPage() {
     observer.observe(node)
     return () => observer.disconnect()
   }, [hasMore, isLoading, isLoadingMore, loadPage, offset])
+
+  useEffect(() => {
+    const pending = pendingScrollDayRef.current
+    if (!pending || isLoading) {
+      return
+    }
+    if (scrollToDay(pending)) {
+      return
+    }
+    if (!hasMore && !isLoadingMore) {
+      pendingScrollDayRef.current = null
+    }
+  }, [entries, hasMore, isLoading, isLoadingMore, scrollToDay])
+
+  // Keep loading pages while waiting for a day section to appear after calendar click.
+  useEffect(() => {
+    if (!pendingScrollDayRef.current || !hasMore || isLoading || isLoadingMore) {
+      return
+    }
+    void loadPage(offset, false)
+  }, [entries, hasMore, isLoading, isLoadingMore, loadPage, offset])
 
   const groupedEntries = useMemo(() => {
     const groups = new Map<string, MoodEntryPublic[]>()
@@ -145,8 +212,15 @@ export function EntriesPage() {
     try {
       await deleteMoodEntry(entryId)
       setEntries((current) => current.filter((entry) => entry.id !== entryId))
+      void loadCalendar()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete entry')
+    }
+  }
+
+  const handleDayWithEntries = (date: string) => {
+    if (!scrollToDay(date)) {
+      pendingScrollDayRef.current = date
     }
   }
 
@@ -171,6 +245,20 @@ export function EntriesPage() {
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
+      {user?.email_verified ? (
+        isCalendarLoading ? (
+          <p className="muted">Loading calendar…</p>
+        ) : (
+          <MonthCalendar
+            year={year}
+            month={month}
+            timeZone={timeZone}
+            days={calendarDays}
+            onDayWithEntries={handleDayWithEntries}
+          />
+        )
+      ) : null}
+
       {isLoading ? (
         <p className="muted">Loading entries…</p>
       ) : user?.email_verified && entries.length === 0 ? (
@@ -179,36 +267,45 @@ export function EntriesPage() {
 
       <div className="entry-feed">
         {groupedEntries.map(([key, dayEntries]) => (
-          <section key={key} className="day-section">
+          <section key={key} id={`day-${key}`} className="day-section">
             <h2 className="day-heading">{formatDayHeading(dayEntries[0].recorded_at, timeZone)}</h2>
             <ul className="entry-list">
               {dayEntries.map((entry) => (
                 <li key={entry.id}>
                   <article className="entry-row">
-                    <div className="entry-row-main">
-                      <span className="entry-score">
-                        {entry.score_emoji} {entry.score_label}
-                      </span>
-                      <div className="entry-row-meta">
+                    <Link className="entry-row-link" to={`/entries/${entry.id}`}>
+                      <div className="entry-row-main">
+                        <span className="entry-score">
+                          {entry.score_emoji} {entry.score_label}
+                        </span>
                         <span className="entry-time">{formatTime(entry.recorded_at, timeZone)}</span>
-                        <EntryActionMenu entry={entry} onDelete={handleDelete} />
                       </div>
+                      {entry.note ? <p className="entry-note">{entry.note}</p> : null}
+                      {entry.tags.length > 0 ? (
+                        <div className="entry-tags">
+                          {entry.tags.map((tag) => (
+                            <span key={tag.id} className="entry-tag">
+                              {tag.label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </Link>
+                    <div className="entry-row-media">
+                      <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
                     </div>
-                    {entry.note ? <p className="entry-note">{entry.note}</p> : null}
-                    {entry.tags.length > 0 ? (
-                      <div className="entry-tags">
-                        {entry.tags.map((tag) => (
-                          <span key={tag.id} className="entry-tag">
-                            {tag.label}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                    <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
+                    <div className="entry-row-actions">
+                      <EntryActionMenu entry={entry} onDelete={handleDelete} />
+                    </div>
                   </article>
                 </li>
               ))}
             </ul>
+            <div className="day-section-footer">
+              <Link className="button button-secondary button-small" to={`/entries/new?date=${key}`}>
+                Add entry for this day
+              </Link>
+            </div>
           </section>
         ))}
       </div>

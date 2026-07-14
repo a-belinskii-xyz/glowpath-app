@@ -28,16 +28,20 @@ type PendingFile = {
 type MoodEntryFormProps = {
   mode: 'create' | 'edit'
   initialEntry?: MoodEntryPublic
+  /** Prefill `datetime-local` in create mode (e.g. from calendar day). */
+  initialRecordedAtLocal?: string
 }
 
-export function MoodEntryForm({ mode, initialEntry }: MoodEntryFormProps) {
+export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: MoodEntryFormProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const timeZone = user?.timezone ?? 'UTC'
 
   const [score, setScore] = useState(initialEntry?.score ?? 4)
   const [recordedAtLocal, setRecordedAtLocal] = useState(
-    initialEntry ? isoToDatetimeLocal(initialEntry.recorded_at, timeZone) : nowDatetimeLocal(timeZone),
+    initialEntry
+      ? isoToDatetimeLocal(initialEntry.recorded_at, timeZone)
+      : (initialRecordedAtLocal ?? nowDatetimeLocal(timeZone)),
   )
   const [note, setNote] = useState(initialEntry?.note ?? '')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(

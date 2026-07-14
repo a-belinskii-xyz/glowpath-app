@@ -3,8 +3,10 @@ from __future__ import annotations
 import contextlib
 import re
 import uuid
-from datetime import UTC, datetime
+from collections import defaultdict
+from datetime import UTC, date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -17,6 +19,8 @@ from app.models.mood_entry_attachment import MAX_PHOTOS_PER_ENTRY, MoodEntryAtta
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
 from app.services.storage import ObjectStorage, StorageError
+
+CALENDAR_SCORES_PER_DAY = 3
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_AUDIO_BYTES = 10 * 1024 * 1024
@@ -167,6 +171,72 @@ def list_mood_entries(
             .offset(offset)
         ).all()
     )
+
+
+def _resolve_user_tz(timezone_name: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError as exc:
+        raise MoodEntryError(f"Unknown timezone: {timezone_name}", status_code=400) from exc
+
+
+def _local_date(recorded_at: datetime, tz: ZoneInfo) -> date:
+    instant = recorded_at if recorded_at.tzinfo is not None else recorded_at.replace(tzinfo=UTC)
+    return instant.astimezone(tz).date()
+
+
+def get_mood_entry_calendar(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    timezone_name: str,
+    recorded_from: datetime,
+    recorded_to: datetime,
+) -> list[dict[str, Any]]:
+    """Return per-day mood scores for a range, grouped in the user's timezone.
+
+    Each day includes up to ``CALENDAR_SCORES_PER_DAY`` most recent scores
+    (newest first) plus the total entry count for that day.
+    """
+    tz = _resolve_user_tz(timezone_name)
+    from_utc = _to_utc(recorded_from)
+    to_utc = _to_utc(recorded_to)
+    if to_utc <= from_utc:
+        raise MoodEntryError("recorded_to must be after recorded_from")
+
+    rows = list(
+        db.execute(
+            select(MoodEntry.recorded_at, MoodEntry.score)
+            .where(
+                MoodEntry.user_id == user_id,
+                MoodEntry.recorded_at >= from_utc,
+                MoodEntry.recorded_at < to_utc,
+            )
+            .order_by(MoodEntry.recorded_at.desc(), MoodEntry.created_at.desc())
+        ).all()
+    )
+
+    by_day: dict[date, list[int]] = defaultdict(list)
+    for recorded_at, score in rows:
+        by_day[_local_date(recorded_at, tz)].append(int(score))
+
+    days: list[dict[str, Any]] = []
+    for day in sorted(by_day.keys()):
+        scores = by_day[day]
+        days.append(
+            {
+                "date": day.isoformat(),
+                "entry_count": len(scores),
+                "scores": [
+                    {
+                        "score": score,
+                        "score_emoji": mood_score_emoji(MoodScore(score)),
+                    }
+                    for score in scores[:CALENDAR_SCORES_PER_DAY]
+                ],
+            }
+        )
+    return days
 
 
 def get_mood_entry(db: Session, *, user_id: uuid.UUID, entry_id: uuid.UUID) -> MoodEntry:

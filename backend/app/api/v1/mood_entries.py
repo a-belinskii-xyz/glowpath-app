@@ -24,6 +24,7 @@ from app.models.mood_entry import MoodEntry
 from app.models.user import User
 from app.schemas.mood_entry import (
     AttachmentPublic,
+    MoodEntryCalendarResponse,
     MoodEntryCreate,
     MoodEntryListResponse,
     MoodEntryPatch,
@@ -36,6 +37,7 @@ from app.services.mood_entry_service import (
     delete_mood_entry,
     download_attachment,
     get_mood_entry,
+    get_mood_entry_calendar,
     list_mood_entries,
     patch_mood_entry,
     serialize_mood_entry,
@@ -103,6 +105,27 @@ def list_entries(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/calendar", response_model=MoodEntryCalendarResponse)
+def calendar_entries(
+    recorded_from: Annotated[datetime, Query()],
+    recorded_to: Annotated[datetime, Query()],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> MoodEntryCalendarResponse:
+    try:
+        days = get_mood_entry_calendar(
+            db,
+            user_id=current_user.id,
+            timezone_name=current_user.timezone,
+            recorded_from=recorded_from,
+            recorded_to=recorded_to,
+        )
+    except MoodEntryError as exc:
+        _handle_mood_error(exc)
+        raise
+    return MoodEntryCalendarResponse.model_validate({"days": days})
 
 
 @router.get("/{entry_id}", response_model=MoodEntryPublic)

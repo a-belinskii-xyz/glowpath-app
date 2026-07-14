@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import { CreateEntryPage } from './pages/CreateEntryPage'
 import { EditEntryPage } from './pages/EditEntryPage'
+import { EntryDetailPage } from './pages/EntryDetailPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { GoogleCallbackPage } from './pages/GoogleCallbackPage'
 import { HomePage } from './pages/HomePage'
@@ -38,6 +39,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="entries/new" element={<CreateEntryPage />} />
               <Route path="entries/:id/edit" element={<EditEntryPage />} />
+              <Route path="entries/:id" element={<EntryDetailPage />} />
               <Route path="tags" element={<TagsPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
