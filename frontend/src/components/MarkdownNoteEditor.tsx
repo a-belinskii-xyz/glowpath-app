@@ -1,5 +1,4 @@
 import { Extension } from '@tiptap/core'
-import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from '@tiptap/markdown'
 import { Plugin } from '@tiptap/pm/state'
@@ -64,17 +63,17 @@ export function MarkdownNoteEditor({
     shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit.configure({
-        heading: false,
+        heading: { levels: [2, 3] },
         codeBlock: false,
         horizontalRule: false,
-      }),
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        defaultProtocol: 'https',
-        HTMLAttributes: {
-          rel: 'noopener noreferrer',
-          target: '_blank',
+        link: {
+          openOnClick: false,
+          autolink: true,
+          defaultProtocol: 'https',
+          HTMLAttributes: {
+            rel: 'noopener noreferrer',
+            target: '_blank',
+          },
         },
       }),
       Placeholder.configure({
@@ -153,6 +152,16 @@ export function MarkdownNoteEditor({
       </div>
 
       <div className="markdown-editor-toolbar" role="toolbar" aria-label={t('markdown.formatting')}>
+        <button
+          type="button"
+          className={`markdown-toolbar-btn${editor?.isActive('heading', { level: 2 }) ? ' markdown-toolbar-btn-active' : ''}`}
+          onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+          disabled={!editor}
+          title={t('markdown.heading')}
+          aria-pressed={editor?.isActive('heading', { level: 2 }) ?? false}
+        >
+          H
+        </button>
         <button
           type="button"
           className={`markdown-toolbar-btn${editor?.isActive('bold') ? ' markdown-toolbar-btn-active' : ''}`}

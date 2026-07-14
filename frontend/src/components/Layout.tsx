@@ -18,6 +18,7 @@ export function Layout() {
             <>
               <Link to="/">{t('nav.entries')}</Link>
               <Link to="/tags">{t('nav.tags')}</Link>
+              <Link to="/templates">{t('nav.templates')}</Link>
               <Link to="/profile">{t('nav.profile')}</Link>
               <button type="button" className="link-button" onClick={logout}>
                 {t('nav.logOut')}

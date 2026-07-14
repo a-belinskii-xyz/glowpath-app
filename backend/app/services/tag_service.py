@@ -338,20 +338,22 @@ def _slugify(labels: dict[str, str]) -> str:
 def _unique_group_slug(db: Session, *, user_id: uuid.UUID, base: str) -> str:
     return _unique_slug(
         base,
-        exists=lambda candidate: db.scalar(
-            select(TagGroup.id).where(TagGroup.user_id == user_id, TagGroup.slug == candidate)
-        )
-        is not None,
+        exists=lambda candidate: (
+            db.scalar(
+                select(TagGroup.id).where(TagGroup.user_id == user_id, TagGroup.slug == candidate)
+            )
+            is not None
+        ),
     )
 
 
 def _unique_tag_slug(db: Session, *, group_id: uuid.UUID, base: str) -> str:
     return _unique_slug(
         base,
-        exists=lambda candidate: db.scalar(
-            select(Tag.id).where(Tag.group_id == group_id, Tag.slug == candidate)
-        )
-        is not None,
+        exists=lambda candidate: (
+            db.scalar(select(Tag.id).where(Tag.group_id == group_id, Tag.slug == candidate))
+            is not None
+        ),
     )
 
 

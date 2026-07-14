@@ -4,7 +4,10 @@ import uuid
 
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
-from app.services.user_provisioning import provision_default_tags
+from app.services.user_provisioning import (
+    provision_default_note_templates,
+    provision_default_tags,
+)
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -21,6 +24,7 @@ def provision_tags(
 ) -> list[Tag]:
     """Default catalog + persona custom groups. Returns all tags for the user."""
     provision_default_tags(db, user_id)
+    provision_default_note_templates(db, user_id)
     db.flush()
 
     group_count = db.scalar(

@@ -1108,6 +1108,25 @@ code {
   padding-left: 1.25rem;
 }
 
+.markdown-wysiwyg .tiptap h2,
+.markdown-wysiwyg .ProseMirror h2,
+.markdown-wysiwyg .tiptap h3,
+.markdown-wysiwyg .ProseMirror h3 {
+  margin: 0.65rem 0 0.25rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.markdown-wysiwyg .tiptap h2,
+.markdown-wysiwyg .ProseMirror h2 {
+  font-size: 1.15rem;
+}
+
+.markdown-wysiwyg .tiptap h3,
+.markdown-wysiwyg .ProseMirror h3 {
+  font-size: 1.05rem;
+}
+
 .markdown-wysiwyg .tiptap blockquote,
 .markdown-wysiwyg .ProseMirror blockquote {
   margin: 0.35rem 0;
@@ -1328,6 +1347,52 @@ code {
 .tag-groups-list {
   display: grid;
   gap: 1rem;
+}
+
+.note-templates-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.note-template-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.note-template-card-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.note-template-card.is-dragging {
+  opacity: 0.55;
+}
+
+.note-template-preview {
+  max-height: 8rem;
+  overflow: hidden;
+}
+
+.note-template-insert {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.note-template-insert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.note-template-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .tag-group-card-header {

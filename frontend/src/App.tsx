@@ -17,6 +17,7 @@ import { RegisterPage } from './pages/RegisterPage'
 import { ResendVerificationPage } from './pages/ResendVerificationPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { TagsPage } from './pages/TagsPage'
+import { TemplatesPage } from './pages/TemplatesPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
                 <Route path="entries/:id/edit" element={<EditEntryPage />} />
                 <Route path="entries/:id" element={<EntryDetailPage />} />
                 <Route path="tags" element={<TagsPage />} />
+                <Route path="templates" element={<TemplatesPage />} />
                 <Route path="profile" element={<ProfilePage />} />
               </Route>
 

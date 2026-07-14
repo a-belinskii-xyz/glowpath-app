@@ -7,6 +7,7 @@ import {
   patchMoodEntry,
   uploadMoodEntryAttachment,
 } from '../api/moodEntries'
+import { listNoteTemplates } from '../api/noteTemplates'
 import { listTagGroups } from '../api/tagGroups'
 import { Alert } from './Alert'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
@@ -20,6 +21,7 @@ import {
 } from '../lib/datetime'
 import { getMoodScoreOptions } from '../lib/moodScale'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
+import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic } from '../types/tag'
 
 type PendingFile = {
@@ -52,6 +54,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
     initialEntry?.tags.map((tag) => tag.id) ?? [],
   )
   const [tagGroups, setTagGroups] = useState<TagGroupPublic[]>([])
+  const [noteTemplates, setNoteTemplates] = useState<NoteTemplatePublic[]>([])
   const [showOtherGroups, setShowOtherGroups] = useState(false)
   const [existingAttachments, setExistingAttachments] = useState<AttachmentPublic[]>(
     initialEntry?.attachments ?? [],
@@ -66,10 +69,14 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
     const loadTags = async () => {
       setIsLoadingTags(true)
       try {
-        const response = await listTagGroups()
-        setTagGroups(response.items)
+        const [tagsResponse, templatesResponse] = await Promise.all([
+          listTagGroups(),
+          listNoteTemplates(),
+        ])
+        setTagGroups(tagsResponse.items)
+        setNoteTemplates(templatesResponse.items)
         const selectedIds = new Set(initialEntry?.tags.map((tag) => tag.id) ?? [])
-        const hasSelectedOther = response.items.some(
+        const hasSelectedOther = tagsResponse.items.some(
           (group) =>
             !group.show_on_entry && group.tags.some((tag) => selectedIds.has(tag.id)),
         )
@@ -96,6 +103,20 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
     setSelectedTagIds((current) =>
       current.includes(tagId) ? current.filter((id) => id !== tagId) : [...current, tagId],
     )
+  }
+
+  const insertTemplate = (template: NoteTemplatePublic) => {
+    const templateBody = template.body.trim()
+    if (!templateBody) {
+      return
+    }
+    setNote((current) => {
+      const trimmed = current.trim()
+      if (!trimmed) {
+        return templateBody
+      }
+      return `${trimmed}\n\n${templateBody}`
+    })
   }
 
   const renderTagGroup = (group: TagGroupPublic) => (
@@ -243,6 +264,31 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
           required
         />
       </label>
+
+      <div className="note-template-insert">
+        <div className="note-template-insert-header">
+          <span className="form-label">{t('entries.insertTemplate')}</span>
+          <Link to="/templates" className="button button-secondary button-small">
+            {t('entries.manageTemplates')}
+          </Link>
+        </div>
+        {noteTemplates.length > 0 ? (
+          <div className="note-template-chips">
+            {noteTemplates.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                className="tag-chip"
+                onClick={() => insertTemplate(template)}
+              >
+                {template.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">{t('entries.noTemplates')}</p>
+        )}
+      </div>
 
       <MarkdownNoteEditor
         value={note}

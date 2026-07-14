@@ -24,7 +24,10 @@ from app.core.security import (
 from app.models.auth_token import AuthToken
 from app.models.user import User
 from app.services.email_service import EmailService
-from app.services.user_provisioning import provision_default_tags
+from app.services.user_provisioning import (
+    provision_default_note_templates,
+    provision_default_tags,
+)
 
 
 class AuthError(Exception):
@@ -97,6 +100,7 @@ def register_user(
     db.flush()
 
     provision_default_tags(db, user.id)
+    provision_default_note_templates(db, user.id)
     _create_auth_token(
         db,
         user_id=user.id,
@@ -252,6 +256,7 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPai
     db.add(user)
     db.flush()
     provision_default_tags(db, user.id)
+    provision_default_note_templates(db, user.id)
     db.commit()
     return issue_token_pair(user.id)
 
