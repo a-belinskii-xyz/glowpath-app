@@ -8,12 +8,18 @@ from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.attachment_kind import AttachmentKind
 from app.core.i18n import resolve_label
-from app.core.mood_scale import MoodScore, mood_score_emoji, mood_score_label
+from app.core.mood_scale import (
+    MAX_MOOD_SCORE,
+    MIN_MOOD_SCORE,
+    MoodScore,
+    mood_score_emoji,
+    mood_score_label,
+)
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MAX_PHOTOS_PER_ENTRY, MoodEntryAttachment
 from app.models.mood_entry_tag import MoodEntryTag
@@ -237,6 +243,53 @@ def get_mood_entry_calendar(
             }
         )
     return days
+
+
+def get_mood_entry_stats(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    recorded_from: datetime,
+    recorded_to: datetime,
+    locale: str,
+) -> dict[str, Any]:
+    """Return per-score entry counts for a recorded_at range.
+
+    Always includes all scores from ``MIN_MOOD_SCORE`` to ``MAX_MOOD_SCORE``
+    (count may be zero) so charts have a stable axis.
+    """
+    from_utc = _to_utc(recorded_from)
+    to_utc = _to_utc(recorded_to)
+    if to_utc <= from_utc:
+        raise MoodEntryError("recorded_to must be after recorded_from")
+
+    rows = db.execute(
+        select(MoodEntry.score, func.count())
+        .where(
+            MoodEntry.user_id == user_id,
+            MoodEntry.recorded_at >= from_utc,
+            MoodEntry.recorded_at < to_utc,
+        )
+        .group_by(MoodEntry.score)
+    ).all()
+    counts = {int(score): int(count) for score, count in rows}
+
+    scores: list[dict[str, Any]] = []
+    total_entries = 0
+    for value in range(MIN_MOOD_SCORE, MAX_MOOD_SCORE + 1):
+        count = counts.get(value, 0)
+        total_entries += count
+        mood = MoodScore(value)
+        scores.append(
+            {
+                "score": value,
+                "score_label": mood_score_label(mood, locale),
+                "score_emoji": mood_score_emoji(mood),
+                "count": count,
+            }
+        )
+
+    return {"total_entries": total_entries, "scores": scores}
 
 
 def get_mood_entry(db: Session, *, user_id: uuid.UUID, entry_id: uuid.UUID) -> MoodEntry:

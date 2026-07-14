@@ -50,6 +50,18 @@ export type MoodEntryCalendarResponse = {
   days: CalendarDayPublic[]
 }
 
+export type MoodScoreStatPublic = {
+  score: number
+  score_label: string
+  score_emoji: string
+  count: number
+}
+
+export type MoodEntryStatsResponse = {
+  total_entries: number
+  scores: MoodScoreStatPublic[]
+}
+
 export type MoodEntryCreate = {
   score: number
   recorded_at: string

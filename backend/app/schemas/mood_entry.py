@@ -69,3 +69,15 @@ class CalendarDayPublic(BaseModel):
 
 class MoodEntryCalendarResponse(BaseModel):
     days: list[CalendarDayPublic]
+
+
+class MoodScoreStatPublic(BaseModel):
+    score: int
+    score_label: str
+    score_emoji: str
+    count: int
+
+
+class MoodEntryStatsResponse(BaseModel):
+    total_entries: int
+    scores: list[MoodScoreStatPublic]

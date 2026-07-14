@@ -11,6 +11,7 @@ import type {
   MoodEntryListResponse,
   MoodEntryPatch,
   MoodEntryPublic,
+  MoodEntryStatsResponse,
 } from '../types/mood'
 import { apiRequest, getApiBaseUrl } from './client'
 import { uploadAttachment } from './upload'
@@ -77,6 +78,16 @@ export function getMoodEntryCalendar(params: {
   recorded_to: string
 }): Promise<MoodEntryCalendarResponse> {
   return apiRequest<MoodEntryCalendarResponse>(`/v1/mood-entries/calendar${buildListQuery(params)}`, {
+    auth: true,
+    headers: moodHeaders(),
+  })
+}
+
+export function getMoodEntryStats(params: {
+  recorded_from: string
+  recorded_to: string
+}): Promise<MoodEntryStatsResponse> {
+  return apiRequest<MoodEntryStatsResponse>(`/v1/mood-entries/stats${buildListQuery(params)}`, {
     auth: true,
     headers: moodHeaders(),
   })

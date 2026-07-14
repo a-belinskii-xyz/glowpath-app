@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodEntryCalendar, listMoodEntries } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
+import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
 import { EntryActionMenu } from '../components/EntryActionMenu'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { MonthCalendar } from '../components/MonthCalendar'
@@ -17,7 +18,7 @@ import {
   getCurrentYearMonth,
   getMonthBounds,
 } from '../lib/datetime'
-import type { CalendarDayPublic, MoodEntryPublic } from '../types/mood'
+import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
 
 const PAGE_SIZE = 20
 
@@ -31,6 +32,9 @@ export function EntriesPage() {
 
   const [calendarDays, setCalendarDays] = useState<CalendarDayPublic[]>([])
   const [isCalendarLoading, setIsCalendarLoading] = useState(true)
+
+  const [stats, setStats] = useState<MoodEntryStatsResponse | null>(null)
+  const [isStatsLoading, setIsStatsLoading] = useState(true)
 
   const [entries, setEntries] = useState<MoodEntryPublic[]>([])
   const [offset, setOffset] = useState(0)
@@ -78,6 +82,30 @@ export function EntriesPage() {
       setCalendarDays([])
     } finally {
       setIsCalendarLoading(false)
+    }
+  }, [monthBounds.recorded_from, monthBounds.recorded_to, user?.email_verified])
+
+  const loadStats = useCallback(async () => {
+    if (!user?.email_verified) {
+      setStats(null)
+      setIsStatsLoading(false)
+      return
+    }
+
+    setIsStatsLoading(true)
+    try {
+      const response = await getMoodEntryStats({
+        recorded_from: monthBounds.recorded_from,
+        recorded_to: monthBounds.recorded_to,
+      })
+      setStats(response)
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 403)) {
+        setError(err instanceof Error ? err.message : 'Failed to load emotion stats')
+      }
+      setStats(null)
+    } finally {
+      setIsStatsLoading(false)
     }
   }, [monthBounds.recorded_from, monthBounds.recorded_to, user?.email_verified])
 
@@ -130,6 +158,10 @@ export function EntriesPage() {
   useEffect(() => {
     void loadCalendar()
   }, [loadCalendar])
+
+  useEffect(() => {
+    void loadStats()
+  }, [loadStats])
 
   useEffect(() => {
     setEntries([])
@@ -213,6 +245,7 @@ export function EntriesPage() {
       await deleteMoodEntry(entryId)
       setEntries((current) => current.filter((entry) => entry.id !== entryId))
       void loadCalendar()
+      void loadStats()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete entry')
     }
@@ -257,6 +290,14 @@ export function EntriesPage() {
             onDayWithEntries={handleDayWithEntries}
           />
         )
+      ) : null}
+
+      {user?.email_verified ? (
+        isStatsLoading ? (
+          <p className="muted">Loading emotion stats…</p>
+        ) : stats ? (
+          <EmotionStatsBarChart scores={stats.scores} totalEntries={stats.total_entries} />
+        ) : null
       ) : null}
 
       {isLoading ? (

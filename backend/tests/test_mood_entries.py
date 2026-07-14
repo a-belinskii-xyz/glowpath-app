@@ -401,3 +401,55 @@ def test_calendar_rejects_inverted_range(
         headers=_auth_headers(token),
     )
     assert response.status_code == 400
+
+
+def test_stats_counts_scores_for_range(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-stats@example.com")
+
+    _create_entry(auth_client, token, score=1, recorded_at="2026-07-14T09:00:00+03:00")
+    _create_entry(auth_client, token, score=5, recorded_at="2026-07-14T12:00:00+03:00")
+    _create_entry(auth_client, token, score=5, recorded_at="2026-07-15T10:00:00+03:00")
+    _create_entry(auth_client, token, score=3, recorded_at="2026-07-16T10:00:00+03:00")
+    # Outside range
+    _create_entry(auth_client, token, score=2, recorded_at="2026-06-30T23:00:00+03:00")
+
+    response = auth_client.get(
+        "/v1/mood-entries/stats",
+        params={
+            "recorded_from": "2026-07-01T00:00:00+03:00",
+            "recorded_to": "2026-08-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_entries"] == 4
+    by_score = {item["score"]: item for item in body["scores"]}
+    assert list(by_score) == [1, 2, 3, 4, 5]
+    assert by_score[1]["count"] == 1
+    assert by_score[1]["score_emoji"] == "😢"
+    assert by_score[1]["score_label"] == "awful"
+    assert by_score[2]["count"] == 0
+    assert by_score[3]["count"] == 1
+    assert by_score[4]["count"] == 0
+    assert by_score[5]["count"] == 2
+    assert by_score[5]["score_emoji"] == "😄"
+
+
+def test_stats_rejects_inverted_range(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-stats-range@example.com")
+    response = auth_client.get(
+        "/v1/mood-entries/stats",
+        params={
+            "recorded_from": "2026-08-01T00:00:00+03:00",
+            "recorded_to": "2026-07-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 400

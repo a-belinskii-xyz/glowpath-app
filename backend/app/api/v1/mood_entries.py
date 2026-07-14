@@ -29,6 +29,7 @@ from app.schemas.mood_entry import (
     MoodEntryListResponse,
     MoodEntryPatch,
     MoodEntryPublic,
+    MoodEntryStatsResponse,
 )
 from app.services.mood_entry_service import (
     MoodEntryError,
@@ -38,6 +39,7 @@ from app.services.mood_entry_service import (
     download_attachment,
     get_mood_entry,
     get_mood_entry_calendar,
+    get_mood_entry_stats,
     list_mood_entries,
     patch_mood_entry,
     serialize_mood_entry,
@@ -126,6 +128,28 @@ def calendar_entries(
         _handle_mood_error(exc)
         raise
     return MoodEntryCalendarResponse.model_validate({"days": days})
+
+
+@router.get("/stats", response_model=MoodEntryStatsResponse)
+def stats_entries(
+    recorded_from: Annotated[datetime, Query()],
+    recorded_to: Annotated[datetime, Query()],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
+) -> MoodEntryStatsResponse:
+    try:
+        payload = get_mood_entry_stats(
+            db,
+            user_id=current_user.id,
+            recorded_from=recorded_from,
+            recorded_to=recorded_to,
+            locale=locale,
+        )
+    except MoodEntryError as exc:
+        _handle_mood_error(exc)
+        raise
+    return MoodEntryStatsResponse.model_validate(payload)
 
 
 @router.get("/{entry_id}", response_model=MoodEntryPublic)
