@@ -7,6 +7,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { useEffect, useId, useRef } from 'react'
 
+import { useLocale } from '../context/LocaleContext'
 import {
   NOTE_CONTENT_MAX_LENGTH,
   NOTE_RAW_MAX_LENGTH,
@@ -46,9 +47,15 @@ export function MarkdownNoteEditor({
   value,
   onChange,
   maxLength = NOTE_CONTENT_MAX_LENGTH,
-  placeholder = 'Write a note…',
-  label = 'Note',
+  placeholder,
+  label,
 }: MarkdownNoteEditorProps) {
+  const { t } = useLocale()
+  const resolvedPlaceholder = placeholder ?? t('markdown.placeholder')
+  const resolvedLabel = label ?? t('common.note')
+  const placeholderRef = useRef(resolvedPlaceholder)
+  placeholderRef.current = resolvedPlaceholder
+
   const labelId = useId()
   const lastEmittedRef = useRef(value)
 
@@ -70,7 +77,9 @@ export function MarkdownNoteEditor({
           target: '_blank',
         },
       }),
-      Placeholder.configure({ placeholder }),
+      Placeholder.configure({
+        placeholder: () => placeholderRef.current,
+      }),
       Markdown,
       createContentLimitExtension(maxLength),
     ],
@@ -106,6 +115,13 @@ export function MarkdownNoteEditor({
     lastEmittedRef.current = value
   }, [editor, value])
 
+  useEffect(() => {
+    if (!editor) {
+      return
+    }
+    editor.view.dispatch(editor.state.tr)
+  }, [editor, resolvedPlaceholder])
+
   const contentLength = editor ? plainTextFromDoc(editor.state.doc).length : 0
 
   const setLink = () => {
@@ -113,7 +129,7 @@ export function MarkdownNoteEditor({
       return
     }
     const previous = editor.getAttributes('link').href as string | undefined
-    const url = window.prompt('Link URL', previous ?? 'https://')
+    const url = window.prompt(t('markdown.linkUrlPrompt'), previous ?? 'https://')
     if (url === null) {
       return
     }
@@ -129,20 +145,20 @@ export function MarkdownNoteEditor({
     <div className="form-field markdown-editor">
       <div className="markdown-editor-header">
         <span className="form-label" id={labelId}>
-          {label}
+          {resolvedLabel}
         </span>
         <span className="form-hint markdown-editor-counter" aria-live="polite">
           {contentLength}/{maxLength}
         </span>
       </div>
 
-      <div className="markdown-editor-toolbar" role="toolbar" aria-label="Text formatting">
+      <div className="markdown-editor-toolbar" role="toolbar" aria-label={t('markdown.formatting')}>
         <button
           type="button"
           className={`markdown-toolbar-btn${editor?.isActive('bold') ? ' markdown-toolbar-btn-active' : ''}`}
           onClick={() => editor?.chain().focus().toggleBold().run()}
           disabled={!editor}
-          title="Bold"
+          title={t('markdown.bold')}
           aria-pressed={editor?.isActive('bold') ?? false}
         >
           <strong>B</strong>
@@ -152,7 +168,7 @@ export function MarkdownNoteEditor({
           className={`markdown-toolbar-btn${editor?.isActive('italic') ? ' markdown-toolbar-btn-active' : ''}`}
           onClick={() => editor?.chain().focus().toggleItalic().run()}
           disabled={!editor}
-          title="Italic"
+          title={t('markdown.italic')}
           aria-pressed={editor?.isActive('italic') ?? false}
         >
           <em>I</em>
@@ -162,7 +178,7 @@ export function MarkdownNoteEditor({
           className={`markdown-toolbar-btn${editor?.isActive('code') ? ' markdown-toolbar-btn-active' : ''}`}
           onClick={() => editor?.chain().focus().toggleCode().run()}
           disabled={!editor}
-          title="Code"
+          title={t('markdown.code')}
           aria-pressed={editor?.isActive('code') ?? false}
         >
           {'</>'}
@@ -172,30 +188,30 @@ export function MarkdownNoteEditor({
           className={`markdown-toolbar-btn${editor?.isActive('link') ? ' markdown-toolbar-btn-active' : ''}`}
           onClick={setLink}
           disabled={!editor}
-          title="Link"
+          title={t('markdown.link')}
           aria-pressed={editor?.isActive('link') ?? false}
         >
-          Link
+          {t('markdown.link')}
         </button>
         <button
           type="button"
           className={`markdown-toolbar-btn${editor?.isActive('bulletList') ? ' markdown-toolbar-btn-active' : ''}`}
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
           disabled={!editor}
-          title="Bullet list"
+          title={t('markdown.bulletList')}
           aria-pressed={editor?.isActive('bulletList') ?? false}
         >
-          List
+          {t('markdown.list')}
         </button>
         <button
           type="button"
           className={`markdown-toolbar-btn${editor?.isActive('blockquote') ? ' markdown-toolbar-btn-active' : ''}`}
           onClick={() => editor?.chain().focus().toggleBlockquote().run()}
           disabled={!editor}
-          title="Quote"
+          title={t('markdown.quote')}
           aria-pressed={editor?.isActive('blockquote') ?? false}
         >
-          Quote
+          {t('markdown.quote')}
         </button>
       </div>
 

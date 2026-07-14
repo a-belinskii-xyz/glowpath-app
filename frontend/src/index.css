@@ -254,6 +254,11 @@ input {
   font-weight: 600;
 }
 
+.profile-locale-select {
+  max-width: 16rem;
+  font-weight: 500;
+}
+
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;

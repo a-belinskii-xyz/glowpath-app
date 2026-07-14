@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { useLocale } from '../context/LocaleContext'
 import {
   getAttachmentObjectUrl,
   getCachedAttachmentObjectUrl,
@@ -13,6 +14,7 @@ type AttachmentAudioProps = {
 }
 
 export function AttachmentAudio({ entryId, attachment, className }: AttachmentAudioProps) {
+  const { t } = useLocale()
   const [src, setSrc] = useState<string | null>(
     () => getCachedAttachmentObjectUrl(entryId, attachment.id),
   )
@@ -50,7 +52,7 @@ export function AttachmentAudio({ entryId, attachment, className }: AttachmentAu
   if (failed) {
     return (
       <p className={`entry-audio-error muted ${className ?? ''}`.trim()}>
-        Could not load audio: {attachment.original_name}
+        {t('media.audioLoadFailed', { name: attachment.original_name })}
       </p>
     )
   }
@@ -60,7 +62,7 @@ export function AttachmentAudio({ entryId, attachment, className }: AttachmentAu
       <p className="entry-audio-name muted">{attachment.original_name}</p>
       {src ? (
         <audio controls preload="metadata" src={src}>
-          Your browser does not support audio playback.
+          {t('media.audioUnsupported')}
         </audio>
       ) : (
         <div className="entry-audio-skeleton" aria-hidden />

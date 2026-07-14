@@ -3,8 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { verifyEmail } from '../api/auth'
 import { Alert } from '../components/Alert'
+import { useLocale } from '../context/LocaleContext'
 
 export function VerifyEmailPage() {
+  const { t } = useLocale()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
   const [message, setMessage] = useState<string | null>(null)
@@ -13,7 +15,7 @@ export function VerifyEmailPage() {
 
   useEffect(() => {
     if (!token) {
-      setError('Verification token is missing from the link')
+      setError(t('errors.verifyTokenMissing'))
       setIsLoading(false)
       return
     }
@@ -23,26 +25,26 @@ export function VerifyEmailPage() {
         const response = await verifyEmail(token)
         setMessage(response.message)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Verification failed')
+        setError(err instanceof Error ? err.message : t('errors.verificationFailed'))
       } finally {
         setIsLoading(false)
       }
     }
 
     void run()
-  }, [token])
+  }, [token, t])
 
   return (
     <section className="page narrow">
-      <h1>Verify email</h1>
+      <h1>{t('auth.verifyTitle')}</h1>
 
-      {isLoading ? <p className="muted">Verifying your email…</p> : null}
+      {isLoading ? <p className="muted">{t('auth.verifying')}</p> : null}
       {error ? <Alert variant="error">{error}</Alert> : null}
       {message ? <Alert variant="success">{message}</Alert> : null}
 
       {!isLoading ? (
         <p className="auth-footer">
-          <Link to="/login">Go to login</Link>
+          <Link to="/login">{t('auth.goToLogin')}</Link>
         </p>
       ) : null}
     </section>

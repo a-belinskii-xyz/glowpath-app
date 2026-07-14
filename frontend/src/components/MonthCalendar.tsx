@@ -1,10 +1,9 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
+import { useLocale } from '../context/LocaleContext'
 import { buildMonthCalendarCells, isFutureDate, todayKey } from '../lib/datetime'
 import type { CalendarDayPublic } from '../types/mood'
-
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 type MonthCalendarProps = {
   year: number
@@ -21,6 +20,8 @@ export function MonthCalendar({
   days,
   onDayWithEntries,
 }: MonthCalendarProps) {
+  const { t } = useLocale()
+  const weekdays = t('calendar.weekdays').split('|')
   const cells = useMemo(() => buildMonthCalendarCells(year, month), [year, month])
   const daysByDate = useMemo(() => {
     const map = new Map<string, CalendarDayPublic>()
@@ -32,9 +33,9 @@ export function MonthCalendar({
   const today = todayKey(timeZone)
 
   return (
-    <div className="month-calendar" role="grid" aria-label="Mood calendar">
+    <div className="month-calendar" role="grid" aria-label={t('calendar.ariaLabel')}>
       <div className="month-calendar-weekdays" role="row">
-        {WEEKDAYS.map((label) => (
+        {weekdays.map((label) => (
           <div key={label} className="month-calendar-weekday" role="columnheader">
             {label}
           </div>
@@ -66,9 +67,9 @@ export function MonthCalendar({
               aria-label={
                 cell.date
                   ? hasEntries
-                    ? `${cell.date}, ${entryCount} entries`
+                    ? t('calendar.cellWithEntries', { date: cell.date, count: entryCount })
                     : canInteract
-                      ? `${cell.date}, add entry`
+                      ? t('calendar.cellAddEntry', { date: cell.date })
                       : cell.date
                   : undefined
               }
@@ -96,7 +97,7 @@ export function MonthCalendar({
                 <Link
                   className="month-calendar-day-button month-calendar-day-link"
                   to={`/entries/new?date=${cell.date}`}
-                  aria-label={`Add entry on ${cell.date}`}
+                  aria-label={t('calendar.addEntryOn', { date: cell.date })}
                 >
                   <span className="month-calendar-day">{cell.day}</span>
                   <span className="month-calendar-add" aria-hidden="true">

@@ -1,15 +1,19 @@
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
+import { intlLocale } from '../i18n/t'
+import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, locale: string, emptyLabel: string): string {
   if (!value) {
-    return '—'
+    return emptyLabel
   }
-  return new Date(value).toLocaleString()
+  return new Date(value).toLocaleString(locale)
 }
 
 export function ProfilePage() {
   const { user, refreshUser } = useAuth()
+  const { locale, setLocale, t } = useLocale()
 
   if (!user) {
     return null
@@ -19,34 +23,53 @@ export function ProfilePage() {
     <section className="page">
       <EmailVerificationBanner />
       <div className="page-header">
-        <h1>Profile</h1>
+        <h1>{t('profile.title')}</h1>
         <button type="button" className="button button-secondary" onClick={() => void refreshUser()}>
-          Refresh
+          {t('common.refresh')}
         </button>
       </div>
 
       <dl className="profile-list">
         <div>
-          <dt>Email</dt>
+          <dt>{t('common.email')}</dt>
           <dd>{user.email}</dd>
         </div>
         <div>
-          <dt>User ID</dt>
+          <dt>{t('profile.userId')}</dt>
           <dd>
             <code>{user.id}</code>
           </dd>
         </div>
         <div>
-          <dt>Timezone</dt>
+          <dt>{t('common.timezone')}</dt>
           <dd>{user.timezone}</dd>
         </div>
         <div>
-          <dt>Email verified</dt>
-          <dd>{user.email_verified ? 'Yes' : 'No'}</dd>
+          <dt>
+            <label htmlFor="profile-locale">{t('common.language')}</label>
+          </dt>
+          <dd>
+            <select
+              id="profile-locale"
+              className="form-input profile-locale-select"
+              value={locale}
+              onChange={(event) => setLocale(event.target.value as ApiLocale)}
+            >
+              {LOCALE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </dd>
         </div>
         <div>
-          <dt>Verified at</dt>
-          <dd>{formatDate(user.email_verified_at)}</dd>
+          <dt>{t('profile.emailVerified')}</dt>
+          <dd>{user.email_verified ? t('common.yes') : t('common.no')}</dd>
+        </div>
+        <div>
+          <dt>{t('profile.verifiedAt')}</dt>
+          <dd>{formatDate(user.email_verified_at, intlLocale(locale), t('common.emptyDate'))}</dd>
         </div>
       </dl>
     </section>

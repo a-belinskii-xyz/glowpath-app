@@ -10,6 +10,8 @@ import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MonthCalendar } from '../components/MonthCalendar'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
+import { intlLocale } from '../i18n/t'
 import { ApiError } from '../lib/errors'
 import {
   dayKey,
@@ -25,7 +27,9 @@ const PAGE_SIZE = 20
 
 export function EntriesPage() {
   const { user } = useAuth()
+  const { locale, t } = useLocale()
   const timeZone = user?.timezone ?? 'UTC'
+  const dateLocale = intlLocale(locale)
   const initialMonth = getCurrentYearMonth(timeZone)
 
   const [year, setYear] = useState(initialMonth.year)
@@ -78,13 +82,13 @@ export function EntriesPage() {
       setCalendarDays(response.days)
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 403)) {
-        setError(err instanceof Error ? err.message : 'Failed to load calendar')
+        setError(err instanceof Error ? err.message : t('errors.failedLoadCalendar'))
       }
       setCalendarDays([])
     } finally {
       setIsCalendarLoading(false)
     }
-  }, [monthBounds.recorded_from, monthBounds.recorded_to, user?.email_verified])
+  }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified])
 
   const loadStats = useCallback(async () => {
     if (!user?.email_verified) {
@@ -102,13 +106,13 @@ export function EntriesPage() {
       setStats(response)
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 403)) {
-        setError(err instanceof Error ? err.message : 'Failed to load emotion stats')
+        setError(err instanceof Error ? err.message : t('errors.failedLoadStats'))
       }
       setStats(null)
     } finally {
       setIsStatsLoading(false)
     }
-  }, [monthBounds.recorded_from, monthBounds.recorded_to, user?.email_verified])
+  }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified])
 
   const loadPage = useCallback(
     async (pageOffset: number, replace: boolean) => {
@@ -143,9 +147,9 @@ export function EntriesPage() {
         setHasMore(response.items.length === PAGE_SIZE)
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
-          setError('Verify your email to view mood entries.')
+          setError(t('errors.verifyToViewEntries'))
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load entries')
+          setError(err instanceof Error ? err.message : t('errors.failedLoadEntries'))
         }
       } finally {
         setIsLoading(false)
@@ -153,7 +157,7 @@ export function EntriesPage() {
         loadingRef.current = false
       }
     },
-    [monthBounds.recorded_from, monthBounds.recorded_to, user?.email_verified],
+    [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified],
   )
 
   useEffect(() => {
@@ -248,7 +252,7 @@ export function EntriesPage() {
       void loadCalendar()
       void loadStats()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete entry')
+      setError(err instanceof Error ? err.message : t('errors.failedDeleteEntry'))
     }
   }
 
@@ -265,15 +269,15 @@ export function EntriesPage() {
       <header className="page-header">
         <div className="month-nav">
           <button type="button" className="button button-secondary button-small" onClick={goToPreviousMonth}>
-            Previous
+            {t('common.previous')}
           </button>
-          <h1>{formatMonthHeading(year, month)}</h1>
+          <h1>{formatMonthHeading(year, month, dateLocale)}</h1>
           <button type="button" className="button button-secondary button-small" onClick={goToNextMonth}>
-            Next
+            {t('common.next')}
           </button>
         </div>
         <Link className="button" to="/entries/new">
-          New entry
+          {t('entries.newEntry')}
         </Link>
       </header>
 
@@ -281,7 +285,7 @@ export function EntriesPage() {
 
       {user?.email_verified ? (
         isCalendarLoading ? (
-          <p className="muted">Loading calendar…</p>
+          <p className="muted">{t('common.loadingCalendar')}</p>
         ) : (
           <MonthCalendar
             year={year}
@@ -295,22 +299,24 @@ export function EntriesPage() {
 
       {user?.email_verified ? (
         isStatsLoading ? (
-          <p className="muted">Loading emotion stats…</p>
+          <p className="muted">{t('common.loadingStats')}</p>
         ) : stats ? (
           <EmotionStatsBarChart stats={stats} />
         ) : null
       ) : null}
 
       {isLoading ? (
-        <p className="muted">Loading entries…</p>
+        <p className="muted">{t('common.loadingEntries')}</p>
       ) : user?.email_verified && entries.length === 0 ? (
-        <p className="muted">No entries for this month yet.</p>
+        <p className="muted">{t('entries.noEntriesThisMonth')}</p>
       ) : null}
 
       <div className="entry-feed">
         {groupedEntries.map(([key, dayEntries]) => (
           <section key={key} id={`day-${key}`} className="day-section">
-            <h2 className="day-heading">{formatDayHeading(dayEntries[0].recorded_at, timeZone)}</h2>
+            <h2 className="day-heading">
+              {formatDayHeading(dayEntries[0].recorded_at, timeZone, dateLocale)}
+            </h2>
             <ul className="entry-list">
               {dayEntries.map((entry) => (
                 <li key={entry.id}>
@@ -320,7 +326,9 @@ export function EntriesPage() {
                         <span className="entry-score">
                           {entry.score_emoji} {entry.score_label}
                         </span>
-                        <span className="entry-time">{formatTime(entry.recorded_at, timeZone)}</span>
+                        <span className="entry-time">
+                          {formatTime(entry.recorded_at, timeZone, dateLocale)}
+                        </span>
                       </div>
                       {entry.note ? (
                         <MarkdownNote content={entry.note} compact className="entry-note" />
@@ -347,7 +355,7 @@ export function EntriesPage() {
             </ul>
             <div className="day-section-footer">
               <Link className="button button-secondary button-small" to={`/entries/new?date=${key}`}>
-                Add entry for this day
+                {t('entries.addEntryForDay')}
               </Link>
             </div>
           </section>
@@ -356,7 +364,7 @@ export function EntriesPage() {
 
       {hasMore && user?.email_verified ? (
         <div ref={loadMoreRef} className="load-more-sentinel">
-          {isLoadingMore ? <p className="muted">Loading more…</p> : null}
+          {isLoadingMore ? <p className="muted">{t('common.loadingMore')}</p> : null}
         </div>
       ) : null}
     </section>

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
+import { useLocale } from '../context/LocaleContext'
+
 type PopupMenuProps = {
   label: ReactNode
   ariaLabel: string
@@ -8,6 +10,7 @@ type PopupMenuProps = {
 }
 
 export function PopupMenu({ label, ariaLabel, onEdit, onDelete }: PopupMenuProps) {
+  const { t } = useLocale()
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -57,7 +60,7 @@ export function PopupMenu({ label, ariaLabel, onEdit, onDelete }: PopupMenuProps
               onEdit()
             }}
           >
-            Edit
+            {t('common.edit')}
           </button>
           <button
             type="button"
@@ -68,7 +71,7 @@ export function PopupMenu({ label, ariaLabel, onEdit, onDelete }: PopupMenuProps
               onDelete()
             }}
           >
-            Delete
+            {t('common.delete')}
           </button>
         </div>
       ) : null}

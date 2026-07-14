@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom'
 
 import { Alert } from './Alert'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 
 export function EmailVerificationBanner() {
   const { user } = useAuth()
+  const { t } = useLocale()
 
   if (!user || user.email_verified) {
     return null
@@ -12,8 +14,8 @@ export function EmailVerificationBanner() {
 
   return (
     <Alert variant="info">
-      Verify your email to create and view mood entries.{' '}
-      <Link to="/resend-verification">Resend verification email</Link>
+      {t('verifyBanner.message')}{' '}
+      <Link to="/resend-verification">{t('verifyBanner.resend')}</Link>
     </Alert>
   )
 }

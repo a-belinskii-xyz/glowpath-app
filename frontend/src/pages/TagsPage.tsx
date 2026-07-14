@@ -16,8 +16,8 @@ import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { PopupMenu } from '../components/PopupMenu'
+import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
-import { API_LOCALE } from '../lib/locale'
 import type { TagGroupPublic, TagPublic } from '../types/tag'
 
 type EditorMode =
@@ -34,6 +34,7 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
 }
 
 export function TagsPage() {
+  const { locale, t } = useLocale()
   const [groups, setGroups] = useState<TagGroupPublic[]>([])
   const [visibleLimit, setVisibleLimit] = useState(6)
   const [error, setError] = useState<string | null>(null)
@@ -56,20 +57,22 @@ export function TagsPage() {
 
   useEffect(() => {
     const load = async () => {
+      setIsLoading(true)
       try {
         await reload()
+        setError(null)
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
-          setError('Verify your email to view tags.')
+          setError(t('errors.verifyToViewTags'))
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load tags')
+          setError(err instanceof Error ? err.message : t('errors.failedLoadTags'))
         }
       } finally {
         setIsLoading(false)
       }
     }
     void load()
-  }, [])
+  }, [locale, t])
 
   const openEditor = (mode: EditorMode) => {
     setError(null)
@@ -94,11 +97,17 @@ export function TagsPage() {
 
     const trimmed = name.trim()
     if (!trimmed) {
-      setError('Name is required.')
+      setError(t('tagsPage.nameRequired'))
       return
     }
 
-    const labels = { [API_LOCALE]: trimmed }
+    const existingLabels =
+      editor.kind === 'edit-group'
+        ? editor.group.labels
+        : editor.kind === 'edit-tag'
+          ? editor.tag.labels
+          : {}
+    const labels = { ...existingLabels, [locale]: trimmed }
     setIsSaving(true)
     setError(null)
     try {
@@ -114,14 +123,14 @@ export function TagsPage() {
       await reload()
       closeEditor()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      setError(err instanceof Error ? err.message : t('errors.failedSave'))
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleDeleteGroup = async (group: TagGroupPublic) => {
-    if (!window.confirm(`Delete group “${group.label}” and all its tags?`)) return
+    if (!window.confirm(t('confirm.deleteGroup', { label: group.label }))) return
     setError(null)
     try {
       await deleteTagGroup(group.id)
@@ -130,14 +139,14 @@ export function TagsPage() {
         closeEditor()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete group')
+      setError(err instanceof Error ? err.message : t('errors.failedDeleteGroup'))
     }
   }
 
   const handleToggleShowOnEntry = async (group: TagGroupPublic) => {
     const nextValue = !group.show_on_entry
     if (nextValue && atVisibleLimit) {
-      setError(`You can show at most ${visibleLimit} tag groups on the entry form.`)
+      setError(t('tagsPage.visibilityLimit', { limit: visibleLimit }))
       return
     }
     setError(null)
@@ -153,14 +162,14 @@ export function TagsPage() {
       setGroups((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     } catch (err) {
       setGroups(previous)
-      setError(err instanceof Error ? err.message : 'Failed to update group visibility')
+      setError(err instanceof Error ? err.message : t('errors.failedUpdateVisibility'))
     } finally {
       setTogglingGroupId(null)
     }
   }
 
   const handleDeleteTag = async (group: TagGroupPublic, tag: TagPublic) => {
-    if (!window.confirm(`Delete tag “${tag.label}”?`)) return
+    if (!window.confirm(t('confirm.deleteTag', { label: tag.label }))) return
     setError(null)
     try {
       await deleteTag(group.id, tag.id)
@@ -169,7 +178,7 @@ export function TagsPage() {
         closeEditor()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete tag')
+      setError(err instanceof Error ? err.message : t('errors.failedDeleteTag'))
     }
   }
 
@@ -191,7 +200,7 @@ export function TagsPage() {
       setGroups(response.items)
     } catch (err) {
       setGroups(previous)
-      setError(err instanceof Error ? err.message : 'Failed to reorder groups')
+      setError(err instanceof Error ? err.message : t('errors.failedReorderGroups'))
     }
   }
 
@@ -217,19 +226,19 @@ export function TagsPage() {
       setGroups((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     } catch (err) {
       setGroups(previous)
-      setError(err instanceof Error ? err.message : 'Failed to reorder tags')
+      setError(err instanceof Error ? err.message : t('errors.failedReorderTags'))
     }
   }
 
   const editorTitle =
     editor?.kind === 'create-group'
-      ? 'Add group'
+      ? t('tagsPage.addGroup')
       : editor?.kind === 'edit-group'
-        ? 'Edit group'
+        ? t('tagsPage.editGroup')
         : editor?.kind === 'create-tag'
-          ? `Add tag to ${editor.group.label}`
+          ? t('tagsPage.addTagTo', { label: editor.group.label })
           : editor?.kind === 'edit-tag'
-            ? `Edit tag “${editor.tag.label}”`
+            ? t('tagsPage.editTag', { label: editor.tag.label })
             : null
 
   return (
@@ -237,26 +246,25 @@ export function TagsPage() {
       <EmailVerificationBanner />
 
       <header className="page-header">
-        <h1>Tags</h1>
+        <h1>{t('tagsPage.title')}</h1>
         <button type="button" className="button" onClick={() => openEditor({ kind: 'create-group' })}>
-          Add group
+          {t('tagsPage.addGroup')}
         </button>
       </header>
 
       <p className="muted tag-visibility-hint">
-        Choose up to {visibleLimit} groups to show when creating an entry ({visibleCount}/
-        {visibleLimit} selected). Other groups stay available under “Other”.
+        {t('tagsPage.hint', { limit: visibleLimit, count: visibleCount })}
       </p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
-      {isLoading ? <p className="muted">Loading tags…</p> : null}
+      {isLoading ? <p className="muted">{t('common.loadingTags')}</p> : null}
 
       {editor && editorTitle ? (
         <form className="card form tag-editor" onSubmit={(event) => void handleSubmit(event)}>
           <h2>{editorTitle}</h2>
           <FormField
             id="tag-name"
-            label="Name"
+            label={t('common.name')}
             value={name}
             onChange={(event) => setName(event.target.value)}
             required
@@ -265,10 +273,10 @@ export function TagsPage() {
           />
           <div className="button-row">
             <button type="submit" className="button" disabled={isSaving}>
-              {isSaving ? 'Saving…' : 'Save'}
+              {isSaving ? t('common.saving') : t('common.save')}
             </button>
             <button type="button" className="button button-secondary" onClick={closeEditor} disabled={isSaving}>
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </form>
@@ -288,7 +296,7 @@ export function TagsPage() {
             <header className="tag-group-card-header">
               <PopupMenu
                 label={<h2>{group.label}</h2>}
-                ariaLabel={`Actions for ${group.label}`}
+                ariaLabel={t('tagsPage.actionsFor', { label: group.label })}
                 onEdit={() => openEditor({ kind: 'edit-group', group })}
                 onDelete={() => void handleDeleteGroup(group)}
               />
@@ -301,7 +309,7 @@ export function TagsPage() {
                   }
                   onChange={() => void handleToggleShowOnEntry(group)}
                 />
-                <span>Show on entry</span>
+                <span>{t('tagsPage.showOnEntry')}</span>
               </label>
             </header>
             <ul className="tag-list">
@@ -330,7 +338,7 @@ export function TagsPage() {
                 >
                   <PopupMenu
                     label={tag.label}
-                    ariaLabel={`Actions for ${tag.label}`}
+                    ariaLabel={t('tagsPage.actionsFor', { label: tag.label })}
                     onEdit={() => openEditor({ kind: 'edit-tag', group, tag })}
                     onDelete={() => void handleDeleteTag(group, tag)}
                   />
@@ -343,7 +351,7 @@ export function TagsPage() {
                 <button
                   type="button"
                   className="icon-button-add"
-                  aria-label={`Add tag to ${group.label}`}
+                  aria-label={t('tagsPage.addTagTo', { label: group.label })}
                   onClick={() => openEditor({ kind: 'create-tag', group })}
                 >
                   +
@@ -355,7 +363,7 @@ export function TagsPage() {
       </div>
 
       <p className="muted">
-        <Link to="/">Back to entries</Link>
+        <Link to="/">{t('common.backToEntries')}</Link>
       </p>
     </section>
   )

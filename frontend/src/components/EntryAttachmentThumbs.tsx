@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { AttachmentImage } from './AttachmentImage'
 import { PhotoLightbox } from './PhotoLightbox'
+import { useLocale } from '../context/LocaleContext'
 import type { AttachmentPublic } from '../types/mood'
 
 type EntryAttachmentThumbsProps = {
@@ -15,6 +16,7 @@ export function EntryAttachmentThumbs({
   attachments,
   showAudioCount = true,
 }: EntryAttachmentThumbsProps) {
+  const { t } = useLocale()
   const photos = attachments
     .filter((attachment) => attachment.kind === 'photo')
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
@@ -38,7 +40,7 @@ export function EntryAttachmentThumbs({
                 role="button"
                 tabIndex={0}
                 className="entry-photo-thumb-button"
-                aria-label={`View ${photo.original_name}`}
+                aria-label={t('media.viewPhoto', { name: photo.original_name })}
                 onClick={(event) => {
                   event.preventDefault()
                   event.stopPropagation()
@@ -62,7 +64,11 @@ export function EntryAttachmentThumbs({
             ))}
           </span>
         ) : null}
-        {audioCount > 0 ? <span className="entry-audio-count muted">{audioCount} audio</span> : null}
+        {audioCount > 0 ? (
+          <span className="entry-audio-count muted">
+            {t('media.audioCount', { count: audioCount })}
+          </span>
+        ) : null}
       </span>
 
       {lightboxIndex !== null ? (

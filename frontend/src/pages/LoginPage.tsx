@@ -6,11 +6,13 @@ import { Alert } from '../components/Alert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { t } = useLocale()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -26,9 +28,9 @@ export function LoginPage() {
       navigate('/')
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
-        setError('Email is not verified yet. Resend the verification email and try again.')
+        setError(t('errors.emailNotVerified'))
       } else {
-        setError(err instanceof Error ? err.message : 'Login failed')
+        setError(err instanceof Error ? err.message : t('errors.loginFailed'))
       }
     } finally {
       setIsSubmitting(false)
@@ -37,15 +39,15 @@ export function LoginPage() {
 
   return (
     <>
-      <h1>Log in</h1>
-      <p className="muted">Use your email and password, or continue with Google.</p>
+      <h1>{t('auth.logInTitle')}</h1>
+      <p className="muted">{t('auth.logInSubtitle')}</p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <form className="form" onSubmit={handleSubmit}>
         <FormField
           id="email"
-          label="Email"
+          label={t('common.email')}
           type="email"
           autoComplete="email"
           required
@@ -54,7 +56,7 @@ export function LoginPage() {
         />
         <FormField
           id="password"
-          label="Password"
+          label={t('common.password')}
           type="password"
           autoComplete="current-password"
           required
@@ -62,20 +64,20 @@ export function LoginPage() {
           onChange={(event) => setPassword(event.target.value)}
         />
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
+          {isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
         </button>
       </form>
 
-      <div className="divider">or</div>
+      <div className="divider">{t('common.or')}</div>
 
       <a className="button button-secondary button-block" href={getGoogleLoginUrl()}>
-        Continue with Google
+        {t('auth.continueWithGoogle')}
       </a>
 
-      <AuthFooterLink to="/forgot-password">Forgot password?</AuthFooterLink>
-      <AuthFooterLink to="/resend-verification">Resend verification email</AuthFooterLink>
+      <AuthFooterLink to="/forgot-password">{t('auth.forgotPassword')}</AuthFooterLink>
+      <AuthFooterLink to="/resend-verification">{t('auth.resendVerification')}</AuthFooterLink>
       <p className="auth-footer">
-        No account? <Link to="/register">Register</Link>
+        {t('auth.noAccount')} <Link to="/register">{t('nav.register')}</Link>
       </p>
     </>
   )

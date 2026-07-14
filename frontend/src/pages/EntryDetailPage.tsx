@@ -8,6 +8,8 @@ import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
+import { intlLocale } from '../i18n/t'
 import { ApiError } from '../lib/errors'
 import { formatDayHeading, formatTime } from '../lib/datetime'
 import type { MoodEntryPublic } from '../types/mood'
@@ -16,7 +18,9 @@ export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { locale, t } = useLocale()
   const timeZone = user?.timezone ?? 'UTC'
+  const dateLocale = intlLocale(locale)
 
   const [entry, setEntry] = useState<MoodEntryPublic | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -25,20 +29,21 @@ export function EntryDetailPage() {
 
   useEffect(() => {
     if (!id) {
-      setError('Entry id is missing')
+      setError(t('errors.entryIdMissing'))
       setIsLoading(false)
       return
     }
 
     const load = async () => {
+      setIsLoading(true)
       try {
         const loaded = await getMoodEntry(id)
         setEntry(loaded)
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
-          setError('Verify your email before viewing mood entries.')
+          setError(t('errors.verifyToViewEntry'))
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load entry')
+          setError(err instanceof Error ? err.message : t('errors.failedLoadEntry'))
         }
       } finally {
         setIsLoading(false)
@@ -46,10 +51,10 @@ export function EntryDetailPage() {
     }
 
     void load()
-  }, [id])
+  }, [id, locale, t])
 
   const handleDelete = async () => {
-    if (!entry || !window.confirm('Delete this mood entry?')) {
+    if (!entry || !window.confirm(t('confirm.deleteEntry'))) {
       return
     }
     setIsDeleting(true)
@@ -58,7 +63,7 @@ export function EntryDetailPage() {
       await deleteMoodEntry(entry.id)
       navigate('/')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete entry')
+      setError(err instanceof Error ? err.message : t('errors.failedDeleteEntry'))
       setIsDeleting(false)
     }
   }
@@ -69,14 +74,14 @@ export function EntryDetailPage() {
     <section className="page">
       <EmailVerificationBanner />
       <header className="page-header">
-        <h1>Mood entry</h1>
+        <h1>{t('entries.moodEntry')}</h1>
         <Link className="button button-secondary" to="/">
-          Back to entries
+          {t('common.backToEntries')}
         </Link>
       </header>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
-      {isLoading ? <p className="muted">Loading entry…</p> : null}
+      {isLoading ? <p className="muted">{t('common.loadingEntry')}</p> : null}
 
       {entry ? (
         <article className="entry-detail">
@@ -87,7 +92,8 @@ export function EntryDetailPage() {
             <div>
               <p className="entry-detail-score">{entry.score_label}</p>
               <p className="muted">
-                {formatDayHeading(entry.recorded_at, timeZone)} · {formatTime(entry.recorded_at, timeZone)}
+                {formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ·{' '}
+                {formatTime(entry.recorded_at, timeZone, dateLocale)}
               </p>
             </div>
           </div>
@@ -118,7 +124,7 @@ export function EntryDetailPage() {
 
           <div className="button-row">
             <Link className="button" to={`/entries/${entry.id}/edit`}>
-              Edit
+              {t('common.edit')}
             </Link>
             <button
               type="button"
@@ -126,7 +132,7 @@ export function EntryDetailPage() {
               onClick={() => void handleDelete()}
               disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting…' : 'Delete'}
+              {isDeleting ? t('common.deleting') : t('common.delete')}
             </button>
           </div>
         </article>

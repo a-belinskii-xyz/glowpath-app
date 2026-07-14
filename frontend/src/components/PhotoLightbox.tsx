@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 import { AttachmentImage } from './AttachmentImage'
+import { useLocale } from '../context/LocaleContext'
 import type { AttachmentPublic } from '../types/mood'
 
 type PhotoLightboxProps = {
@@ -19,6 +20,7 @@ export function PhotoLightbox({
   onClose,
   onIndexChange,
 }: PhotoLightboxProps) {
+  const { t } = useLocale()
   const dialogRef = useRef<HTMLDivElement>(null)
   const photo = photos[index]
   const hasMultiple = photos.length > 1
@@ -69,7 +71,12 @@ export function PhotoLightbox({
         aria-label={photo.original_name}
         onClick={(event) => event.stopPropagation()}
       >
-        <button type="button" className="photo-lightbox-close" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="photo-lightbox-close"
+          onClick={onClose}
+          aria-label={t('common.close')}
+        >
           ×
         </button>
 
@@ -78,7 +85,7 @@ export function PhotoLightbox({
             type="button"
             className="photo-lightbox-nav photo-lightbox-prev"
             onClick={goPrev}
-            aria-label="Previous photo"
+            aria-label={t('media.previousPhoto')}
           >
             ‹
           </button>
@@ -98,7 +105,7 @@ export function PhotoLightbox({
             type="button"
             className="photo-lightbox-nav photo-lightbox-next"
             onClick={goNext}
-            aria-label="Next photo"
+            aria-label={t('media.nextPhoto')}
           >
             ›
           </button>

@@ -1,3 +1,4 @@
+import { useLocale } from '../context/LocaleContext'
 import type { MoodEntryStatsResponse, MoodMonthComparisonPublic } from '../types/mood'
 
 type EmotionStatsBarChartProps = {
@@ -35,33 +36,38 @@ function formatIndex(value: number | null): string | null {
 }
 
 export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
+  const { t, tp } = useLocale()
   const { scores, total_entries: totalEntries, month_index: monthIndex, comparison } = stats
   const maxCount = Math.max(1, ...scores.map((item) => item.count))
   const currentLabel = formatIndex(comparison.current_index ?? monthIndex)
   const previousLabel = formatIndex(comparison.previous_index)
 
   return (
-    <section className="emotion-stats" aria-label="Emotion statistics for this month">
+    <section className="emotion-stats" aria-label={t('emotionStats.ariaLabel')}>
       <div className="emotion-stats-header">
-        <h2 className="emotion-stats-title">Emotions this month</h2>
+        <h2 className="emotion-stats-title">{t('emotionStats.title')}</h2>
         <p className="emotion-stats-summary muted">
           {totalEntries === 0
-            ? 'No entries yet'
-            : `${totalEntries} entr${totalEntries === 1 ? 'y' : 'ies'}`}
+            ? t('emotionStats.noEntries')
+            : tp(totalEntries, {
+                one: 'emotionStats.entryCountOne',
+                few: 'emotionStats.entryCountFew',
+                many: 'emotionStats.entryCountMany',
+              })}
         </p>
       </div>
 
       <p className={comparisonClassName(comparison.verdict)}>{comparison.message}</p>
       {currentLabel && previousLabel && comparison.verdict !== 'insufficient_data' ? (
         <p className="emotion-stats-indexes muted">
-          Month index {currentLabel} vs {previousLabel} last month
+          {t('emotionStats.monthIndex', { current: currentLabel, previous: previousLabel })}
           {comparison.delta !== null
             ? ` (${comparison.delta > 0 ? '+' : ''}${comparison.delta.toFixed(2)})`
             : null}
         </p>
       ) : null}
 
-      <div className="emotion-stats-chart" role="img" aria-label="Bar chart of emotion counts">
+      <div className="emotion-stats-chart" role="img" aria-label={t('emotionStats.chartAria')}>
         {scores.map((item) => {
           const heightPercent = totalEntries === 0 ? 0 : (item.count / maxCount) * 100
           return (

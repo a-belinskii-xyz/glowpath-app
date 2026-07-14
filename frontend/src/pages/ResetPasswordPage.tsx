@@ -5,9 +5,11 @@ import { resetPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
+import { useLocale } from '../context/LocaleContext'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
+  const { t } = useLocale()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
 
@@ -23,12 +25,12 @@ export function ResetPasswordPage() {
     setSuccess(null)
 
     if (!token) {
-      setError('Reset token is missing from the link')
+      setError(t('errors.resetTokenMissing'))
       return
     }
 
     if (newPassword !== passwordConfirm) {
-      setError('Passwords do not match')
+      setError(t('errors.passwordsMismatch'))
       return
     }
 
@@ -43,7 +45,7 @@ export function ResetPasswordPage() {
       setSuccess(response.message)
       setTimeout(() => navigate('/login'), 1500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Password reset failed')
+      setError(err instanceof Error ? err.message : t('errors.passwordResetFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -52,17 +54,17 @@ export function ResetPasswordPage() {
   if (!token) {
     return (
       <>
-        <h1>Reset password</h1>
-        <Alert variant="error">Invalid or missing reset token. Request a new link.</Alert>
-        <AuthFooterLink to="/forgot-password">Request reset link</AuthFooterLink>
+        <h1>{t('auth.resetTitle')}</h1>
+        <Alert variant="error">{t('auth.invalidResetToken')}</Alert>
+        <AuthFooterLink to="/forgot-password">{t('auth.requestResetLink')}</AuthFooterLink>
       </>
     )
   }
 
   return (
     <>
-      <h1>Reset password</h1>
-      <p className="muted">Choose a new password for your account.</p>
+      <h1>{t('auth.resetTitle')}</h1>
+      <p className="muted">{t('auth.resetSubtitle')}</p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
       {success ? <Alert variant="success">{success}</Alert> : null}
@@ -70,7 +72,7 @@ export function ResetPasswordPage() {
       <form className="form" onSubmit={handleSubmit}>
         <FormField
           id="new_password"
-          label="New password"
+          label={t('auth.newPassword')}
           type="password"
           autoComplete="new-password"
           minLength={8}
@@ -80,7 +82,7 @@ export function ResetPasswordPage() {
         />
         <FormField
           id="password_confirm"
-          label="Confirm password"
+          label={t('common.confirmPassword')}
           type="password"
           autoComplete="new-password"
           minLength={8}
@@ -89,11 +91,11 @@ export function ResetPasswordPage() {
           onChange={(event) => setPasswordConfirm(event.target.value)}
         />
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving…' : 'Reset password'}
+          {isSubmitting ? t('common.saving') : t('auth.resetPassword')}
         </button>
       </form>
 
-      <AuthFooterLink to="/login">Back to login</AuthFooterLink>
+      <AuthFooterLink to="/login">{t('common.backToLogin')}</AuthFooterLink>
     </>
   )
 }

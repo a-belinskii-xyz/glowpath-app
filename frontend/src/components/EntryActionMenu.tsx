@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Link } from 'react-router-dom'
 
+import { useLocale } from '../context/LocaleContext'
 import type { MoodEntryPublic } from '../types/mood'
 
 type EntryActionMenuProps = {
@@ -10,6 +11,7 @@ type EntryActionMenuProps = {
 }
 
 export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
+  const { t } = useLocale()
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -37,7 +39,7 @@ export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
   }, [isOpen])
 
   const handleDelete = () => {
-    if (window.confirm('Delete this mood entry?')) {
+    if (window.confirm(t('confirm.deleteEntry'))) {
       onDelete(entry.id)
     }
     setIsOpen(false)
@@ -48,7 +50,7 @@ export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
       <button
         type="button"
         className="entry-overflow-trigger"
-        aria-label="Entry actions"
+        aria-label={t('entryActions.ariaLabel')}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
@@ -56,14 +58,14 @@ export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
         <span aria-hidden="true">⋮</span>
       </button>
       {isOpen ? (
-        <div className="entry-overflow-menu" role="menu" aria-label="Entry actions">
+        <div className="entry-overflow-menu" role="menu" aria-label={t('entryActions.ariaLabel')}>
           <Link
             className="entry-overflow-item"
             role="menuitem"
             to={`/entries/${entry.id}`}
             onClick={() => setIsOpen(false)}
           >
-            Open
+            {t('common.open')}
           </Link>
           <Link
             className="entry-overflow-item"
@@ -71,7 +73,7 @@ export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
             to={`/entries/${entry.id}/edit`}
             onClick={() => setIsOpen(false)}
           >
-            Edit
+            {t('common.edit')}
           </Link>
           <button
             type="button"
@@ -79,7 +81,7 @@ export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
             role="menuitem"
             onClick={handleDelete}
           >
-            Delete
+            {t('common.delete')}
           </button>
         </div>
       ) : null}

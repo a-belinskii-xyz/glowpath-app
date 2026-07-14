@@ -5,6 +5,7 @@ import { Alert } from '../components/Alert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 
 function detectTimezone(): string {
   try {
@@ -16,6 +17,7 @@ function detectTimezone(): string {
 
 export function RegisterPage() {
   const { register } = useAuth()
+  const { t } = useLocale()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
@@ -30,7 +32,7 @@ export function RegisterPage() {
     setSuccess(null)
 
     if (password !== passwordConfirm) {
-      setError('Passwords do not match')
+      setError(t('errors.passwordsMismatch'))
       return
     }
 
@@ -40,7 +42,7 @@ export function RegisterPage() {
       const message = await register({ email, password, password_confirm: passwordConfirm, timezone })
       setSuccess(message)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
+      setError(err instanceof Error ? err.message : t('errors.registrationFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -48,8 +50,8 @@ export function RegisterPage() {
 
   return (
     <>
-      <h1>Create account</h1>
-      <p className="muted">We will send a verification link to your email.</p>
+      <h1>{t('auth.createAccountTitle')}</h1>
+      <p className="muted">{t('auth.createAccountSubtitle')}</p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
       {success ? <Alert variant="success">{success}</Alert> : null}
@@ -57,7 +59,7 @@ export function RegisterPage() {
       <form className="form" onSubmit={handleSubmit}>
         <FormField
           id="email"
-          label="Email"
+          label={t('common.email')}
           type="email"
           autoComplete="email"
           required
@@ -66,7 +68,7 @@ export function RegisterPage() {
         />
         <FormField
           id="password"
-          label="Password"
+          label={t('common.password')}
           type="password"
           autoComplete="new-password"
           minLength={8}
@@ -76,7 +78,7 @@ export function RegisterPage() {
         />
         <FormField
           id="password_confirm"
-          label="Confirm password"
+          label={t('common.confirmPassword')}
           type="password"
           autoComplete="new-password"
           minLength={8}
@@ -86,20 +88,21 @@ export function RegisterPage() {
         />
         <FormField
           id="timezone"
-          label="Timezone"
+          label={t('common.timezone')}
           type="text"
           readOnly
           value={timezone}
-          hint="Detected from your browser"
+          hint={t('auth.timezoneHint')}
         />
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating account…' : 'Register'}
+          {isSubmitting ? t('auth.creatingAccount') : t('nav.register')}
         </button>
       </form>
 
-      <AuthFooterLink to="/login">Already have an account? Log in</AuthFooterLink>
+      <AuthFooterLink to="/login">{t('auth.alreadyHaveAccount')}</AuthFooterLink>
       <p className="auth-footer">
-        Need a new link? <Link to="/resend-verification">Resend verification</Link>
+        {t('auth.needNewLink')}{' '}
+        <Link to="/resend-verification">{t('auth.resendVerificationShort')}</Link>
       </p>
     </>
   )

@@ -11,13 +11,14 @@ import { listTagGroups } from '../api/tagGroups'
 import { Alert } from './Alert'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
 import {
   datetimeLocalToIso,
   isoToDatetimeLocal,
   nowDatetimeLocal,
 } from '../lib/datetime'
-import { MOOD_SCORE_OPTIONS } from '../lib/moodScale'
+import { getMoodScoreOptions } from '../lib/moodScale'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
 import type { TagGroupPublic } from '../types/tag'
 
@@ -36,7 +37,9 @@ type MoodEntryFormProps = {
 export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: MoodEntryFormProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { locale, t } = useLocale()
   const timeZone = user?.timezone ?? 'UTC'
+  const moodScoreOptions = getMoodScoreOptions(locale)
 
   const [score, setScore] = useState(initialEntry?.score ?? 4)
   const [recordedAtLocal, setRecordedAtLocal] = useState(
@@ -61,6 +64,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
 
   useEffect(() => {
     const loadTags = async () => {
+      setIsLoadingTags(true)
       try {
         const response = await listTagGroups()
         setTagGroups(response.items)
@@ -74,16 +78,16 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
         }
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
-          setError('Verify your email before managing mood entries.')
+          setError(t('errors.verifyToManageEntries'))
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load tags')
+          setError(err instanceof Error ? err.message : t('errors.failedLoadTags'))
         }
       } finally {
         setIsLoadingTags(false)
       }
     }
     void loadTags()
-  }, [initialEntry])
+  }, [initialEntry, locale, t])
 
   const primaryGroups = tagGroups.filter((group) => group.show_on_entry)
   const otherGroups = tagGroups.filter((group) => !group.show_on_entry)
@@ -124,7 +128,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
     if (photoCount + files.length > 5) {
-      setError('You can attach up to 5 photos per entry.')
+      setError(t('errors.photosLimit'))
       return
     }
     setPendingPhotos((current) => [
@@ -140,7 +144,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
       return
     }
     if (hasAudio) {
-      setError('Only one audio file is allowed per entry.')
+      setError(t('errors.audioLimit'))
       return
     }
     setPendingAudio(file)
@@ -159,7 +163,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
       await deleteMoodEntryAttachment(initialEntry.id, attachmentId)
       setExistingAttachments((current) => current.filter((item) => item.id !== attachmentId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove attachment')
+      setError(err instanceof Error ? err.message : t('errors.failedRemoveAttachment'))
     }
   }
 
@@ -195,23 +199,26 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
       navigate('/')
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
-        setError('Verify your email before saving mood entries.')
+        setError(t('errors.verifyToSaveEntries'))
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to save entry')
+        setError(err instanceof Error ? err.message : t('errors.failedSaveEntry'))
       }
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const kindLabel = (kind: string) =>
+    kind === 'photo' ? t('entries.kindPhoto') : kind === 'audio' ? t('entries.kindAudio') : kind
+
   return (
     <form className="form mood-entry-form" onSubmit={handleSubmit}>
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <fieldset className="form-field">
-        <legend className="form-label">Mood score</legend>
+        <legend className="form-label">{t('entries.moodScore')}</legend>
         <div className="score-picker">
-          {MOOD_SCORE_OPTIONS.map((option) => (
+          {moodScoreOptions.map((option) => (
             <button
               key={option.score}
               type="button"
@@ -227,7 +234,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
       </fieldset>
 
       <label className="form-field">
-        <span className="form-label">Recorded at</span>
+        <span className="form-label">{t('entries.recordedAt')}</span>
         <input
           className="form-input"
           type="datetime-local"
@@ -237,17 +244,22 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
         />
       </label>
 
-      <MarkdownNoteEditor value={note} onChange={setNote} />
+      <MarkdownNoteEditor
+        value={note}
+        onChange={setNote}
+        label={t('common.note')}
+        placeholder={t('markdown.placeholder')}
+      />
 
       <section className="tag-sections">
         <div className="tag-sections-header">
-          <h2 className="section-title">Tags</h2>
+          <h2 className="section-title">{t('common.tags')}</h2>
           <Link to="/tags" className="button button-secondary button-small">
-            Manage tags
+            {t('entries.manageTags')}
           </Link>
         </div>
         {isLoadingTags ? (
-          <p className="muted">Loading tags…</p>
+          <p className="muted">{t('common.loadingTags')}</p>
         ) : (
           <>
             {primaryGroups.map(renderTagGroup)}
@@ -259,7 +271,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
                   onClick={() => setShowOtherGroups((current) => !current)}
                   aria-expanded={showOtherGroups}
                 >
-                  {showOtherGroups ? 'Hide other' : 'Other'}
+                  {showOtherGroups ? t('entries.hideOther') : t('entries.other')}
                 </button>
                 {showOtherGroups ? otherGroups.map(renderTagGroup) : null}
               </div>
@@ -269,10 +281,10 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
       </section>
 
       <section className="attachments-section">
-        <h2 className="section-title">Attachments</h2>
+        <h2 className="section-title">{t('entries.attachments')}</h2>
         <div className="attachment-inputs">
           <label className="form-field">
-            <span className="form-label">Photos ({photoCount}/5)</span>
+            <span className="form-label">{t('entries.photos', { count: photoCount })}</span>
             <input
               className="form-input"
               type="file"
@@ -283,7 +295,7 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
             />
           </label>
           <label className="form-field">
-            <span className="form-label">Audio ({hasAudio ? 1 : 0}/1)</span>
+            <span className="form-label">{t('entries.audio', { count: hasAudio ? 1 : 0 })}</span>
             <input
               className="form-input"
               type="file"
@@ -297,7 +309,10 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
           {existingAttachments.map((attachment) => (
             <li key={attachment.id}>
               <span>
-                {attachment.kind}: {attachment.original_name}
+                {t('entries.attachmentItem', {
+                  kind: kindLabel(attachment.kind),
+                  name: attachment.original_name,
+                })}
               </span>
               {mode === 'edit' ? (
                 <button
@@ -305,24 +320,34 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
                   className="link-button"
                   onClick={() => void removeExistingAttachment(attachment.id)}
                 >
-                  Remove
+                  {t('common.remove')}
                 </button>
               ) : null}
             </li>
           ))}
           {pendingPhotos.map((pending, index) => (
             <li key={`photo-${pending.file.name}-${index}`}>
-              <span>photo: {pending.file.name}</span>
+              <span>
+                {t('entries.attachmentItem', {
+                  kind: t('entries.kindPhoto'),
+                  name: pending.file.name,
+                })}
+              </span>
               <button type="button" className="link-button" onClick={() => removePendingPhoto(index)}>
-                Remove
+                {t('common.remove')}
               </button>
             </li>
           ))}
           {pendingAudio ? (
             <li>
-              <span>audio: {pendingAudio.name}</span>
+              <span>
+                {t('entries.attachmentItem', {
+                  kind: t('entries.kindAudio'),
+                  name: pendingAudio.name,
+                })}
+              </span>
               <button type="button" className="link-button" onClick={() => setPendingAudio(null)}>
-                Remove
+                {t('common.remove')}
               </button>
             </li>
           ) : null}
@@ -331,10 +356,14 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
 
       <div className="button-row">
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving…' : mode === 'create' ? 'Create entry' : 'Save changes'}
+          {isSubmitting
+            ? t('common.saving')
+            : mode === 'create'
+              ? t('entries.createEntry')
+              : t('entries.saveChanges')}
         </button>
         <button className="button button-secondary" type="button" onClick={() => navigate('/')}>
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </form>

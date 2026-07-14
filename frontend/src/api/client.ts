@@ -1,4 +1,5 @@
 import { ApiError, parseApiError } from '../lib/errors'
+import { apiLocaleHeaders } from '../lib/locale'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/storage'
 import type { TokenResponse } from '../types/auth'
 
@@ -55,6 +56,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...apiLocaleHeaders(),
     ...extraHeaders,
   }
 

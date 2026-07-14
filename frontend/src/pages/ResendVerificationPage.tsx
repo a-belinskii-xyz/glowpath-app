@@ -4,8 +4,10 @@ import { resendVerification } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
+import { useLocale } from '../context/LocaleContext'
 
 export function ResendVerificationPage() {
+  const { t } = useLocale()
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +23,7 @@ export function ResendVerificationPage() {
       const response = await resendVerification(email)
       setMessage(response.message)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Request failed')
+      setError(err instanceof Error ? err.message : t('errors.requestFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -29,8 +31,8 @@ export function ResendVerificationPage() {
 
   return (
     <>
-      <h1>Resend verification</h1>
-      <p className="muted">Send a new verification email to your inbox.</p>
+      <h1>{t('auth.resendTitle')}</h1>
+      <p className="muted">{t('auth.resendSubtitle')}</p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
       {message ? <Alert variant="success">{message}</Alert> : null}
@@ -38,7 +40,7 @@ export function ResendVerificationPage() {
       <form className="form" onSubmit={handleSubmit}>
         <FormField
           id="email"
-          label="Email"
+          label={t('common.email')}
           type="email"
           autoComplete="email"
           required
@@ -46,11 +48,11 @@ export function ResendVerificationPage() {
           onChange={(event) => setEmail(event.target.value)}
         />
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Sending…' : 'Resend email'}
+          {isSubmitting ? t('auth.sending') : t('auth.resendEmail')}
         </button>
       </form>
 
-      <AuthFooterLink to="/login">Back to login</AuthFooterLink>
+      <AuthFooterLink to="/login">{t('common.backToLogin')}</AuthFooterLink>
     </>
   )
 }
