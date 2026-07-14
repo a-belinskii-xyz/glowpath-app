@@ -36,7 +36,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*"]
+include = ["app*", "dev_seed*"]
 
 [tool.ruff]
 target-version = "py312"

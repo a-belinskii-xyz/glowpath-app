@@ -6,7 +6,7 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build
+.PHONY: install lint format typecheck test run up down migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed
 
 FRONTEND := frontend
 
@@ -77,5 +77,13 @@ frontend-dev:
 
 frontend-build:
 	cd $(FRONTEND) && npm run build
+
+# Local-only mock data (see backend/dev_seed/). Pass args via SEED_ARGS, e.g.:
+#   make seed SEED_ARGS='--seed 7 --users 3 --days 14'
+# Overrides MinIO host for host-side runs (Compose publishes MINIO_API_PORT).
+SEED_ARGS ?=
+MINIO_API_PORT ?= 9000
+seed: $(MARKER)
+	cd $(BACKEND) && MINIO_ENDPOINT=localhost:$(MINIO_API_PORT) $(BIN)/python -m dev_seed $(SEED_ARGS)
 
 venv: $(VENV)/bin/python

@@ -204,6 +204,33 @@ Terminal 1: docker compose up db mailhog minio app   # or make up
 Terminal 2: make frontend-dev
 ```
 
+## Mock seed data (local only)
+
+`backend/dev_seed/` fills Postgres + MinIO with deterministic demo users for UI work. It is **not** part of the app runtime (no API routes).
+
+Requires a running DB and MinIO (e.g. `make up`). `make seed` uses `DATABASE_URL` from `backend/.env` and overrides `MINIO_ENDPOINT` to `localhost:$(MINIO_API_PORT)` from the root `.env` so it works from the host against Compose.
+
+```bash
+make seed
+# or with options:
+make seed SEED_ARGS='--seed 42 --users 5 --days 45'
+cd backend && .venv/bin/python -m dev_seed --help
+```
+
+Same `--seed` → same content (notes, scores, entry times, attachment presence). Re-running deletes previous `*@seed.moodtracker.dev` users and their MinIO objects, then recreates them.
+
+Days are **not** filled solidly: each persona has a logging style (consistent, sparse, weekday-only, bursts, reflective, …) with realistic gaps.
+
+| Email | Password |
+|-------|----------|
+| `alice@seed.moodtracker.dev` | `password123` |
+| `bob@seed.moodtracker.dev` | `password123` |
+| `carol@seed.moodtracker.dev` | `password123` |
+| `diana@seed.moodtracker.dev` | `password123` |
+| `evan@seed.moodtracker.dev` | `password123` |
+
+(Up to 8 personas if you raise `--users`; see `backend/dev_seed/personas.py`.)
+
 ## Tooling
 
 ```bash
@@ -215,6 +242,7 @@ make test
 make migrate              # alembic upgrade head
 make migrate-create MSG="add users table"
 make migrate-down         # alembic downgrade -1 (or REV=base / REV=<revision>)
+make seed                 # local mock users/entries/attachments
 make frontend-install
 make frontend-dev
 make frontend-build
@@ -235,6 +263,7 @@ backend/
     models/       # ORM models
     schemas/      # Pydantic request/response models
     services/     # business logic
+  dev_seed/       # local-only mock data CLI (not production)
   alembic/        # database migrations
   tests/          # pytest
 frontend/
