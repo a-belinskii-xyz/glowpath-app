@@ -2,7 +2,16 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, Text, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    SmallInteger,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,6 +22,7 @@ from app.db.names import fk_column, index_name, table_name
 
 if TYPE_CHECKING:
     from app.models.mood_entry_attachment import MoodEntryAttachment
+    from app.models.mood_entry_goal import MoodEntryGoal
     from app.models.mood_entry_tag import MoodEntryTag
     from app.models.user import User
 
@@ -30,6 +40,11 @@ class MoodEntry(TimestampMixin, Base):
             "recorded_at",
             postgresql_ops={"recorded_at": "DESC"},
         ),
+        Index(
+            index_name("mood_entries", "user_id__is_favorite"),
+            "user_id",
+            "is_favorite",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -45,9 +60,18 @@ class MoodEntry(TimestampMixin, Base):
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     score: Mapped[int] = mapped_column(SmallInteger)
     note: Mapped[str | None] = mapped_column(Text)
+    is_favorite: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
 
     user: Mapped["User"] = relationship(back_populates="mood_entries")
     tag_links: Mapped[list["MoodEntryTag"]] = relationship(
+        back_populates="mood_entry",
+        cascade="all, delete-orphan",
+    )
+    goal_links: Mapped[list["MoodEntryGoal"]] = relationship(
         back_populates="mood_entry",
         cascade="all, delete-orphan",
     )

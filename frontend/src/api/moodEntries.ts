@@ -62,6 +62,9 @@ function buildListQuery(params: ListMoodEntriesParams = {}): string {
   if (params.recorded_to) {
     search.set('recorded_to', params.recorded_to)
   }
+  if (params.is_favorite !== undefined) {
+    search.set('is_favorite', String(params.is_favorite))
+  }
   const query = search.toString()
   return query ? `?${query}` : ''
 }

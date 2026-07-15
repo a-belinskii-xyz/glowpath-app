@@ -12,6 +12,7 @@ from app.db.names import table_name
 
 if TYPE_CHECKING:
     from app.models.auth_token import AuthToken
+    from app.models.goal import Goal
     from app.models.mood_entry import MoodEntry
     from app.models.note_template import NoteTemplate
     from app.models.tag_group import TagGroup
@@ -40,4 +41,5 @@ class User(TimestampMixin, Base):
     mood_entries: Mapped[list["MoodEntry"]] = relationship(back_populates="user")
     tag_groups: Mapped[list["TagGroup"]] = relationship(back_populates="user")
     note_templates: Mapped[list["NoteTemplate"]] = relationship(back_populates="user")
+    goals: Mapped[list["Goal"]] = relationship(back_populates="user")
     auth_tokens: Mapped[list["AuthToken"]] = relationship(back_populates="user")

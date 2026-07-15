@@ -89,6 +89,13 @@ input {
   margin-bottom: 1.5rem;
 }
 
+.page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .lead {
   color: #4b5563;
   margin-bottom: 1.5rem;
@@ -182,6 +189,12 @@ input {
 
 .button-secondary:hover {
   background: #f9fafb;
+}
+
+.button-secondary.is-active {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 
 .button-block {
@@ -687,6 +700,11 @@ code {
   font-weight: 600;
 }
 
+.entry-favorite-mark {
+  margin-right: 0.35rem;
+  color: #ca8a04;
+}
+
 .entry-time {
   color: #6b7280;
   font-size: 0.875rem;
@@ -777,6 +795,11 @@ code {
   border-radius: 999px;
   background: #eff6ff;
   color: #1d4ed8;
+}
+
+.entry-goal {
+  background: #ecfdf5;
+  color: #047857;
 }
 
 .entry-attachments {
@@ -1292,6 +1315,59 @@ code {
   border-color: #2563eb;
   background: #eff6ff;
   color: #1d4ed8;
+}
+
+.goal-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.goal-chip-progress {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.goal-chip.tag-chip-selected {
+  border-color: #059669;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.goals-list {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+}
+
+.goal-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.goal-card-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.goal-card.is-dragging {
+  opacity: 0.55;
+}
+
+.goal-week-progress {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  color: #047857;
+}
+
+.goal-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
 }
 
 .tag-other-section {

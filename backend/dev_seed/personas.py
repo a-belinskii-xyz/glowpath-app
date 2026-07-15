@@ -30,6 +30,13 @@ class CustomTagGroup:
 
 
 @dataclass(frozen=True, slots=True)
+class CustomGoal:
+    slug: str
+    labels: dict[str, str]
+    times_per_week: int
+
+
+@dataclass(frozen=True, slots=True)
 class Persona:
     key: str
     display_name: str
@@ -39,6 +46,7 @@ class Persona:
     custom_groups: tuple[CustomTagGroup, ...]
     note_flavor: str  # flavor key for note pool selection
     logging: LoggingStyle
+    custom_goals: tuple[CustomGoal, ...] = ()
 
     @property
     def email(self) -> str:
@@ -54,6 +62,10 @@ PERSONAS: tuple[Persona, ...] = (
         note_locale="en",
         note_flavor="active",
         logging=CONSISTENT,
+        custom_goals=(
+            CustomGoal("morning_run", {"en": "Morning run", "ru": "Утренняя пробежка"}, 3),
+            CustomGoal("no_sugar", {"en": "No sugar", "ru": "Без сахара"}, 5),
+        ),
         custom_groups=(
             CustomTagGroup(
                 slug="hobbies",
@@ -83,6 +95,9 @@ PERSONAS: tuple[Persona, ...] = (
         note_locale="ru",
         note_flavor="calm",
         logging=SPARSE,
+        custom_goals=(
+            CustomGoal("walk_outside", {"en": "Walk outside", "ru": "Прогулка"}, 4),
+        ),
         custom_groups=(
             CustomTagGroup(
                 slug="location",
@@ -104,6 +119,10 @@ PERSONAS: tuple[Persona, ...] = (
         note_locale="en",
         note_flavor="work",
         logging=WEEKDAY_WORKER,
+        custom_goals=(
+            CustomGoal("deep_work_block", {"en": "Deep work block", "ru": "Блок глубокой работы"}, 4),
+            CustomGoal("inbox_zero", {"en": "Inbox zero", "ru": "Пустой инбокс"}, 3),
+        ),
         custom_groups=(
             CustomTagGroup(
                 slug="energy",
@@ -133,6 +152,9 @@ PERSONAS: tuple[Persona, ...] = (
         note_locale="ru",
         note_flavor="social",
         logging=SOCIAL_BURSTS,
+        custom_goals=(
+            CustomGoal("cook_home", {"en": "Cook at home", "ru": "Готовить дома"}, 4),
+        ),
         custom_groups=(
             CustomTagGroup(
                 slug="food",
@@ -153,6 +175,10 @@ PERSONAS: tuple[Persona, ...] = (
         note_locale="en",
         note_flavor="reflective",
         logging=REFLECTIVE,
+        custom_goals=(
+            CustomGoal("journal", {"en": "Journal", "ru": "Дневник"}, 5),
+            CustomGoal("stretch", {"en": "Stretching", "ru": "Растяжка"}, 4),
+        ),
         custom_groups=(
             CustomTagGroup(
                 slug="health",
@@ -183,6 +209,9 @@ PERSONAS: tuple[Persona, ...] = (
         note_locale="en",
         note_flavor="active",
         logging=IRREGULAR,
+        custom_goals=(
+            CustomGoal("meditate", {"en": "Meditate", "ru": "Медитация"}, 3),
+        ),
         custom_groups=(
             CustomTagGroup(
                 slug="travel",
@@ -202,6 +231,9 @@ PERSONAS: tuple[Persona, ...] = (
         note_locale="ru",
         note_flavor="work",
         logging=ON_OFF_WEEKS,
+        custom_goals=(
+            CustomGoal("side_project", {"en": "Side project hour", "ru": "Час на сайд-проект"}, 3),
+        ),
         custom_groups=(
             CustomTagGroup(
                 slug="projects",
@@ -222,6 +254,10 @@ PERSONAS: tuple[Persona, ...] = (
         note_locale="en",
         note_flavor="calm",
         logging=WEEKEND_NATURE,
+        custom_goals=(
+            CustomGoal("nature_walk", {"en": "Nature walk", "ru": "Прогулка на природе"}, 3),
+            CustomGoal("early_sleep", {"en": "Early sleep", "ru": "Ранний сон"}, 5),
+        ),
         custom_groups=(
             CustomTagGroup(
                 slug="nature",

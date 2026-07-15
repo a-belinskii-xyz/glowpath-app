@@ -77,6 +77,7 @@ def create_entry(
             recorded_at=body.recorded_at,
             note=body.note,
             tag_ids=body.tag_ids,
+            goal_ids=body.goal_ids,
         )
     except MoodEntryError as exc:
         _handle_mood_error(exc)
@@ -93,6 +94,7 @@ def list_entries(
     offset: Annotated[int, Query(ge=0)] = 0,
     recorded_from: Annotated[datetime | None, Query()] = None,
     recorded_to: Annotated[datetime | None, Query()] = None,
+    is_favorite: Annotated[bool | None, Query()] = None,
 ) -> MoodEntryListResponse:
     entries = list_mood_entries(
         db,
@@ -101,6 +103,7 @@ def list_entries(
         offset=offset,
         recorded_from=recorded_from,
         recorded_to=recorded_to,
+        is_favorite=is_favorite,
     )
     return MoodEntryListResponse(
         items=[_to_public(entry, locale=locale) for entry in entries],

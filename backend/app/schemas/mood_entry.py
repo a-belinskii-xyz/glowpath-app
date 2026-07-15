@@ -34,6 +34,7 @@ class MoodEntryCreate(BaseModel):
     recorded_at: datetime
     note: NoteField = None
     tag_ids: list[uuid.UUID] = Field(default_factory=list)
+    goal_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class MoodEntryPatch(BaseModel):
@@ -41,6 +42,8 @@ class MoodEntryPatch(BaseModel):
     recorded_at: datetime | None = None
     note: NoteField = None
     tag_ids: list[uuid.UUID] | None = None
+    goal_ids: list[uuid.UUID] | None = None
+    is_favorite: bool | None = None
 
 
 class MoodEntryTagPublic(BaseModel):
@@ -48,6 +51,12 @@ class MoodEntryTagPublic(BaseModel):
     slug: str
     label: str
     group_id: uuid.UUID
+
+
+class MoodEntryGoalPublic(BaseModel):
+    id: uuid.UUID
+    slug: str
+    label: str
 
 
 class AttachmentPublic(BaseModel):
@@ -66,7 +75,9 @@ class MoodEntryPublic(BaseModel):
     score_label: str
     score_emoji: str
     note: str | None
+    is_favorite: bool
     tags: list[MoodEntryTagPublic]
+    goals: list[MoodEntryGoalPublic]
     attachments: list[AttachmentPublic]
     created_at: datetime
     updated_at: datetime

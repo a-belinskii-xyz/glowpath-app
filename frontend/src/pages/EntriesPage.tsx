@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
@@ -47,6 +47,7 @@ export function EntriesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const loadingRef = useRef(false)
@@ -138,6 +139,7 @@ export function EntriesPage() {
           offset: pageOffset,
           recorded_from: monthBounds.recorded_from,
           recorded_to: monthBounds.recorded_to,
+          ...(favoritesOnly ? { is_favorite: true } : {}),
         })
 
         setEntries((current) =>
@@ -157,7 +159,14 @@ export function EntriesPage() {
         loadingRef.current = false
       }
     },
-    [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified],
+    [
+      favoritesOnly,
+      locale,
+      monthBounds.recorded_from,
+      monthBounds.recorded_to,
+      t,
+      user?.email_verified,
+    ],
   )
 
   useEffect(() => {
@@ -256,6 +265,34 @@ export function EntriesPage() {
     }
   }
 
+  const handleToggleFavorite = async (entryId: string, isFavorite: boolean) => {
+    const previous = entries.find((entry) => entry.id === entryId)
+    if (!previous) {
+      return
+    }
+
+    setEntries((current) =>
+      current
+        .map((entry) => (entry.id === entryId ? { ...entry, is_favorite: isFavorite } : entry))
+        .filter((entry) => !(favoritesOnly && !entry.is_favorite)),
+    )
+    setError(null)
+
+    try {
+      await patchMoodEntry(entryId, { is_favorite: isFavorite })
+    } catch (err) {
+      setEntries((current) => {
+        const restored = current.some((entry) => entry.id === entryId)
+          ? current.map((entry) => (entry.id === entryId ? previous : entry))
+          : [...current, previous].sort(
+              (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime(),
+            )
+        return restored
+      })
+      setError(err instanceof Error ? err.message : t('errors.failedSaveEntry'))
+    }
+  }
+
   const handleDayWithEntries = (date: string) => {
     if (!scrollToDay(date)) {
       pendingScrollDayRef.current = date
@@ -276,9 +313,19 @@ export function EntriesPage() {
             {t('common.next')}
           </button>
         </div>
-        <Link className="button" to="/entries/new">
-          {t('entries.newEntry')}
-        </Link>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            className={`button button-secondary button-small${favoritesOnly ? ' is-active' : ''}`}
+            aria-pressed={favoritesOnly}
+            onClick={() => setFavoritesOnly((value) => !value)}
+          >
+            {t('entries.favoritesOnly')}
+          </button>
+          <Link className="button" to="/entries/new">
+            {t('entries.newEntry')}
+          </Link>
+        </div>
       </header>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
@@ -308,7 +355,9 @@ export function EntriesPage() {
       {isLoading ? (
         <p className="muted">{t('common.loadingEntries')}</p>
       ) : user?.email_verified && entries.length === 0 ? (
-        <p className="muted">{t('entries.noEntriesThisMonth')}</p>
+        <p className="muted">
+          {favoritesOnly ? t('entries.noFavoritesThisMonth') : t('entries.noEntriesThisMonth')}
+        </p>
       ) : null}
 
       <div className="entry-feed">
@@ -324,6 +373,11 @@ export function EntriesPage() {
                     <Link className="entry-row-link" to={`/entries/${entry.id}`}>
                       <div className="entry-row-main">
                         <span className="entry-score">
+                          {entry.is_favorite ? (
+                            <span className="entry-favorite-mark" aria-hidden="true">
+                              ★
+                            </span>
+                          ) : null}
                           {entry.score_emoji} {entry.score_label}
                         </span>
                         <span className="entry-time">
@@ -342,12 +396,25 @@ export function EntriesPage() {
                           ))}
                         </div>
                       ) : null}
+                      {entry.goals.length > 0 ? (
+                        <div className="entry-tags entry-goals">
+                          {entry.goals.map((goal) => (
+                            <span key={goal.id} className="entry-tag entry-goal">
+                              {goal.label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </Link>
                     <div className="entry-row-media">
                       <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
                     </div>
                     <div className="entry-row-actions">
-                      <EntryActionMenu entry={entry} onDelete={handleDelete} />
+                      <EntryActionMenu
+                        entry={entry}
+                        onDelete={handleDelete}
+                        onToggleFavorite={handleToggleFavorite}
+                      />
                     </div>
                   </article>
                 </li>

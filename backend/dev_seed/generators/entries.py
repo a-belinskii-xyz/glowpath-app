@@ -7,8 +7,10 @@ from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from app.core.attachment_kind import AttachmentKind
+from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MoodEntryAttachment
+from app.models.mood_entry_goal import MoodEntryGoal
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
 from app.services.storage import ObjectStorage
@@ -70,6 +72,14 @@ def _day_log_chance(
     return _clamp(chance, 0.02, 0.92)
 
 
+def _goal_completion_chance(goal: Goal, style: LoggingStyle) -> float:
+    """Probability a logged day counts the goal as done, tuned to times_per_week."""
+    weekly_rate = goal.times_per_week / 7.0
+    # Consistent loggers hit targets more often; sparse ones miss more.
+    adherence = 0.55 + style.day_chance
+    return _clamp(weekly_rate * adherence, 0.08, 0.92)
+
+
 def _pick_note(persona: Persona, rng: SeededRNG) -> str | None:
     if rng.chance(persona.logging.note_skip_chance):
         return None
@@ -98,6 +108,7 @@ def create_entries_for_user(
     user_id: uuid.UUID,
     persona: Persona,
     tags: list[Tag],
+    goals: list[Goal],
     rng: SeededRNG,
     days: int,
     entries_per_day_min: int | None,
@@ -118,6 +129,7 @@ def create_entries_for_user(
     pending: list[PendingUpload] = []
     logged_yesterday: bool | None = None
     tags_sorted = sorted(tags, key=lambda t: (t.slug, str(t.labels)))
+    goals_sorted = sorted(goals, key=lambda g: (g.sort_order, g.slug))
 
     # Iterate oldest → newest so streak/gap momentum matches calendar time.
     for day_offset in range(days - 1, -1, -1):
@@ -129,6 +141,12 @@ def create_entries_for_user(
 
         n_entries = rng.randint(entries_min, entries_max)
         used_minutes: set[tuple[int, int]] = set()
+        active_goals = [goal for goal in goals_sorted if goal.starts_on <= day]
+        completed_goal_ids = [
+            goal.id
+            for goal in active_goals
+            if rng.chance(_goal_completion_chance(goal, style))
+        ]
 
         for entry_index in range(n_entries):
             entry_key = f"{persona.key}:{day.isoformat()}:{entry_index}"
@@ -162,6 +180,11 @@ def create_entries_for_user(
             tag_pick_count = rng.randint(0, min(4, len(tags_sorted)))
             for tag in rng.sample(tags_sorted, tag_pick_count):
                 entry.tag_links.append(MoodEntryTag(tag_id=tag.id))
+
+            # Mark day's completed goals on the first entry only (week stats count unique days).
+            if entry_index == 0:
+                for goal_id in completed_goal_ids:
+                    entry.goal_links.append(MoodEntryGoal(goal_id=goal_id))
 
             if rng.chance(style.photo_chance):
                 n_photos = rng.randint(1, MAX_PHOTOS_PER_ENTRY)

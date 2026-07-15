@@ -1,6 +1,7 @@
 import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { listGoals } from '../api/goals'
 import {
   createMoodEntry,
   deleteMoodEntryAttachment,
@@ -20,6 +21,7 @@ import {
   nowDatetimeLocal,
 } from '../lib/datetime'
 import { getMoodScoreOptions } from '../lib/moodScale'
+import type { GoalPublic } from '../types/goal'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic } from '../types/tag'
@@ -53,9 +55,14 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     initialEntry?.tags.map((tag) => tag.id) ?? [],
   )
+  const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>(
+    initialEntry?.goals.map((goal) => goal.id) ?? [],
+  )
   const [tagGroups, setTagGroups] = useState<TagGroupPublic[]>([])
+  const [goals, setGoals] = useState<GoalPublic[]>([])
   const [noteTemplates, setNoteTemplates] = useState<NoteTemplatePublic[]>([])
   const [showOtherGroups, setShowOtherGroups] = useState(false)
+  const [showOtherGoals, setShowOtherGoals] = useState(false)
   const [existingAttachments, setExistingAttachments] = useState<AttachmentPublic[]>(
     initialEntry?.attachments ?? [],
   )
@@ -64,17 +71,21 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingTags, setIsLoadingTags] = useState(true)
+  const [isLoadingGoals, setIsLoadingGoals] = useState(true)
 
   useEffect(() => {
-    const loadTags = async () => {
+    const loadCatalog = async () => {
       setIsLoadingTags(true)
+      setIsLoadingGoals(true)
       try {
-        const [tagsResponse, templatesResponse] = await Promise.all([
+        const [tagsResponse, templatesResponse, goalsResponse] = await Promise.all([
           listTagGroups(),
           listNoteTemplates(),
+          listGoals(),
         ])
         setTagGroups(tagsResponse.items)
         setNoteTemplates(templatesResponse.items)
+        setGoals(goalsResponse.items)
         const selectedIds = new Set(initialEntry?.tags.map((tag) => tag.id) ?? [])
         const hasSelectedOther = tagsResponse.items.some(
           (group) =>
@@ -82,6 +93,13 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
         )
         if (hasSelectedOther) {
           setShowOtherGroups(true)
+        }
+        const selectedGoalIdSet = new Set(initialEntry?.goals.map((goal) => goal.id) ?? [])
+        const hasSelectedOtherGoal = goalsResponse.items.some(
+          (goal) => !goal.show_on_entry && selectedGoalIdSet.has(goal.id),
+        )
+        if (hasSelectedOtherGoal) {
+          setShowOtherGoals(true)
         }
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
@@ -91,17 +109,28 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
         }
       } finally {
         setIsLoadingTags(false)
+        setIsLoadingGoals(false)
       }
     }
-    void loadTags()
+    void loadCatalog()
   }, [initialEntry, locale, t])
 
+  const entryDate = recordedAtLocal.split('T')[0] ?? ''
+  const activeGoals = goals.filter((goal) => goal.starts_on <= entryDate)
   const primaryGroups = tagGroups.filter((group) => group.show_on_entry)
   const otherGroups = tagGroups.filter((group) => !group.show_on_entry)
+  const primaryGoals = activeGoals.filter((goal) => goal.show_on_entry)
+  const otherGoals = activeGoals.filter((goal) => !goal.show_on_entry)
 
   const toggleTag = (tagId: string) => {
     setSelectedTagIds((current) =>
       current.includes(tagId) ? current.filter((id) => id !== tagId) : [...current, tagId],
+    )
+  }
+
+  const toggleGoal = (goalId: string) => {
+    setSelectedGoalIds((current) =>
+      current.includes(goalId) ? current.filter((id) => id !== goalId) : [...current, goalId],
     )
   }
 
@@ -140,6 +169,27 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
       </div>
     </fieldset>
   )
+
+  const renderGoalChip = (goal: GoalPublic) => {
+    const selected = selectedGoalIds.includes(goal.id)
+    return (
+      <button
+        key={goal.id}
+        type="button"
+        className={`tag-chip goal-chip${selected ? ' tag-chip-selected' : ''}`}
+        onClick={() => toggleGoal(goal.id)}
+        aria-pressed={selected}
+      >
+        <span>{goal.label}</span>
+        <span className="goal-chip-progress">
+          {t('goalsPage.weekProgress', {
+            done: goal.completed_this_week,
+            target: goal.times_per_week,
+          })}
+        </span>
+      </button>
+    )
+  }
 
   const photoCount =
     existingAttachments.filter((item) => item.kind === 'photo').length + pendingPhotos.length
@@ -202,11 +252,13 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
     setError(null)
     setIsSubmitting(true)
 
+    const activeGoalIdSet = new Set(activeGoals.map((goal) => goal.id))
     const payload = {
       score,
       recorded_at: datetimeLocalToIso(recordedAtLocal, timeZone),
       note: note.trim() ? note.trim() : null,
       tag_ids: selectedTagIds,
+      goal_ids: selectedGoalIds.filter((id) => activeGoalIdSet.has(id)),
     }
 
     try {
@@ -296,6 +348,39 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
         label={t('common.note')}
         placeholder={t('markdown.placeholder')}
       />
+
+      <section className="tag-sections">
+        <div className="tag-sections-header">
+          <h2 className="section-title">{t('common.goals')}</h2>
+          <Link to="/goals" className="button button-secondary button-small">
+            {t('entries.manageGoals')}
+          </Link>
+        </div>
+        {isLoadingGoals ? (
+          <p className="muted">{t('common.loadingGoals')}</p>
+        ) : activeGoals.length === 0 ? (
+          <p className="muted">{t('entries.noGoalsForDate')}</p>
+        ) : (
+          <>
+            <div className="tag-chips">{primaryGoals.map(renderGoalChip)}</div>
+            {otherGoals.length > 0 ? (
+              <div className="tag-other-section">
+                <button
+                  type="button"
+                  className="button button-secondary button-small"
+                  onClick={() => setShowOtherGoals((current) => !current)}
+                  aria-expanded={showOtherGoals}
+                >
+                  {showOtherGoals ? t('entries.hideOther') : t('entries.other')}
+                </button>
+                {showOtherGoals ? (
+                  <div className="tag-chips">{otherGoals.map(renderGoalChip)}</div>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        )}
+      </section>
 
       <section className="tag-sections">
         <div className="tag-sections-header">

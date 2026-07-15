@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.db.session import SessionLocal
 from app.services.storage import MinioStorage
 
 from dev_seed.config import DEFAULT_PASSWORD
 from dev_seed.generators.entries import create_entries_for_user
+from dev_seed.generators.goals import provision_goals
 from dev_seed.generators.tags import provision_tags
 from dev_seed.generators.users import create_user
 from dev_seed.personas import Persona, personas_for_count
@@ -20,6 +23,7 @@ class SeedResult:
     users: list[Persona]
     entries: int
     attachments: int
+    goals: int
     purged_users: int
     purged_objects: int
 
@@ -49,15 +53,25 @@ def run_seed(
 
         total_entries = 0
         total_attachments = 0
+        total_goals = 0
 
         for persona in personas:
             user = create_user(db, persona=persona, rng=rng)
             tags = provision_tags(db, user_id=user.id, persona=persona, rng=rng)
+            starts_on = datetime.now(ZoneInfo(persona.timezone)).date() - timedelta(days=days)
+            goals = provision_goals(
+                db,
+                user_id=user.id,
+                persona=persona,
+                rng=rng,
+                starts_on=starts_on,
+            )
             entries, attachments = create_entries_for_user(
                 db,
                 user_id=user.id,
                 persona=persona,
                 tags=tags,
+                goals=goals,
                 rng=rng,
                 days=days,
                 entries_per_day_min=entries_per_day_min,
@@ -66,6 +80,7 @@ def run_seed(
             )
             total_entries += entries
             total_attachments += attachments
+            total_goals += len(goals)
 
         db.commit()
 
@@ -74,6 +89,7 @@ def run_seed(
         users=personas,
         entries=total_entries,
         attachments=total_attachments,
+        goals=total_goals,
         purged_users=purged_users,
         purged_objects=purged_objects,
     )
@@ -84,7 +100,7 @@ def format_report(result: SeedResult) -> str:
         f"Seed complete (seed={result.seed})",
         f"  purged: {result.purged_users} users, {result.purged_objects} MinIO objects",
         f"  created: {len(result.users)} users, {result.entries} entries,"
-        f" {result.attachments} attachments",
+        f" {result.attachments} attachments, {result.goals} goals",
         "",
         f"Login password for all seed users: {DEFAULT_PASSWORD}",
         "",

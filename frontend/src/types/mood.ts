@@ -5,6 +5,12 @@ export type MoodEntryTag = {
   group_id: string
 }
 
+export type MoodEntryGoal = {
+  id: string
+  slug: string
+  label: string
+}
+
 export type AttachmentKind = 'photo' | 'audio'
 
 export type AttachmentPublic = {
@@ -23,7 +29,9 @@ export type MoodEntryPublic = {
   score_label: string
   score_emoji: string
   note: string | null
+  is_favorite: boolean
   tags: MoodEntryTag[]
+  goals: MoodEntryGoal[]
   attachments: AttachmentPublic[]
   created_at: string
   updated_at: string
@@ -88,6 +96,7 @@ export type MoodEntryCreate = {
   recorded_at: string
   note?: string | null
   tag_ids: string[]
+  goal_ids: string[]
 }
 
 export type MoodEntryPatch = {
@@ -95,6 +104,8 @@ export type MoodEntryPatch = {
   recorded_at?: string
   note?: string | null
   tag_ids?: string[]
+  goal_ids?: string[]
+  is_favorite?: boolean
 }
 
 export type ListMoodEntriesParams = {
@@ -102,4 +113,5 @@ export type ListMoodEntriesParams = {
   offset?: number
   recorded_from?: string
   recorded_to?: string
+  is_favorite?: boolean
 }

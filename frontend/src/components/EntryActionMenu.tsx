@@ -8,9 +8,10 @@ import type { MoodEntryPublic } from '../types/mood'
 type EntryActionMenuProps = {
   entry: MoodEntryPublic
   onDelete: (entryId: string) => void
+  onToggleFavorite: (entryId: string, isFavorite: boolean) => void
 }
 
-export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
+export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActionMenuProps) {
   const { t } = useLocale()
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -45,6 +46,11 @@ export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
     setIsOpen(false)
   }
 
+  const handleToggleFavorite = () => {
+    onToggleFavorite(entry.id, !entry.is_favorite)
+    setIsOpen(false)
+  }
+
   return (
     <div className="entry-overflow" ref={containerRef}>
       <button
@@ -75,6 +81,14 @@ export function EntryActionMenu({ entry, onDelete }: EntryActionMenuProps) {
           >
             {t('common.edit')}
           </Link>
+          <button
+            type="button"
+            className="entry-overflow-item"
+            role="menuitem"
+            onClick={handleToggleFavorite}
+          >
+            {entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')}
+          </button>
           <button
             type="button"
             className="entry-overflow-item entry-overflow-item-danger"

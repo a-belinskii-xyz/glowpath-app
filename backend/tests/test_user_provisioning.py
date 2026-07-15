@@ -1,13 +1,18 @@
 import uuid
+from datetime import date
 
+from app.core.default_goals import DEFAULT_GOALS
 from app.core.default_note_templates import DEFAULT_NOTE_TEMPLATES
 from app.core.default_tag_groups import DEFAULT_TAG_GROUPS
+from app.models.goal import Goal
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.user import User
 from app.services.user_provisioning import (
+    count_user_goals,
     count_user_note_templates,
     count_user_tag_groups,
+    provision_default_goals,
     provision_default_note_templates,
     provision_default_tags,
 )
@@ -49,3 +54,21 @@ def test_provision_default_note_templates(db: Session) -> None:
 
     assert template_count == len(DEFAULT_NOTE_TEMPLATES)
     assert slugs == [item.slug for item in DEFAULT_NOTE_TEMPLATES]
+
+
+def test_provision_default_goals(db: Session) -> None:
+    user = User(email=f"goals-{uuid.uuid4()}@example.com", password_hash="hash")
+    db.add(user)
+    db.flush()
+
+    starts_on = date(2026, 7, 15)
+    provision_default_goals(db, user.id, starts_on=starts_on)
+    db.flush()
+
+    assert count_user_goals(db, user.id) == len(DEFAULT_GOALS)
+    goals = list(
+        db.scalars(select(Goal).where(Goal.user_id == user.id).order_by(Goal.sort_order)).all()
+    )
+    assert [goal.slug for goal in goals] == [item.slug for item in DEFAULT_GOALS]
+    assert all(goal.starts_on == starts_on for goal in goals)
+    assert sum(1 for goal in goals if goal.show_on_entry) == 3

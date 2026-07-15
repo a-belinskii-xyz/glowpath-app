@@ -67,6 +67,12 @@ class Settings(BaseSettings):
         ge=1,
         validation_alias="ENTRY_VISIBLE_TAG_GROUP_LIMIT",
     )
+    # Max goals a user can pin to the entry form (rest under "Other")
+    entry_visible_goal_limit: int = Field(
+        default=3,
+        ge=1,
+        validation_alias="ENTRY_VISIBLE_GOAL_LIMIT",
+    )
 
 
 settings = Settings()

@@ -21,12 +21,14 @@ def _create_entry(
     recorded_at: str = "2026-07-10T12:00:00+03:00",
     note: str | None = None,
     tag_ids: list[str] | None = None,
+    goal_ids: list[str] | None = None,
     headers: dict[str, str] | None = None,
 ):
     payload: dict = {
         "score": score,
         "recorded_at": recorded_at,
         "tag_ids": tag_ids or [],
+        "goal_ids": goal_ids or [],
     }
     if note is not None:
         payload["note"] = note
@@ -60,6 +62,7 @@ def test_create_mood_entry_score_only(
     assert body["score_emoji"] == "🙂"
     assert body["note"] is None
     assert body["tags"] == []
+    assert body["goals"] == []
     assert body["attachments"] == []
     assert body["recorded_at"].endswith("+00:00") or body["recorded_at"].endswith("Z")
 
@@ -335,6 +338,56 @@ def test_list_filter_by_recorded_range(
     assert august_only.status_code == 200
     august_ids = {item["id"] for item in august_only.json()["items"]}
     assert august_ids == {on_august_boundary.json()["id"]}
+
+
+def test_favorite_toggle_and_list_filter(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-favorite@example.com")
+
+    favorite = _create_entry(auth_client, token, note="keep")
+    assert favorite.status_code == 201
+    assert favorite.json()["is_favorite"] is False
+    favorite_id = favorite.json()["id"]
+
+    plain = _create_entry(auth_client, token, note="skip")
+    assert plain.status_code == 201
+    plain_id = plain.json()["id"]
+
+    patched = auth_client.patch(
+        f"/v1/mood-entries/{favorite_id}",
+        json={"is_favorite": True},
+        headers=_auth_headers(token),
+    )
+    assert patched.status_code == 200
+    assert patched.json()["is_favorite"] is True
+
+    favorites_only = auth_client.get(
+        "/v1/mood-entries",
+        params={"is_favorite": True},
+        headers=_auth_headers(token),
+    )
+    assert favorites_only.status_code == 200
+    favorite_ids = {item["id"] for item in favorites_only.json()["items"]}
+    assert favorite_ids == {favorite_id}
+
+    non_favorites = auth_client.get(
+        "/v1/mood-entries",
+        params={"is_favorite": False},
+        headers=_auth_headers(token),
+    )
+    assert non_favorites.status_code == 200
+    non_favorite_ids = {item["id"] for item in non_favorites.json()["items"]}
+    assert non_favorite_ids == {plain_id}
+
+    cleared = auth_client.patch(
+        f"/v1/mood-entries/{favorite_id}",
+        json={"is_favorite": False},
+        headers=_auth_headers(token),
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["is_favorite"] is False
 
 
 def test_list_filter_isolated_between_users(

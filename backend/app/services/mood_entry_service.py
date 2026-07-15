@@ -26,10 +26,13 @@ from app.core.mood_scale import (
     mood_score_emoji,
     mood_score_label,
 )
+from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MAX_PHOTOS_PER_ENTRY, MoodEntryAttachment
+from app.models.mood_entry_goal import MoodEntryGoal
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
+from app.models.user import User
 from app.services.storage import ObjectStorage, StorageError
 
 CALENDAR_SCORES_PER_DAY = 3
@@ -76,6 +79,7 @@ def _to_utc(value: datetime) -> datetime:
 def _entry_load_options() -> tuple[Any, ...]:
     return (
         selectinload(MoodEntry.tag_links).selectinload(MoodEntryTag.tag),
+        selectinload(MoodEntry.goal_links).selectinload(MoodEntryGoal.goal),
         selectinload(MoodEntry.attachments),
     )
 
@@ -114,6 +118,45 @@ def _replace_entry_tags(db: Session, entry: MoodEntry, tags: list[Tag]) -> None:
         entry.tag_links.append(MoodEntryTag(tag_id=tag.id))
 
 
+def _resolve_user_goals(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    goal_ids: list[uuid.UUID],
+    entry_local_date: date,
+) -> list[Goal]:
+    if not goal_ids:
+        return []
+
+    unique_ids = list(dict.fromkeys(goal_ids))
+    goals = list(
+        db.scalars(select(Goal).where(Goal.user_id == user_id, Goal.id.in_(unique_ids))).all()
+    )
+    if len(goals) != len(unique_ids):
+        raise MoodEntryError("One or more goals were not found", status_code=400)
+    for goal in goals:
+        if entry_local_date < goal.starts_on:
+            raise MoodEntryError(
+                f"Goal “{goal.slug}” is not available before {goal.starts_on.isoformat()}",
+                status_code=400,
+            )
+    return goals
+
+
+def _replace_entry_goals(db: Session, entry: MoodEntry, goals: list[Goal]) -> None:
+    entry.goal_links.clear()
+    db.flush()
+    for goal in goals:
+        entry.goal_links.append(MoodEntryGoal(goal_id=goal.id))
+
+
+def _user_timezone(db: Session, *, user_id: uuid.UUID) -> str:
+    timezone_name = db.scalar(select(User.timezone).where(User.id == user_id))
+    if timezone_name is None:
+        raise MoodEntryError("User not found", status_code=404)
+    return timezone_name
+
+
 def _safe_filename(name: str) -> str:
     cleaned = _UNSAFE_FILENAME_RE.sub("_", name.strip()).strip("._")
     if not cleaned:
@@ -147,17 +190,28 @@ def create_mood_entry(
     recorded_at: datetime,
     note: str | None,
     tag_ids: list[uuid.UUID],
+    goal_ids: list[uuid.UUID],
 ) -> MoodEntry:
+    recorded_at_utc = _to_utc(recorded_at)
+    tz = _resolve_user_tz(_user_timezone(db, user_id=user_id))
+    entry_local_date = _local_date(recorded_at_utc, tz)
     tags = _resolve_user_tags(db, user_id=user_id, tag_ids=tag_ids)
+    goals = _resolve_user_goals(
+        db,
+        user_id=user_id,
+        goal_ids=goal_ids,
+        entry_local_date=entry_local_date,
+    )
     entry = MoodEntry(
         user_id=user_id,
         score=score,
-        recorded_at=_to_utc(recorded_at),
+        recorded_at=recorded_at_utc,
         note=note,
     )
     db.add(entry)
     db.flush()
     _replace_entry_tags(db, entry, tags)
+    _replace_entry_goals(db, entry, goals)
     db.commit()
     return _get_owned_entry(db, user_id=user_id, entry_id=entry.id)
 
@@ -170,12 +224,15 @@ def list_mood_entries(
     offset: int,
     recorded_from: datetime | None = None,
     recorded_to: datetime | None = None,
+    is_favorite: bool | None = None,
 ) -> list[MoodEntry]:
     stmt = select(MoodEntry).options(*_entry_load_options()).where(MoodEntry.user_id == user_id)
     if recorded_from is not None:
         stmt = stmt.where(MoodEntry.recorded_at >= _to_utc(recorded_from))
     if recorded_to is not None:
         stmt = stmt.where(MoodEntry.recorded_at < _to_utc(recorded_to))
+    if is_favorite is not None:
+        stmt = stmt.where(MoodEntry.is_favorite.is_(is_favorite))
     return list(
         db.scalars(
             stmt.order_by(MoodEntry.recorded_at.desc(), MoodEntry.created_at.desc())
@@ -374,6 +431,18 @@ def patch_mood_entry(
     if "tag_ids" in fields:
         tags = _resolve_user_tags(db, user_id=user_id, tag_ids=fields["tag_ids"] or [])
         _replace_entry_tags(db, entry, tags)
+    if "goal_ids" in fields:
+        tz = _resolve_user_tz(_user_timezone(db, user_id=user_id))
+        entry_local_date = _local_date(entry.recorded_at, tz)
+        goals = _resolve_user_goals(
+            db,
+            user_id=user_id,
+            goal_ids=fields["goal_ids"] or [],
+            entry_local_date=entry_local_date,
+        )
+        _replace_entry_goals(db, entry, goals)
+    if "is_favorite" in fields and fields["is_favorite"] is not None:
+        entry.is_favorite = fields["is_favorite"]
 
     db.commit()
     return _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
@@ -529,6 +598,15 @@ def serialize_mood_entry(entry: MoodEntry, *, locale: str) -> dict[str, Any]:
         for link in sorted(entry.tag_links, key=lambda item: item.tag.sort_order)
         if link.tag is not None
     ]
+    goals = [
+        {
+            "id": link.goal.id,
+            "slug": link.goal.slug,
+            "label": resolve_label(link.goal.labels, locale),
+        }
+        for link in sorted(entry.goal_links, key=lambda item: item.goal.sort_order)
+        if link.goal is not None
+    ]
     attachments = [
         {
             "id": item.id,
@@ -550,7 +628,9 @@ def serialize_mood_entry(entry: MoodEntry, *, locale: str) -> dict[str, Any]:
         "score_label": mood_score_label(score, locale),
         "score_emoji": mood_score_emoji(score),
         "note": entry.note,
+        "is_favorite": entry.is_favorite,
         "tags": tags,
+        "goals": goals,
         "attachments": attachments,
         "created_at": entry.created_at,
         "updated_at": entry.updated_at,

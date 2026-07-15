@@ -17,6 +17,7 @@ export function Layout() {
           {isAuthenticated ? (
             <>
               <Link to="/">{t('nav.entries')}</Link>
+              <Link to="/goals">{t('nav.goals')}</Link>
               <Link to="/tags">{t('nav.tags')}</Link>
               <Link to="/templates">{t('nav.templates')}</Link>
               <Link to="/profile">{t('nav.profile')}</Link>

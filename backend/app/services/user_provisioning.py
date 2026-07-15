@@ -1,11 +1,14 @@
 import uuid
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.default_goals import DEFAULT_GOALS
 from app.core.default_note_templates import DEFAULT_NOTE_TEMPLATES
 from app.core.default_tag_groups import DEFAULT_TAG_GROUPS
+from app.models.goal import Goal
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
@@ -49,6 +52,22 @@ def provision_default_note_templates(db: Session, user_id: uuid.UUID) -> None:
         )
 
 
+def provision_default_goals(db: Session, user_id: uuid.UUID, *, starts_on: date) -> None:
+    visible_limit = settings.entry_visible_goal_limit
+    for order, default_goal in enumerate(DEFAULT_GOALS):
+        db.add(
+            Goal(
+                user_id=user_id,
+                slug=default_goal.slug,
+                labels=dict(default_goal.labels),
+                times_per_week=default_goal.times_per_week,
+                starts_on=starts_on,
+                sort_order=order,
+                show_on_entry=order < visible_limit,
+            )
+        )
+
+
 def count_user_tag_groups(db: Session, user_id: uuid.UUID) -> int:
     count = db.scalar(select(func.count()).select_from(TagGroup).where(TagGroup.user_id == user_id))
     return int(count or 0)
@@ -58,4 +77,9 @@ def count_user_note_templates(db: Session, user_id: uuid.UUID) -> int:
     count = db.scalar(
         select(func.count()).select_from(NoteTemplate).where(NoteTemplate.user_id == user_id)
     )
+    return int(count or 0)
+
+
+def count_user_goals(db: Session, user_id: uuid.UUID) -> int:
+    count = db.scalar(select(func.count()).select_from(Goal).where(Goal.user_id == user_id))
     return int(count or 0)

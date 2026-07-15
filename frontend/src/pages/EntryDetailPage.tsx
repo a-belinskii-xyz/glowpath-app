@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodEntry } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodEntry, patchMoodEntry } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
 import { AttachmentAudio } from '../components/AttachmentAudio'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -26,6 +26,7 @@ export function EntryDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
 
   useEffect(() => {
     if (!id) {
@@ -68,6 +69,26 @@ export function EntryDetailPage() {
     }
   }
 
+  const handleToggleFavorite = async () => {
+    if (!entry || isTogglingFavorite) {
+      return
+    }
+    const nextFavorite = !entry.is_favorite
+    const previous = entry
+    setEntry({ ...entry, is_favorite: nextFavorite })
+    setIsTogglingFavorite(true)
+    setError(null)
+    try {
+      const updated = await patchMoodEntry(entry.id, { is_favorite: nextFavorite })
+      setEntry(updated)
+    } catch (err) {
+      setEntry(previous)
+      setError(err instanceof Error ? err.message : t('errors.failedSaveEntry'))
+    } finally {
+      setIsTogglingFavorite(false)
+    }
+  }
+
   const audioAttachment = entry?.attachments.find((attachment) => attachment.kind === 'audio')
 
   return (
@@ -90,7 +111,14 @@ export function EntryDetailPage() {
               {entry.score_emoji}
             </span>
             <div>
-              <p className="entry-detail-score">{entry.score_label}</p>
+              <p className="entry-detail-score">
+                {entry.is_favorite ? (
+                  <span className="entry-favorite-mark" aria-hidden="true">
+                    ★
+                  </span>
+                ) : null}
+                {entry.score_label}
+              </p>
               <p className="muted">
                 {formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ·{' '}
                 {formatTime(entry.recorded_at, timeZone, dateLocale)}
@@ -112,6 +140,16 @@ export function EntryDetailPage() {
             </div>
           ) : null}
 
+          {entry.goals.length > 0 ? (
+            <div className="entry-tags entry-goals">
+              {entry.goals.map((goal) => (
+                <span key={goal.id} className="entry-tag entry-goal">
+                  {goal.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
           {audioAttachment ? (
             <AttachmentAudio entryId={entry.id} attachment={audioAttachment} />
           ) : null}
@@ -123,6 +161,15 @@ export function EntryDetailPage() {
           />
 
           <div className="button-row">
+            <button
+              type="button"
+              className={`button button-secondary${entry.is_favorite ? ' is-active' : ''}`}
+              onClick={() => void handleToggleFavorite()}
+              disabled={isTogglingFavorite}
+              aria-pressed={entry.is_favorite}
+            >
+              {entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')}
+            </button>
             <Link className="button" to={`/entries/${entry.id}/edit`}>
               {t('common.edit')}
             </Link>

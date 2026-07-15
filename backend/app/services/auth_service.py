@@ -1,7 +1,8 @@
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, cast
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import jwt
 from google.auth.transport import requests as google_requests
@@ -25,6 +26,7 @@ from app.models.auth_token import AuthToken
 from app.models.user import User
 from app.services.email_service import EmailService
 from app.services.user_provisioning import (
+    provision_default_goals,
     provision_default_note_templates,
     provision_default_tags,
 )
@@ -101,6 +103,7 @@ def register_user(
 
     provision_default_tags(db, user.id)
     provision_default_note_templates(db, user.id)
+    provision_default_goals(db, user.id, starts_on=_local_today(timezone))
     _create_auth_token(
         db,
         user_id=user.id,
@@ -257,6 +260,7 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPai
     db.flush()
     provision_default_tags(db, user.id)
     provision_default_note_templates(db, user.id)
+    provision_default_goals(db, user.id, starts_on=_local_today(user.timezone))
     db.commit()
     return issue_token_pair(user.id)
 
@@ -288,6 +292,13 @@ def verify_google_id_token(id_token: str) -> GoogleProfile:
 
 def get_user_by_id(db: Session, user_id: uuid.UUID) -> User | None:
     return db.get(User, user_id)
+
+
+def _local_today(timezone_name: str) -> date:
+    try:
+        return datetime.now(ZoneInfo(timezone_name)).date()
+    except ZoneInfoNotFoundError:
+        return datetime.now(UTC).date()
 
 
 def _create_auth_token(
