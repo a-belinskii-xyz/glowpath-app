@@ -61,6 +61,23 @@ class Settings(BaseSettings):
     smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
     email_from: str = Field(default="noreply@mood-tracker.local", validation_alias="EMAIL_FROM")
 
+    # Reminder worker (daily mood + goal notifications)
+    notifications_worker_enabled: bool = Field(
+        default=True,
+        validation_alias="NOTIFICATIONS_WORKER_ENABLED",
+    )
+    notifications_poll_interval_seconds: int = Field(
+        default=60,
+        ge=10,
+        validation_alias="NOTIFICATIONS_POLL_INTERVAL_SECONDS",
+    )
+    notifications_match_window_minutes: int = Field(
+        default=2,
+        ge=1,
+        le=30,
+        validation_alias="NOTIFICATIONS_MATCH_WINDOW_MINUTES",
+    )
+
     # Max tag groups a user can pin to the entry form (rest under "Other")
     entry_visible_tag_group_limit: int = Field(
         default=6,

@@ -272,6 +272,36 @@ input {
   font-weight: 500;
 }
 
+.profile-section {
+  margin-top: 2rem;
+}
+
+.profile-section h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+}
+
+.profile-section-lead {
+  margin: 0 0 1rem;
+  color: #6b7280;
+  max-width: 40rem;
+}
+
+.profile-notifications-form {
+  max-width: 28rem;
+}
+
+.notification-toggles {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.notification-channel-disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;

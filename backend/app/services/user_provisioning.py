@@ -12,6 +12,8 @@ from app.models.goal import Goal
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
+from app.models.user_notification_settings import UserNotificationSettings
+from app.services.notifications.base import NotificationChannel
 
 
 def provision_default_tags(db: Session, user_id: uuid.UUID) -> None:
@@ -68,6 +70,19 @@ def provision_default_goals(db: Session, user_id: uuid.UUID, *, starts_on: date)
         )
 
 
+def provision_notification_settings(db: Session, user_id: uuid.UUID) -> None:
+    db.add(
+        UserNotificationSettings(
+            user_id=user_id,
+            enabled=False,
+            channels=[NotificationChannel.EMAIL.value],
+            daily_mood_reminder_enabled=False,
+            daily_mood_reminder_time=None,
+            goal_reminders_enabled=False,
+        )
+    )
+
+
 def count_user_tag_groups(db: Session, user_id: uuid.UUID) -> int:
     count = db.scalar(select(func.count()).select_from(TagGroup).where(TagGroup.user_id == user_id))
     return int(count or 0)
@@ -82,4 +97,13 @@ def count_user_note_templates(db: Session, user_id: uuid.UUID) -> int:
 
 def count_user_goals(db: Session, user_id: uuid.UUID) -> int:
     count = db.scalar(select(func.count()).select_from(Goal).where(Goal.user_id == user_id))
+    return int(count or 0)
+
+
+def count_user_notification_settings(db: Session, user_id: uuid.UUID) -> int:
+    count = db.scalar(
+        select(func.count())
+        .select_from(UserNotificationSettings)
+        .where(UserNotificationSettings.user_id == user_id)
+    )
     return int(count or 0)

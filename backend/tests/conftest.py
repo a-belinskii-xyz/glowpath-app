@@ -46,7 +46,15 @@ class FakeEmailService(EmailService):
     def clear_outbox(self) -> None:
         self._outbox.clear()
 
-    def _send(self, *, to: str, subject: str, body: str) -> None:
+    def send(
+        self,
+        *,
+        to: str,
+        subject: str,
+        body: str,
+        html_body: str | None = None,
+    ) -> None:
+        del html_body
         self._outbox.append(SentEmail(to=to, subject=subject, body=body))
 
 

@@ -18,6 +18,7 @@ Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and D
 | Month calendar | Calendar of days with entries; jump to a day in the list |
 | Mood stats | Month mood index and month-over-month comparison (bar chart on home) |
 | Profile & locale | View account info; switch UI language (`en` / `ru`); IANA timezone on the user |
+| Email reminders | Opt-in daily mood + weekly goal reminders via email (time + channels in settings) |
 | Multi-user isolation | Each user’s entries, tags, templates, and files are private |
 | Dev seed data | Deterministic demo users/entries/attachments for local UI work (`make seed`) |
 
@@ -78,6 +79,8 @@ Ensure `backend/.env` includes `FRONTEND_URL=http://localhost:5173` and `CORS_OR
 | MailHog UI (dev email) | http://localhost:8025 |
 
 Host ports come from root `.env` (defaults above).
+
+Compose also runs a **`reminders`** worker that polls for due notification emails (daily mood / goals).
 
 ## Frontend
 
@@ -146,7 +149,11 @@ Environment variables in `backend/.env` (see `backend/.env.example`):
 - `JWT_SECRET_KEY` — required in production
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` — for Google OAuth
 - `SMTP_*`, `EMAIL_FROM` — email delivery (MailHog in Docker: `SMTP_HOST=mailhog`, port `1025`)
+- `NOTIFICATIONS_WORKER_ENABLED` — master switch for the reminder worker (default `true`)
+- `NOTIFICATIONS_POLL_INTERVAL_SECONDS` — how often the worker checks due reminders (default `60`)
+- `NOTIFICATIONS_MATCH_WINDOW_MINUTES` — local-time window after the user’s reminder time (default `2`)
 - `ENTRY_VISIBLE_TAG_GROUP_LIMIT` — max tag groups pinned to the entry form (default `6`; rest under “Other”)
+- `ENTRY_VISIBLE_GOAL_LIMIT` — max goals pinned to the entry form (default `3`)
 
 ### Email registration flow
 
@@ -186,6 +193,33 @@ curl -s -X POST http://localhost:8000/v1/auth/forgot-password \
 # curl -s -X POST http://localhost:8000/v1/auth/reset-password \
 #   -H 'Content-Type: application/json' \
 #   -d '{"token":"PASTE_TOKEN_HERE","new_password":"newpassword99","password_confirm":"newpassword99"}'
+```
+
+### Email notifications (reminders)
+
+Users must **opt in** via `GET` / `PATCH /v1/notification-settings`:
+
+- `enabled` — master switch
+- `channels` — delivery channels (`email` today; more can be added later)
+- `daily_mood_reminder_enabled` + `daily_mood_reminder_time` — local time (user timezone) for the daily “log your mood” email
+- `goal_reminders_enabled` — nudge when weekly goals are behind (same local time)
+
+The Compose `reminders` service (or `python -m app.jobs.reminders`) polls every `NOTIFICATIONS_POLL_INTERVAL_SECONDS` and sends only inside `NOTIFICATIONS_MATCH_WINDOW_MINUTES` after the chosen time. SMTP uses the same `SMTP_*` / `EMAIL_FROM` settings as auth mail; links use `FRONTEND_URL`.
+
+Daily mood emails link to `/entries/new?from=email:daily_mood_reminder`. When the user saves an entry from that URL, the API stores `source` as `{channel}:{kind}` (e.g. `email:daily_mood_reminder`, later `telegram:daily_mood_reminder`) for analytics — not returned in public entry JSON / not shown in UI.
+
+```bash
+# Enable daily mood + goal reminders at 20:30 local time
+curl -s -X PATCH http://localhost:8000/v1/notification-settings \
+  -H "Authorization: Bearer PASTE_ACCESS_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "enabled": true,
+    "channels": ["email"],
+    "daily_mood_reminder_enabled": true,
+    "daily_mood_reminder_time": "20:30:00",
+    "goal_reminders_enabled": true
+  }'
 ```
 
 ### Google OAuth

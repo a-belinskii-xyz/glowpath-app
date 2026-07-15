@@ -1,5 +1,6 @@
 import { Link, Outlet } from 'react-router-dom'
 
+import { CaptureAttribution } from './CaptureAttribution'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 
@@ -9,6 +10,7 @@ export function Layout() {
 
   return (
     <div className="app-shell">
+      <CaptureAttribution />
       <header className="app-header">
         <Link to="/" className="brand">
           {t('brand')}

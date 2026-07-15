@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { getGoogleLoginUrl } from '../api/auth'
 import { Alert } from '../components/Alert'
@@ -9,8 +9,23 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
 
+const AUTH_RETURN_TO_KEY = 'auth_return_to'
+
+type LoginLocationState = {
+  from?: { pathname: string; search: string }
+}
+
+function postLoginPath(state: LoginLocationState | null): string {
+  const from = state?.from
+  if (!from?.pathname || from.pathname === '/login') {
+    return '/'
+  }
+  return `${from.pathname}${from.search}`
+}
+
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
   const { t } = useLocale()
   const [email, setEmail] = useState('')
@@ -25,7 +40,7 @@ export function LoginPage() {
 
     try {
       await login({ email, password })
-      navigate('/')
+      navigate(postLoginPath(location.state as LoginLocationState | null), { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.emailNotVerified'))
@@ -70,7 +85,16 @@ export function LoginPage() {
 
       <div className="divider">{t('common.or')}</div>
 
-      <a className="button button-secondary button-block" href={getGoogleLoginUrl()}>
+      <a
+        className="button button-secondary button-block"
+        href={getGoogleLoginUrl()}
+        onClick={() => {
+          const returnTo = postLoginPath(location.state as LoginLocationState | null)
+          if (returnTo !== '/') {
+            sessionStorage.setItem(AUTH_RETURN_TO_KEY, returnTo)
+          }
+        }}
+      >
         {t('auth.continueWithGoogle')}
       </a>
 

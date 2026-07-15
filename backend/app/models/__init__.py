@@ -9,6 +9,7 @@ from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
 from app.models.user import User
+from app.models.user_notification_settings import UserNotificationSettings
 
 __all__ = [
     "AuthToken",
@@ -22,4 +23,5 @@ __all__ = [
     "Tag",
     "TagGroup",
     "User",
+    "UserNotificationSettings",
 ]

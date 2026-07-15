@@ -11,10 +11,12 @@ from app.models.user import User
 from app.services.user_provisioning import (
     count_user_goals,
     count_user_note_templates,
+    count_user_notification_settings,
     count_user_tag_groups,
     provision_default_goals,
     provision_default_note_templates,
     provision_default_tags,
+    provision_notification_settings,
 )
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -72,3 +74,14 @@ def test_provision_default_goals(db: Session) -> None:
     assert [goal.slug for goal in goals] == [item.slug for item in DEFAULT_GOALS]
     assert all(goal.starts_on == starts_on for goal in goals)
     assert sum(1 for goal in goals if goal.show_on_entry) == 3
+
+
+def test_provision_notification_settings(db: Session) -> None:
+    user = User(email=f"notify-{uuid.uuid4()}@example.com", password_hash="hash")
+    db.add(user)
+    db.flush()
+
+    provision_notification_settings(db, user.id)
+    db.flush()
+
+    assert count_user_notification_settings(db, user.id) == 1

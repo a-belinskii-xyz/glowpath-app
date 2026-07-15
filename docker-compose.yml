@@ -83,6 +83,23 @@ services:
       - ./backend/app:/app/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  reminders:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      mailhog:
+        condition: service_started
+    volumes:
+      - ./backend/app:/app/app
+    command: python -m app.jobs.reminders
+
   minio:
     image: minio/minio:latest
     environment:

@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     SmallInteger,
+    String,
     Text,
     text,
 )
@@ -45,6 +46,11 @@ class MoodEntry(TimestampMixin, Base):
             "user_id",
             "is_favorite",
         ),
+        Index(
+            index_name("mood_entries", "user_id__source"),
+            "user_id",
+            "source",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -65,6 +71,9 @@ class MoodEntry(TimestampMixin, Base):
         nullable=False,
         server_default=text("false"),
     )
+    # Attribution for analytics, ``{channel}:{kind}`` (e.g. email:daily_mood_reminder);
+    # not shown in UI.
+    source: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="mood_entries")
     tag_links: Mapped[list["MoodEntryTag"]] = relationship(

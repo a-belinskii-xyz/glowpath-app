@@ -1,3 +1,5 @@
+import type { MoodEntrySource } from '../lib/moodEntrySource'
+
 export type MoodEntryTag = {
   id: string
   slug: string
@@ -97,6 +99,8 @@ export type MoodEntryCreate = {
   note?: string | null
   tag_ids: string[]
   goal_ids: string[]
+  /** Analytics only — from notification deep links; not shown in UI. */
+  source?: MoodEntrySource
 }
 
 export type MoodEntryPatch = {

@@ -191,6 +191,7 @@ def create_mood_entry(
     note: str | None,
     tag_ids: list[uuid.UUID],
     goal_ids: list[uuid.UUID],
+    source: str | None = None,
 ) -> MoodEntry:
     recorded_at_utc = _to_utc(recorded_at)
     tz = _resolve_user_tz(_user_timezone(db, user_id=user_id))
@@ -207,6 +208,7 @@ def create_mood_entry(
         score=score,
         recorded_at=recorded_at_utc,
         note=note,
+        source=source,
     )
     db.add(entry)
     db.flush()

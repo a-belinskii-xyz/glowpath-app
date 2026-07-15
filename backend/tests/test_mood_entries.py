@@ -22,6 +22,7 @@ def _create_entry(
     note: str | None = None,
     tag_ids: list[str] | None = None,
     goal_ids: list[str] | None = None,
+    source: str | None = None,
     headers: dict[str, str] | None = None,
 ):
     payload: dict = {
@@ -32,6 +33,8 @@ def _create_entry(
     }
     if note is not None:
         payload["note"] = note
+    if source is not None:
+        payload["source"] = source
     request_headers = _auth_headers(token)
     if headers:
         request_headers.update(headers)
@@ -65,6 +68,34 @@ def test_create_mood_entry_score_only(
     assert body["goals"] == []
     assert body["attachments"] == []
     assert body["recorded_at"].endswith("+00:00") or body["recorded_at"].endswith("Z")
+
+
+def test_create_mood_entry_with_notification_source(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    db: Session,
+) -> None:
+    from app.models.mood_entry import MoodEntry
+
+    token = register_verify_and_login(auth_client, mailer, "mood-source@example.com")
+    response = _create_entry(auth_client, token, source="email:daily_mood_reminder")
+
+    assert response.status_code == 201
+    body = response.json()
+    assert "source" not in body
+
+    entry = db.scalar(select(MoodEntry).where(MoodEntry.id == body["id"]))
+    assert entry is not None
+    assert entry.source == "email:daily_mood_reminder"
+
+
+def test_create_mood_entry_rejects_unknown_source(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-bad-source@example.com")
+    response = _create_entry(auth_client, token, source="not_a_real_source")
+    assert response.status_code == 422
 
 
 def test_create_with_tags_and_reject_foreign_tag(

@@ -1,0 +1,79 @@
+from __future__ import annotations
+
+from urllib.parse import urlencode
+
+from app.config import settings
+from app.core.mood_entry_source import MoodEntryAttributionKind, format_mood_entry_source
+from app.services.notifications.base import NotificationChannel, NotificationMessage
+
+
+def daily_mood_reminder_message(*, channel: NotificationChannel) -> NotificationMessage:
+    source = format_mood_entry_source(
+        channel=channel.value,
+        kind=MoodEntryAttributionKind.DAILY_MOOD_REMINDER,
+    )
+    log_url = f"{settings.frontend_url.rstrip('/')}/entries/new?{urlencode({'from': source})}"
+    subject = "Time to log your mood"
+    body = (
+        "Hi,\n\n"
+        "This is your daily Mood Tracker reminder — take a moment to note how you feel today.\n\n"
+        f"Log your mood: {log_url}\n\n"
+        "You can change reminder settings in your profile.\n"
+    )
+    html_body = (
+        "<p>Hi,</p>"
+        "<p>This is your daily Mood Tracker reminder — "
+        "take a moment to note how you feel today.</p>"
+        f'<p><a href="{log_url}">Log your mood</a></p>'
+        "<p>You can change reminder settings in your profile.</p>"
+    )
+    return NotificationMessage(
+        subject=subject,
+        body=body,
+        html_body=html_body,
+        metadata={
+            "type": MoodEntryAttributionKind.DAILY_MOOD_REMINDER.value,
+            "channel": channel.value,
+            "source": source,
+        },
+    )
+
+
+def goal_reminder_message(
+    *,
+    channel: NotificationChannel,
+    goal_labels: list[str],
+) -> NotificationMessage:
+    source = format_mood_entry_source(
+        channel=channel.value,
+        kind=MoodEntryAttributionKind.GOAL_REMINDER,
+    )
+    home_url = f"{settings.frontend_url.rstrip('/')}/?{urlencode({'from': source})}"
+    bullet_lines = "\n".join(f"  • {label}" for label in goal_labels)
+    subject = "Your weekly goals need attention"
+    body = (
+        "Hi,\n\n"
+        "Some of your Mood Tracker goals are still behind for this week:\n\n"
+        f"{bullet_lines}\n\n"
+        f"Review your goals: {home_url}\n\n"
+        "You can turn goal reminders off in notification settings.\n"
+    )
+    items = "".join(f"<li>{label}</li>" for label in goal_labels)
+    html_body = (
+        "<p>Hi,</p>"
+        "<p>Some of your Mood Tracker goals are still behind for this week:</p>"
+        f"<ul>{items}</ul>"
+        f'<p><a href="{home_url}">Open Mood Tracker</a></p>'
+        "<p>You can turn goal reminders off in notification settings.</p>"
+    )
+    return NotificationMessage(
+        subject=subject,
+        body=body,
+        html_body=html_body,
+        metadata={
+            "type": MoodEntryAttributionKind.GOAL_REMINDER.value,
+            "channel": channel.value,
+            "source": source,
+            "goals": goal_labels,
+        },
+    )

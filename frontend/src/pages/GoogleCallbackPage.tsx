@@ -33,7 +33,9 @@ export function GoogleCallbackPage() {
     const run = async () => {
       try {
         await completeLogin(tokens.accessToken, tokens.refreshToken)
-        navigate('/', { replace: true })
+        const returnTo = sessionStorage.getItem('auth_return_to')
+        sessionStorage.removeItem('auth_return_to')
+        navigate(returnTo && returnTo !== '/login' ? returnTo : '/', { replace: true })
       } catch (err) {
         setError(err instanceof Error ? err.message : t('errors.googleFailed'))
       }

@@ -1,18 +1,24 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { parseMoodEntrySource, setStoredMoodEntrySource } from '../lib/moodEntrySource'
 
 export function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth()
   const { t } = useLocale()
+  const location = useLocation()
 
   if (isLoading) {
     return <p className="muted">{t('common.loading')}</p>
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    const source = parseMoodEntrySource(new URLSearchParams(location.search).get('from'))
+    if (source) {
+      setStoredMoodEntrySource(source)
+    }
+    return <Navigate to="/login" replace state={{ from: location }} />
   }
 
   return <Outlet />

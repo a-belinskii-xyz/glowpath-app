@@ -23,6 +23,7 @@ import {
 import { getMoodScoreOptions } from '../lib/moodScale'
 import type { GoalPublic } from '../types/goal'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
+import { getStoredMoodEntrySource } from '../lib/moodEntrySource'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic } from '../types/tag'
 
@@ -38,7 +39,11 @@ type MoodEntryFormProps = {
   initialRecordedAtLocal?: string
 }
 
-export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: MoodEntryFormProps) {
+export function MoodEntryForm({
+  mode,
+  initialEntry,
+  initialRecordedAtLocal,
+}: MoodEntryFormProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { locale, t } = useLocale()
@@ -253,12 +258,14 @@ export function MoodEntryForm({ mode, initialEntry, initialRecordedAtLocal }: Mo
     setIsSubmitting(true)
 
     const activeGoalIdSet = new Set(activeGoals.map((goal) => goal.id))
+    const sessionSource = mode === 'create' ? getStoredMoodEntrySource() : undefined
     const payload = {
       score,
       recorded_at: datetimeLocalToIso(recordedAtLocal, timeZone),
       note: note.trim() ? note.trim() : null,
       tag_ids: selectedTagIds,
       goal_ids: selectedGoalIds.filter((id) => activeGoalIdSet.has(id)),
+      ...(sessionSource ? { source: sessionSource } : {}),
     }
 
     try {

@@ -29,6 +29,7 @@ from app.services.user_provisioning import (
     provision_default_goals,
     provision_default_note_templates,
     provision_default_tags,
+    provision_notification_settings,
 )
 
 
@@ -104,6 +105,7 @@ def register_user(
     provision_default_tags(db, user.id)
     provision_default_note_templates(db, user.id)
     provision_default_goals(db, user.id, starts_on=_local_today(timezone))
+    provision_notification_settings(db, user.id)
     _create_auth_token(
         db,
         user_id=user.id,
@@ -261,6 +263,7 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPai
     provision_default_tags(db, user.id)
     provision_default_note_templates(db, user.id)
     provision_default_goals(db, user.id, starts_on=_local_today(user.timezone))
+    provision_notification_settings(db, user.id)
     db.commit()
     return issue_token_pair(user.id)
 

@@ -10,6 +10,7 @@ from app.core.markdown_plain_text import (
     NOTE_RAW_MAX_LENGTH,
     markdown_content_length,
 )
+from app.core.mood_entry_source import MoodEntrySource
 from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE
 
 
@@ -35,6 +36,8 @@ class MoodEntryCreate(BaseModel):
     note: NoteField = None
     tag_ids: list[uuid.UUID] = Field(default_factory=list)
     goal_ids: list[uuid.UUID] = Field(default_factory=list)
+    # Analytics attribution from notification deep links; not returned in public responses.
+    source: MoodEntrySource | None = None
 
 
 class MoodEntryPatch(BaseModel):

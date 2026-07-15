@@ -1,4 +1,5 @@
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
+import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { intlLocale } from '../i18n/t'
@@ -72,6 +73,12 @@ export function ProfilePage() {
           <dd>{formatDate(user.email_verified_at, intlLocale(locale), t('common.emptyDate'))}</dd>
         </div>
       </dl>
+
+      <section className="profile-section" aria-labelledby="profile-notifications-heading">
+        <h2 id="profile-notifications-heading">{t('profile.notificationsTitle')}</h2>
+        <p className="profile-section-lead">{t('profile.notificationsLead')}</p>
+        <NotificationSettingsForm timezone={user.timezone} />
+      </section>
     </section>
   )
 }
