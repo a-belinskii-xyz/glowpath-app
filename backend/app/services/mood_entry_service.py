@@ -24,7 +24,7 @@ from app.core.mood_scale import (
     MIN_MOOD_SCORE,
     MoodScore,
     mood_score_emoji,
-    mood_score_label,
+    resolve_mood_score_label,
 )
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
@@ -323,6 +323,8 @@ def get_mood_entry_stats(
 
     Month index formulas live in ``app.core.mood_analytics`` (documented there).
     """
+    from app.services.mood_preferences_service import get_score_label_overrides
+
     tz = _resolve_user_tz(timezone_name)
     from_utc = _to_utc(recorded_from)
     to_utc = _to_utc(recorded_to)
@@ -377,6 +379,7 @@ def get_mood_entry_stats(
 
     scores: list[dict[str, Any]] = []
     total_entries = 0
+    label_overrides = get_score_label_overrides(db, user_id=user_id)
     for value in range(MIN_MOOD_SCORE, MAX_MOOD_SCORE + 1):
         count = score_counts.get(value, 0)
         total_entries += count
@@ -384,7 +387,7 @@ def get_mood_entry_stats(
         scores.append(
             {
                 "score": value,
-                "score_label": mood_score_label(mood, locale),
+                "score_label": resolve_mood_score_label(mood, locale, label_overrides),
                 "score_emoji": mood_score_emoji(mood),
                 "count": count,
             }
@@ -588,7 +591,12 @@ def delete_attachment(
         storage.delete_object(key=storage_key)
 
 
-def serialize_mood_entry(entry: MoodEntry, *, locale: str) -> dict[str, Any]:
+def serialize_mood_entry(
+    entry: MoodEntry,
+    *,
+    locale: str,
+    label_overrides: dict[str, str] | None = None,
+) -> dict[str, Any]:
     score = MoodScore(entry.score)
     tags = [
         {
@@ -627,7 +635,7 @@ def serialize_mood_entry(entry: MoodEntry, *, locale: str) -> dict[str, Any]:
         "id": entry.id,
         "recorded_at": entry.recorded_at,
         "score": entry.score,
-        "score_label": mood_score_label(score, locale),
+        "score_label": resolve_mood_score_label(score, locale, label_overrides),
         "score_emoji": mood_score_emoji(score),
         "note": entry.note,
         "is_favorite": entry.is_favorite,

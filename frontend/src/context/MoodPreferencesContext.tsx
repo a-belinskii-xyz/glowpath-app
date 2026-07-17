@@ -10,6 +10,7 @@ import {
 
 import { getMoodPreferences } from '../api/moodPreferences'
 import { useAuth } from './AuthContext'
+import { useLocale } from './LocaleContext'
 import { defaultMoodPreferences, getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { MoodPreferencesPublic, MoodScoreStylePublic } from '../types/moodPreferences'
 
@@ -26,12 +27,15 @@ const MoodPreferencesContext = createContext<MoodPreferencesContextValue | null>
 
 export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const [scores, setScores] = useState<Record<string, MoodScoreStylePublic>>(defaultMoodPreferences())
+  const { locale } = useLocale()
+  const [scores, setScores] = useState<Record<string, MoodScoreStylePublic>>(() =>
+    defaultMoodPreferences(locale),
+  )
   const [isLoading, setIsLoading] = useState(false)
 
   const refreshPreferences = useCallback(async () => {
     if (!user?.email_verified) {
-      setScores(defaultMoodPreferences())
+      setScores(defaultMoodPreferences(locale))
       return
     }
 
@@ -40,11 +44,11 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       const preferences = await getMoodPreferences()
       setScores(preferences.scores)
     } catch {
-      setScores(defaultMoodPreferences())
+      setScores(defaultMoodPreferences(locale))
     } finally {
       setIsLoading(false)
     }
-  }, [user?.email_verified])
+  }, [user?.email_verified, locale])
 
   const setPreferences = useCallback((preferences: MoodPreferencesPublic) => {
     setScores(preferences.scores)
@@ -52,13 +56,13 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user?.email_verified) {
-      setScores(defaultMoodPreferences())
+      setScores(defaultMoodPreferences(locale))
       setIsLoading(false)
       return
     }
 
     void refreshPreferences()
-  }, [user?.email_verified, refreshPreferences])
+  }, [user?.email_verified, refreshPreferences, locale])
 
   const value = useMemo(
     () => ({
@@ -67,9 +71,9 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       refreshPreferences,
       setPreferences,
       getScoreColor: (score: number) => getMoodScoreColor(score, scores),
-      getScoreStyle: (score: number) => getMoodScoreStyle(score, scores),
+      getScoreStyle: (score: number) => getMoodScoreStyle(score, scores, locale),
     }),
-    [scores, isLoading, refreshPreferences, setPreferences],
+    [scores, isLoading, refreshPreferences, setPreferences, locale],
   )
 
   return (

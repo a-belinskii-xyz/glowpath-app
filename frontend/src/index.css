@@ -1287,6 +1287,18 @@ code {
   text-transform: capitalize;
 }
 
+.mood-preferences-label-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.mood-preferences-label-input {
+  font-weight: 600;
+  text-transform: capitalize;
+  width: 100%;
+  max-width: 14rem;
+}
+
 .mood-preferences-controls {
   display: flex;
   flex-wrap: wrap;

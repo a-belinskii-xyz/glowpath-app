@@ -27,6 +27,8 @@ import {
 import { revokeMoodIconObjectUrl } from '../lib/moodIconBlobUrl'
 import {
   DEFAULT_MOOD_SCORE_COLORS,
+  MAX_MOOD_SCORE_LABEL_LENGTH,
+  defaultMoodScoreLabel,
   defaultMoodScoreStyle,
   getMoodScoreOptions,
   isValidHexColor,
@@ -60,6 +62,7 @@ export function MoodPreferencesForm() {
   const moodScoreOptions = getMoodScoreOptions(locale, scores)
 
   const [draftColors, setDraftColors] = useState<Record<number, string>>({})
+  const [draftLabels, setDraftLabels] = useState<Record<number, string>>({})
   const [draftEmojis, setDraftEmojis] = useState<Record<number, string>>({})
   const [uploadedIcons, setUploadedIcons] = useState<Record<number, MoodIconMeta[]>>({})
   const [maxUploadsPerScore, setMaxUploadsPerScore] = useState(MAX_UPLOADS_PER_SCORE)
@@ -110,15 +113,25 @@ export function MoodPreferencesForm() {
         Object.entries(scores).map(([score, style]) => [Number(score), style.color]),
       ),
     )
+    setDraftLabels(
+      Object.fromEntries(
+        Object.entries(scores).map(([score, style]) => [
+          Number(score),
+          style.label || defaultMoodScoreLabel(Number(score), locale),
+        ]),
+      ),
+    )
     setDraftEmojis(
       Object.fromEntries(
         Object.entries(scores).map(([score, style]) => [
           Number(score),
-          style.icon_type === 'emoji' ? style.icon : defaultMoodScoreStyle(Number(score)).icon,
+          style.icon_type === 'emoji'
+            ? style.icon
+            : defaultMoodScoreStyle(Number(score), locale).icon,
         ]),
       ),
     )
-  }, [scores])
+  }, [scores, locale])
 
   useEffect(() => {
     void refreshUploadedIcons().catch(() => {
@@ -133,11 +146,21 @@ export function MoodPreferencesForm() {
         Object.entries(preferences.scores).map(([score, style]) => [Number(score), style.color]),
       ),
     )
+    setDraftLabels(
+      Object.fromEntries(
+        Object.entries(preferences.scores).map(([score, style]) => [
+          Number(score),
+          style.label || defaultMoodScoreLabel(Number(score), locale),
+        ]),
+      ),
+    )
     setDraftEmojis(
       Object.fromEntries(
         Object.entries(preferences.scores).map(([score, style]) => [
           Number(score),
-          style.icon_type === 'emoji' ? style.icon : defaultMoodScoreStyle(Number(score)).icon,
+          style.icon_type === 'emoji'
+            ? style.icon
+            : defaultMoodScoreStyle(Number(score), locale).icon,
         ]),
       ),
     )
@@ -145,6 +168,10 @@ export function MoodPreferencesForm() {
 
   const handleColorChange = (score: number, value: string) => {
     setDraftColors((current) => ({ ...current, [score]: value }))
+  }
+
+  const handleLabelChange = (score: number, value: string) => {
+    setDraftLabels((current) => ({ ...current, [score]: value }))
   }
 
   const handleEmojiDraftChange = (score: number, value: string) => {
@@ -179,7 +206,7 @@ export function MoodPreferencesForm() {
     if (iconType === 'emoji') {
       await patchIconStyle(score, {
         icon_type: 'emoji',
-        icon: draftEmojis[score] ?? defaultMoodScoreStyle(score).icon,
+        icon: draftEmojis[score] ?? defaultMoodScoreStyle(score, locale).icon,
       })
       return
     }
@@ -360,11 +387,12 @@ export function MoodPreferencesForm() {
   }
 
   const handleResetScore = async (score: number) => {
-    const defaultStyle = defaultMoodScoreStyle(score)
+    const defaultStyle = defaultMoodScoreStyle(score, locale)
     setDraftColors((current) => ({
       ...current,
       [score]: DEFAULT_MOOD_SCORE_COLORS[score] ?? defaultStyle.color,
     }))
+    setDraftLabels((current) => ({ ...current, [score]: defaultStyle.label }))
     setDraftEmojis((current) => ({ ...current, [score]: defaultStyle.icon }))
 
     setIconBusyScore(score)
@@ -376,6 +404,7 @@ export function MoodPreferencesForm() {
             color: DEFAULT_MOOD_SCORE_COLORS[score] ?? defaultStyle.color,
             icon_type: 'emoji',
             icon: defaultStyle.icon,
+            label: '',
           },
         },
       })
@@ -393,9 +422,20 @@ export function MoodPreferencesForm() {
 
   const handleResetAll = () => {
     setDraftColors({ ...DEFAULT_MOOD_SCORE_COLORS })
+    setDraftLabels(
+      Object.fromEntries(
+        moodScoreOptions.map((option) => [
+          option.score,
+          defaultMoodScoreLabel(option.score, locale),
+        ]),
+      ),
+    )
     setDraftEmojis(
       Object.fromEntries(
-        moodScoreOptions.map((option) => [option.score, defaultMoodScoreStyle(option.score).icon]),
+        moodScoreOptions.map((option) => [
+          option.score,
+          defaultMoodScoreStyle(option.score, locale).icon,
+        ]),
       ),
     )
   }
@@ -410,6 +450,15 @@ export function MoodPreferencesForm() {
         setError(t('moodPreferences.invalidColor', { label: option.label }))
         return
       }
+      const label = draftLabels[option.score]?.trim() ?? ''
+      if (!label) {
+        setError(t('moodPreferences.invalidLabel', { label: option.label }))
+        return
+      }
+      if (label.length > MAX_MOOD_SCORE_LABEL_LENGTH) {
+        setError(t('moodPreferences.labelTooLong', { max: String(MAX_MOOD_SCORE_LABEL_LENGTH) }))
+        return
+      }
     }
 
     setIsSaving(true)
@@ -417,10 +466,18 @@ export function MoodPreferencesForm() {
     try {
       const saved = await patchMoodPreferences({
         scores: Object.fromEntries(
-          moodScoreOptions.map((option) => [
-            String(option.score),
-            { color: draftColors[option.score] },
-          ]),
+          moodScoreOptions.map((option) => {
+            const draftLabel = draftLabels[option.score]?.trim() ?? ''
+            const defaultLabel = defaultMoodScoreLabel(option.score, locale)
+            return [
+              String(option.score),
+              {
+                color: draftColors[option.score],
+                // Empty string clears a custom override when restoring the default name.
+                label: draftLabel === defaultLabel ? '' : draftLabel,
+              },
+            ]
+          }),
         ),
       })
       applyPreferences(saved)
@@ -480,7 +537,17 @@ export function MoodPreferencesForm() {
                   className="mood-preferences-emoji"
                   fallbackScore={option.score}
                 />
-                <span className="mood-preferences-label">{option.label}</span>
+                <label className="mood-preferences-label-field">
+                  <span className="visually-hidden">{t('moodPreferences.labelFor', { score: option.score })}</span>
+                  <input
+                    className="form-input mood-preferences-label-input"
+                    type="text"
+                    value={draftLabels[option.score] ?? option.label}
+                    maxLength={MAX_MOOD_SCORE_LABEL_LENGTH}
+                    onChange={(event) => handleLabelChange(option.score, event.target.value)}
+                    aria-label={t('moodPreferences.labelFor', { score: option.score })}
+                  />
+                </label>
               </div>
 
               <div className="mood-preferences-controls">
@@ -489,7 +556,9 @@ export function MoodPreferencesForm() {
                   type="color"
                   value={draftColors[option.score] ?? option.color}
                   onChange={(event) => handleColorChange(option.score, event.target.value)}
-                  aria-label={t('moodPreferences.colorFor', { label: option.label })}
+                  aria-label={t('moodPreferences.colorFor', {
+                    label: draftLabels[option.score] ?? option.label,
+                  })}
                 />
                 <input
                   className="form-input mood-preferences-hex-input"
@@ -498,7 +567,9 @@ export function MoodPreferencesForm() {
                   onChange={(event) => handleColorChange(option.score, event.target.value)}
                   pattern="^#[0-9A-Fa-f]{6}$"
                   spellCheck={false}
-                  aria-label={t('moodPreferences.hexFor', { label: option.label })}
+                  aria-label={t('moodPreferences.hexFor', {
+                    label: draftLabels[option.score] ?? option.label,
+                  })}
                 />
                 <button
                   type="button"
@@ -604,6 +675,7 @@ export function MoodPreferencesForm() {
                                   color: previewStyle.color,
                                   icon_type: 'upload',
                                   icon: icon.id,
+                                  label: draftLabels[option.score] ?? option.label,
                                 }}
                                 className="mood-preferences-upload-thumb"
                                 fallbackScore={option.score}

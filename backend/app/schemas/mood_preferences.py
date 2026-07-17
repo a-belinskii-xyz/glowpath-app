@@ -11,6 +11,7 @@ class MoodScoreStylePublic(BaseModel):
     color: str
     icon_type: MoodScoreIconType
     icon: str
+    label: str
 
 
 class MoodPreferencesPublic(BaseModel):
@@ -21,6 +22,8 @@ class MoodScoreStyleUpdate(BaseModel):
     color: str | None = None
     icon_type: MoodScoreIconType | None = None
     icon: str | None = None
+    # Empty string clears a custom label and restores the locale default.
+    label: str | None = None
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> MoodScoreStyleUpdate:

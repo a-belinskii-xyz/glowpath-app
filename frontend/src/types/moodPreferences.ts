@@ -4,6 +4,7 @@ export type MoodScoreStylePublic = {
   color: string
   icon_type: MoodScoreIconType
   icon: string
+  label: string
 }
 
 export type MoodPreferencesPublic = {
@@ -14,6 +15,8 @@ export type MoodScoreStyleUpdate = {
   color?: string
   icon_type?: MoodScoreIconType
   icon?: string
+  /** Empty string clears a custom label and restores the locale default. */
+  label?: string
 }
 
 export type MoodPreferencesUpdate = {

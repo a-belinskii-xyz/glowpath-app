@@ -21,6 +21,67 @@ def test_get_mood_preferences_returns_defaults(auth_client: TestClient, mailer) 
     assert payload["scores"]["5"]["color"] == DEFAULT_MOOD_SCORE_COLORS[MoodScore.GREAT]
     assert payload["scores"]["5"]["icon_type"] == "emoji"
     assert payload["scores"]["5"]["icon"] == "😄"
+    assert payload["scores"]["5"]["label"] == "great"
+    assert payload["scores"]["1"]["label"] == "awful"
+
+
+def test_patch_mood_preferences_updates_label(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-label-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}", "Accept-Language": "ru"}
+
+    patch_response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"scores": {"1": {"label": "кошмарно"}}},
+    )
+    assert patch_response.status_code == 200
+    assert patch_response.json()["scores"]["1"]["label"] == "кошмарно"
+    assert patch_response.json()["scores"]["2"]["label"] == "плохо"
+
+    get_response = auth_client.get("/v1/mood-preferences", headers=headers)
+    assert get_response.json()["scores"]["1"]["label"] == "кошмарно"
+
+    clear_response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"scores": {"1": {"label": ""}}},
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json()["scores"]["1"]["label"] == "ужасно"
+
+
+def test_patch_mood_preferences_rejects_long_label(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-label-long-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"scores": {"3": {"label": "x" * 41}}},
+    )
+    assert response.status_code == 400
+
+
+def test_custom_mood_label_appears_on_entries(auth_client: TestClient, mailer) -> None:
+    from tests.test_mood_entries import _create_entry
+
+    email = f"mood-prefs-label-entry-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}", "Accept-Language": "en"}
+
+    assert (
+        auth_client.patch(
+            "/v1/mood-preferences",
+            headers=headers,
+            json={"scores": {"4": {"label": "solid"}}},
+        ).status_code
+        == 200
+    )
+
+    create = _create_entry(auth_client, token, score=4, headers={"Accept-Language": "en"})
+    assert create.status_code == 201
+    assert create.json()["score_label"] == "solid"
 
 
 def test_patch_mood_preferences_updates_color(auth_client: TestClient, mailer) -> None:

@@ -15,12 +15,14 @@ from app.core.mood_scale import (
     default_mood_score_styles,
     is_valid_hex_color,
     mood_score_emoji,
+    mood_score_label,
 )
 from app.models.user_mood_icon import UserMoodIcon
 from app.models.user_mood_preferences import UserMoodPreferences
 from app.services.user_provisioning import provision_mood_preferences
 
 _MAX_EMOJI_LENGTH = 8
+_MAX_LABEL_LENGTH = 40
 
 
 class MoodPreferencesError(Exception):
@@ -55,8 +57,29 @@ def update_preferences(
     return prefs
 
 
-def serialize_preferences(db: Session, prefs: UserMoodPreferences) -> dict[str, Any]:
-    return {"scores": _resolved_score_styles(db, prefs.user_id, prefs.score_styles)}
+def serialize_preferences(
+    db: Session,
+    prefs: UserMoodPreferences,
+    *,
+    locale: str,
+) -> dict[str, Any]:
+    return {"scores": _resolved_score_styles(db, prefs.user_id, prefs.score_styles, locale=locale)}
+
+
+def get_score_label_overrides(db: Session, *, user_id: uuid.UUID) -> dict[str, str]:
+    prefs = db.scalar(select(UserMoodPreferences).where(UserMoodPreferences.user_id == user_id))
+    return extract_score_label_overrides(prefs.score_styles if prefs is not None else None)
+
+
+def extract_score_label_overrides(overrides: dict[str, Any] | None) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for key, raw in (overrides or {}).items():
+        if not isinstance(raw, dict):
+            continue
+        label = raw.get("label")
+        if isinstance(label, str) and label.strip():
+            result[str(key)] = label.strip()
+    return result
 
 
 def set_upload_icon_preference(
@@ -69,11 +92,14 @@ def set_upload_icon_preference(
     prefs = get_or_create_preferences(db, user_id=user_id)
     merged = dict(prefs.score_styles or {})
     existing = merged.get(str(score.value), {})
-    merged[str(score.value)] = {
+    next_style: dict[str, Any] = {
         "color": existing.get("color", default_mood_score_style(score).color),
         "icon_type": MoodScoreIconType.UPLOAD.value,
         "icon": str(icon_id),
     }
+    if isinstance(existing.get("label"), str) and existing["label"].strip():
+        next_style["label"] = existing["label"].strip()
+    merged[str(score.value)] = next_style
     prefs.score_styles = merged
     db.flush()
 
@@ -83,11 +109,14 @@ def reset_score_to_default_emoji(db: Session, *, user_id: uuid.UUID, score: Mood
     merged = dict(prefs.score_styles or {})
     default_style = default_mood_score_style(score)
     existing = merged.get(str(score.value), {})
-    merged[str(score.value)] = {
+    next_style: dict[str, Any] = {
         "color": existing.get("color", default_style.color),
         "icon_type": MoodScoreIconType.EMOJI.value,
         "icon": mood_score_emoji(score),
     }
+    if isinstance(existing.get("label"), str) and existing["label"].strip():
+        next_style["label"] = existing["label"].strip()
+    merged[str(score.value)] = next_style
     prefs.score_styles = merged
     db.flush()
 
@@ -96,8 +125,11 @@ def _resolved_score_styles(
     db: Session,
     user_id: uuid.UUID,
     overrides: dict[str, Any] | None,
+    *,
+    locale: str,
 ) -> dict[str, dict[str, str]]:
     defaults = default_mood_score_styles()
+    label_overrides = extract_score_label_overrides(overrides)
     resolved: dict[str, dict[str, str]] = {}
     for score in MoodScore:
         key = str(score.value)
@@ -115,6 +147,7 @@ def _resolved_score_styles(
             "color": style.color,
             "icon_type": style.icon_type.value,
             "icon": style.icon,
+            "label": label_overrides.get(key) or mood_score_label(score, locale),
         }
     return resolved
 
@@ -130,23 +163,44 @@ def _merge_score_styles(
 
     for raw_score, patch in updates.items():
         score = _parse_score_key(raw_score)
-        default_style = defaults[str(score.value)]
-        existing = merged.get(str(score.value), {})
+        key = str(score.value)
+        default_style = defaults[key]
+        existing = dict(merged.get(key, {}))
+        next_raw = {**existing, **patch}
         next_style = _coerce_style(
             db,
             user_id,
             score,
-            {**existing, **patch},
+            next_raw,
             default_style,
             strict_upload=True,
         )
-        merged[str(score.value)] = {
+        stored: dict[str, Any] = {
             "color": next_style.color,
             "icon_type": next_style.icon_type.value,
             "icon": next_style.icon,
         }
+        label = _coerce_label(score, next_raw.get("label"), patch_includes_label="label" in patch)
+        if label is not None:
+            stored["label"] = label
+        merged[key] = stored
 
     return merged
+
+
+def _coerce_label(score: MoodScore, raw: Any, *, patch_includes_label: bool) -> str | None:
+    if not patch_includes_label and raw is None:
+        return None
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None
+    if not isinstance(raw, str):
+        raise MoodPreferencesError(f"Label for score {score.value} must be a string")
+    label = raw.strip()
+    if len(label) > _MAX_LABEL_LENGTH:
+        raise MoodPreferencesError(
+            f"Label for score {score.value} must be at most {_MAX_LABEL_LENGTH} characters"
+        )
+    return label
 
 
 def _coerce_style(

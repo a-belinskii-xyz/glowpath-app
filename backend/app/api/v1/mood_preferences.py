@@ -65,9 +65,10 @@ def _icon_meta(icon: UserMoodIcon) -> MoodIconMetaPublic:
 def get_mood_preferences(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
 ) -> MoodPreferencesPublic:
     prefs = get_or_create_preferences(db, user_id=current_user.id)
-    return MoodPreferencesPublic.model_validate(serialize_preferences(db, prefs))
+    return MoodPreferencesPublic.model_validate(serialize_preferences(db, prefs, locale=locale))
 
 
 @router.patch("", response_model=MoodPreferencesPublic)
@@ -75,6 +76,7 @@ def patch_mood_preferences(
     body: MoodPreferencesUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
 ) -> MoodPreferencesPublic:
     updates = {score: patch.model_dump(exclude_unset=True) for score, patch in body.scores.items()}
     try:
@@ -82,7 +84,7 @@ def patch_mood_preferences(
     except MoodPreferencesError as exc:
         _handle_preferences_error(exc)
         raise
-    return MoodPreferencesPublic.model_validate(serialize_preferences(db, prefs))
+    return MoodPreferencesPublic.model_validate(serialize_preferences(db, prefs, locale=locale))
 
 
 @router.get("/icon-catalog", response_model=MoodIconCatalogResponse)
@@ -129,6 +131,7 @@ async def upload_score_icon(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
     storage: ObjectStorage = Depends(get_storage_service),
+    locale: str = Depends(get_locale),
 ) -> MoodIconPublic:
     data = await file.read()
     original_name = file.filename or "icon"
@@ -157,7 +160,9 @@ async def upload_score_icon(
         mime_type=icon.mime_type,
         size_bytes=icon.size_bytes,
         original_name=icon.original_name,
-        preferences=MoodPreferencesPublic.model_validate(serialize_preferences(db, prefs)),
+        preferences=MoodPreferencesPublic.model_validate(
+            serialize_preferences(db, prefs, locale=locale)
+        ),
     )
 
 
