@@ -144,13 +144,7 @@ export function MoodEntryForm({
     if (!templateBody) {
       return
     }
-    setNote((current) => {
-      const trimmed = current.trim()
-      if (!trimmed) {
-        return templateBody
-      }
-      return `${trimmed}\n\n${templateBody}`
-    })
+    setNote(templateBody)
   }
 
   const renderTagGroup = (group: TagGroupPublic) => (
