@@ -444,10 +444,16 @@ code {
   line-height: 1;
   margin-left: -0.45rem;
   filter: drop-shadow(0 0 0.5px rgba(15, 23, 42, 0.25));
+  transform-origin: center bottom;
+  transition: transform 0.18s ease;
 }
 
 .month-calendar-emoji:first-child {
   margin-left: 0;
+}
+
+.month-calendar-day-button:hover .month-calendar-emoji {
+  transform: scale(1.22);
 }
 
 .month-calendar-add {
@@ -608,16 +614,17 @@ code {
 .day-section {
   display: grid;
   gap: 0.75rem;
+  padding: 0.75rem;
   scroll-margin-top: 1rem;
-  border-radius: 12px;
-  transition: box-shadow 0.35s ease, background-color 0.35s ease;
+  border-radius: 14px;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: box-shadow 0.35s ease, filter 0.35s ease;
 }
 
 .day-section-highlight {
-  background: #eff6ff;
-  box-shadow: 0 0 0 2px #93c5fd;
-  padding: 0.75rem;
-  margin: -0.75rem;
+  box-shadow: 0 0 0 2px #93c5fd, 0 0 0 6px rgb(147 197 253 / 35%);
+  filter: saturate(1.08);
 }
 
 .day-heading {

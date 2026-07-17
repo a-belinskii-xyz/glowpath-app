@@ -23,7 +23,8 @@ import {
   getCurrentYearMonth,
   getMonthBounds,
 } from '../lib/datetime'
-import { getMoodScoreStyle } from '../lib/moodScale'
+import { dayMoodWashFromScores } from '../lib/dayMoodWash'
+import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
 
 const PAGE_SIZE = 20
@@ -365,77 +366,85 @@ export function EntriesPage() {
       ) : null}
 
       <div className="entry-feed">
-        {groupedEntries.map(([key, dayEntries]) => (
-          <section key={key} id={`day-${key}`} className="day-section">
-            <h2 className="day-heading">
-              {formatDayHeading(dayEntries[0].recorded_at, timeZone, dateLocale)}
-            </h2>
-            <ul className="entry-list">
-              {dayEntries.map((entry) => (
-                <li key={entry.id}>
-                  <article className="entry-row">
-                    <Link className="entry-row-link" to={`/entries/${entry.id}`}>
-                      <div className="entry-row-main">
-                        <span className="entry-score">
-                          {entry.is_favorite ? (
-                            <span className="entry-favorite-mark" aria-hidden="true">
-                              ★
-                            </span>
-                          ) : null}
-                          <MoodScoreIcon
-                            style={getMoodScoreStyle(entry.score, scores)}
-                            className="entry-score-icon"
-                            fallbackScore={entry.score}
-                          />{' '}
-                          {entry.score_label}
-                        </span>
-                        <span className="entry-time">
-                          {formatTime(entry.recorded_at, timeZone, dateLocale)}
-                        </span>
+        {groupedEntries.map(([key, dayEntries]) => {
+          const dayWash = dayMoodWashFromScores(dayEntries, (score) => getMoodScoreColor(score, scores))
+          return (
+            <section
+              key={key}
+              id={`day-${key}`}
+              className="day-section"
+              style={dayWash ?? undefined}
+            >
+              <h2 className="day-heading">
+                {formatDayHeading(dayEntries[0].recorded_at, timeZone, dateLocale)}
+              </h2>
+              <ul className="entry-list">
+                {dayEntries.map((entry) => (
+                  <li key={entry.id}>
+                    <article className="entry-row">
+                      <Link className="entry-row-link" to={`/entries/${entry.id}`}>
+                        <div className="entry-row-main">
+                          <span className="entry-score">
+                            {entry.is_favorite ? (
+                              <span className="entry-favorite-mark" aria-hidden="true">
+                                ★
+                              </span>
+                            ) : null}
+                            <MoodScoreIcon
+                              style={getMoodScoreStyle(entry.score, scores)}
+                              className="entry-score-icon"
+                              fallbackScore={entry.score}
+                            />{' '}
+                            {entry.score_label}
+                          </span>
+                          <span className="entry-time">
+                            {formatTime(entry.recorded_at, timeZone, dateLocale)}
+                          </span>
+                        </div>
+                        {entry.note ? (
+                          <MarkdownNote content={entry.note} compact className="entry-note" />
+                        ) : null}
+                        {entry.tags.length > 0 ? (
+                          <div className="entry-tags">
+                            {entry.tags.map((tag) => (
+                              <span key={tag.id} className="entry-tag">
+                                {tag.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {entry.goals.length > 0 ? (
+                          <div className="entry-tags entry-goals">
+                            {entry.goals.map((goal) => (
+                              <span key={goal.id} className="entry-tag entry-goal">
+                                {goal.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </Link>
+                      <div className="entry-row-media">
+                        <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
                       </div>
-                      {entry.note ? (
-                        <MarkdownNote content={entry.note} compact className="entry-note" />
-                      ) : null}
-                      {entry.tags.length > 0 ? (
-                        <div className="entry-tags">
-                          {entry.tags.map((tag) => (
-                            <span key={tag.id} className="entry-tag">
-                              {tag.label}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                      {entry.goals.length > 0 ? (
-                        <div className="entry-tags entry-goals">
-                          {entry.goals.map((goal) => (
-                            <span key={goal.id} className="entry-tag entry-goal">
-                              {goal.label}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                    </Link>
-                    <div className="entry-row-media">
-                      <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
-                    </div>
-                    <div className="entry-row-actions">
-                      <EntryActionMenu
-                        entry={entry}
-                        onDelete={handleDelete}
-                        onToggleFavorite={handleToggleFavorite}
-                      />
-                    </div>
-                  </article>
-                </li>
-              ))}
-            </ul>
-            <div className="day-section-footer">
-              <Link className="button button-secondary button-small" to={`/entries/new?date=${key}`}>
-                {t('entries.addEntryForDay')}
-              </Link>
-            </div>
-          </section>
-        ))}
+                      <div className="entry-row-actions">
+                        <EntryActionMenu
+                          entry={entry}
+                          onDelete={handleDelete}
+                          onToggleFavorite={handleToggleFavorite}
+                        />
+                      </div>
+                    </article>
+                  </li>
+                ))}
+              </ul>
+              <div className="day-section-footer">
+                <Link className="button button-secondary button-small" to={`/entries/new?date=${key}`}>
+                  {t('entries.addEntryForDay')}
+                </Link>
+              </div>
+            </section>
+          )
+        })}
       </div>
 
       {hasMore && user?.email_verified ? (

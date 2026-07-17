@@ -14,7 +14,7 @@ Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and D
 | Tags & tag groups | Per-user groups and tags with `en`/`ru` labels; create, edit, reorder, delete; pin groups on the entry form |
 | Attachments | Up to 5 photos + 1 audio per entry, stored in MinIO |
 | Note templates | Reusable markdown snippets for notes; CRUD + reorder; seeded defaults for new users |
-| Entry list & filters | Paginated feed filtered by date range in the user’s timezone |
+| Entry list & filters | Paginated feed filtered by date range in the user’s timezone; soft day backgrounds mixed from mood colors (see Mood Tracker.md) |
 | Month calendar | Calendar of days with entries; jump to a day in the list |
 | Mood stats | Month mood index and month-over-month comparison (bar chart on home) |
 | Profile & locale | View account info; switch UI language (`en` / `ru`); IANA timezone on the user |
