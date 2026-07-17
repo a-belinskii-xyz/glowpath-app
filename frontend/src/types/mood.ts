@@ -1,4 +1,5 @@
 import type { MoodEntrySource } from '../lib/moodEntrySource'
+import type { MoodScoreIconType } from './moodPreferences'
 
 export type MoodEntryTag = {
   id: string
@@ -11,6 +12,9 @@ export type MoodEntryGoal = {
   id: string
   slug: string
   label: string
+  color: string
+  icon_type: MoodScoreIconType
+  icon: string
 }
 
 export type AttachmentKind = 'photo' | 'audio'

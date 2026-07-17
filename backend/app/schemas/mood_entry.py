@@ -60,6 +60,9 @@ class MoodEntryGoalPublic(BaseModel):
     id: uuid.UUID
     slug: str
     label: str
+    color: str
+    icon_type: str
+    icon: str
 
 
 class AttachmentPublic(BaseModel):

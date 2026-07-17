@@ -5,6 +5,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.mood_scale import MoodScoreIconType
+
 _SLUG_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
@@ -34,6 +36,8 @@ def _validate_labels(value: dict[str, str]) -> dict[str, str]:
 Slug = Annotated[str, Field(min_length=1, max_length=64)]
 Labels = Annotated[dict[str, str], Field(min_length=1)]
 TimesPerWeek = Annotated[int, Field(ge=1, le=7)]
+Color = Annotated[str, Field(min_length=7, max_length=7)]
+IconValue = Annotated[str, Field(min_length=1, max_length=64)]
 
 
 class GoalPublic(BaseModel):
@@ -45,6 +49,9 @@ class GoalPublic(BaseModel):
     starts_on: date
     sort_order: int
     show_on_entry: bool
+    color: str
+    icon_type: MoodScoreIconType
+    icon: str
     completed_this_week: int
 
 
@@ -60,6 +67,9 @@ class GoalCreate(BaseModel):
     slug: Slug | None = None
     sort_order: int | None = None
     show_on_entry: bool = False
+    color: Color | None = None
+    icon_type: MoodScoreIconType | None = None
+    icon: IconValue | None = None
 
     @field_validator("slug")
     @classmethod
@@ -81,6 +91,9 @@ class GoalPatch(BaseModel):
     starts_on: date | None = None
     sort_order: int | None = None
     show_on_entry: bool | None = None
+    color: Color | None = None
+    icon_type: MoodScoreIconType | None = None
+    icon: IconValue | None = None
 
     @field_validator("slug")
     @classmethod
@@ -99,3 +112,39 @@ class GoalPatch(BaseModel):
 
 class GoalReorderRequest(BaseModel):
     ordered_ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class CalendarDayGoal(BaseModel):
+    goal_id: uuid.UUID
+
+
+class GoalCalendarDayPublic(BaseModel):
+    date: str
+    entry_count: int
+    goals: list[CalendarDayGoal]
+
+
+class GoalCalendarResponse(BaseModel):
+    days: list[GoalCalendarDayPublic]
+
+
+class GoalIconMetaPublic(BaseModel):
+    id: uuid.UUID
+    goal_id: uuid.UUID
+    mime_type: str
+    size_bytes: int
+    original_name: str
+
+
+class GoalIconPublic(BaseModel):
+    id: uuid.UUID
+    goal_id: uuid.UUID
+    mime_type: str
+    size_bytes: int
+    original_name: str
+    goal: GoalPublic
+
+
+class GoalIconListResponse(BaseModel):
+    items: list[GoalIconMetaPublic]
+    max_per_goal: int = 3

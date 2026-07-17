@@ -2,13 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry } from '../api/moodEntries'
+import { getGoalCalendar, listGoals } from '../api/goals'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
 import { EntryActionMenu } from '../components/EntryActionMenu'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
+import { GoalIcon } from '../components/GoalIcon'
 import { MarkdownNote } from '../components/MarkdownNote'
-import { MonthCalendar } from '../components/MonthCalendar'
+import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -28,6 +30,7 @@ import {
 } from '../lib/datetime'
 import { dayMoodWashFromScores } from '../lib/dayMoodWash'
 import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
+import type { GoalCalendarDayPublic, GoalPublic } from '../types/goal'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
 
 const PAGE_SIZE = 20
@@ -65,6 +68,9 @@ export function EntriesPage() {
   const [month, setMonth] = useState(initialMonth.month)
 
   const [calendarDays, setCalendarDays] = useState<CalendarDayPublic[]>([])
+  const [goalCalendarDays, setGoalCalendarDays] = useState<GoalCalendarDayPublic[]>([])
+  const [goalsById, setGoalsById] = useState<Map<string, GoalPublic>>(() => new Map())
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>('moods')
   const [isCalendarLoading, setIsCalendarLoading] = useState(true)
 
   const [stats, setStats] = useState<MoodEntryStatsResponse | null>(null)
@@ -163,26 +169,49 @@ export function EntriesPage() {
   const loadCalendar = useCallback(async () => {
     if (!user?.email_verified) {
       setCalendarDays([])
+      setGoalCalendarDays([])
+      setGoalsById(new Map())
       setIsCalendarLoading(false)
       return
     }
 
     setIsCalendarLoading(true)
     try {
-      const response = await getMoodEntryCalendar({
-        recorded_from: monthBounds.recorded_from,
-        recorded_to: monthBounds.recorded_to,
-      })
-      setCalendarDays(response.days)
+      if (calendarMode === 'goals') {
+        const [calendarResponse, goalsResponse] = await Promise.all([
+          getGoalCalendar({
+            recorded_from: monthBounds.recorded_from,
+            recorded_to: monthBounds.recorded_to,
+          }),
+          listGoals(),
+        ])
+        setGoalCalendarDays(calendarResponse.days)
+        setGoalsById(new Map(goalsResponse.items.map((goal) => [goal.id, goal])))
+      } else {
+        const response = await getMoodEntryCalendar({
+          recorded_from: monthBounds.recorded_from,
+          recorded_to: monthBounds.recorded_to,
+        })
+        setCalendarDays(response.days)
+      }
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 403)) {
         setError(err instanceof Error ? err.message : t('errors.failedLoadCalendar'))
       }
       setCalendarDays([])
+      setGoalCalendarDays([])
+      setGoalsById(new Map())
     } finally {
       setIsCalendarLoading(false)
     }
-  }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified])
+  }, [
+    calendarMode,
+    locale,
+    monthBounds.recorded_from,
+    monthBounds.recorded_to,
+    t,
+    user?.email_verified,
+  ])
 
   const loadStats = useCallback(async () => {
     if (!user?.email_verified) {
@@ -535,17 +564,40 @@ export function EntriesPage() {
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       {user?.email_verified ? (
-        isCalendarLoading ? (
-          <p className="muted">{t('common.loadingCalendar')}</p>
-        ) : (
-          <MonthCalendar
-            year={year}
-            month={month}
-            timeZone={timeZone}
-            days={calendarDays}
-            onDayWithEntries={handleDayWithEntries}
-          />
-        )
+        <>
+          <div className="calendar-mode-toggle" role="group" aria-label={t('calendar.modeGroup')}>
+            <button
+              type="button"
+              className={`button button-secondary button-small${calendarMode === 'moods' ? ' is-active' : ''}`}
+              aria-pressed={calendarMode === 'moods'}
+              onClick={() => setCalendarMode('moods')}
+            >
+              {t('calendar.modeMoods')}
+            </button>
+            <button
+              type="button"
+              className={`button button-secondary button-small${calendarMode === 'goals' ? ' is-active' : ''}`}
+              aria-pressed={calendarMode === 'goals'}
+              onClick={() => setCalendarMode('goals')}
+            >
+              {t('calendar.modeGoals')}
+            </button>
+          </div>
+          {isCalendarLoading ? (
+            <p className="muted">{t('common.loadingCalendar')}</p>
+          ) : (
+            <MonthCalendar
+              year={year}
+              month={month}
+              timeZone={timeZone}
+              mode={calendarMode}
+              moodDays={calendarDays}
+              goalDays={goalCalendarDays}
+              goalsById={goalsById}
+              onDayWithEntries={handleDayWithEntries}
+            />
+          )}
+        </>
       ) : null}
 
       {user?.email_verified ? (
@@ -616,6 +668,14 @@ export function EntriesPage() {
                           <div className="entry-tags entry-goals">
                             {entry.goals.map((goal) => (
                               <span key={goal.id} className="entry-tag entry-goal">
+                                <GoalIcon
+                                  style={{
+                                    color: goal.color,
+                                    icon_type: goal.icon_type,
+                                    icon: goal.icon,
+                                  }}
+                                  className="entry-goal-icon"
+                                />
                                 {goal.label}
                               </span>
                             ))}

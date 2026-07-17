@@ -11,6 +11,7 @@ import {
 import { listNoteTemplates } from '../api/noteTemplates'
 import { listTagGroups } from '../api/tagGroups'
 import { Alert } from './Alert'
+import { GoalIcon } from './GoalIcon'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
@@ -183,7 +184,17 @@ export function MoodEntryForm({
         onClick={() => toggleGoal(goal.id)}
         aria-pressed={selected}
       >
-        <span>{goal.label}</span>
+        <span className="goal-chip-label">
+          <GoalIcon
+            style={{
+              color: goal.color,
+              icon_type: goal.icon_type,
+              icon: goal.icon,
+            }}
+            className="goal-chip-icon"
+          />
+          {goal.label}
+        </span>
         <span className="goal-chip-progress">
           {t('goalsPage.weekProgress', {
             done: goal.completed_this_week,

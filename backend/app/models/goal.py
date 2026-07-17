@@ -22,6 +22,11 @@ from app.db.names import fk_column, table_name
 if TYPE_CHECKING:
     from app.models.mood_entry_goal import MoodEntryGoal
     from app.models.user import User
+    from app.models.user_goal_icon import UserGoalIcon
+
+DEFAULT_GOAL_COLOR = "#60a5fa"
+DEFAULT_GOAL_ICON_TYPE = "emoji"
+DEFAULT_GOAL_ICON = "🎯"
 
 
 class Goal(TimestampMixin, Base):
@@ -51,6 +56,25 @@ class Goal(TimestampMixin, Base):
         nullable=False,
         server_default=text("false"),
     )
+    color: Mapped[str] = mapped_column(
+        String(7),
+        nullable=False,
+        server_default=DEFAULT_GOAL_COLOR,
+    )
+    icon_type: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        server_default=DEFAULT_GOAL_ICON_TYPE,
+    )
+    icon: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        server_default=DEFAULT_GOAL_ICON,
+    )
 
     user: Mapped["User"] = relationship(back_populates="goals")
     entry_links: Mapped[list["MoodEntryGoal"]] = relationship(back_populates="goal")
+    icons: Mapped[list["UserGoalIcon"]] = relationship(
+        back_populates="goal",
+        cascade="all, delete-orphan",
+    )

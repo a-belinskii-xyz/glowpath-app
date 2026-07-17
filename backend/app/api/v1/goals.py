@@ -1,24 +1,42 @@
 import uuid
+from datetime import datetime
+from typing import Annotated
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_verified_user, get_locale
+from app.api.deps import get_current_verified_user, get_locale, get_storage_service
 from app.config import settings
 from app.db.session import get_db
 from app.models.goal import Goal
 from app.models.user import User
+from app.models.user_goal_icon import UserGoalIcon
 from app.schemas.goal import (
+    GoalCalendarResponse,
     GoalCreate,
+    GoalIconListResponse,
+    GoalIconMetaPublic,
+    GoalIconPublic,
     GoalListResponse,
     GoalPatch,
     GoalPublic,
     GoalReorderRequest,
 )
+from app.services.goal_icon_service import (
+    MAX_ICONS_PER_GOAL,
+    GoalIconError,
+    delete_goal_icon_by_id,
+    download_goal_icon,
+    list_goal_icons,
+    upload_goal_icon,
+)
 from app.services.goal_service import (
     GoalError,
     create_goal,
     delete_goal,
+    get_goal_calendar,
     list_goals,
     load_goals_week_stats,
     patch_goal,
@@ -26,11 +44,20 @@ from app.services.goal_service import (
     serialize_goal,
     serialize_goals,
 )
+from app.services.storage import ObjectStorage, StorageError
 
 router = APIRouter(tags=["goals"])
 
 
 def _handle_error(exc: GoalError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+def _handle_icon_error(exc: GoalIconError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+def _handle_storage_error(exc: StorageError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
 
@@ -55,6 +82,16 @@ def _to_list_response(
     return GoalListResponse(
         items=items,
         entry_visible_goal_limit=settings.entry_visible_goal_limit,
+    )
+
+
+def _icon_meta(icon: UserGoalIcon) -> GoalIconMetaPublic:
+    return GoalIconMetaPublic(
+        id=icon.id,
+        goal_id=icon.goal_id,
+        mime_type=icon.mime_type,
+        size_bytes=icon.size_bytes,
+        original_name=icon.original_name,
     )
 
 
@@ -85,12 +122,36 @@ def create_goal_endpoint(
             slug=body.slug,
             sort_order=body.sort_order,
             show_on_entry=body.show_on_entry,
+            color=body.color,
+            icon_type=body.icon_type.value if body.icon_type is not None else None,
+            icon=body.icon,
         )
     except GoalError as exc:
         _handle_error(exc)
         raise
     counts = load_goals_week_stats(db, user=current_user, goals=[goal])
     return _to_public(goal, locale=locale, completed_this_week=counts.get(goal.id, 0))
+
+
+@router.get("/calendar", response_model=GoalCalendarResponse)
+def calendar_goals(
+    recorded_from: Annotated[datetime, Query()],
+    recorded_to: Annotated[datetime, Query()],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> GoalCalendarResponse:
+    try:
+        days = get_goal_calendar(
+            db,
+            user_id=current_user.id,
+            timezone_name=current_user.timezone,
+            recorded_from=recorded_from,
+            recorded_to=recorded_to,
+        )
+    except GoalError as exc:
+        _handle_error(exc)
+        raise
+    return GoalCalendarResponse.model_validate({"days": days})
 
 
 @router.put("/reorder", response_model=GoalListResponse)
@@ -112,6 +173,131 @@ def reorder_goals_endpoint(
     return _to_list_response(db, user=current_user, goals=goals, locale=locale)
 
 
+@router.get("/icons/id/{icon_id}")
+def download_goal_icon_endpoint(
+    icon_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+) -> FastAPIResponse:
+    try:
+        icon, data = download_goal_icon(
+            db,
+            user_id=current_user.id,
+            icon_id=icon_id,
+            storage=storage,
+        )
+    except GoalIconError as exc:
+        _handle_icon_error(exc)
+        raise
+    except StorageError as exc:
+        _handle_storage_error(exc)
+        raise
+
+    filename = quote(icon.original_name)
+    return FastAPIResponse(
+        content=data,
+        media_type=icon.mime_type,
+        headers={
+            "Content-Disposition": f"inline; filename*=UTF-8''{filename}",
+        },
+    )
+
+
+@router.delete(
+    "/icons/id/{icon_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_goal_icon_endpoint(
+    icon_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+) -> Response:
+    try:
+        delete_goal_icon_by_id(
+            db,
+            user_id=current_user.id,
+            icon_id=icon_id,
+            storage=storage,
+        )
+    except GoalIconError as exc:
+        _handle_icon_error(exc)
+        raise
+    except GoalError as exc:
+        _handle_error(exc)
+        raise
+    except StorageError as exc:
+        _handle_storage_error(exc)
+        raise
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{goal_id}/icons", response_model=GoalIconListResponse)
+def list_goal_icons_endpoint(
+    goal_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> GoalIconListResponse:
+    try:
+        icons = list_goal_icons(db, user_id=current_user.id, goal_id=goal_id)
+    except GoalError as exc:
+        _handle_error(exc)
+        raise
+    return GoalIconListResponse(
+        items=[_icon_meta(icon) for icon in icons],
+        max_per_goal=MAX_ICONS_PER_GOAL,
+    )
+
+
+@router.post(
+    "/{goal_id}/icons",
+    status_code=status.HTTP_201_CREATED,
+    response_model=GoalIconPublic,
+)
+async def upload_goal_icon_endpoint(
+    goal_id: uuid.UUID,
+    file: UploadFile = File(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+    locale: str = Depends(get_locale),
+) -> GoalIconPublic:
+    data = await file.read()
+    original_name = file.filename or "icon"
+    content_type = file.content_type or "application/octet-stream"
+    try:
+        icon, goal = upload_goal_icon(
+            db,
+            user_id=current_user.id,
+            goal_id=goal_id,
+            data=data,
+            content_type=content_type,
+            original_name=original_name,
+            storage=storage,
+        )
+    except GoalIconError as exc:
+        _handle_icon_error(exc)
+        raise
+    except GoalError as exc:
+        _handle_error(exc)
+        raise
+    except StorageError as exc:
+        _handle_storage_error(exc)
+        raise
+
+    counts = load_goals_week_stats(db, user=current_user, goals=[goal])
+    return GoalIconPublic(
+        id=icon.id,
+        goal_id=icon.goal_id,
+        mime_type=icon.mime_type,
+        size_bytes=icon.size_bytes,
+        original_name=icon.original_name,
+        goal=_to_public(goal, locale=locale, completed_this_week=counts.get(goal.id, 0)),
+    )
+
+
 @router.patch("/{goal_id}", response_model=GoalPublic)
 def update_goal(
     goal_id: uuid.UUID,
@@ -131,6 +317,9 @@ def update_goal(
             starts_on=body.starts_on,
             sort_order=body.sort_order,
             show_on_entry=body.show_on_entry,
+            color=body.color,
+            icon_type=body.icon_type.value if body.icon_type is not None else None,
+            icon=body.icon,
         )
     except GoalError as exc:
         _handle_error(exc)

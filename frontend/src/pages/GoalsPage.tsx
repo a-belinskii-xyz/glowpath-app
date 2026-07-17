@@ -11,12 +11,15 @@ import {
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
+import { GoalIcon } from '../components/GoalIcon'
+import { GoalIconEditor } from '../components/GoalIconEditor'
 import { PopupMenu } from '../components/PopupMenu'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
 import { todayKey } from '../lib/datetime'
-import type { GoalPublic } from '../types/goal'
+import { isValidHexColor } from '../lib/moodScale'
+import { DEFAULT_GOAL_STYLE, type GoalPublic } from '../types/goal'
 
 type EditorMode = { kind: 'create' } | { kind: 'edit'; goal: GoalPublic }
 
@@ -40,6 +43,8 @@ export function GoalsPage() {
   const [name, setName] = useState('')
   const [timesPerWeek, setTimesPerWeek] = useState(7)
   const [startsOn, setStartsOn] = useState(todayKey(timeZone))
+  const [draftColor, setDraftColor] = useState(DEFAULT_GOAL_STYLE.color)
+  const [draftEmoji, setDraftEmoji] = useState(DEFAULT_GOAL_STYLE.icon)
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGoalId, setTogglingGoalId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -79,16 +84,22 @@ export function GoalsPage() {
       setName('')
       setTimesPerWeek(7)
       setStartsOn(todayKey(timeZone))
+      setDraftColor(DEFAULT_GOAL_STYLE.color)
+      setDraftEmoji(DEFAULT_GOAL_STYLE.icon)
     } else {
       setName(mode.goal.label)
       setTimesPerWeek(mode.goal.times_per_week)
       setStartsOn(mode.goal.starts_on)
+      setDraftColor(mode.goal.color)
+      setDraftEmoji(mode.goal.icon_type === 'emoji' ? mode.goal.icon : DEFAULT_GOAL_STYLE.icon)
     }
   }
 
   const closeEditor = () => {
     setEditor(null)
     setName('')
+    setDraftColor(DEFAULT_GOAL_STYLE.color)
+    setDraftEmoji(DEFAULT_GOAL_STYLE.icon)
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -108,6 +119,15 @@ export function GoalsPage() {
       setError(t('goalsPage.startsOnRequired'))
       return
     }
+    if (editor.kind === 'create' && !isValidHexColor(draftColor)) {
+      setError(t('goalsPage.invalidColor'))
+      return
+    }
+    const emoji = draftEmoji.trim()
+    if (editor.kind === 'create' && !emoji) {
+      setError(t('goalsPage.emojiRequired'))
+      return
+    }
 
     const existingLabels = editor.kind === 'edit' ? editor.goal.labels : {}
     const labels = { ...existingLabels, [locale]: trimmed }
@@ -121,6 +141,9 @@ export function GoalsPage() {
           times_per_week: timesPerWeek,
           starts_on: startsOn,
           show_on_entry: !atVisibleLimit,
+          color: draftColor,
+          icon_type: 'emoji',
+          icon: emoji,
         })
       } else {
         await patchGoal(editor.goal.id, {
@@ -253,6 +276,60 @@ export function GoalsPage() {
               required
             />
           </label>
+          {editor.kind === 'create' ? (
+            <div className="goal-icon-create-fields">
+              <div className="mood-preferences-preview">
+                <span
+                  className="mood-preferences-swatch"
+                  style={{ backgroundColor: isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color }}
+                  aria-hidden
+                />
+                <GoalIcon
+                  style={{ color: draftColor, icon_type: 'emoji', icon: draftEmoji || '🎯' }}
+                  className="mood-preferences-emoji"
+                />
+              </div>
+              <div className="mood-preferences-controls">
+                <input
+                  className="mood-preferences-color-input"
+                  type="color"
+                  value={isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color}
+                  onChange={(event) => setDraftColor(event.target.value)}
+                  aria-label={t('goalsPage.color')}
+                />
+                <input
+                  className="form-input mood-preferences-hex-input"
+                  type="text"
+                  value={draftColor}
+                  onChange={(event) => setDraftColor(event.target.value)}
+                  pattern="^#[0-9A-Fa-f]{6}$"
+                  spellCheck={false}
+                  aria-label={t('goalsPage.hex')}
+                />
+              </div>
+              <label className="form-field">
+                <span className="form-label">{t('moodPreferences.iconTypeEmoji')}</span>
+                <input
+                  className="form-input mood-preferences-emoji-input"
+                  type="text"
+                  value={draftEmoji}
+                  maxLength={8}
+                  onChange={(event) => setDraftEmoji(event.target.value)}
+                />
+              </label>
+              <p className="form-hint">{t('goalsPage.uploadAfterCreate')}</p>
+            </div>
+          ) : (
+            <GoalIconEditor
+              goal={editor.goal}
+              onGoalChange={(updated) => {
+                setEditor({ kind: 'edit', goal: updated })
+                setGoals((current) =>
+                  current.map((item) => (item.id === updated.id ? updated : item)),
+                )
+              }}
+            />
+          )}
           <div className="button-row">
             <button type="submit" className="button" disabled={isSaving}>
               {isSaving ? t('common.saving') : t('common.save')}
@@ -282,7 +359,19 @@ export function GoalsPage() {
           >
             <header className="goal-card-header">
               <PopupMenu
-                label={<h2>{goal.label}</h2>}
+                label={
+                  <h2 className="goal-card-title">
+                    <GoalIcon
+                      style={{
+                        color: goal.color,
+                        icon_type: goal.icon_type,
+                        icon: goal.icon,
+                      }}
+                      className="goal-card-icon"
+                    />
+                    {goal.label}
+                  </h2>
+                }
                 ariaLabel={t('goalsPage.actionsFor', { label: goal.label })}
                 onEdit={() => openEditor({ kind: 'edit', goal })}
                 onDelete={() => void handleDelete(goal)}

@@ -613,6 +613,9 @@ def serialize_mood_entry(
             "id": link.goal.id,
             "slug": link.goal.slug,
             "label": resolve_label(link.goal.labels, locale),
+            "color": link.goal.color,
+            "icon_type": link.goal.icon_type,
+            "icon": link.goal.icon,
         }
         for link in sorted(entry.goal_links, key=lambda item: item.goal.sort_order)
         if link.goal is not None

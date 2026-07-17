@@ -6,6 +6,7 @@ import { Alert } from '../components/Alert'
 import { AttachmentAudio } from '../components/AttachmentAudio'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
+import { GoalIcon } from '../components/GoalIcon'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
@@ -198,6 +199,14 @@ export function EntryDetailPage() {
                 <div className="entry-tags entry-goals">
                   {entry.goals.map((goal) => (
                     <span key={goal.id} className="entry-tag entry-goal">
+                      <GoalIcon
+                        style={{
+                          color: goal.color,
+                          icon_type: goal.icon_type,
+                          icon: goal.icon,
+                        }}
+                        className="entry-goal-icon"
+                      />
                       {goal.label}
                     </span>
                   ))}

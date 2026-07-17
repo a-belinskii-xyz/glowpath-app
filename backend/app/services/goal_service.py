@@ -14,12 +14,22 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
-from app.models.goal import Goal
+from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
+from app.core.mood_scale import MoodScoreIconType, is_valid_hex_color
+from app.models.goal import (
+    DEFAULT_GOAL_COLOR,
+    DEFAULT_GOAL_ICON,
+    DEFAULT_GOAL_ICON_TYPE,
+    Goal,
+)
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_goal import MoodEntryGoal
 from app.models.user import User
+from app.models.user_goal_icon import UserGoalIcon
 
 _SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
+_MAX_EMOJI_LENGTH = 8
+CALENDAR_GOALS_PER_DAY = 3
 
 
 class GoalError(Exception):
@@ -54,6 +64,9 @@ def create_goal(
     slug: str | None = None,
     sort_order: int | None = None,
     show_on_entry: bool = False,
+    color: str | None = None,
+    icon_type: str | None = None,
+    icon: str | None = None,
 ) -> Goal:
     if show_on_entry:
         _ensure_visible_slot_available(db, user_id=user_id)
@@ -66,6 +79,14 @@ def create_goal(
             select(func.max(Goal.sort_order)).where(Goal.user_id == user_id),
         )
     )
+    style = _validate_goal_style(
+        db,
+        user_id=user_id,
+        goal_id=None,
+        color=color if color is not None else DEFAULT_GOAL_COLOR,
+        icon_type=icon_type if icon_type is not None else DEFAULT_GOAL_ICON_TYPE,
+        icon=icon if icon is not None else DEFAULT_GOAL_ICON,
+    )
     goal = Goal(
         user_id=user_id,
         slug=resolved_slug,
@@ -74,6 +95,9 @@ def create_goal(
         starts_on=starts_on,
         sort_order=resolved_order,
         show_on_entry=show_on_entry,
+        color=style["color"],
+        icon_type=style["icon_type"],
+        icon=style["icon"],
     )
     db.add(goal)
     try:
@@ -95,6 +119,9 @@ def patch_goal(
     starts_on: date | None = None,
     sort_order: int | None = None,
     show_on_entry: bool | None = None,
+    color: str | None = None,
+    icon_type: str | None = None,
+    icon: str | None = None,
 ) -> Goal:
     goal = get_goal(db, user_id=user_id, goal_id=goal_id)
     if slug is not None:
@@ -111,6 +138,18 @@ def patch_goal(
         if show_on_entry:
             _ensure_visible_slot_available(db, user_id=user_id)
         goal.show_on_entry = show_on_entry
+    if color is not None or icon_type is not None or icon is not None:
+        style = _validate_goal_style(
+            db,
+            user_id=user_id,
+            goal_id=goal.id,
+            color=color if color is not None else goal.color,
+            icon_type=icon_type if icon_type is not None else goal.icon_type,
+            icon=icon if icon is not None else goal.icon,
+        )
+        goal.color = style["color"]
+        goal.icon_type = style["icon_type"]
+        goal.icon = style["icon"]
     try:
         db.commit()
     except IntegrityError as exc:
@@ -203,8 +242,66 @@ def serialize_goal(
         "starts_on": goal.starts_on,
         "sort_order": goal.sort_order,
         "show_on_entry": goal.show_on_entry,
+        "color": goal.color,
+        "icon_type": goal.icon_type,
+        "icon": goal.icon,
         "completed_this_week": completed_this_week,
     }
+
+
+def get_goal_calendar(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    timezone_name: str,
+    recorded_from: datetime,
+    recorded_to: datetime,
+) -> list[dict[str, Any]]:
+    """Return per-day goal marks for a range, grouped in the user's timezone.
+
+    Each day includes up to ``CALENDAR_GOALS_PER_DAY`` most recent goal marks
+    (entries by ``recorded_at`` desc, goals within an entry by ``sort_order``)
+    plus the total mark count for that day.
+    """
+    tz = _resolve_user_tz(timezone_name)
+    from_utc = _to_utc(recorded_from)
+    to_utc = _to_utc(recorded_to)
+    if to_utc <= from_utc:
+        raise GoalError("recorded_to must be after recorded_from")
+
+    rows = list(
+        db.execute(
+            select(MoodEntry.recorded_at, MoodEntryGoal.goal_id)
+            .join(MoodEntry, MoodEntry.id == MoodEntryGoal.mood_entry_id)
+            .join(Goal, Goal.id == MoodEntryGoal.goal_id)
+            .where(
+                MoodEntry.user_id == user_id,
+                MoodEntry.recorded_at >= from_utc,
+                MoodEntry.recorded_at < to_utc,
+            )
+            .order_by(
+                MoodEntry.recorded_at.desc(),
+                MoodEntry.created_at.desc(),
+                Goal.sort_order.asc(),
+            )
+        ).all()
+    )
+
+    by_day: dict[date, list[uuid.UUID]] = defaultdict(list)
+    for recorded_at, goal_id in rows:
+        by_day[_local_date(recorded_at, tz)].append(goal_id)
+
+    days: list[dict[str, Any]] = []
+    for day in sorted(by_day.keys()):
+        goal_ids = by_day[day]
+        days.append(
+            {
+                "date": day.isoformat(),
+                "entry_count": len(goal_ids),
+                "goals": [{"goal_id": goal_id} for goal_id in goal_ids[:CALENDAR_GOALS_PER_DAY]],
+            }
+        )
+    return days
 
 
 def serialize_goals(
@@ -239,6 +336,83 @@ def _resolve_user_tz(timezone_name: str) -> ZoneInfo:
         return ZoneInfo(timezone_name)
     except ZoneInfoNotFoundError as exc:
         raise GoalError(f"Unknown timezone: {timezone_name}", status_code=400) from exc
+
+
+def _to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def _local_date(recorded_at: datetime, tz: ZoneInfo) -> date:
+    instant = recorded_at if recorded_at.tzinfo is not None else recorded_at.replace(tzinfo=UTC)
+    return instant.astimezone(tz).date()
+
+
+def _validate_goal_style(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    goal_id: uuid.UUID | None,
+    color: str,
+    icon_type: str,
+    icon: str,
+) -> dict[str, str]:
+    if not is_valid_hex_color(color):
+        raise GoalError(f"Invalid color: {color!r}")
+
+    try:
+        resolved_type = MoodScoreIconType(icon_type)
+    except ValueError as exc:
+        raise GoalError(f"Unknown icon type: {icon_type!r}") from exc
+
+    if not isinstance(icon, str) or not icon.strip():
+        raise GoalError("Icon must be a non-empty string")
+    resolved_icon = icon.strip()
+
+    if resolved_type is MoodScoreIconType.EMOJI:
+        if len(resolved_icon) > _MAX_EMOJI_LENGTH:
+            raise GoalError(f"Emoji must be at most {_MAX_EMOJI_LENGTH} characters")
+    elif resolved_type is MoodScoreIconType.BUILTIN:
+        if not is_valid_builtin_icon_slug(resolved_icon):
+            raise GoalError(f"Unknown built-in icon: {resolved_icon!r}")
+    elif resolved_type is MoodScoreIconType.UPLOAD:
+        if goal_id is None:
+            raise GoalError("Uploaded icons can only be set after the goal is created")
+        if not _icon_belongs_to_goal(
+            db,
+            user_id=user_id,
+            goal_id=goal_id,
+            icon_id=resolved_icon,
+        ):
+            raise GoalError("Uploaded icon was not found for this goal")
+
+    return {
+        "color": color,
+        "icon_type": resolved_type.value,
+        "icon": resolved_icon,
+    }
+
+
+def _icon_belongs_to_goal(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    goal_id: uuid.UUID,
+    icon_id: str,
+) -> bool:
+    try:
+        parsed_id = uuid.UUID(icon_id)
+    except ValueError:
+        return False
+    row = db.scalar(
+        select(UserGoalIcon.id).where(
+            UserGoalIcon.id == parsed_id,
+            UserGoalIcon.user_id == user_id,
+            UserGoalIcon.goal_id == goal_id,
+        )
+    )
+    return row is not None
 
 
 def _iso_week_bounds(day: date) -> tuple[date, date]:
