@@ -19,6 +19,7 @@ import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { ApiError } from '../lib/errors'
 import {
   datetimeLocalToIso,
+  entriesListPathForInstant,
   isoToDatetimeLocal,
   nowDatetimeLocal,
 } from '../lib/datetime'
@@ -266,14 +267,18 @@ export function MoodEntryForm({
     }
 
     try {
+      let savedId = initialEntry?.id
       if (mode === 'create') {
         const created = await createMoodEntry(payload)
         await uploadPendingFiles(created.id)
+        savedId = created.id
       } else if (initialEntry) {
         await patchMoodEntry(initialEntry.id, payload)
         await uploadPendingFiles(initialEntry.id)
       }
-      navigate('/')
+      navigate(
+        entriesListPathForInstant(payload.recorded_at, timeZone, savedId),
+      )
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToSaveEntries'))
@@ -508,7 +513,17 @@ export function MoodEntryForm({
               ? t('entries.createEntry')
               : t('entries.saveChanges')}
         </button>
-        <button className="button button-secondary" type="button" onClick={() => navigate('/')}>
+        <button
+          className="button button-secondary"
+          type="button"
+          onClick={() =>
+            navigate(
+              initialEntry
+                ? entriesListPathForInstant(initialEntry.recorded_at, timeZone, initialEntry.id)
+                : '/',
+            )
+          }
+        >
           {t('common.cancel')}
         </button>
       </div>

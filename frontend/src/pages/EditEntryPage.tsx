@@ -5,13 +5,17 @@ import { getMoodEntry } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { MoodEntryForm } from '../components/MoodEntryForm'
+import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
+import { entriesListPathForInstant } from '../lib/datetime'
 import type { MoodEntryPublic } from '../types/mood'
 
 export function EditEntryPage() {
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
   const { locale, t } = useLocale()
+  const timeZone = user?.timezone ?? 'UTC'
   const [entry, setEntry] = useState<MoodEntryPublic | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -42,12 +46,16 @@ export function EditEntryPage() {
     void load()
   }, [id, locale, t])
 
+  const backToEntries = entry
+    ? entriesListPathForInstant(entry.recorded_at, timeZone, entry.id)
+    : '/'
+
   return (
     <section className="page">
       <EmailVerificationBanner />
       <header className="page-header">
         <h1>{t('entries.editMoodEntry')}</h1>
-        <Link className="button button-secondary" to="/">
+        <Link className="button button-secondary" to={backToEntries}>
           {t('common.backToEntries')}
         </Link>
       </header>

@@ -627,6 +627,10 @@ code {
   filter: saturate(1.08);
 }
 
+.entry-row-highlight .entry-row {
+  box-shadow: 0 0 0 2px #93c5fd, 0 0 0 6px rgb(147 197 253 / 35%);
+}
+
 .day-heading {
   margin: 0;
   font-size: 1rem;
@@ -708,6 +712,77 @@ code {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #ffffff;
+}
+
+.entry-detail-with-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.entry-detail-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.entry-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0.75rem;
+}
+
+.entry-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #6b7280;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.entry-icon-button svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.entry-icon-button:hover:not(:disabled) {
+  background: #f9fafb;
+  color: #111827;
+  border-color: #d1d5db;
+}
+
+.entry-icon-button.is-favorite {
+  color: #e11d48;
+  border-color: #fecdd3;
+  background: #fff1f2;
+}
+
+.entry-icon-button.is-favorite:hover:not(:disabled) {
+  color: #be123c;
+  border-color: #fda4af;
+  background: #ffe4e6;
+}
+
+.entry-icon-button-danger:hover:not(:disabled) {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.entry-icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .entry-detail-hero {

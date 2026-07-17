@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
@@ -20,22 +20,46 @@ import {
   formatDayHeading,
   formatMonthHeading,
   formatTime,
+  formatYearMonthParam,
   getCurrentYearMonth,
+  getDayBounds,
   getMonthBounds,
+  parseYearMonthParam,
 } from '../lib/datetime'
 import { dayMoodWashFromScores } from '../lib/dayMoodWash'
 import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
 
 const PAGE_SIZE = 20
+const DAY_FETCH_LIMIT = 100
+
+function sortEntriesNewestFirst(items: MoodEntryPublic[]): MoodEntryPublic[] {
+  return [...items].sort(
+    (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime(),
+  )
+}
+
+function mergeEntries(
+  current: MoodEntryPublic[],
+  incoming: MoodEntryPublic[],
+): MoodEntryPublic[] {
+  const byId = new Map(current.map((entry) => [entry.id, entry]))
+  for (const item of incoming) {
+    byId.set(item.id, item)
+  }
+  return sortEntriesNewestFirst(Array.from(byId.values()))
+}
 
 export function EntriesPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
   const { scores } = useMoodPreferences()
+  const [searchParams, setSearchParams] = useSearchParams()
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
-  const initialMonth = getCurrentYearMonth(timeZone)
+
+  const initialMonth =
+    parseYearMonthParam(searchParams.get('month')) ?? getCurrentYearMonth(timeZone)
 
   const [year, setYear] = useState(initialMonth.year)
   const [month, setMonth] = useState(initialMonth.month)
@@ -54,21 +78,85 @@ export function EntriesPage() {
   const [error, setError] = useState<string | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
 
+  const [pendingScrollDay, setPendingScrollDay] = useState<string | null>(
+    () => searchParams.get('day'),
+  )
+  const [pendingScrollEntry, setPendingScrollEntry] = useState<string | null>(
+    () => searchParams.get('entry'),
+  )
+
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const loadingRef = useRef(false)
-  const pendingScrollDayRef = useRef<string | null>(null)
+  const dayLoadRef = useRef<string | null>(null)
 
   const monthBounds = useMemo(() => getMonthBounds(year, month, timeZone), [year, month, timeZone])
+
+  const updateMonthParams = useCallback(
+    (nextYear: number, nextMonth: number, options?: { day?: string; entry?: string }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.set('month', formatYearMonthParam(nextYear, nextMonth))
+          if (options?.day) {
+            next.set('day', options.day)
+          } else {
+            next.delete('day')
+          }
+          if (options?.entry) {
+            next.set('entry', options.entry)
+          } else {
+            next.delete('entry')
+          }
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const setMonthView = useCallback(
+    (nextYear: number, nextMonth: number) => {
+      setYear(nextYear)
+      setMonth(nextMonth)
+      setPendingScrollDay(null)
+      setPendingScrollEntry(null)
+      updateMonthParams(nextYear, nextMonth)
+    },
+    [updateMonthParams],
+  )
+
+  useEffect(() => {
+    const parsed = parseYearMonthParam(searchParams.get('month'))
+    if (!parsed) {
+      return
+    }
+    if (parsed.year !== year || parsed.month !== month) {
+      setYear(parsed.year)
+      setMonth(parsed.month)
+    }
+  }, [month, searchParams, year])
 
   const scrollToDay = useCallback((date: string) => {
     const node = document.getElementById(`day-${date}`)
     if (!node) {
       return false
     }
-    node.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // Instant scroll — smooth + infinite loading stops mid-way on long jumps.
+    node.scrollIntoView({ behavior: 'auto', block: 'start' })
     node.classList.add('day-section-highlight')
     window.setTimeout(() => node.classList.remove('day-section-highlight'), 1600)
-    pendingScrollDayRef.current = null
+    return true
+  }, [])
+
+  const scrollToEntry = useCallback((entryId: string) => {
+    const node = document.getElementById(`entry-${entryId}`)
+    if (!node) {
+      return false
+    }
+    node.scrollIntoView({ behavior: 'auto', block: 'center' })
+    node.classList.add('entry-row-highlight')
+    window.setTimeout(() => node.classList.remove('entry-row-highlight'), 1600)
     return true
   }, [])
 
@@ -148,7 +236,7 @@ export function EntriesPage() {
         })
 
         setEntries((current) =>
-          replace ? response.items : [...current, ...response.items],
+          replace ? response.items : mergeEntries(current, response.items),
         )
         setOffset(pageOffset + response.items.length)
         setHasMore(response.items.length === PAGE_SIZE)
@@ -174,6 +262,62 @@ export function EntriesPage() {
     ],
   )
 
+  const ensureEntriesFromDay = useCallback(
+    async (date: string): Promise<boolean | null> => {
+      if (!user?.email_verified) {
+        return false
+      }
+      if (dayLoadRef.current === date) {
+        return null
+      }
+
+      dayLoadRef.current = date
+      setError(null)
+      try {
+        // Load a continuous newest→target-day prefix so infinite scroll cannot
+        // insert "middle" days above the target while/after we jump there.
+        const dayBounds = getDayBounds(date, timeZone)
+        const items: MoodEntryPublic[] = []
+        let pageOffset = 0
+        while (true) {
+          const response = await listMoodEntries({
+            limit: DAY_FETCH_LIMIT,
+            offset: pageOffset,
+            recorded_from: dayBounds.recorded_from,
+            recorded_to: monthBounds.recorded_to,
+            ...(favoritesOnly ? { is_favorite: true } : {}),
+          })
+          items.push(...response.items)
+          pageOffset += response.items.length
+          if (response.items.length < DAY_FETCH_LIMIT) {
+            break
+          }
+        }
+
+        setEntries((current) => mergeEntries(current, items))
+        // This range is a prefix of the month feed (newest-first).
+        setOffset((current) => Math.max(current, items.length))
+        return items.some((entry) => dayKey(entry.recorded_at, timeZone) === date)
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status === 403)) {
+          setError(err instanceof Error ? err.message : t('errors.failedLoadEntries'))
+        }
+        return false
+      } finally {
+        if (dayLoadRef.current === date) {
+          dayLoadRef.current = null
+        }
+      }
+    },
+    [
+      favoritesOnly,
+      monthBounds.recorded_to,
+      t,
+      timeZone,
+      user?.email_verified,
+    ],
+  )
+
   useEffect(() => {
     void loadCalendar()
   }, [loadCalendar])
@@ -186,13 +330,22 @@ export function EntriesPage() {
     setEntries([])
     setOffset(0)
     setHasMore(true)
-    pendingScrollDayRef.current = null
+    dayLoadRef.current = null
     void loadPage(0, true)
   }, [loadPage])
 
   useEffect(() => {
     const node = loadMoreRef.current
-    if (!node || !hasMore || isLoading || isLoadingMore) {
+    // Pause while jumping to a calendar day/entry — otherwise newly loaded
+    // pages shift the target and the scroll stops mid-feed.
+    if (
+      !node ||
+      !hasMore ||
+      isLoading ||
+      isLoadingMore ||
+      pendingScrollDay ||
+      pendingScrollEntry
+    ) {
       return
     }
 
@@ -207,28 +360,78 @@ export function EntriesPage() {
 
     observer.observe(node)
     return () => observer.disconnect()
-  }, [hasMore, isLoading, isLoadingMore, loadPage, offset])
+  }, [
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadPage,
+    offset,
+    pendingScrollDay,
+    pendingScrollEntry,
+  ])
 
   useEffect(() => {
-    const pending = pendingScrollDayRef.current
-    if (!pending || isLoading) {
+    if (isLoading || (!pendingScrollDay && !pendingScrollEntry)) {
       return
     }
-    if (scrollToDay(pending)) {
-      return
-    }
-    if (!hasMore && !isLoadingMore) {
-      pendingScrollDayRef.current = null
-    }
-  }, [entries, hasMore, isLoading, isLoadingMore, scrollToDay])
 
-  // Keep loading pages while waiting for a day section to appear after calendar click.
-  useEffect(() => {
-    if (!pendingScrollDayRef.current || !hasMore || isLoading || isLoadingMore) {
-      return
+    let cancelled = false
+
+    const run = async () => {
+      const day = pendingScrollDay
+      const entryId = pendingScrollEntry
+
+      if (day) {
+        const loaded = await ensureEntriesFromDay(day)
+        if (cancelled) {
+          return
+        }
+        if (loaded === null) {
+          return
+        }
+        if (!loaded) {
+          setPendingScrollDay(null)
+          setPendingScrollEntry(null)
+          return
+        }
+      }
+
+      // Wait for the merged day sections to commit before jumping.
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve())
+        })
+      })
+      if (cancelled) {
+        return
+      }
+
+      if (entryId && scrollToEntry(entryId)) {
+        setPendingScrollEntry(null)
+        setPendingScrollDay(null)
+        return
+      }
+      if (day && scrollToDay(day)) {
+        setPendingScrollDay(null)
+        if (!entryId) {
+          return
+        }
+      }
+      setPendingScrollEntry(null)
     }
-    void loadPage(offset, false)
-  }, [entries, hasMore, isLoading, isLoadingMore, loadPage, offset])
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    ensureEntriesFromDay,
+    isLoading,
+    pendingScrollDay,
+    pendingScrollEntry,
+    scrollToDay,
+    scrollToEntry,
+  ])
 
   const groupedEntries = useMemo(() => {
     const groups = new Map<string, MoodEntryPublic[]>()
@@ -243,20 +446,18 @@ export function EntriesPage() {
 
   const goToPreviousMonth = () => {
     if (month === 0) {
-      setYear((value) => value - 1)
-      setMonth(11)
+      setMonthView(year - 1, 11)
       return
     }
-    setMonth((value) => value - 1)
+    setMonthView(year, month - 1)
   }
 
   const goToNextMonth = () => {
     if (month === 11) {
-      setYear((value) => value + 1)
-      setMonth(0)
+      setMonthView(year + 1, 0)
       return
     }
-    setMonth((value) => value + 1)
+    setMonthView(year, month + 1)
   }
 
   const handleDelete = async (entryId: string) => {
@@ -289,9 +490,7 @@ export function EntriesPage() {
       setEntries((current) => {
         const restored = current.some((entry) => entry.id === entryId)
           ? current.map((entry) => (entry.id === entryId ? previous : entry))
-          : [...current, previous].sort(
-              (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime(),
-            )
+          : mergeEntries(current, [previous])
         return restored
       })
       setError(err instanceof Error ? err.message : t('errors.failedSaveEntry'))
@@ -299,9 +498,9 @@ export function EntriesPage() {
   }
 
   const handleDayWithEntries = (date: string) => {
-    if (!scrollToDay(date)) {
-      pendingScrollDayRef.current = date
-    }
+    setPendingScrollEntry(null)
+    setPendingScrollDay(date)
+    updateMonthParams(year, month, { day: date })
   }
 
   return (
@@ -380,7 +579,7 @@ export function EntriesPage() {
               </h2>
               <ul className="entry-list">
                 {dayEntries.map((entry) => (
-                  <li key={entry.id}>
+                  <li key={entry.id} id={`entry-${entry.id}`}>
                     <article className="entry-row">
                       <Link className="entry-row-link" to={`/entries/${entry.id}`}>
                         <div className="entry-row-main">

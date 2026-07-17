@@ -13,9 +13,59 @@ import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { intlLocale } from '../i18n/t'
 import { ApiError } from '../lib/errors'
-import { formatDayHeading, formatTime } from '../lib/datetime'
+import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/datetime'
 import { getMoodScoreStyle } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M12 21s-6.7-4.35-9.33-7.6C.5 10.9 1.1 7.2 3.9 5.55 6.05 4.3 8.55 4.85 10 6.5L12 8.7l2-2.2c1.45-1.65 3.95-2.2 6.1-.95 2.8 1.65 3.4 5.35 1.23 7.85C18.7 16.65 12 21 12 21z"
+        fill={filled ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M4 20h4.5L19.2 9.3a1.5 1.5 0 0 0 0-2.12L16.82 4.8a1.5 1.5 0 0 0-2.12 0L4 15.5V20z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.5 6.5l4 4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function DeleteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M5 7h14M10 11v6M14 11v6M9 7l1-2h4l1 2M7 7l1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -66,7 +116,7 @@ export function EntryDetailPage() {
     setError(null)
     try {
       await deleteMoodEntry(entry.id)
-      navigate('/')
+      navigate(entriesListPathForInstant(entry.recorded_at, timeZone))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.failedDeleteEntry'))
       setIsDeleting(false)
@@ -94,13 +144,16 @@ export function EntryDetailPage() {
   }
 
   const audioAttachment = entry?.attachments.find((attachment) => attachment.kind === 'audio')
+  const backToEntries = entry
+    ? entriesListPathForInstant(entry.recorded_at, timeZone, entry.id)
+    : '/'
 
   return (
     <section className="page">
       <EmailVerificationBanner />
       <header className="page-header">
         <h1>{t('entries.moodEntry')}</h1>
-        <Link className="button button-secondary" to="/">
+        <Link className="button button-secondary" to={backToEntries}>
           {t('common.backToEntries')}
         </Link>
       </header>
@@ -110,83 +163,93 @@ export function EntryDetailPage() {
 
       {entry ? (
         <article className="entry-detail">
-          <div className="entry-detail-hero">
-            <MoodScoreIcon
-              style={getMoodScoreStyle(entry.score, scores)}
-              className="entry-detail-emoji"
-              fallbackScore={entry.score}
-            />
-            <div>
-              <p className="entry-detail-score">
-                {entry.is_favorite ? (
-                  <span className="entry-favorite-mark" aria-hidden="true">
-                    ★
-                  </span>
-                ) : null}
-                {entry.score_label}
-              </p>
-              <p className="muted">
-                {formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ·{' '}
-                {formatTime(entry.recorded_at, timeZone, dateLocale)}
-              </p>
+          <div className="entry-detail-with-actions">
+            <div className="entry-detail-main">
+              <div className="entry-detail-hero">
+                <MoodScoreIcon
+                  style={getMoodScoreStyle(entry.score, scores)}
+                  className="entry-detail-emoji"
+                  fallbackScore={entry.score}
+                />
+                <div>
+                  <p className="entry-detail-score">{entry.score_label}</p>
+                  <p className="muted">
+                    {formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ·{' '}
+                    {formatTime(entry.recorded_at, timeZone, dateLocale)}
+                  </p>
+                </div>
+              </div>
+
+              {entry.note ? (
+                <MarkdownNote content={entry.note} className="entry-detail-note" />
+              ) : null}
+
+              {entry.tags.length > 0 ? (
+                <div className="entry-tags">
+                  {entry.tags.map((tag) => (
+                    <span key={tag.id} className="entry-tag">
+                      {tag.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              {entry.goals.length > 0 ? (
+                <div className="entry-tags entry-goals">
+                  {entry.goals.map((goal) => (
+                    <span key={goal.id} className="entry-tag entry-goal">
+                      {goal.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              {audioAttachment ? (
+                <AttachmentAudio entryId={entry.id} attachment={audioAttachment} />
+              ) : null}
+
+              <EntryAttachmentThumbs
+                entryId={entry.id}
+                attachments={entry.attachments}
+                showAudioCount={false}
+              />
             </div>
-          </div>
 
-          {entry.note ? (
-            <MarkdownNote content={entry.note} className="entry-detail-note" />
-          ) : null}
-
-          {entry.tags.length > 0 ? (
-            <div className="entry-tags">
-              {entry.tags.map((tag) => (
-                <span key={tag.id} className="entry-tag">
-                  {tag.label}
-                </span>
-              ))}
+            <div className="entry-detail-actions" role="toolbar" aria-label={t('entryActions.ariaLabel')}>
+              <button
+                type="button"
+                className={`entry-icon-button${entry.is_favorite ? ' is-favorite' : ''}`}
+                onClick={() => void handleToggleFavorite()}
+                disabled={isTogglingFavorite}
+                aria-pressed={entry.is_favorite}
+                aria-label={
+                  entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')
+                }
+                title={
+                  entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')
+                }
+              >
+                <HeartIcon filled={entry.is_favorite} />
+              </button>
+              <Link
+                className="entry-icon-button"
+                to={`/entries/${entry.id}/edit`}
+                aria-label={t('common.edit')}
+                title={t('common.edit')}
+              >
+                <EditIcon />
+              </Link>
+              <button
+                type="button"
+                className="entry-icon-button entry-icon-button-danger"
+                onClick={() => void handleDelete()}
+                disabled={isDeleting}
+                aria-label={isDeleting ? t('common.deleting') : t('common.delete')}
+                title={isDeleting ? t('common.deleting') : t('common.delete')}
+              >
+                <DeleteIcon />
+              </button>
             </div>
-          ) : null}
-
-          {entry.goals.length > 0 ? (
-            <div className="entry-tags entry-goals">
-              {entry.goals.map((goal) => (
-                <span key={goal.id} className="entry-tag entry-goal">
-                  {goal.label}
-                </span>
-              ))}
-            </div>
-          ) : null}
-
-          {audioAttachment ? (
-            <AttachmentAudio entryId={entry.id} attachment={audioAttachment} />
-          ) : null}
-
-          <EntryAttachmentThumbs
-            entryId={entry.id}
-            attachments={entry.attachments}
-            showAudioCount={false}
-          />
-
-          <div className="button-row">
-            <button
-              type="button"
-              className={`button button-secondary${entry.is_favorite ? ' is-active' : ''}`}
-              onClick={() => void handleToggleFavorite()}
-              disabled={isTogglingFavorite}
-              aria-pressed={entry.is_favorite}
-            >
-              {entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')}
-            </button>
-            <Link className="button" to={`/entries/${entry.id}/edit`}>
-              {t('common.edit')}
-            </Link>
-            <button
-              type="button"
-              className="button button-danger"
-              onClick={() => void handleDelete()}
-              disabled={isDeleting}
-            >
-              {isDeleting ? t('common.deleting') : t('common.delete')}
-            </button>
           </div>
         </article>
       ) : null}
