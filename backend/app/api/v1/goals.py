@@ -23,6 +23,7 @@ from app.schemas.goal import (
     GoalPatch,
     GoalPublic,
     GoalReorderRequest,
+    GoalStatsResponse,
 )
 from app.services.goal_icon_service import (
     MAX_ICONS_PER_GOAL,
@@ -37,6 +38,7 @@ from app.services.goal_service import (
     create_goal,
     delete_goal,
     get_goal_calendar,
+    get_goal_stats,
     list_goals,
     load_goals_week_stats,
     patch_goal,
@@ -82,6 +84,7 @@ def _to_list_response(
     return GoalListResponse(
         items=items,
         entry_visible_goal_limit=settings.entry_visible_goal_limit,
+        stats_visible_goal_limit=settings.stats_visible_goal_limit,
     )
 
 
@@ -119,9 +122,11 @@ def create_goal_endpoint(
             labels=body.labels,
             times_per_week=body.times_per_week,
             starts_on=body.starts_on,
+            ends_on=body.ends_on,
             slug=body.slug,
             sort_order=body.sort_order,
             show_on_entry=body.show_on_entry,
+            show_in_stats=body.show_in_stats,
             color=body.color,
             icon_type=body.icon_type.value if body.icon_type is not None else None,
             icon=body.icon,
@@ -152,6 +157,29 @@ def calendar_goals(
         _handle_error(exc)
         raise
     return GoalCalendarResponse.model_validate({"days": days})
+
+
+@router.get("/stats", response_model=GoalStatsResponse)
+def stats_goals(
+    recorded_from: Annotated[datetime, Query()],
+    recorded_to: Annotated[datetime, Query()],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
+) -> GoalStatsResponse:
+    try:
+        payload = get_goal_stats(
+            db,
+            user_id=current_user.id,
+            timezone_name=current_user.timezone,
+            locale=locale,
+            recorded_from=recorded_from,
+            recorded_to=recorded_to,
+        )
+    except GoalError as exc:
+        _handle_error(exc)
+        raise
+    return GoalStatsResponse.model_validate(payload)
 
 
 @router.put("/reorder", response_model=GoalListResponse)
@@ -315,8 +343,11 @@ def update_goal(
             labels=body.labels,
             times_per_week=body.times_per_week,
             starts_on=body.starts_on,
+            ends_on=body.ends_on,
+            ends_on_set="ends_on" in body.model_fields_set,
             sort_order=body.sort_order,
             show_on_entry=body.show_on_entry,
+            show_in_stats=body.show_in_stats,
             color=body.color,
             icon_type=body.icon_type.value if body.icon_type is not None else None,
             icon=body.icon,

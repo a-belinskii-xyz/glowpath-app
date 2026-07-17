@@ -29,7 +29,6 @@ from app.models.user_goal_icon import UserGoalIcon
 
 _SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
 _MAX_EMOJI_LENGTH = 8
-CALENDAR_GOALS_PER_DAY = 3
 
 
 class GoalError(Exception):
@@ -61,15 +60,20 @@ def create_goal(
     labels: dict[str, str],
     times_per_week: int,
     starts_on: date,
+    ends_on: date | None = None,
     slug: str | None = None,
     sort_order: int | None = None,
     show_on_entry: bool = False,
+    show_in_stats: bool = False,
     color: str | None = None,
     icon_type: str | None = None,
     icon: str | None = None,
 ) -> Goal:
     if show_on_entry:
         _ensure_visible_slot_available(db, user_id=user_id)
+    if show_in_stats:
+        _ensure_stats_slot_available(db, user_id=user_id)
+    _validate_goal_dates(starts_on=starts_on, ends_on=ends_on)
     resolved_slug = slug or _unique_goal_slug(db, user_id=user_id, base=_slugify(labels))
     resolved_order = (
         sort_order
@@ -93,8 +97,10 @@ def create_goal(
         labels=labels,
         times_per_week=times_per_week,
         starts_on=starts_on,
+        ends_on=ends_on,
         sort_order=resolved_order,
         show_on_entry=show_on_entry,
+        show_in_stats=show_in_stats,
         color=style["color"],
         icon_type=style["icon_type"],
         icon=style["icon"],
@@ -117,8 +123,11 @@ def patch_goal(
     labels: dict[str, str] | None = None,
     times_per_week: int | None = None,
     starts_on: date | None = None,
+    ends_on: date | None = None,
+    ends_on_set: bool = False,
     sort_order: int | None = None,
     show_on_entry: bool | None = None,
+    show_in_stats: bool | None = None,
     color: str | None = None,
     icon_type: str | None = None,
     icon: str | None = None,
@@ -132,12 +141,19 @@ def patch_goal(
         goal.times_per_week = times_per_week
     if starts_on is not None:
         goal.starts_on = starts_on
+    if ends_on_set:
+        goal.ends_on = ends_on
+    _validate_goal_dates(starts_on=goal.starts_on, ends_on=goal.ends_on)
     if sort_order is not None:
         goal.sort_order = sort_order
     if show_on_entry is not None and show_on_entry != goal.show_on_entry:
         if show_on_entry:
             _ensure_visible_slot_available(db, user_id=user_id)
         goal.show_on_entry = show_on_entry
+    if show_in_stats is not None and show_in_stats != goal.show_in_stats:
+        if show_in_stats:
+            _ensure_stats_slot_available(db, user_id=user_id)
+        goal.show_in_stats = show_in_stats
     if color is not None or icon_type is not None or icon is not None:
         style = _validate_goal_style(
             db,
@@ -194,16 +210,41 @@ def week_completion_counts(
     reference_date: date | None = None,
 ) -> dict[uuid.UUID, int]:
     """Count distinct local days each goal was completed in the current ISO week."""
+    tz = _resolve_user_tz(timezone_name)
+    today = reference_date if reference_date is not None else datetime.now(tz).date()
+    week_start, week_end = _iso_week_bounds(today)
+    return period_completion_counts(
+        db,
+        user_id=user_id,
+        timezone_name=timezone_name,
+        period_start=week_start,
+        period_end=week_end,
+        goal_ids=goal_ids,
+    )
+
+
+def period_completion_counts(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    timezone_name: str,
+    period_start: date,
+    period_end: date,
+    goal_ids: list[uuid.UUID] | None = None,
+) -> dict[uuid.UUID, int]:
+    """Count distinct local days each goal was completed in ``[period_start, period_end)``."""
+    if period_end <= period_start:
+        raise GoalError("period_end must be after period_start")
     if goal_ids is not None and not goal_ids:
         return {}
 
     tz = _resolve_user_tz(timezone_name)
-    today = reference_date if reference_date is not None else datetime.now(tz).date()
-    week_start, week_end = _iso_week_bounds(today)
     range_start_utc = datetime(
-        week_start.year, week_start.month, week_start.day, tzinfo=tz
+        period_start.year, period_start.month, period_start.day, tzinfo=tz
     ).astimezone(UTC)
-    range_end_utc = datetime(week_end.year, week_end.month, week_end.day, tzinfo=tz).astimezone(UTC)
+    range_end_utc = datetime(
+        period_end.year, period_end.month, period_end.day, tzinfo=tz
+    ).astimezone(UTC)
 
     stmt = (
         select(MoodEntryGoal.goal_id, MoodEntry.recorded_at)
@@ -220,11 +261,23 @@ def week_completion_counts(
     days_by_goal: dict[uuid.UUID, set[date]] = defaultdict(set)
     for goal_id, recorded_at in db.execute(stmt).all():
         local_day = recorded_at.astimezone(tz).date()
-        if week_start <= local_day < week_end:
+        if period_start <= local_day < period_end:
             days_by_goal[goal_id].add(local_day)
 
     ids = goal_ids if goal_ids is not None else list(days_by_goal)
     return {goal_id: len(days_by_goal.get(goal_id, set())) for goal_id in ids}
+
+
+def period_target(*, times_per_week: int, period_days: int) -> int:
+    if period_days <= 0:
+        return times_per_week
+    return max(1, round(times_per_week * period_days / 7))
+
+
+def goal_is_active_on(goal: Goal, day: date) -> bool:
+    if day < goal.starts_on:
+        return False
+    return goal.ends_on is None or day <= goal.ends_on
 
 
 def serialize_goal(
@@ -240,12 +293,82 @@ def serialize_goal(
         "labels": goal.labels,
         "times_per_week": goal.times_per_week,
         "starts_on": goal.starts_on,
+        "ends_on": goal.ends_on,
         "sort_order": goal.sort_order,
         "show_on_entry": goal.show_on_entry,
+        "show_in_stats": goal.show_in_stats,
         "color": goal.color,
         "icon_type": goal.icon_type,
         "icon": goal.icon,
         "completed_this_week": completed_this_week,
+    }
+
+
+def get_goal_stats(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    timezone_name: str,
+    locale: str,
+    recorded_from: datetime,
+    recorded_to: datetime,
+) -> dict[str, Any]:
+    """Return per-goal completion stats for a recorded range in the user timezone."""
+    tz = _resolve_user_tz(timezone_name)
+    from_utc = _to_utc(recorded_from)
+    to_utc = _to_utc(recorded_to)
+    if to_utc <= from_utc:
+        raise GoalError("recorded_to must be after recorded_from")
+
+    period_start = _local_date(from_utc, tz)
+    period_end = _local_date(to_utc, tz)
+    if period_end <= period_start:
+        raise GoalError("recorded_to must be after recorded_from")
+    period_days = (period_end - period_start).days
+
+    goals = [goal for goal in list_goals(db, user_id=user_id) if goal.show_in_stats]
+    overlapping = [
+        goal
+        for goal in goals
+        if goal.starts_on < period_end and (goal.ends_on is None or goal.ends_on >= period_start)
+    ]
+    counts = period_completion_counts(
+        db,
+        user_id=user_id,
+        timezone_name=timezone_name,
+        period_start=period_start,
+        period_end=period_end,
+        goal_ids=[goal.id for goal in overlapping],
+    )
+    items = [
+        {
+            "id": goal.id,
+            "slug": goal.slug,
+            "label": resolve_label(goal.labels, locale),
+            "labels": goal.labels,
+            "times_per_week": goal.times_per_week,
+            "starts_on": goal.starts_on,
+            "ends_on": goal.ends_on,
+            "sort_order": goal.sort_order,
+            "show_on_entry": goal.show_on_entry,
+            "show_in_stats": goal.show_in_stats,
+            "color": goal.color,
+            "icon_type": goal.icon_type,
+            "icon": goal.icon,
+            "completed_in_period": counts.get(goal.id, 0),
+            "period_target": period_target(
+                times_per_week=goal.times_per_week,
+                period_days=period_days,
+            ),
+        }
+        for goal in overlapping
+    ]
+
+    return {
+        "period_start": period_start,
+        "period_end": period_end,
+        "period_days": period_days,
+        "items": items,
     }
 
 
@@ -259,9 +382,10 @@ def get_goal_calendar(
 ) -> list[dict[str, Any]]:
     """Return per-day goal marks for a range, grouped in the user's timezone.
 
-    Each day includes up to ``CALENDAR_GOALS_PER_DAY`` most recent goal marks
-    (entries by ``recorded_at`` desc, goals within an entry by ``sort_order``)
-    plus the total mark count for that day.
+    Each day includes distinct goals pinned with ``show_in_stats`` (same goal
+    linked from several notes counts once), ordered by most recent entry
+    ``recorded_at`` then ``sort_order``, capped at ``stats_visible_goal_limit``.
+    ``entry_count`` is the unique pinned-goal count for that day.
     """
     tz = _resolve_user_tz(timezone_name)
     from_utc = _to_utc(recorded_from)
@@ -269,6 +393,7 @@ def get_goal_calendar(
     if to_utc <= from_utc:
         raise GoalError("recorded_to must be after recorded_from")
 
+    calendar_cap = settings.stats_visible_goal_limit
     rows = list(
         db.execute(
             select(MoodEntry.recorded_at, MoodEntryGoal.goal_id)
@@ -278,6 +403,7 @@ def get_goal_calendar(
                 MoodEntry.user_id == user_id,
                 MoodEntry.recorded_at >= from_utc,
                 MoodEntry.recorded_at < to_utc,
+                Goal.show_in_stats.is_(True),
             )
             .order_by(
                 MoodEntry.recorded_at.desc(),
@@ -293,15 +419,26 @@ def get_goal_calendar(
 
     days: list[dict[str, Any]] = []
     for day in sorted(by_day.keys()):
-        goal_ids = by_day[day]
+        goal_ids = _unique_preserve_order(by_day[day])
         days.append(
             {
                 "date": day.isoformat(),
                 "entry_count": len(goal_ids),
-                "goals": [{"goal_id": goal_id} for goal_id in goal_ids[:CALENDAR_GOALS_PER_DAY]],
+                "goals": [{"goal_id": goal_id} for goal_id in goal_ids[:calendar_cap]],
             }
         )
     return days
+
+
+def _unique_preserve_order(goal_ids: list[uuid.UUID]) -> list[uuid.UUID]:
+    seen: set[uuid.UUID] = set()
+    unique: list[uuid.UUID] = []
+    for goal_id in goal_ids:
+        if goal_id in seen:
+            continue
+        seen.add(goal_id)
+        unique.append(goal_id)
+    return unique
 
 
 def serialize_goals(
@@ -421,6 +558,11 @@ def _iso_week_bounds(day: date) -> tuple[date, date]:
     return week_start, week_end
 
 
+def _validate_goal_dates(*, starts_on: date, ends_on: date | None) -> None:
+    if ends_on is not None and ends_on < starts_on:
+        raise GoalError("ends_on must be on or after starts_on")
+
+
 def _count_visible_goals(db: Session, *, user_id: uuid.UUID) -> int:
     count = db.scalar(
         select(func.count())
@@ -435,6 +577,24 @@ def _ensure_visible_slot_available(db: Session, *, user_id: uuid.UUID) -> None:
     if _count_visible_goals(db, user_id=user_id) >= limit:
         raise GoalError(
             f"You can show at most {limit} goals on the entry form",
+            status_code=400,
+        )
+
+
+def _count_stats_goals(db: Session, *, user_id: uuid.UUID) -> int:
+    count = db.scalar(
+        select(func.count())
+        .select_from(Goal)
+        .where(Goal.user_id == user_id, Goal.show_in_stats.is_(True))
+    )
+    return int(count or 0)
+
+
+def _ensure_stats_slot_available(db: Session, *, user_id: uuid.UUID) -> None:
+    limit = settings.stats_visible_goal_limit
+    if _count_stats_goals(db, user_id=user_id) >= limit:
+        raise GoalError(
+            f"You can show at most {limit} goals in stats and calendar",
             status_code=400,
         )
 

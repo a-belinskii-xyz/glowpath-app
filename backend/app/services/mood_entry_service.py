@@ -33,6 +33,7 @@ from app.models.mood_entry_goal import MoodEntryGoal
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
 from app.models.user import User
+from app.services.goal_service import goal_is_active_on
 from app.services.storage import ObjectStorage, StorageError
 
 CALENDAR_SCORES_PER_DAY = 3
@@ -135,9 +136,20 @@ def _resolve_user_goals(
     if len(goals) != len(unique_ids):
         raise MoodEntryError("One or more goals were not found", status_code=400)
     for goal in goals:
-        if entry_local_date < goal.starts_on:
+        if not goal_is_active_on(goal, entry_local_date):
+            if entry_local_date < goal.starts_on:
+                raise MoodEntryError(
+                    f"Goal “{goal.slug}” is not available before {goal.starts_on.isoformat()}",
+                    status_code=400,
+                )
+            ends_on = goal.ends_on
+            if ends_on is None:
+                raise MoodEntryError(
+                    f"Goal “{goal.slug}” is not available on this date",
+                    status_code=400,
+                )
             raise MoodEntryError(
-                f"Goal “{goal.slug}” is not available before {goal.starts_on.isoformat()}",
+                f"Goal “{goal.slug}” is not available after {ends_on.isoformat()}",
                 status_code=400,
             )
     return goals

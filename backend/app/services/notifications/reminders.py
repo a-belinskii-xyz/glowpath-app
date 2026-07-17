@@ -13,7 +13,7 @@ from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.user import User
 from app.models.user_notification_settings import UserNotificationSettings
-from app.services.goal_service import week_completion_counts
+from app.services.goal_service import goal_is_active_on, week_completion_counts
 from app.services.notifications.base import NotificationChannel
 from app.services.notifications.dispatcher import NotificationDispatcher
 from app.services.notifications.messages import (
@@ -205,6 +205,7 @@ def _behind_goals(db: Session, *, user: User, local_day: date) -> list[Goal]:
             .order_by(Goal.sort_order, Goal.slug)
         ).all()
     )
+    goals = [goal for goal in goals if goal_is_active_on(goal, local_day)]
     if not goals:
         return []
 

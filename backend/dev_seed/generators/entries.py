@@ -141,7 +141,11 @@ def create_entries_for_user(
 
         n_entries = rng.randint(entries_min, entries_max)
         used_minutes: set[tuple[int, int]] = set()
-        active_goals = [goal for goal in goals_sorted if goal.starts_on <= day]
+        active_goals = [
+            goal
+            for goal in goals_sorted
+            if goal.starts_on <= day and (goal.ends_on is None or goal.ends_on >= day)
+        ]
         completed_goal_ids = [
             goal.id
             for goal in active_goals

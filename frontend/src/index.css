@@ -348,10 +348,74 @@ code {
 }
 
 .month-calendar-weekdays,
-.month-calendar-grid {
+.month-calendar-week {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.35rem;
+}
+
+.month-calendar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.month-calendar-week {
+  position: relative;
+  border-radius: 10px;
+  transition:
+    background-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.month-calendar-week.is-week-highlighted {
+  padding: 0.2rem;
+  margin: -0.05rem -0.1rem;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35);
+}
+
+.month-calendar-week.is-week-highlighted .month-calendar-cell {
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.month-calendar-week.is-week-highlighted .month-calendar-cell-muted {
+  background: rgba(255, 255, 255, 0.18);
+  opacity: 0.7;
+}
+
+.month-calendar-week.is-week-highlighted .month-calendar-cell-future {
+  background: rgba(243, 244, 246, 0.5);
+}
+
+.month-calendar-week.is-week-highlighted::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: var(--week-highlight-gradient);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 220ms ease;
+}
+
+.month-calendar-week.is-week-highlighted::after {
+  content: '';
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  bottom: 0.15rem;
+  height: 3px;
+  border-radius: 999px;
+  background-image: var(--week-strip-gradient);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.month-calendar-week > .month-calendar-cell {
+  position: relative;
+  z-index: 1;
 }
 
 .month-calendar-weekdays {
@@ -394,6 +458,14 @@ code {
   outline: 2px solid #93c5fd;
   outline-offset: -2px;
   background: #eff6ff;
+}
+
+.month-calendar-cell-in-week {
+  background: transparent;
+}
+
+.month-calendar-week.is-week-highlighted .month-calendar-cell-today {
+  background: rgba(239, 246, 255, 0.72);
 }
 
 .month-calendar-cell-clickable .month-calendar-day-button {
@@ -598,6 +670,198 @@ code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.goal-week-stats {
+  margin-bottom: 1.75rem;
+  padding: 1rem 1rem 1.15rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: opacity 200ms ease;
+}
+
+.goal-week-stats.is-refreshing {
+  opacity: 0.55;
+}
+
+.calendar-panel {
+  transition: opacity 200ms ease;
+}
+
+.calendar-panel.is-refreshing {
+  opacity: 0.65;
+}
+
+.goal-week-stats-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.goal-week-stats-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.goal-week-stats-totals {
+  margin: 0;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.goal-week-stats-summary {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.goal-week-stats-summary-met {
+  color: #047857;
+}
+
+.goal-week-stats-summary-progress {
+  color: #1d4ed8;
+}
+
+.goal-week-stats-summary-muted {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.goal-week-stats-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.goal-week-stats-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.goal-week-stats-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.goal-week-stats-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.goal-week-stats-icon {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.goal-week-stats-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.goal-week-stats-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-week-stats-progress-text {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.goal-week-stats-track {
+  width: 100%;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.goal-week-stats-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 220ms ease;
+}
+
+.goal-week-stats-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.goal-week-stats-status-met {
+  color: #047857;
+}
+
+.goal-week-stats-status-track {
+  color: #1d4ed8;
+}
+
+.goal-week-stats-status-risk {
+  color: #b45309;
+}
+
+.goal-week-stats-status-ended {
+  color: #6b7280;
+}
+
+.goal-stats-period-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+}
+
+.goal-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0 0 0.85rem;
+}
+
+.goal-week-nav-label {
+  flex: 1;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+  text-align: center;
+  line-height: 1.3;
+  transition: opacity 180ms ease;
+}
+
+.goal-week-stats.is-refreshing .goal-week-nav-label {
+  opacity: 0.85;
+}
+
+.goal-week-nav .button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .visually-hidden {

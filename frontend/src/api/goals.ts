@@ -11,6 +11,7 @@ import type {
   GoalPatch,
   GoalPublic,
   GoalReorderRequest,
+  GoalStatsResponse,
   GoalWrite,
 } from '../types/goal'
 
@@ -97,6 +98,20 @@ export function getGoalCalendar(params: {
     recorded_to: params.recorded_to,
   })
   return apiRequest<GoalCalendarResponse>(`/v1/goals/calendar?${query}`, {
+    auth: true,
+    headers: apiLocaleHeaders(),
+  })
+}
+
+export function getGoalStats(params: {
+  recorded_from: string
+  recorded_to: string
+}): Promise<GoalStatsResponse> {
+  const query = new URLSearchParams({
+    recorded_from: params.recorded_from,
+    recorded_to: params.recorded_to,
+  })
+  return apiRequest<GoalStatsResponse>(`/v1/goals/stats?${query}`, {
     auth: true,
     headers: apiLocaleHeaders(),
   })

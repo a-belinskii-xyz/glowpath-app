@@ -47,8 +47,10 @@ class GoalPublic(BaseModel):
     labels: dict[str, str]
     times_per_week: int
     starts_on: date
+    ends_on: date | None = None
     sort_order: int
     show_on_entry: bool
+    show_in_stats: bool
     color: str
     icon_type: MoodScoreIconType
     icon: str
@@ -58,15 +60,18 @@ class GoalPublic(BaseModel):
 class GoalListResponse(BaseModel):
     items: list[GoalPublic]
     entry_visible_goal_limit: int
+    stats_visible_goal_limit: int
 
 
 class GoalCreate(BaseModel):
     labels: Labels
     times_per_week: TimesPerWeek
     starts_on: date
+    ends_on: date | None = None
     slug: Slug | None = None
     sort_order: int | None = None
     show_on_entry: bool = False
+    show_in_stats: bool = False
     color: Color | None = None
     icon_type: MoodScoreIconType | None = None
     icon: IconValue | None = None
@@ -89,8 +94,10 @@ class GoalPatch(BaseModel):
     labels: Labels | None = None
     times_per_week: TimesPerWeek | None = None
     starts_on: date | None = None
+    ends_on: date | None = None
     sort_order: int | None = None
     show_on_entry: bool | None = None
+    show_in_stats: bool | None = None
     color: Color | None = None
     icon_type: MoodScoreIconType | None = None
     icon: IconValue | None = None
@@ -108,6 +115,31 @@ class GoalPatch(BaseModel):
         if value is None:
             return None
         return _validate_labels(value)
+
+
+class GoalPeriodStatPublic(BaseModel):
+    id: uuid.UUID
+    slug: str
+    label: str
+    labels: dict[str, str]
+    times_per_week: int
+    starts_on: date
+    ends_on: date | None = None
+    sort_order: int
+    show_on_entry: bool
+    show_in_stats: bool
+    color: str
+    icon_type: MoodScoreIconType
+    icon: str
+    completed_in_period: int
+    period_target: int
+
+
+class GoalStatsResponse(BaseModel):
+    period_start: date
+    period_end: date
+    period_days: int
+    items: list[GoalPeriodStatPublic]
 
 
 class GoalReorderRequest(BaseModel):

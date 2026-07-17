@@ -34,6 +34,10 @@ class Goal(TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("user_id", "slug"),
         CheckConstraint("times_per_week >= 1 AND times_per_week <= 7", name="times_per_week_range"),
+        CheckConstraint(
+            "ends_on IS NULL OR ends_on >= starts_on",
+            name="goal_ends_on_after_starts_on",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -50,8 +54,14 @@ class Goal(TimestampMixin, Base):
     labels: Mapped[dict[str, str]] = mapped_column(JSONB)
     times_per_week: Mapped[int] = mapped_column(Integer)
     starts_on: Mapped[date] = mapped_column(Date)
+    ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
     show_on_entry: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    show_in_stats: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         server_default=text("false"),

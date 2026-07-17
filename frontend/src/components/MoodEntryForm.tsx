@@ -126,7 +126,10 @@ export function MoodEntryForm({
   }, [initialEntry, locale, t])
 
   const entryDate = recordedAtLocal.split('T')[0] ?? ''
-  const activeGoals = goals.filter((goal) => goal.starts_on <= entryDate)
+  const activeGoals = goals.filter(
+    (goal) =>
+      goal.starts_on <= entryDate && (goal.ends_on === null || goal.ends_on >= entryDate),
+  )
   const primaryGroups = tagGroups.filter((group) => group.show_on_entry)
   const otherGroups = tagGroups.filter((group) => !group.show_on_entry)
   const primaryGoals = activeGoals.filter((goal) => goal.show_on_entry)

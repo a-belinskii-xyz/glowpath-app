@@ -37,12 +37,14 @@ export function GoalsPage() {
 
   const [goals, setGoals] = useState<GoalPublic[]>([])
   const [visibleLimit, setVisibleLimit] = useState(3)
+  const [statsLimit, setStatsLimit] = useState(5)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [editor, setEditor] = useState<EditorMode | null>(null)
   const [name, setName] = useState('')
   const [timesPerWeek, setTimesPerWeek] = useState(7)
   const [startsOn, setStartsOn] = useState(todayKey(timeZone))
+  const [endsOn, setEndsOn] = useState('')
   const [draftColor, setDraftColor] = useState(DEFAULT_GOAL_STYLE.color)
   const [draftEmoji, setDraftEmoji] = useState(DEFAULT_GOAL_STYLE.icon)
   const [isSaving, setIsSaving] = useState(false)
@@ -53,10 +55,13 @@ export function GoalsPage() {
     const response = await listGoals()
     setGoals(response.items)
     setVisibleLimit(response.entry_visible_goal_limit)
+    setStatsLimit(response.stats_visible_goal_limit)
   }
 
   const visibleCount = goals.filter((goal) => goal.show_on_entry).length
   const atVisibleLimit = visibleCount >= visibleLimit
+  const statsCount = goals.filter((goal) => goal.show_in_stats).length
+  const atStatsLimit = statsCount >= statsLimit
 
   useEffect(() => {
     const load = async () => {
@@ -84,12 +89,14 @@ export function GoalsPage() {
       setName('')
       setTimesPerWeek(7)
       setStartsOn(todayKey(timeZone))
+      setEndsOn('')
       setDraftColor(DEFAULT_GOAL_STYLE.color)
       setDraftEmoji(DEFAULT_GOAL_STYLE.icon)
     } else {
       setName(mode.goal.label)
       setTimesPerWeek(mode.goal.times_per_week)
       setStartsOn(mode.goal.starts_on)
+      setEndsOn(mode.goal.ends_on ?? '')
       setDraftColor(mode.goal.color)
       setDraftEmoji(mode.goal.icon_type === 'emoji' ? mode.goal.icon : DEFAULT_GOAL_STYLE.icon)
     }
@@ -119,6 +126,10 @@ export function GoalsPage() {
       setError(t('goalsPage.startsOnRequired'))
       return
     }
+    if (endsOn && endsOn < startsOn) {
+      setError(t('goalsPage.endsOnBeforeStarts'))
+      return
+    }
     if (editor.kind === 'create' && !isValidHexColor(draftColor)) {
       setError(t('goalsPage.invalidColor'))
       return
@@ -140,7 +151,9 @@ export function GoalsPage() {
           labels,
           times_per_week: timesPerWeek,
           starts_on: startsOn,
+          ends_on: endsOn || null,
           show_on_entry: !atVisibleLimit,
+          show_in_stats: !atStatsLimit,
           color: draftColor,
           icon_type: 'emoji',
           icon: emoji,
@@ -150,6 +163,7 @@ export function GoalsPage() {
           labels,
           times_per_week: timesPerWeek,
           starts_on: startsOn,
+          ends_on: endsOn || null,
         })
       }
       await reload()
@@ -185,6 +199,24 @@ export function GoalsPage() {
     setError(null)
     try {
       const updated = await patchGoal(goal.id, { show_on_entry: next })
+      setGoals((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errors.failedUpdateVisibility'))
+    } finally {
+      setTogglingGoalId(null)
+    }
+  }
+
+  const handleToggleShowInStats = async (goal: GoalPublic) => {
+    const next = !goal.show_in_stats
+    if (next && atStatsLimit) {
+      setError(t('goalsPage.statsVisibilityLimit', { limit: statsLimit }))
+      return
+    }
+    setTogglingGoalId(goal.id)
+    setError(null)
+    try {
+      const updated = await patchGoal(goal.id, { show_in_stats: next })
       setGoals((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.failedUpdateVisibility'))
@@ -238,6 +270,9 @@ export function GoalsPage() {
       <p className="muted tag-visibility-hint">
         {t('goalsPage.hint', { limit: visibleLimit, count: visibleCount })}
       </p>
+      <p className="muted tag-visibility-hint">
+        {t('goalsPage.statsHint', { limit: statsLimit, count: statsCount })}
+      </p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
       {isLoading ? <p className="muted">{t('common.loadingGoals')}</p> : null}
@@ -275,6 +310,17 @@ export function GoalsPage() {
               onChange={(event) => setStartsOn(event.target.value)}
               required
             />
+          </label>
+          <label className="form-field">
+            <span className="form-label">{t('goalsPage.endsOn')}</span>
+            <input
+              className="form-input"
+              type="date"
+              value={endsOn}
+              min={startsOn || undefined}
+              onChange={(event) => setEndsOn(event.target.value)}
+            />
+            <span className="form-hint">{t('goalsPage.endsOnHint')}</span>
           </label>
           {editor.kind === 'create' ? (
             <div className="goal-icon-create-fields">
@@ -387,7 +433,9 @@ export function GoalsPage() {
               })}
             </p>
             <p className="muted goal-meta">
-              {t('goalsPage.startsOnLabel', { date: goal.starts_on })}
+              {goal.ends_on
+                ? t('goalsPage.dateRangeLabel', { start: goal.starts_on, end: goal.ends_on })
+                : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
             </p>
             <label className="tag-visibility-toggle">
               <input
@@ -397,6 +445,15 @@ export function GoalsPage() {
                 onChange={() => void handleToggleShowOnEntry(goal)}
               />
               <span>{t('goalsPage.showOnEntry')}</span>
+            </label>
+            <label className="tag-visibility-toggle">
+              <input
+                type="checkbox"
+                checked={goal.show_in_stats}
+                disabled={togglingGoalId === goal.id || (!goal.show_in_stats && atStatsLimit)}
+                onChange={() => void handleToggleShowInStats(goal)}
+              />
+              <span>{t('goalsPage.showInStats')}</span>
             </label>
           </article>
         ))}

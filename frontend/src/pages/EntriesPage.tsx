@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry } from '../api/moodEntries'
-import { getGoalCalendar, listGoals } from '../api/goals'
+import { getGoalCalendar, getGoalStats, listGoals } from '../api/goals'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
+import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodStats'
 import { EntryActionMenu } from '../components/EntryActionMenu'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { GoalIcon } from '../components/GoalIcon'
@@ -22,15 +23,21 @@ import {
   formatDayHeading,
   formatMonthHeading,
   formatTime,
+  formatWeekHeading,
   formatYearMonthParam,
   getCurrentYearMonth,
   getDayBounds,
+  getIsoWeekBounds,
   getMonthBounds,
+  clampWeekAnchorToMonth,
   parseYearMonthParam,
+  shiftDateKey,
+  todayKey,
+  weekIntersectsMonth,
 } from '../lib/datetime'
 import { dayMoodWashFromScores } from '../lib/dayMoodWash'
 import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
-import type { GoalCalendarDayPublic, GoalPublic } from '../types/goal'
+import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
 
 const PAGE_SIZE = 20
@@ -75,6 +82,11 @@ export function EntriesPage() {
 
   const [stats, setStats] = useState<MoodEntryStatsResponse | null>(null)
   const [isStatsLoading, setIsStatsLoading] = useState(true)
+  const [goalStatsPeriod, setGoalStatsPeriod] = useState<GoalStatsPeriod>('week')
+  const [weekAnchorDate, setWeekAnchorDate] = useState(() => todayKey(timeZone))
+  const [goalStatsItems, setGoalStatsItems] = useState<GoalPeriodStatPublic[]>([])
+  const [goalStatsPeriodDays, setGoalStatsPeriodDays] = useState(7)
+  const [isGoalStatsLoading, setIsGoalStatsLoading] = useState(false)
 
   const [entries, setEntries] = useState<MoodEntryPublic[]>([])
   const [offset, setOffset] = useState(0)
@@ -96,6 +108,37 @@ export function EntriesPage() {
   const dayLoadRef = useRef<string | null>(null)
 
   const monthBounds = useMemo(() => getMonthBounds(year, month, timeZone), [year, month, timeZone])
+  const weekBounds = useMemo(
+    () => getIsoWeekBounds(weekAnchorDate, timeZone),
+    [timeZone, weekAnchorDate],
+  )
+  const currentWeekBounds = useMemo(
+    () => getIsoWeekBounds(todayKey(timeZone), timeZone),
+    [timeZone],
+  )
+  const currentMonth = useMemo(() => getCurrentYearMonth(timeZone), [timeZone])
+  const isCurrentMonthView = year === currentMonth.year && month === currentMonth.month
+  const goalStatsBounds = goalStatsPeriod === 'week' ? weekBounds : monthBounds
+  const isCurrentGoalPeriod =
+    goalStatsPeriod === 'week'
+      ? weekBounds.period_start === currentWeekBounds.period_start
+      : isCurrentMonthView
+  const weekLabel = useMemo(
+    () => formatWeekHeading(weekBounds.period_start, weekBounds.period_end, dateLocale),
+    [dateLocale, weekBounds.period_end, weekBounds.period_start],
+  )
+  const canGoPreviousWeek = useMemo(() => {
+    const prev = getIsoWeekBounds(shiftDateKey(weekBounds.period_start, -7), timeZone)
+    return weekIntersectsMonth(prev.period_start, prev.period_end, year, month)
+  }, [month, timeZone, weekBounds.period_start, year])
+  const canGoNextWeek = useMemo(() => {
+    const next = getIsoWeekBounds(shiftDateKey(weekBounds.period_start, 7), timeZone)
+    return weekIntersectsMonth(next.period_start, next.period_end, year, month)
+  }, [month, timeZone, weekBounds.period_start, year])
+
+  useEffect(() => {
+    setWeekAnchorDate((current) => clampWeekAnchorToMonth(current, year, month, timeZone))
+  }, [month, timeZone, year])
 
   const updateMonthParams = useCallback(
     (nextYear: number, nextMonth: number, options?: { day?: string; entry?: string }) => {
@@ -237,6 +280,38 @@ export function EntriesPage() {
     }
   }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified])
 
+  const loadGoalStats = useCallback(async () => {
+    if (!user?.email_verified || calendarMode !== 'goals') {
+      setGoalStatsItems([])
+      setIsGoalStatsLoading(false)
+      return
+    }
+
+    setIsGoalStatsLoading(true)
+    try {
+      const response = await getGoalStats({
+        recorded_from: goalStatsBounds.recorded_from,
+        recorded_to: goalStatsBounds.recorded_to,
+      })
+      setGoalStatsItems(response.items)
+      setGoalStatsPeriodDays(response.period_days)
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 403)) {
+        setError(err instanceof Error ? err.message : t('errors.failedLoadGoalStats'))
+      }
+      setGoalStatsItems([])
+    } finally {
+      setIsGoalStatsLoading(false)
+    }
+  }, [
+    calendarMode,
+    goalStatsBounds.recorded_from,
+    goalStatsBounds.recorded_to,
+    locale,
+    t,
+    user?.email_verified,
+  ])
+
   const loadPage = useCallback(
     async (pageOffset: number, replace: boolean) => {
       if (!user?.email_verified) {
@@ -354,6 +429,10 @@ export function EntriesPage() {
   useEffect(() => {
     void loadStats()
   }, [loadStats])
+
+  useEffect(() => {
+    void loadGoalStats()
+  }, [loadGoalStats])
 
   useEffect(() => {
     setEntries([])
@@ -489,12 +568,39 @@ export function EntriesPage() {
     setMonthView(year, month + 1)
   }
 
+  const goToPreviousWeek = () => {
+    setWeekAnchorDate((current) => {
+      const prevAnchor = shiftDateKey(current, -7)
+      const prev = getIsoWeekBounds(prevAnchor, timeZone)
+      if (!weekIntersectsMonth(prev.period_start, prev.period_end, year, month)) {
+        return current
+      }
+      return prev.period_start
+    })
+  }
+
+  const goToNextWeek = () => {
+    setWeekAnchorDate((current) => {
+      const nextAnchor = shiftDateKey(current, 7)
+      const next = getIsoWeekBounds(nextAnchor, timeZone)
+      if (!weekIntersectsMonth(next.period_start, next.period_end, year, month)) {
+        return current
+      }
+      return next.period_start
+    })
+  }
+
+  const handleSelectWeekDay = (date: string) => {
+    setWeekAnchorDate(clampWeekAnchorToMonth(date, year, month, timeZone))
+  }
+
   const handleDelete = async (entryId: string) => {
     try {
       await deleteMoodEntry(entryId)
       setEntries((current) => current.filter((entry) => entry.id !== entryId))
       void loadCalendar()
       void loadStats()
+      void loadGoalStats()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.failedDeleteEntry'))
     }
@@ -583,25 +689,61 @@ export function EntriesPage() {
               {t('calendar.modeGoals')}
             </button>
           </div>
-          {isCalendarLoading ? (
+          {isCalendarLoading && calendarDays.length === 0 && goalCalendarDays.length === 0 ? (
             <p className="muted">{t('common.loadingCalendar')}</p>
           ) : (
-            <MonthCalendar
-              year={year}
-              month={month}
-              timeZone={timeZone}
-              mode={calendarMode}
-              moodDays={calendarDays}
-              goalDays={goalCalendarDays}
-              goalsById={goalsById}
-              onDayWithEntries={handleDayWithEntries}
-            />
+            <div className={isCalendarLoading ? 'calendar-panel is-refreshing' : 'calendar-panel'}>
+              <MonthCalendar
+                year={year}
+                month={month}
+                timeZone={timeZone}
+                mode={calendarMode}
+                moodDays={calendarDays}
+                goalDays={goalCalendarDays}
+                goalsById={goalsById}
+                highlightWeekStart={
+                  calendarMode === 'goals' && goalStatsPeriod === 'week'
+                    ? weekBounds.period_start
+                    : null
+                }
+                highlightWeekEnd={
+                  calendarMode === 'goals' && goalStatsPeriod === 'week'
+                    ? weekBounds.period_end
+                    : null
+                }
+                onDayWithEntries={handleDayWithEntries}
+                onSelectWeekDay={
+                  calendarMode === 'goals' && goalStatsPeriod === 'week'
+                    ? handleSelectWeekDay
+                    : undefined
+                }
+              />
+            </div>
           )}
         </>
       ) : null}
 
       {user?.email_verified ? (
-        isStatsLoading ? (
+        calendarMode === 'goals' ? (
+          isGoalStatsLoading && goalStatsItems.length === 0 ? (
+            <p className="muted">{t('common.loadingGoalStats')}</p>
+          ) : (
+            <GoalPeriodStats
+              items={goalStatsItems}
+              period={goalStatsPeriod}
+              periodDays={goalStatsPeriodDays}
+              timeZone={timeZone}
+              isCurrentPeriod={isCurrentGoalPeriod}
+              isRefreshing={isGoalStatsLoading}
+              weekLabel={weekLabel}
+              canGoPreviousWeek={canGoPreviousWeek}
+              canGoNextWeek={canGoNextWeek}
+              onPreviousWeek={goToPreviousWeek}
+              onNextWeek={goToNextWeek}
+              onPeriodChange={setGoalStatsPeriod}
+            />
+          )
+        ) : isStatsLoading ? (
           <p className="muted">{t('common.loadingStats')}</p>
         ) : stats ? (
           <EmotionStatsBarChart stats={stats} />

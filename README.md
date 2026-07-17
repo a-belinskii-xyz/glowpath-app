@@ -154,6 +154,7 @@ Environment variables in `backend/.env` (see `backend/.env.example`):
 - `NOTIFICATIONS_MATCH_WINDOW_MINUTES` — local-time window after the user’s reminder time (default `2`)
 - `ENTRY_VISIBLE_TAG_GROUP_LIMIT` — max tag groups pinned to the entry form (default `6`; rest under “Other”)
 - `ENTRY_VISIBLE_GOAL_LIMIT` — max goals pinned to the entry form (default `3`)
+- `STATS_VISIBLE_GOAL_LIMIT` — max goals shown in calendar and period stats (default `5`)
 
 ### Email registration flow
 

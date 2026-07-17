@@ -176,7 +176,8 @@ def test_goal_calendar_groups_by_day_and_caps_marks(
         )
         assert patched.status_code == 200
 
-    # Newest entry first: two goals, then one goal, then one goal → 4 marks, cap 3.
+    # Newest entry first: two goals (incl. duplicate g2 later), then g2, then g3.
+    # Same goal on multiple notes counts once per day.
     for payload in (
         {
             "score": 3,
@@ -225,9 +226,9 @@ def test_goal_calendar_groups_by_day_and_caps_marks(
     assert set(days) == {"2026-07-14", "2026-07-15"}
 
     july_14 = days["2026-07-14"]
-    assert july_14["entry_count"] == 4
-    # Newest entry goals by sort_order (g1 then g2), then next entry's g2.
-    assert [item["goal_id"] for item in july_14["goals"]] == [g1, g2, g2]
+    assert july_14["entry_count"] == 3
+    # Newest entry first (g1, g2), then older unique g3 — duplicate g2 dropped.
+    assert [item["goal_id"] for item in july_14["goals"]] == [g1, g2, g3]
 
     july_15 = days["2026-07-15"]
     assert july_15["entry_count"] == 1

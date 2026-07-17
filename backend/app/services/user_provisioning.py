@@ -57,6 +57,7 @@ def provision_default_note_templates(db: Session, user_id: uuid.UUID) -> None:
 
 def provision_default_goals(db: Session, user_id: uuid.UUID, *, starts_on: date) -> None:
     visible_limit = settings.entry_visible_goal_limit
+    stats_limit = settings.stats_visible_goal_limit
     for order, default_goal in enumerate(DEFAULT_GOALS):
         db.add(
             Goal(
@@ -67,6 +68,7 @@ def provision_default_goals(db: Session, user_id: uuid.UUID, *, starts_on: date)
                 starts_on=starts_on,
                 sort_order=order,
                 show_on_entry=order < visible_limit,
+                show_in_stats=order < stats_limit,
             )
         )
 

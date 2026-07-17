@@ -76,6 +76,7 @@ def test_provision_default_goals(db: Session) -> None:
     assert [goal.slug for goal in goals] == [item.slug for item in DEFAULT_GOALS]
     assert all(goal.starts_on == starts_on for goal in goals)
     assert sum(1 for goal in goals if goal.show_on_entry) == 3
+    assert sum(1 for goal in goals if goal.show_in_stats) == len(DEFAULT_GOALS)
 
 
 def test_provision_notification_settings(db: Session) -> None:

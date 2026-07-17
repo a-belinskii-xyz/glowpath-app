@@ -23,6 +23,7 @@ def provision_goals(
 ) -> list[Goal]:
     """Default catalog + persona custom goals covering the full seed history window."""
     visible_limit = settings.entry_visible_goal_limit
+    stats_limit = settings.stats_visible_goal_limit
 
     for order, default_goal in enumerate(DEFAULT_GOALS):
         db.add(
@@ -35,11 +36,13 @@ def provision_goals(
                 starts_on=starts_on,
                 sort_order=order,
                 show_on_entry=order < visible_limit,
+                show_in_stats=order < stats_limit,
             )
         )
 
     base_order = len(DEFAULT_GOALS)
     for offset, custom_goal in enumerate(persona.custom_goals):
+        order = base_order + offset
         db.add(
             Goal(
                 id=rng.uuid("goal", f"{persona.key}:custom:{custom_goal.slug}"),
@@ -48,8 +51,9 @@ def provision_goals(
                 labels=dict(custom_goal.labels),
                 times_per_week=custom_goal.times_per_week,
                 starts_on=starts_on,
-                sort_order=base_order + offset,
+                sort_order=order,
                 show_on_entry=False,
+                show_in_stats=order < stats_limit,
             )
         )
 

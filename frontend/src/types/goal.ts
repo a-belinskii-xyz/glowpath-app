@@ -7,8 +7,10 @@ export type GoalPublic = {
   labels: Record<string, string>
   times_per_week: number
   starts_on: string
+  ends_on: string | null
   sort_order: number
   show_on_entry: boolean
+  show_in_stats: boolean
   color: string
   icon_type: MoodScoreIconType
   icon: string
@@ -18,15 +20,18 @@ export type GoalPublic = {
 export type GoalListResponse = {
   items: GoalPublic[]
   entry_visible_goal_limit: number
+  stats_visible_goal_limit: number
 }
 
 export type GoalWrite = {
   labels: Record<string, string>
   times_per_week: number
   starts_on: string
+  ends_on?: string | null
   slug?: string
   sort_order?: number
   show_on_entry?: boolean
+  show_in_stats?: boolean
   color?: string
   icon_type?: MoodScoreIconType
   icon?: string
@@ -37,8 +42,10 @@ export type GoalPatch = {
   labels?: Record<string, string>
   times_per_week?: number
   starts_on?: string
+  ends_on?: string | null
   sort_order?: number
   show_on_entry?: boolean
+  show_in_stats?: boolean
   color?: string
   icon_type?: MoodScoreIconType
   icon?: string
@@ -60,6 +67,31 @@ export type GoalCalendarDayPublic = {
 
 export type GoalCalendarResponse = {
   days: GoalCalendarDayPublic[]
+}
+
+export type GoalPeriodStatPublic = {
+  id: string
+  slug: string
+  label: string
+  labels: Record<string, string>
+  times_per_week: number
+  starts_on: string
+  ends_on: string | null
+  sort_order: number
+  show_on_entry: boolean
+  show_in_stats: boolean
+  color: string
+  icon_type: MoodScoreIconType
+  icon: string
+  completed_in_period: number
+  period_target: number
+}
+
+export type GoalStatsResponse = {
+  period_start: string
+  period_end: string
+  period_days: number
+  items: GoalPeriodStatPublic[]
 }
 
 export type GoalIconMeta = {
