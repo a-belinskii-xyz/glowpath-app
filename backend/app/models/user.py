@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.mood_entry import MoodEntry
     from app.models.note_template import NoteTemplate
     from app.models.tag_group import TagGroup
+    from app.models.user_mood_icon import UserMoodIcon
     from app.models.user_mood_preferences import UserMoodPreferences
     from app.models.user_notification_settings import UserNotificationSettings
 from app.models.user_mood_preferences import UserMoodPreferences
@@ -54,3 +55,4 @@ class User(TimestampMixin, Base):
         back_populates="user",
         uselist=False,
     )
+    mood_icons: Mapped[list["UserMoodIcon"]] = relationship(back_populates="user")

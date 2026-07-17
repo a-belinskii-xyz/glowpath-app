@@ -7,11 +7,14 @@ import { AttachmentAudio } from '../components/AttachmentAudio'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { MarkdownNote } from '../components/MarkdownNote'
+import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { intlLocale } from '../i18n/t'
 import { ApiError } from '../lib/errors'
 import { formatDayHeading, formatTime } from '../lib/datetime'
+import { getMoodScoreStyle } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
 
 export function EntryDetailPage() {
@@ -19,6 +22,7 @@ export function EntryDetailPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { locale, t } = useLocale()
+  const { scores } = useMoodPreferences()
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
 
@@ -107,9 +111,11 @@ export function EntryDetailPage() {
       {entry ? (
         <article className="entry-detail">
           <div className="entry-detail-hero">
-            <span className="entry-detail-emoji" aria-hidden="true">
-              {entry.score_emoji}
-            </span>
+            <MoodScoreIcon
+              style={getMoodScoreStyle(entry.score, scores)}
+              className="entry-detail-emoji"
+              fallbackScore={entry.score}
+            />
             <div>
               <p className="entry-detail-score">
                 {entry.is_favorite ? (

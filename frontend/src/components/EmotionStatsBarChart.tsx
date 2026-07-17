@@ -1,6 +1,7 @@
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import type { MoodEntryStatsResponse, MoodMonthComparisonPublic } from '../types/mood'
+import { MoodScoreIcon } from './MoodScoreIcon'
 
 type EmotionStatsBarChartProps = {
   stats: MoodEntryStatsResponse
@@ -30,7 +31,7 @@ function formatIndex(value: number | null): string | null {
 
 export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
   const { t, tp } = useLocale()
-  const { getScoreColor } = useMoodPreferences()
+  const { getScoreColor, getScoreStyle } = useMoodPreferences()
   const { scores, total_entries: totalEntries, month_index: monthIndex, comparison } = stats
   const maxCount = Math.max(1, ...scores.map((item) => item.count))
   const currentLabel = formatIndex(comparison.current_index ?? monthIndex)
@@ -64,6 +65,7 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
       <div className="emotion-stats-chart" role="img" aria-label={t('emotionStats.chartAria')}>
         {scores.map((item) => {
           const heightPercent = totalEntries === 0 ? 0 : (item.count / maxCount) * 100
+          const scoreStyle = getScoreStyle(item.score)
           return (
             <div key={item.score} className="emotion-stats-bar-col">
               <span className="emotion-stats-count" aria-hidden={item.count === 0}>
@@ -76,12 +78,14 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
                     height: `${heightPercent}%`,
                     backgroundColor: getScoreColor(item.score),
                   }}
-                  title={`${item.score_emoji} ${item.score_label}: ${item.count}`}
+                  title={`${item.score_label}: ${item.count}`}
                 />
               </div>
-              <span className="emotion-stats-emoji" aria-hidden>
-                {item.score_emoji}
-              </span>
+              <MoodScoreIcon
+                style={scoreStyle}
+                className="emotion-stats-emoji"
+                fallbackScore={item.score}
+              />
               <span className="emotion-stats-label">{item.score_label}</span>
               <span className="visually-hidden">
                 {item.score_label}: {item.count}

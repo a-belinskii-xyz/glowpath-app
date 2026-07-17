@@ -12,6 +12,7 @@ import { listNoteTemplates } from '../api/noteTemplates'
 import { listTagGroups } from '../api/tagGroups'
 import { Alert } from './Alert'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
+import { MoodScoreIcon } from './MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
@@ -308,12 +309,11 @@ export function MoodEntryForm({
               onClick={() => setScore(option.score)}
               aria-pressed={isSelected}
             >
-              <span
+              <MoodScoreIcon
+                style={option.style}
                 className="score-emoji"
-                style={{ filter: `drop-shadow(0 0 0.35rem ${option.color}66)` }}
-              >
-                {option.emoji}
-              </span>
+                fallbackScore={option.score}
+              />
               <span className="score-label">{option.label}</span>
             </button>
             )

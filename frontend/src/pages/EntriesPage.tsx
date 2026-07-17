@@ -9,8 +9,10 @@ import { EntryActionMenu } from '../components/EntryActionMenu'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MonthCalendar } from '../components/MonthCalendar'
+import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { intlLocale } from '../i18n/t'
 import { ApiError } from '../lib/errors'
 import {
@@ -21,6 +23,7 @@ import {
   getCurrentYearMonth,
   getMonthBounds,
 } from '../lib/datetime'
+import { getMoodScoreStyle } from '../lib/moodScale'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
 
 const PAGE_SIZE = 20
@@ -28,6 +31,7 @@ const PAGE_SIZE = 20
 export function EntriesPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
+  const { scores } = useMoodPreferences()
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
   const initialMonth = getCurrentYearMonth(timeZone)
@@ -378,7 +382,12 @@ export function EntriesPage() {
                               ★
                             </span>
                           ) : null}
-                          {entry.score_emoji} {entry.score_label}
+                          <MoodScoreIcon
+                            style={getMoodScoreStyle(entry.score, scores)}
+                            className="entry-score-icon"
+                            fallbackScore={entry.score}
+                          />{' '}
+                          {entry.score_label}
                         </span>
                         <span className="entry-time">
                           {formatTime(entry.recorded_at, timeZone, dateLocale)}

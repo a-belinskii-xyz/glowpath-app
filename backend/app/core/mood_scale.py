@@ -9,6 +9,7 @@ _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 class MoodScoreIconType(StrEnum):
     EMOJI = "emoji"
+    BUILTIN = "builtin"
     UPLOAD = "upload"
 
 

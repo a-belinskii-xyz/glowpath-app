@@ -53,7 +53,55 @@ def test_patch_mood_preferences_rejects_invalid_color(auth_client: TestClient, m
     assert response.status_code == 400
 
 
-def test_patch_mood_preferences_rejects_upload_icon_type(auth_client: TestClient, mailer) -> None:
+def test_patch_mood_preferences_builtin_icon(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-builtin-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"scores": {"4": {"icon_type": "builtin", "icon": "good-sun"}}},
+    )
+    assert response.status_code == 200
+    assert response.json()["scores"]["4"]["icon_type"] == "builtin"
+    assert response.json()["scores"]["4"]["icon"] == "good-sun"
+
+
+def test_patch_mood_preferences_rejects_unknown_builtin_slug(
+    auth_client: TestClient,
+    mailer,
+) -> None:
+    email = f"mood-prefs-builtin-bad-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"scores": {"2": {"icon_type": "builtin", "icon": "not-a-real-icon"}}},
+    )
+    assert response.status_code == 400
+
+
+def test_patch_mood_preferences_emoji_icon(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-emoji-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"scores": {"3": {"icon_type": "emoji", "icon": "🫠"}}},
+    )
+    assert response.status_code == 200
+    assert response.json()["scores"]["3"]["icon_type"] == "emoji"
+    assert response.json()["scores"]["3"]["icon"] == "🫠"
+
+
+def test_patch_mood_preferences_rejects_upload_without_icon_record(
+    auth_client: TestClient,
+    mailer,
+) -> None:
     email = f"mood-prefs-upload-{uuid.uuid4()}@example.com"
     token = register_verify_and_login(auth_client, mailer, email)
 
@@ -70,6 +118,20 @@ def test_patch_mood_preferences_rejects_upload_icon_type(auth_client: TestClient
         },
     )
     assert response.status_code == 400
+
+
+def test_get_mood_icon_catalog(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-catalog-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+
+    response = auth_client.get(
+        "/v1/mood-preferences/icon-catalog",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    slugs = {item["slug"] for item in response.json()["items"]}
+    assert "good-sun" in slugs
+    assert "heart" in slugs
 
 
 def test_provision_mood_preferences(db: Session) -> None:

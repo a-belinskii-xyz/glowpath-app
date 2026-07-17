@@ -1,4 +1,4 @@
-export type MoodScoreIconType = 'emoji' | 'upload'
+export type MoodScoreIconType = 'emoji' | 'builtin' | 'upload'
 
 export type MoodScoreStylePublic = {
   color: string

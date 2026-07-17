@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from pydantic import BaseModel, Field, model_validator
 
 from app.core.mood_scale import MoodScoreIconType
@@ -35,3 +37,36 @@ class MoodPreferencesUpdate(BaseModel):
         if not self.scores:
             raise ValueError("At least one score style must be provided")
         return self
+
+
+class BuiltinMoodIconPublic(BaseModel):
+    slug: str
+    label: str
+    asset_path: str
+    default_score: int | None = None
+
+
+class MoodIconCatalogResponse(BaseModel):
+    items: list[BuiltinMoodIconPublic]
+
+
+class MoodIconPublic(BaseModel):
+    id: UUID
+    score: int
+    mime_type: str
+    size_bytes: int
+    original_name: str
+    preferences: MoodPreferencesPublic
+
+
+class MoodIconMetaPublic(BaseModel):
+    id: UUID
+    score: int
+    mime_type: str
+    size_bytes: int
+    original_name: str
+
+
+class MoodIconListResponse(BaseModel):
+    items: list[MoodIconMetaPublic]
+    max_per_score: int = 3
