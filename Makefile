@@ -55,6 +55,9 @@ run: $(MARKER)
 	cd $(BACKEND) && $(BIN)/uvicorn app.main:app --reload --host 0.0.0.0 --port $(APP_PORT)
 
 up:
+	docker compose build && docker compose up
+
+up-no-cache:
 	docker compose build --no-cache && docker compose up
 
 down:

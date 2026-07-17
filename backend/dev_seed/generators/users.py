@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from app.core.security import hash_password
 from app.models.user import User
-from app.services.user_provisioning import provision_notification_settings
+from app.services.user_provisioning import provision_mood_preferences, provision_notification_settings
 from sqlalchemy.orm import Session
 
 from dev_seed.config import DEFAULT_PASSWORD
@@ -25,5 +25,6 @@ def create_user(db: Session, *, persona: Persona, rng: SeededRNG) -> User:
     db.add(user)
     db.flush()
     provision_notification_settings(db, user.id)
+    provision_mood_preferences(db, user.id)
     db.flush()
     return user

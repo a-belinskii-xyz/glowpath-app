@@ -14,6 +14,7 @@ import { Alert } from './Alert'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { ApiError } from '../lib/errors'
 import {
   datetimeLocalToIso,
@@ -47,8 +48,9 @@ export function MoodEntryForm({
   const navigate = useNavigate()
   const { user } = useAuth()
   const { locale, t } = useLocale()
+  const { scores } = useMoodPreferences()
   const timeZone = user?.timezone ?? 'UTC'
-  const moodScoreOptions = getMoodScoreOptions(locale)
+  const moodScoreOptions = getMoodScoreOptions(locale, scores)
 
   const [score, setScore] = useState(initialEntry?.score ?? 4)
   const [recordedAtLocal, setRecordedAtLocal] = useState(
@@ -292,18 +294,30 @@ export function MoodEntryForm({
       <fieldset className="form-field">
         <legend className="form-label">{t('entries.moodScore')}</legend>
         <div className="score-picker">
-          {moodScoreOptions.map((option) => (
+          {moodScoreOptions.map((option) => {
+            const isSelected = score === option.score
+            return (
             <button
               key={option.score}
               type="button"
-              className={`score-option${score === option.score ? ' score-option-selected' : ''}`}
+              className={`score-option${isSelected ? ' score-option-selected' : ''}`}
+              style={{
+                borderColor: isSelected ? option.color : undefined,
+                background: isSelected ? `${option.color}1a` : undefined,
+              }}
               onClick={() => setScore(option.score)}
-              aria-pressed={score === option.score}
+              aria-pressed={isSelected}
             >
-              <span className="score-emoji">{option.emoji}</span>
+              <span
+                className="score-emoji"
+                style={{ filter: `drop-shadow(0 0 0.35rem ${option.color}66)` }}
+              >
+                {option.emoji}
+              </span>
               <span className="score-label">{option.label}</span>
             </button>
-          ))}
+            )
+          })}
         </div>
       </fieldset>
 

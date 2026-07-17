@@ -16,7 +16,9 @@ if TYPE_CHECKING:
     from app.models.mood_entry import MoodEntry
     from app.models.note_template import NoteTemplate
     from app.models.tag_group import TagGroup
+    from app.models.user_mood_preferences import UserMoodPreferences
     from app.models.user_notification_settings import UserNotificationSettings
+from app.models.user_mood_preferences import UserMoodPreferences
 
 
 class User(TimestampMixin, Base):
@@ -45,6 +47,10 @@ class User(TimestampMixin, Base):
     goals: Mapped[list["Goal"]] = relationship(back_populates="user")
     auth_tokens: Mapped[list["AuthToken"]] = relationship(back_populates="user")
     notification_settings: Mapped["UserNotificationSettings | None"] = relationship(
+        back_populates="user",
+        uselist=False,
+    )
+    mood_preferences: Mapped["UserMoodPreferences | None"] = relationship(
         back_populates="user",
         uselist=False,
     )

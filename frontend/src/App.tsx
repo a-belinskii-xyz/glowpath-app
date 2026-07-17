@@ -5,6 +5,7 @@ import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import { LocaleProvider } from './context/LocaleContext'
+import { MoodPreferencesProvider } from './context/MoodPreferencesContext'
 import { CreateEntryPage } from './pages/CreateEntryPage'
 import { EditEntryPage } from './pages/EditEntryPage'
 import { EntryDetailPage } from './pages/EntryDetailPage'
@@ -25,7 +26,8 @@ function App() {
   return (
     <LocaleProvider>
       <AuthProvider>
-        <BrowserRouter>
+        <MoodPreferencesProvider>
+          <BrowserRouter>
           <Routes>
             <Route element={<Layout />}>
               <Route index element={<HomePage />} />
@@ -53,7 +55,8 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
-        </BrowserRouter>
+          </BrowserRouter>
+        </MoodPreferencesProvider>
       </AuthProvider>
     </LocaleProvider>
   )

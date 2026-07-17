@@ -1,4 +1,5 @@
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
+import { MoodPreferencesForm } from '../components/MoodPreferencesForm'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -73,6 +74,12 @@ export function ProfilePage() {
           <dd>{formatDate(user.email_verified_at, intlLocale(locale), t('common.emptyDate'))}</dd>
         </div>
       </dl>
+
+      <section className="profile-section" aria-labelledby="profile-mood-preferences-heading">
+        <h2 id="profile-mood-preferences-heading">{t('profile.moodPreferencesTitle')}</h2>
+        <p className="profile-section-lead">{t('profile.moodPreferencesLead')}</p>
+        <MoodPreferencesForm />
+      </section>
 
       <section className="profile-section" aria-labelledby="profile-notifications-heading">
         <h2 id="profile-notifications-heading">{t('profile.notificationsTitle')}</h2>

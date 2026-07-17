@@ -12,6 +12,7 @@ from app.models.goal import Goal
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
+from app.models.user_mood_preferences import UserMoodPreferences
 from app.models.user_notification_settings import UserNotificationSettings
 from app.services.notifications.base import NotificationChannel
 
@@ -83,6 +84,10 @@ def provision_notification_settings(db: Session, user_id: uuid.UUID) -> None:
     )
 
 
+def provision_mood_preferences(db: Session, user_id: uuid.UUID) -> None:
+    db.add(UserMoodPreferences(user_id=user_id, score_styles=None))
+
+
 def count_user_tag_groups(db: Session, user_id: uuid.UUID) -> int:
     count = db.scalar(select(func.count()).select_from(TagGroup).where(TagGroup.user_id == user_id))
     return int(count or 0)
@@ -105,5 +110,14 @@ def count_user_notification_settings(db: Session, user_id: uuid.UUID) -> int:
         select(func.count())
         .select_from(UserNotificationSettings)
         .where(UserNotificationSettings.user_id == user_id)
+    )
+    return int(count or 0)
+
+
+def count_user_mood_preferences(db: Session, user_id: uuid.UUID) -> int:
+    count = db.scalar(
+        select(func.count())
+        .select_from(UserMoodPreferences)
+        .where(UserMoodPreferences.user_id == user_id)
     )
     return int(count or 0)

@@ -10,12 +10,14 @@ from app.models.tag import Tag
 from app.models.user import User
 from app.services.user_provisioning import (
     count_user_goals,
+    count_user_mood_preferences,
     count_user_note_templates,
     count_user_notification_settings,
     count_user_tag_groups,
     provision_default_goals,
     provision_default_note_templates,
     provision_default_tags,
+    provision_mood_preferences,
     provision_notification_settings,
 )
 from sqlalchemy import func, select
@@ -85,3 +87,14 @@ def test_provision_notification_settings(db: Session) -> None:
     db.flush()
 
     assert count_user_notification_settings(db, user.id) == 1
+
+
+def test_provision_mood_preferences(db: Session) -> None:
+    user = User(email=f"mood-prefs-{uuid.uuid4()}@example.com", password_hash="hash")
+    db.add(user)
+    db.flush()
+
+    provision_mood_preferences(db, user.id)
+    db.flush()
+
+    assert count_user_mood_preferences(db, user.id) == 1

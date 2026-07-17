@@ -1,16 +1,9 @@
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import type { MoodEntryStatsResponse, MoodMonthComparisonPublic } from '../types/mood'
 
 type EmotionStatsBarChartProps = {
   stats: MoodEntryStatsResponse
-}
-
-const BAR_COLORS: Record<number, string> = {
-  1: '#64748b',
-  2: '#94a3b8',
-  3: '#60a5fa',
-  4: '#34d399',
-  5: '#f59e0b',
 }
 
 function comparisonClassName(verdict: MoodMonthComparisonPublic['verdict']): string {
@@ -37,6 +30,7 @@ function formatIndex(value: number | null): string | null {
 
 export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
   const { t, tp } = useLocale()
+  const { getScoreColor } = useMoodPreferences()
   const { scores, total_entries: totalEntries, month_index: monthIndex, comparison } = stats
   const maxCount = Math.max(1, ...scores.map((item) => item.count))
   const currentLabel = formatIndex(comparison.current_index ?? monthIndex)
@@ -80,7 +74,7 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
                   className="emotion-stats-bar"
                   style={{
                     height: `${heightPercent}%`,
-                    backgroundColor: BAR_COLORS[item.score] ?? '#94a3b8',
+                    backgroundColor: getScoreColor(item.score),
                   }}
                   title={`${item.score_emoji} ${item.score_label}: ${item.count}`}
                 />

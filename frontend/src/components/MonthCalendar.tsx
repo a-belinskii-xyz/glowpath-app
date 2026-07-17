@@ -2,7 +2,10 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { buildMonthCalendarCells, isFutureDate, todayKey } from '../lib/datetime'
+import { getMoodScoreStyle } from '../lib/moodScale'
+import { MoodScoreIcon } from './MoodScoreIcon'
 import type { CalendarDayPublic } from '../types/mood'
 
 type MonthCalendarProps = {
@@ -21,6 +24,7 @@ export function MonthCalendar({
   onDayWithEntries,
 }: MonthCalendarProps) {
   const { t } = useLocale()
+  const { scores: scoreStyles } = useMoodPreferences()
   const weekdays = t('calendar.weekdays').split('|')
   const cells = useMemo(() => buildMonthCalendarCells(year, month), [year, month])
   const daysByDate = useMemo(() => {
@@ -44,7 +48,7 @@ export function MonthCalendar({
       <div className="month-calendar-grid" role="rowgroup">
         {cells.map((cell) => {
           const dayData = cell.date ? daysByDate.get(cell.date) : undefined
-          const scores = dayData?.scores ?? []
+          const dayScores = dayData?.scores ?? []
           const entryCount = dayData?.entry_count ?? 0
           const isToday = cell.date === today
           const isFuture = cell.date ? isFutureDate(cell.date, timeZone) : false
@@ -82,15 +86,21 @@ export function MonthCalendar({
                 >
                   <span className="month-calendar-day">{cell.day}</span>
                   <span className="month-calendar-emojis" aria-hidden="true">
-                    {scores.map((item, index) => (
+                    {dayScores.map((item, index) => {
+                      const style = getMoodScoreStyle(item.score, scoreStyles)
+                      return (
                       <span
                         key={`${cell.date}-${index}-${item.score}`}
                         className="month-calendar-emoji"
-                        style={{ zIndex: scores.length - index }}
+                        style={{
+                          zIndex: dayScores.length - index,
+                          filter: `drop-shadow(0 0 0.35rem ${style.color}88)`,
+                        }}
                       >
-                        {item.score_emoji}
+                        <MoodScoreIcon style={style} />
                       </span>
-                    ))}
+                      )
+                    })}
                   </span>
                 </button>
               ) : canInteract && cell.date ? (
@@ -107,17 +117,23 @@ export function MonthCalendar({
               ) : (
                 <>
                   <span className="month-calendar-day">{cell.day}</span>
-                  {scores.length > 0 ? (
+                  {dayScores.length > 0 ? (
                     <span className="month-calendar-emojis" aria-hidden="true">
-                      {scores.map((item, index) => (
+                      {dayScores.map((item, index) => {
+                        const style = getMoodScoreStyle(item.score, scoreStyles)
+                        return (
                         <span
                           key={`${cell.date}-${index}-${item.score}`}
                           className="month-calendar-emoji"
-                          style={{ zIndex: scores.length - index }}
+                          style={{
+                            zIndex: dayScores.length - index,
+                            filter: `drop-shadow(0 0 0.35rem ${style.color}88)`,
+                          }}
                         >
-                          {item.score_emoji}
+                          <MoodScoreIcon style={style} />
                         </span>
-                      ))}
+                        )
+                      })}
                     </span>
                   ) : null}
                 </>
