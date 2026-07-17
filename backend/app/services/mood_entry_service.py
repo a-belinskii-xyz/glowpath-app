@@ -640,6 +640,7 @@ def serialize_mood_entry(
             "size_bytes": item.size_bytes,
             "original_name": item.original_name,
             "position": item.position,
+            "transcription": item.transcription,
         }
         for item in sorted(
             entry.attachments,

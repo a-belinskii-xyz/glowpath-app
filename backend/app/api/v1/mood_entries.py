@@ -263,6 +263,7 @@ async def create_attachment(
         size_bytes=attachment.size_bytes,
         original_name=attachment.original_name,
         position=attachment.position,
+        transcription=attachment.transcription,
     )
 
 

@@ -9,6 +9,7 @@ from sqlalchemy import (
     Index,
     SmallInteger,
     String,
+    Text,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -71,5 +72,7 @@ class MoodEntryAttachment(TimestampMixin, Base):
     size_bytes: Mapped[int] = mapped_column(BigInteger)
     original_name: Mapped[str] = mapped_column(String(255))
     position: Mapped[int | None] = mapped_column(SmallInteger)
+    # Filled later by local Whisper (or similar); used for note search over voice.
+    transcription: Mapped[str | None] = mapped_column(Text)
 
     mood_entry: Mapped["MoodEntry"] = relationship(back_populates="attachments")

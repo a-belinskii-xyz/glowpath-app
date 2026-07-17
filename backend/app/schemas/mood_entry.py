@@ -72,6 +72,7 @@ class AttachmentPublic(BaseModel):
     size_bytes: int
     original_name: str
     position: int | None
+    transcription: str | None = None
 
 
 class MoodEntryPublic(BaseModel):

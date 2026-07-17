@@ -284,6 +284,9 @@ export const en = {
     nextPhoto: 'Next photo',
     audioLoadFailed: 'Could not load audio: {name}',
     audioUnsupported: 'Your browser does not support audio playback.',
+    playAudio: 'Play audio',
+    pauseAudio: 'Pause audio',
+    seekAudio: 'Seek in audio',
   },
   auth: {
     logInTitle: 'Log in',
@@ -648,6 +651,9 @@ export const ru: DeepStringLeaves<typeof en> = {
     nextPhoto: 'Следующее фото',
     audioLoadFailed: 'Не удалось загрузить аудио: {name}',
     audioUnsupported: 'Браузер не поддерживает воспроизведение аудио.',
+    playAudio: 'Воспроизвести аудио',
+    pauseAudio: 'Пауза',
+    seekAudio: 'Перемотка аудио',
   },
   auth: {
     logInTitle: 'Вход',

@@ -26,6 +26,8 @@ export type AttachmentPublic = {
   size_bytes: number
   original_name: string
   position: number | null
+  /** Voice-to-text from Whisper (or similar); null until transcribed. */
+  transcription: string | null
 }
 
 export type MoodEntryPublic = {

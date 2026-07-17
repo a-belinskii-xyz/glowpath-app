@@ -15,7 +15,7 @@ import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { intlLocale } from '../i18n/t'
 import { ApiError } from '../lib/errors'
 import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/datetime'
-import { getMoodScoreStyle } from '../lib/moodScale'
+import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
 
 function HeartIcon({ filled }: { filled: boolean }) {
@@ -214,7 +214,11 @@ export function EntryDetailPage() {
               ) : null}
 
               {audioAttachment ? (
-                <AttachmentAudio entryId={entry.id} attachment={audioAttachment} />
+                <AttachmentAudio
+                  entryId={entry.id}
+                  attachment={audioAttachment}
+                  accentColor={getMoodScoreColor(entry.score, scores)}
+                />
               ) : null}
 
               <EntryAttachmentThumbs
