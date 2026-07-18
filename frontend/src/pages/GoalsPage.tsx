@@ -330,10 +330,16 @@ export function GoalsPage() {
                   style={{ backgroundColor: isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color }}
                   aria-hidden
                 />
-                <GoalIcon
-                  style={{ color: draftColor, icon_type: 'emoji', icon: draftEmoji || '🎯' }}
-                  className="mood-preferences-emoji"
-                />
+                <span
+                  style={{
+                    filter: `drop-shadow(0 0 0.35rem ${isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color}88)`,
+                  }}
+                >
+                  <GoalIcon
+                    style={{ color: draftColor, icon_type: 'emoji', icon: draftEmoji || '🎯' }}
+                    className="mood-preferences-emoji"
+                  />
+                </span>
               </div>
               <div className="mood-preferences-controls">
                 <input

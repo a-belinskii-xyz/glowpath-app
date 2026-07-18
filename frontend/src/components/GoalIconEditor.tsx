@@ -306,7 +306,9 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
           style={{ backgroundColor: draftColor }}
           aria-hidden
         />
-        <GoalIcon style={style} className="mood-preferences-emoji" />
+        <span style={{ filter: `drop-shadow(0 0 0.35rem ${draftColor}88)` }}>
+          <GoalIcon style={style} className="mood-preferences-emoji" />
+        </span>
       </div>
 
       <div className="mood-preferences-controls">
@@ -403,46 +405,65 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
 
         <div className="mood-preferences-upload-section">
           {uploadedIcons.length > 0 ? (
-            <div className="mood-preferences-upload-grid" role="list">
+            <>
               <p className="form-hint">{t('moodPreferences.selectUploadedIcon')}</p>
-              {uploadedIcons.map((icon) => {
-                const selected = goal.icon_type === 'upload' && goal.icon === icon.id
-                return (
-                  <div key={icon.id} className="mood-preferences-upload-item" role="listitem">
-                    <button
-                      type="button"
-                      className={`mood-preferences-builtin-option${selected ? ' mood-preferences-builtin-option-selected' : ''}`}
-                      aria-pressed={selected}
-                      aria-label={icon.original_name}
-                      onClick={() => void handleUploadSelect(icon.id)}
-                    >
-                      <GoalIcon
-                        style={{
-                          color: draftColor,
-                          icon_type: 'upload',
-                          icon: icon.id,
+              <div className="mood-preferences-upload-grid" role="list">
+                {uploadedIcons.map((icon) => {
+                  const selected = goal.icon_type === 'upload' && goal.icon === icon.id
+                  return (
+                    <div key={icon.id} className="mood-preferences-upload-item" role="listitem">
+                      <button
+                        type="button"
+                        className={`mood-preferences-upload-tile${selected ? ' mood-preferences-upload-tile-selected' : ''}`}
+                        aria-pressed={selected}
+                        aria-label={
+                          selected ? t('moodPreferences.editIcon') : icon.original_name
+                        }
+                        disabled={iconBusy}
+                        onClick={() => {
+                          if (selected) {
+                            void handleRecropUpload(icon)
+                          } else {
+                            void handleUploadSelect(icon.id)
+                          }
                         }}
-                        className="mood-preferences-upload-thumb"
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      className="button button-secondary button-small"
-                      onClick={() => void handleRecropUpload(icon)}
-                    >
-                      {t('moodPreferences.editIcon')}
-                    </button>
-                    <button
-                      type="button"
-                      className="button button-secondary button-small"
-                      onClick={() => void handleRemoveUpload(icon.id)}
-                    >
-                      {t('moodPreferences.removeIcon')}
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
+                      >
+                        <span style={{ filter: `drop-shadow(0 0 0.35rem ${draftColor}88)` }}>
+                          <GoalIcon
+                            style={{
+                              color: draftColor,
+                              icon_type: 'upload',
+                              icon: icon.id,
+                            }}
+                            className="mood-preferences-upload-thumb"
+                          />
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="mood-preferences-upload-remove"
+                        aria-label={t('moodPreferences.removeIcon')}
+                        disabled={iconBusy}
+                        onClick={() => void handleRemoveUpload(icon.id)}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="14"
+                          height="14"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path
+                            fill="currentColor"
+                            d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           ) : null}
 
           <div className="mood-preferences-upload-controls">

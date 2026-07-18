@@ -1886,32 +1886,107 @@ code {
 
 .mood-preferences-upload-grid {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 0.5rem;
+  /* Room for the overhanging remove control on the last tile */
+  padding: 0.45rem 0.45rem 0 0;
+  width: max-content;
+  max-width: 100%;
 }
 
 .mood-preferences-upload-item {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
+  position: relative;
+  width: 3.85rem;
+  height: 3.85rem;
+  flex: 0 0 3.85rem;
 }
 
-.mood-preferences-upload-item .mood-preferences-builtin-option {
-  border-radius: 999px;
+.mood-preferences-upload-tile {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.mood-preferences-upload-tile:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mood-preferences-upload-tile-selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
 .mood-preferences-upload-thumb {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
 }
 
 .mood-preferences-upload-thumb img {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2.6rem;
+  height: 2.6rem;
   object-fit: cover;
   border-radius: 999px;
+}
+
+.mood-preferences-upload-remove {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.4rem;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.mood-preferences-upload-item:hover .mood-preferences-upload-remove,
+.mood-preferences-upload-item:focus-within .mood-preferences-upload-remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mood-preferences-upload-remove:hover,
+.mood-preferences-upload-remove:focus-visible {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.mood-preferences-upload-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (hover: none) {
+  .mood-preferences-upload-remove {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .mood-preferences-upload-count,

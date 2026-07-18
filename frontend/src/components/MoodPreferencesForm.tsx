@@ -532,11 +532,15 @@ export function MoodPreferencesForm() {
                   style={{ backgroundColor: draftColors[option.score] ?? option.color }}
                   aria-hidden
                 />
-                <MoodScoreIcon
-                  style={previewStyle}
-                  className="mood-preferences-emoji"
-                  fallbackScore={option.score}
-                />
+                <span
+                  style={{ filter: `drop-shadow(0 0 0.35rem ${previewStyle.color}88)` }}
+                >
+                  <MoodScoreIcon
+                    style={previewStyle}
+                    className="mood-preferences-emoji"
+                    fallbackScore={option.score}
+                  />
+                </span>
                 <label className="mood-preferences-label-field">
                   <span className="visually-hidden">{t('moodPreferences.labelFor', { score: option.score })}</span>
                   <input
@@ -656,49 +660,72 @@ export function MoodPreferencesForm() {
 
                 <div className="mood-preferences-upload-section">
                   {scoreUploads.length > 0 ? (
-                    <div className="mood-preferences-upload-grid" role="list">
+                    <>
                       <p className="form-hint">{t('moodPreferences.selectUploadedIcon')}</p>
-                      {scoreUploads.map((icon) => {
-                        const selected =
-                          currentStyle.icon_type === 'upload' && currentStyle.icon === icon.id
-                        return (
-                          <div key={icon.id} className="mood-preferences-upload-item" role="listitem">
-                            <button
-                              type="button"
-                              className={`mood-preferences-builtin-option${selected ? ' mood-preferences-builtin-option-selected' : ''}`}
-                              aria-pressed={selected}
-                              aria-label={icon.original_name}
-                              onClick={() => void handleUploadSelect(option.score, icon.id)}
-                            >
-                              <MoodScoreIcon
-                                style={{
-                                  color: previewStyle.color,
-                                  icon_type: 'upload',
-                                  icon: icon.id,
-                                  label: draftLabels[option.score] ?? option.label,
+                      <div className="mood-preferences-upload-grid" role="list">
+                        {scoreUploads.map((icon) => {
+                          const selected =
+                            currentStyle.icon_type === 'upload' && currentStyle.icon === icon.id
+                          return (
+                            <div key={icon.id} className="mood-preferences-upload-item" role="listitem">
+                              <button
+                                type="button"
+                                className={`mood-preferences-upload-tile${selected ? ' mood-preferences-upload-tile-selected' : ''}`}
+                                aria-pressed={selected}
+                                aria-label={
+                                  selected ? t('moodPreferences.editIcon') : icon.original_name
+                                }
+                                disabled={iconBusyScore === option.score}
+                                onClick={() => {
+                                  if (selected) {
+                                    void handleRecropUpload(option.score, icon)
+                                  } else {
+                                    void handleUploadSelect(option.score, icon.id)
+                                  }
                                 }}
-                                className="mood-preferences-upload-thumb"
-                                fallbackScore={option.score}
-                              />
-                            </button>
-                            <button
-                              type="button"
-                              className="button button-secondary button-small"
-                              onClick={() => void handleRecropUpload(option.score, icon)}
-                            >
-                              {t('moodPreferences.editIcon')}
-                            </button>
-                            <button
-                              type="button"
-                              className="button button-secondary button-small"
-                              onClick={() => void handleRemoveUpload(option.score, icon.id)}
-                            >
-                              {t('moodPreferences.removeIcon')}
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
+                              >
+                                <span
+                                  style={{
+                                    filter: `drop-shadow(0 0 0.35rem ${previewStyle.color}88)`,
+                                  }}
+                                >
+                                  <MoodScoreIcon
+                                    style={{
+                                      color: previewStyle.color,
+                                      icon_type: 'upload',
+                                      icon: icon.id,
+                                      label: draftLabels[option.score] ?? option.label,
+                                    }}
+                                    className="mood-preferences-upload-thumb"
+                                    fallbackScore={option.score}
+                                  />
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                className="mood-preferences-upload-remove"
+                                aria-label={t('moodPreferences.removeIcon')}
+                                disabled={iconBusyScore === option.score}
+                                onClick={() => void handleRemoveUpload(option.score, icon.id)}
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  width="14"
+                                  height="14"
+                                  aria-hidden="true"
+                                  focusable="false"
+                                >
+                                  <path
+                                    fill="currentColor"
+                                    d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
                   ) : null}
 
                   <div className="mood-preferences-upload-controls">
