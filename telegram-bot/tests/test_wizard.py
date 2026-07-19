@@ -1,0 +1,133 @@
+from __future__ import annotations
+
+from bot.wizard import (
+    MAX_PENDING_PHOTOS,
+    SOURCE_BOT,
+    STEP_CONFIRM,
+    STEP_GOALS,
+    STEP_NOTE,
+    STEP_SCORE,
+    STEP_TAGS,
+    add_pending_photo,
+    advance_after_goals,
+    advance_after_note,
+    advance_after_score,
+    advance_after_tags,
+    format_summary,
+    has_note_content,
+    new_wizard_state,
+    parse_callback,
+    toggle_id,
+)
+
+
+def _catalog(*, tags: bool = True, goals: bool = True) -> dict:
+    tag_groups = []
+    if tags:
+        tag_groups = [
+            {
+                "id": "g1",
+                "label": "Feelings",
+                "tags": [
+                    {"id": "t1", "label": "Calm"},
+                    {"id": "t2", "label": "Tired"},
+                ],
+            },
+            {
+                "id": "g2",
+                "label": "Context",
+                "tags": [{"id": "t3", "label": "Work"}],
+            },
+        ]
+    goal_items = []
+    if goals:
+        goal_items = [{"id": "goal1", "label": "Exercise", "icon_type": "emoji", "icon": "🏃"}]
+    return {
+        "scores": [
+            {"score": 1, "label": "awful", "emoji": "😢"},
+            {"score": 4, "label": "good", "emoji": "🙂"},
+        ],
+        "tag_groups": tag_groups,
+        "goals": goal_items,
+    }
+
+
+def test_new_wizard_state_defaults() -> None:
+    state = new_wizard_state()
+    assert state["step"] == STEP_SCORE
+    assert state["source"] == SOURCE_BOT
+    assert state["tag_ids"] == []
+
+
+def test_advance_score_to_tags_then_goals_then_note() -> None:
+    catalog = _catalog()
+    state = new_wizard_state()
+    state["score"] = 4
+    state = advance_after_score(state, catalog)
+    assert state["step"] == STEP_TAGS
+    assert state["group_index"] == 0
+
+    state = advance_after_tags(state, catalog)
+    assert state["step"] == STEP_TAGS
+    assert state["group_index"] == 1
+
+    state = advance_after_tags(state, catalog)
+    assert state["step"] == STEP_GOALS
+
+    state = advance_after_goals(state)
+    assert state["step"] == STEP_NOTE
+
+    state = advance_after_note(state)
+    assert state["step"] == STEP_CONFIRM
+
+
+def test_advance_skips_empty_sections() -> None:
+    catalog = _catalog(tags=False, goals=False)
+    state = new_wizard_state()
+    state["score"] = 3
+    state = advance_after_score(state, catalog)
+    assert state["step"] == STEP_NOTE
+
+
+def test_toggle_id() -> None:
+    state = new_wizard_state()
+    state = toggle_id(state, "tag_ids", "t1")
+    assert state["tag_ids"] == ["t1"]
+    state = toggle_id(state, "tag_ids", "t1")
+    assert state["tag_ids"] == []
+
+
+def test_format_summary() -> None:
+    catalog = _catalog()
+    state = new_wizard_state()
+    state["score"] = 4
+    state["tag_ids"] = ["t1", "t3"]
+    state["goal_ids"] = ["goal1"]
+    state["note"] = "hello"
+    state["pending_voice_file_id"] = "file-1"
+    state["pending_photos"] = [{"file_id": "p1", "mime_type": "image/jpeg"}]
+    summary = format_summary(state, catalog)
+    assert "🙂" in summary
+    assert "Calm" in summary
+    assert "Work" in summary
+    assert "Exercise" in summary
+    assert "hello" in summary
+    assert "🎤" in summary
+    assert "🖼×1" in summary
+
+
+def test_add_pending_photo_and_limit() -> None:
+    state = new_wizard_state()
+    for i in range(MAX_PENDING_PHOTOS):
+        state, err = add_pending_photo(state, file_id=f"p{i}")
+        assert err is None
+    assert has_note_content(state)
+    state, err = add_pending_photo(state, file_id="overflow")
+    assert err == "photo_limit"
+
+
+def test_parse_callback() -> None:
+    assert parse_callback("w:score:4") == ("score", "4")
+    assert parse_callback("w:next") == ("next", None)
+    assert parse_callback("w:tag:abc-def") == ("tag", "abc-def")
+    assert parse_callback("other") == ("", None)

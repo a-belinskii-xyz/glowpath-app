@@ -19,6 +19,7 @@ Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and D
 | Mood stats | Month mood index and month-over-month comparison (bar chart on home) |
 | Profile & locale | View account info; switch UI language (`en` / `ru`); IANA timezone on the user |
 | Email reminders | Opt-in daily mood + weekly goal reminders via email (time + channels in settings) |
+| Telegram bot | Link from Profile; reminders; `/log` mood wizard (+ voice); webhook on `:8081` |
 | Multi-user isolation | Each user’s entries, tags, templates, and files are private |
 | Dev seed data | Deterministic demo users/entries/attachments for local UI work (`make seed`) |
 
@@ -38,7 +39,7 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-Edit `.env` if ports are already in use (`POSTGRES_PORT`, `APP_PORT`, `MINIO_*`, `MAILHOG_*`).
+Edit `.env` if ports are already in use (`POSTGRES_PORT`, `APP_PORT`, `MINIO_*`, `MAILHOG_*`, `TELEGRAM_BOT_PORT`).
 
 ### 2. Backend (Docker)
 
@@ -77,10 +78,11 @@ Ensure `backend/.env` includes `FRONTEND_URL=http://localhost:5173` and `CORS_OR
 | Health | http://localhost:8000/health |
 | MinIO console | http://localhost:9001 |
 | MailHog UI (dev email) | http://localhost:8025 |
+| Telegram bot health | http://localhost:8081/health |
 
 Host ports come from root `.env` (defaults above).
 
-Compose also runs a **`reminders`** worker that polls for due notification emails (daily mood / goals).
+Compose also runs a **`reminders`** worker (email / Telegram) and a **`telegram-bot`** webhook service (port `TELEGRAM_BOT_PORT`, default `8081`).
 
 ## Frontend
 
@@ -152,6 +154,10 @@ Environment variables in `backend/.env` (see `backend/.env.example`):
 - `NOTIFICATIONS_WORKER_ENABLED` — master switch for the reminder worker (default `true`)
 - `NOTIFICATIONS_POLL_INTERVAL_SECONDS` — how often the worker checks due reminders (default `60`)
 - `NOTIFICATIONS_MATCH_WINDOW_MINUTES` — local-time window after the user’s reminder time (default `2`)
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` — BotFather token and bot username (without `@`)
+- `TELEGRAM_BOT_SERVICE_TOKEN` — shared secret for `telegram-bot` → API (`/v1/telegram/bot/*`)
+- `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_WEBHOOK_PATH`, `TELEGRAM_WEBHOOK_URL` — webhook auth and public HTTPS base URL (see [Telegram bot](#telegram-bot-local-webhook))
+- `TELEGRAM_LINK_CODE_EXPIRE_MINUTES` — one-time Profile link code TTL (default `15`)
 - `ENTRY_VISIBLE_TAG_GROUP_LIMIT` — max tag groups pinned to the entry form (default `6`; rest under “Other”)
 - `ENTRY_VISIBLE_GOAL_LIMIT` — max goals pinned to the entry form (default `3`)
 - `STATS_VISIBLE_GOAL_LIMIT` — max goals shown in calendar and period stats (default `5`)
@@ -201,26 +207,112 @@ curl -s -X POST http://localhost:8000/v1/auth/forgot-password \
 Users must **opt in** via `GET` / `PATCH /v1/notification-settings`:
 
 - `enabled` — master switch
-- `channels` — delivery channels (`email` today; more can be added later)
-- `daily_mood_reminder_enabled` + `daily_mood_reminder_time` — local time (user timezone) for the daily “log your mood” email
+- `channels` — delivery channels (`email`, and `telegram` after the account is linked)
+- `daily_mood_reminder_enabled` + `daily_mood_reminder_time` — local time (user timezone) for the daily “log your mood” reminder
 - `goal_reminders_enabled` — nudge when weekly goals are behind (same local time)
 
-The Compose `reminders` service (or `python -m app.jobs.reminders`) polls every `NOTIFICATIONS_POLL_INTERVAL_SECONDS` and sends only inside `NOTIFICATIONS_MATCH_WINDOW_MINUTES` after the chosen time. SMTP uses the same `SMTP_*` / `EMAIL_FROM` settings as auth mail; links use `FRONTEND_URL`.
+The Compose `reminders` service (or `python -m app.jobs.reminders`) polls every `NOTIFICATIONS_POLL_INTERVAL_SECONDS` and sends only inside `NOTIFICATIONS_MATCH_WINDOW_MINUTES` after the chosen time. SMTP uses the same `SMTP_*` / `EMAIL_FROM` settings as auth mail; Telegram uses `TELEGRAM_BOT_TOKEN`. Links use `FRONTEND_URL`.
 
-Daily mood emails link to `/entries/new?from=email:daily_mood_reminder`. When the user saves an entry from that URL, the API stores `source` as `{channel}:{kind}` (e.g. `email:daily_mood_reminder`, later `telegram:daily_mood_reminder`) for analytics — not returned in public entry JSON / not shown in UI.
+Daily mood emails link to `/entries/new?from=email:daily_mood_reminder`. When the user saves an entry from that URL, the API stores `source` as `{channel}:{kind}` (e.g. `email:daily_mood_reminder`, `telegram:daily_mood_reminder`) for analytics — not returned in public entry JSON / not shown in UI.
 
 ```bash
-# Enable daily mood + goal reminders at 20:30 local time
+# Enable daily mood + goal reminders at 20:30 local time (email + Telegram if linked)
 curl -s -X PATCH http://localhost:8000/v1/notification-settings \
   -H "Authorization: Bearer PASTE_ACCESS_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
     "enabled": true,
-    "channels": ["email"],
+    "channels": ["email", "telegram"],
     "daily_mood_reminder_enabled": true,
     "daily_mood_reminder_time": "20:30:00",
     "goal_reminders_enabled": true
   }'
+```
+
+### Telegram bot (local webhook)
+
+Compose runs `telegram-bot` on port **8081** (see `TELEGRAM_BOT_PORT` in root `.env`). The bot receives Telegram updates over a **webhook**. On your laptop that requires a **public HTTPS URL** pointing at the bot — without it, Profile “Connect Telegram” opens the bot, but `/start <code>` never reaches the container and nothing happens.
+
+Design notes: [`docs/telegram-integration-plan.md`](docs/telegram-integration-plan.md).
+
+#### 1. Configure `backend/.env`
+
+Create a bot with [@BotFather](https://t.me/BotFather), then set:
+
+```env
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_BOT_USERNAME=your_bot_name
+TELEGRAM_BOT_SERVICE_TOKEN=dev-telegram-bot-service-token
+TELEGRAM_WEBHOOK_SECRET=dev-telegram-webhook-secret
+TELEGRAM_WEBHOOK_PATH=/telegram/webhook
+# Set after you start a tunnel (step 2):
+TELEGRAM_WEBHOOK_URL=
+```
+
+`TELEGRAM_WEBHOOK_URL` is the tunnel **base** URL only (no path). On startup the bot calls `setWebhook` for `{TELEGRAM_WEBHOOK_URL}{TELEGRAM_WEBHOOK_PATH}`.
+
+#### 2. Expose localhost:8081 with a tunnel
+
+**cloudflared** (recommended; often works where ngrok needs a VPN):
+
+```bash
+# Install (Ubuntu/WSL amd64)
+curl -L --output /tmp/cloudflared.deb \
+  https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i /tmp/cloudflared.deb
+cloudflared --version
+
+# Run tunnel (leave this terminal open)
+cloudflared tunnel --url http://localhost:8081
+```
+
+Copy the printed HTTPS URL (e.g. `https://….trycloudflare.com`) into `backend/.env`:
+
+```env
+TELEGRAM_WEBHOOK_URL=https://….trycloudflare.com
+```
+
+Restart `telegram-bot` (or `make up`). Logs should show `Telegram webhook registered: …/telegram/webhook`.
+
+**Alternatives** (no cloudflared install):
+
+```bash
+# SSH tunnel — URL appears in the terminal
+ssh -R 80:localhost:8081 nokey@localhost.run
+
+# Or, if Node.js is available
+npx localtunnel --port 8081
+```
+
+Use the printed HTTPS URL as `TELEGRAM_WEBHOOK_URL` the same way.
+
+#### 3. Link an account
+
+1. Open Profile → **Connect Telegram** (creates a one-time code + `t.me/…?start=…` link).
+2. Open the link in Telegram (or send `/start <code>` to the bot).
+3. You should get a confirmation message; Profile should show the account as linked.
+4. Enable the **Telegram** channel under notification settings if you want reminders in chat.
+
+#### 4. Log mood from the bot
+
+After linking:
+
+1. Send **`/log`** (or open a reminder link with `?start=log`).
+2. Pick a score → optional tags/goals → add any mix of **text / voice / photos** → **Next** → confirm.
+3. **`/cancel`** aborts the wizard without saving.
+
+On the content step you can combine a text note, one voice message, and up to 5 photos; only **Next** moves on (Skip clears content and continues). Voice/photos are stored as entry attachments. Bot replies use the locale from your Telegram link (`en` / `ru`).
+
+Check webhook registration:
+
+```bash
+curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo"
+```
+
+Bot health (no Telegram required):
+
+```bash
+curl http://localhost:8081/health
 ```
 
 ### Google OAuth
@@ -330,5 +422,7 @@ backend/
 frontend/
   src/            # React app (Vite + TypeScript)
   public/         # static assets
+telegram-bot/     # Telegram webhook service (separate Compose container)
+docs/             # design notes (e.g. Telegram integration plan)
 docker/           # Postgres init scripts
 ```

@@ -4,11 +4,12 @@ import {
   getNotificationSettings,
   patchNotificationSettings,
 } from '../api/notificationSettings'
+import { getTelegramLink } from '../api/telegram'
 import { Alert } from './Alert'
 import { FormField } from './FormField'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
-import type { NotificationSettingsPublic } from '../types/notificationSettings'
+import type { NotificationChannel, NotificationSettingsPublic } from '../types/notificationSettings'
 
 const DEFAULT_REMINDER_TIME = '20:00'
 
@@ -37,6 +38,8 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
   const [dailyMood, setDailyMood] = useState(false)
   const [goalReminders, setGoalReminders] = useState(false)
   const [reminderTime, setReminderTime] = useState('')
+  const [telegramChannel, setTelegramChannel] = useState(false)
+  const [telegramLinked, setTelegramLinked] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +50,7 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
     setDailyMood(settings.daily_mood_reminder_enabled)
     setGoalReminders(settings.goal_reminders_enabled)
     setReminderTime(apiTimeToInput(settings.daily_mood_reminder_time))
+    setTelegramChannel(settings.channels.includes('telegram'))
   }
 
   useEffect(() => {
@@ -54,8 +58,12 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
       setIsLoading(true)
       setSuccess(null)
       try {
-        const settings = await getNotificationSettings()
+        const [settings, telegram] = await Promise.all([
+          getNotificationSettings(),
+          getTelegramLink().catch(() => null),
+        ])
         applySettings(settings)
+        setTelegramLinked(telegram?.linked === true)
         setError(null)
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
@@ -95,12 +103,17 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
       return
     }
 
+    const channels: NotificationChannel[] = ['email']
+    if (telegramChannel && telegramLinked) {
+      channels.push('telegram')
+    }
+
     setIsSaving(true)
     setError(null)
     try {
       const saved = await patchNotificationSettings({
         enabled,
-        channels: ['email'],
+        channels,
         daily_mood_reminder_enabled: dailyMood,
         daily_mood_reminder_time: reminderTime ? inputToApiTime(reminderTime) : null,
         goal_reminders_enabled: goalReminders,
@@ -142,9 +155,22 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
           <span>{t('profile.channelEmail')}</span>
         </label>
 
-        <label className="tag-visibility-toggle notification-channel-disabled">
-          <input type="checkbox" checked={false} disabled readOnly />
-          <span>{t('profile.channelTelegramSoon')}</span>
+        <label
+          className={
+            telegramLinked
+              ? 'tag-visibility-toggle'
+              : 'tag-visibility-toggle notification-channel-disabled'
+          }
+        >
+          <input
+            type="checkbox"
+            checked={telegramLinked && telegramChannel}
+            disabled={!telegramLinked}
+            onChange={(event) => setTelegramChannel(event.target.checked)}
+          />
+          <span>
+            {telegramLinked ? t('profile.channelTelegram') : t('profile.channelTelegramLinkFirst')}
+          </span>
         </label>
 
         <label className="tag-visibility-toggle">

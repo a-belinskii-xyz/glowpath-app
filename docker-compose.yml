@@ -40,6 +40,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./backend/alembic:/app/alembic
+      - ./backend/app:/app/app
     command: alembic upgrade head
     restart: "no"
 
@@ -52,6 +55,9 @@ services:
     depends_on:
       db-init:
         condition: service_completed_successfully
+    volumes:
+      - ./backend/alembic:/app/alembic
+      - ./backend/app:/app/app
     command: alembic upgrade head
     restart: "no"
 
@@ -99,6 +105,35 @@ services:
     volumes:
       - ./backend/app:/app/app
     command: python -m app.jobs.reminders
+
+  telegram-bot:
+    build: ./telegram-bot
+    ports:
+      - "${TELEGRAM_BOT_PORT:-8081}:8081"
+    env_file:
+      - backend/.env
+    environment:
+      API_BASE_URL: http://app:8000
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 8081
+    depends_on:
+      app:
+        condition: service_started
+    volumes:
+      - ./telegram-bot/bot:/app/bot
+    command: uvicorn bot.main:app --host 0.0.0.0 --port 8081 --reload
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   minio:
     image: minio/minio:latest

@@ -326,3 +326,167 @@ def test_process_due_reminders_sends_goal_nudge(
     assert len(mailer.outbox) == 1
     assert "goals" in mailer.outbox[0].subject.lower()
     assert "Exercise" in mailer.outbox[0].body
+
+
+def test_dispatcher_routes_to_telegram(db: Session) -> None:
+    tg = FakeNotifier(channel=NotificationChannel.TELEGRAM)
+    dispatcher = NotificationDispatcher({NotificationChannel.TELEGRAM: tg})
+    user = User(
+        email=f"tg-disp-{uuid.uuid4()}@example.com",
+        password_hash="hash",
+        telegram_user_id=111,
+        telegram_chat_id=222,
+        telegram_linked_at=datetime.now(UTC),
+    )
+    db.add(user)
+    db.flush()
+
+    sent = dispatcher.send(
+        user=user,
+        channels=[NotificationChannel.TELEGRAM],
+        message=NotificationMessage(subject="Ping", body="Hello TG"),
+    )
+
+    assert len(sent) == 1
+    assert sent[0].recipient == "222"
+    assert tg.outbox[0].body == "Hello TG"
+
+
+def test_telegram_notifier_calls_bot_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.notifications.telegram import TelegramNotifier
+
+    calls: list[dict[str, object]] = []
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"ok": True, "result": {}}
+
+    def fake_post(url: str, **kwargs: object) -> FakeResponse:
+        calls.append({"url": url, **kwargs})
+        return FakeResponse()
+
+    monkeypatch.setattr("app.services.notifications.telegram.httpx.post", fake_post)
+    notifier = TelegramNotifier(bot_token="test-token")
+    sent = notifier.send(
+        recipient="999",
+        message=NotificationMessage(subject="Subj", body="Body text"),
+    )
+    assert sent.recipient == "999"
+    assert sent.body == "Body text"
+    assert len(calls) == 1
+    assert "bottest-token/sendMessage" in str(calls[0]["url"])
+
+
+def test_daily_mood_reminder_message_telegram_is_plain() -> None:
+    from app.services.notifications.messages import daily_mood_reminder_message
+
+    message = daily_mood_reminder_message(channel=NotificationChannel.TELEGRAM)
+    assert message.html_body is None
+    assert (message.metadata or {}).get("source") == "telegram:daily_mood_reminder"
+    assert "log your mood" in message.body.lower()
+
+
+def test_process_due_reminders_sends_telegram(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.notifications.reminders.settings.notifications_match_window_minutes",
+        5,
+    )
+    tz_name = "Europe/Minsk"
+    tz = ZoneInfo(tz_name)
+    local_now = datetime(2026, 7, 15, 20, 30, 10, tzinfo=tz)
+    now_utc = local_now.astimezone(UTC)
+
+    user = User(
+        email=f"tg-daily-{uuid.uuid4()}@example.com",
+        password_hash="hash",
+        timezone=tz_name,
+        email_verified_at=datetime.now(UTC),
+        telegram_user_id=333,
+        telegram_chat_id=444,
+        telegram_linked_at=datetime.now(UTC),
+    )
+    db.add(user)
+    db.flush()
+    db.add(
+        UserNotificationSettings(
+            user_id=user.id,
+            enabled=True,
+            channels=["telegram"],
+            daily_mood_reminder_enabled=True,
+            daily_mood_reminder_time=time(20, 30),
+            goal_reminders_enabled=False,
+        )
+    )
+    db.commit()
+
+    tg = FakeNotifier(channel=NotificationChannel.TELEGRAM)
+    dispatcher = NotificationDispatcher({NotificationChannel.TELEGRAM: tg})
+    stats = process_due_reminders(db, dispatcher, now=now_utc)
+
+    assert stats.daily_mood_sent == 1
+    assert len(tg.outbox) == 1
+    assert tg.outbox[0].recipient == "444"
+
+
+def test_process_due_reminders_skips_unlinked_telegram(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.notifications.reminders.settings.notifications_match_window_minutes",
+        5,
+    )
+    tz_name = "Europe/Minsk"
+    tz = ZoneInfo(tz_name)
+    local_now = datetime(2026, 7, 15, 20, 30, 10, tzinfo=tz)
+    now_utc = local_now.astimezone(UTC)
+
+    user = User(
+        email=f"tg-skip-{uuid.uuid4()}@example.com",
+        password_hash="hash",
+        timezone=tz_name,
+        email_verified_at=datetime.now(UTC),
+    )
+    db.add(user)
+    db.flush()
+    db.add(
+        UserNotificationSettings(
+            user_id=user.id,
+            enabled=True,
+            channels=["telegram"],
+            daily_mood_reminder_enabled=True,
+            daily_mood_reminder_time=time(20, 30),
+            goal_reminders_enabled=False,
+        )
+    )
+    db.commit()
+
+    tg = FakeNotifier(channel=NotificationChannel.TELEGRAM)
+    dispatcher = NotificationDispatcher({NotificationChannel.TELEGRAM: tg})
+    stats = process_due_reminders(db, dispatcher, now=now_utc)
+
+    assert stats.daily_mood_sent == 0
+    assert stats.skipped >= 1
+    assert tg.outbox == []
+
+
+def test_notification_settings_reject_telegram_without_link(
+    auth_client,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, f"tg-ch-{uuid.uuid4()}@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = auth_client.patch(
+        "/v1/notification-settings",
+        headers=headers,
+        json={"channels": ["email", "telegram"]},
+    )
+    assert response.status_code == 400
+    assert "link" in response.json()["detail"].lower()

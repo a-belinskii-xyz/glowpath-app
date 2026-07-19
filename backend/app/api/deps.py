@@ -3,6 +3,7 @@ from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.core.i18n import normalize_locale, parse_accept_language
 from app.core.security import decode_access_token
 from app.db.session import get_db
@@ -59,3 +60,19 @@ def get_current_verified_user(user: User = Depends(get_current_user)) -> User:
             detail="Email address is not verified",
         )
     return user
+
+
+def require_telegram_bot_service(
+    x_telegram_bot_service_token: str | None = Header(default=None),
+) -> None:
+    expected = settings.telegram_bot_service_token.strip()
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Telegram bot service token is not configured",
+        )
+    if not x_telegram_bot_service_token or x_telegram_bot_service_token != expected:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid telegram bot service token",
+        )

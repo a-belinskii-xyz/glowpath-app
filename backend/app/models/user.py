@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, String, text
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.mood_entry import MoodEntry
     from app.models.note_template import NoteTemplate
     from app.models.tag_group import TagGroup
+    from app.models.telegram_link_code import TelegramLinkCode
     from app.models.user_goal_icon import UserGoalIcon
     from app.models.user_mood_icon import UserMoodIcon
     from app.models.user_mood_preferences import UserMoodPreferences
@@ -30,6 +31,16 @@ class User(TimestampMixin, Base):
             "password_hash IS NOT NULL OR google_sub IS NOT NULL",
             name="auth_method_present",
         ),
+        CheckConstraint(
+            "("
+            "telegram_user_id IS NULL AND telegram_chat_id IS NULL "
+            "AND telegram_linked_at IS NULL"
+            ") OR ("
+            "telegram_user_id IS NOT NULL AND telegram_chat_id IS NOT NULL "
+            "AND telegram_linked_at IS NOT NULL"
+            ")",
+            name="telegram_link_complete",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -43,11 +54,19 @@ class User(TimestampMixin, Base):
     timezone: Mapped[str] = mapped_column(String(64), server_default="Europe/Minsk")
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
+    telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)
+    telegram_linked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    telegram_locale: Mapped[str | None] = mapped_column(String(16))
+
     mood_entries: Mapped[list["MoodEntry"]] = relationship(back_populates="user")
     tag_groups: Mapped[list["TagGroup"]] = relationship(back_populates="user")
     note_templates: Mapped[list["NoteTemplate"]] = relationship(back_populates="user")
     goals: Mapped[list["Goal"]] = relationship(back_populates="user")
     auth_tokens: Mapped[list["AuthToken"]] = relationship(back_populates="user")
+    telegram_link_codes: Mapped[list["TelegramLinkCode"]] = relationship(
+        back_populates="user",
+    )
     notification_settings: Mapped["UserNotificationSettings | None"] = relationship(
         back_populates="user",
         uselist=False,
@@ -58,3 +77,7 @@ class User(TimestampMixin, Base):
     )
     mood_icons: Mapped[list["UserMoodIcon"]] = relationship(back_populates="user")
     goal_icons: Mapped[list["UserGoalIcon"]] = relationship(back_populates="user")
+
+    @property
+    def telegram_linked(self) -> bool:
+        return self.telegram_user_id is not None and self.telegram_chat_id is not None

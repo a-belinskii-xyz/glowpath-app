@@ -13,7 +13,29 @@ def daily_mood_reminder_message(*, channel: NotificationChannel) -> Notification
         kind=MoodEntryAttributionKind.DAILY_MOOD_REMINDER,
     )
     log_url = f"{settings.frontend_url.rstrip('/')}/entries/new?{urlencode({'from': source})}"
+    bot_url = _telegram_bot_deep_link(start="log")
     subject = "Time to log your mood"
+
+    if channel is NotificationChannel.TELEGRAM:
+        lines = [
+            "Time to log your mood in Mood Tracker.",
+            "",
+            f"Open the app: {log_url}",
+        ]
+        if bot_url:
+            lines.extend(["", f"Or continue in the bot: {bot_url}"])
+        body = "\n".join(lines)
+        return NotificationMessage(
+            subject=subject,
+            body=body,
+            html_body=None,
+            metadata={
+                "type": MoodEntryAttributionKind.DAILY_MOOD_REMINDER.value,
+                "channel": channel.value,
+                "source": source,
+            },
+        )
+
     body = (
         "Hi,\n\n"
         "This is your daily Mood Tracker reminder — take a moment to note how you feel today.\n\n"
@@ -49,8 +71,33 @@ def goal_reminder_message(
         kind=MoodEntryAttributionKind.GOAL_REMINDER,
     )
     home_url = f"{settings.frontend_url.rstrip('/')}/?{urlencode({'from': source})}"
+    bot_url = _telegram_bot_deep_link(start="log")
     bullet_lines = "\n".join(f"  • {label}" for label in goal_labels)
     subject = "Your weekly goals need attention"
+
+    if channel is NotificationChannel.TELEGRAM:
+        lines = [
+            "Some weekly goals are still behind:",
+            "",
+            bullet_lines,
+            "",
+            f"Open Mood Tracker: {home_url}",
+        ]
+        if bot_url:
+            lines.extend(["", f"Or continue in the bot: {bot_url}"])
+        body = "\n".join(lines)
+        return NotificationMessage(
+            subject=subject,
+            body=body,
+            html_body=None,
+            metadata={
+                "type": MoodEntryAttributionKind.GOAL_REMINDER.value,
+                "channel": channel.value,
+                "source": source,
+                "goals": goal_labels,
+            },
+        )
+
     body = (
         "Hi,\n\n"
         "Some of your Mood Tracker goals are still behind for this week:\n\n"
@@ -77,3 +124,10 @@ def goal_reminder_message(
             "goals": goal_labels,
         },
     )
+
+
+def _telegram_bot_deep_link(*, start: str) -> str | None:
+    username = settings.telegram_bot_username.strip()
+    if not username:
+        return None
+    return f"https://t.me/{username}?start={start}"

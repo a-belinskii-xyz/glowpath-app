@@ -49,6 +49,13 @@ class NotificationDispatcher:
     def _recipient_for(self, user: User, channel: NotificationChannel) -> str:
         if channel is NotificationChannel.EMAIL:
             return user.email
+        if channel is NotificationChannel.TELEGRAM:
+            if user.telegram_chat_id is None:
+                raise NotificationError(
+                    "Telegram is not linked for this user",
+                    status_code=400,
+                )
+            return str(user.telegram_chat_id)
         raise NotificationError(
             f"No recipient mapping for channel: {channel}",
             status_code=501,

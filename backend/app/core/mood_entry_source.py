@@ -7,10 +7,11 @@ from pydantic import AfterValidator
 
 
 class MoodEntryAttributionKind(StrEnum):
-    """What notification prompted the entry (analytics only)."""
+    """What prompted the entry (analytics only)."""
 
     DAILY_MOOD_REMINDER = "daily_mood_reminder"
     GOAL_REMINDER = "goal_reminder"
+    BOT = "bot"
 
 
 # Keep in sync with ``NotificationChannel`` values.

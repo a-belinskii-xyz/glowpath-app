@@ -90,12 +90,16 @@ def process_due_reminders(
             continue
 
         try:
+            deliverable = _deliverable_channels(user, channels)
+            if not deliverable:
+                stats.skipped += 1
+                continue
             _process_user_reminders(
                 db,
                 dispatcher,
                 prefs=prefs,
                 user=user,
-                channels=channels,
+                channels=deliverable,
                 local_day=local_day,
                 tz=tz,
                 stats=stats,
@@ -158,6 +162,19 @@ def _parse_channels(raw: list[str]) -> list[NotificationChannel]:
         if channel not in channels:
             channels.append(channel)
     return channels
+
+
+def _deliverable_channels(
+    user: User,
+    channels: list[NotificationChannel],
+) -> list[NotificationChannel]:
+    """Drop channels that cannot be delivered for this user right now."""
+    deliverable: list[NotificationChannel] = []
+    for channel in channels:
+        if channel is NotificationChannel.TELEGRAM and not user.telegram_linked:
+            continue
+        deliverable.append(channel)
+    return deliverable
 
 
 def _is_within_reminder_window(

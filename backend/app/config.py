@@ -97,5 +97,19 @@ class Settings(BaseSettings):
         validation_alias="STATS_VISIBLE_GOAL_LIMIT",
     )
 
+    # Telegram bot integration (notifier + bot service auth)
+    telegram_bot_token: str = Field(default="", validation_alias="TELEGRAM_BOT_TOKEN")
+    telegram_bot_username: str = Field(default="", validation_alias="TELEGRAM_BOT_USERNAME")
+    telegram_bot_service_token: str = Field(
+        default="",
+        validation_alias="TELEGRAM_BOT_SERVICE_TOKEN",
+    )
+    telegram_link_code_expire_minutes: int = Field(
+        default=15,
+        ge=1,
+        le=120,
+        validation_alias="TELEGRAM_LINK_CODE_EXPIRE_MINUTES",
+    )
+
 
 settings = Settings()

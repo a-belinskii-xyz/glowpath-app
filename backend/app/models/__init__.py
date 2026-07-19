@@ -8,6 +8,8 @@ from app.models.mood_entry_tag import MoodEntryTag
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
+from app.models.telegram_link_code import TelegramLinkCode
+from app.models.telegram_session import TelegramSession
 from app.models.user import User
 from app.models.user_goal_icon import UserGoalIcon
 from app.models.user_mood_icon import UserMoodIcon
@@ -25,6 +27,8 @@ __all__ = [
     "NoteTemplate",
     "Tag",
     "TagGroup",
+    "TelegramLinkCode",
+    "TelegramSession",
     "User",
     "UserGoalIcon",
     "UserMoodIcon",
