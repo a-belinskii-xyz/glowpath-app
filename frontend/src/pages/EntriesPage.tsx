@@ -35,7 +35,7 @@ import {
   todayKey,
   weekIntersectsMonth,
 } from '../lib/datetime'
-import { dayMoodWashFromScores } from '../lib/dayMoodWash'
+import { buildGradientWashFromScores, motion } from '../design'
 import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
@@ -194,7 +194,7 @@ export function EntriesPage() {
     // Instant scroll — smooth + infinite loading stops mid-way on long jumps.
     node.scrollIntoView({ behavior: 'auto', block: 'start' })
     node.classList.add('day-section-highlight')
-    window.setTimeout(() => node.classList.remove('day-section-highlight'), 1600)
+    window.setTimeout(() => node.classList.remove('day-section-highlight'), motion.highlight.holdMs)
     return true
   }, [])
 
@@ -205,7 +205,7 @@ export function EntriesPage() {
     }
     node.scrollIntoView({ behavior: 'auto', block: 'center' })
     node.classList.add('entry-row-highlight')
-    window.setTimeout(() => node.classList.remove('entry-row-highlight'), 1600)
+    window.setTimeout(() => node.classList.remove('entry-row-highlight'), motion.highlight.holdMs)
     return true
   }, [])
 
@@ -760,7 +760,9 @@ export function EntriesPage() {
 
       <div className="entry-feed">
         {groupedEntries.map(([key, dayEntries]) => {
-          const dayWash = dayMoodWashFromScores(dayEntries, (score) => getMoodScoreColor(score, scores))
+          const dayWash = buildGradientWashFromScores(dayEntries, (score) =>
+            getMoodScoreColor(score, scores),
+          )
           return (
             <section
               key={key}

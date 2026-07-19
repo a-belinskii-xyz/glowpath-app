@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
+import { moodGlowFilter } from '../design'
 import { buildMonthCalendarCells, isFutureDate, todayKey, type CalendarCell } from '../lib/datetime'
 import { getMoodScoreStyle } from '../lib/moodScale'
 import { weekGoalHighlightStyle } from '../lib/weekGoalHighlight'
@@ -165,7 +166,7 @@ export function MonthCalendar({
                             className="month-calendar-emoji"
                             style={{
                               zIndex: dayGoals.length - index,
-                              filter: `drop-shadow(0 0 0.35rem ${style.color}88)`,
+                              filter: moodGlowFilter(style.color),
                             }}
                           >
                             <GoalIcon style={style} />
@@ -183,7 +184,7 @@ export function MonthCalendar({
                             className="month-calendar-emoji"
                             style={{
                               zIndex: dayScores.length - index,
-                              filter: `drop-shadow(0 0 0.35rem ${style.color}88)`,
+                              filter: moodGlowFilter(style.color),
                             }}
                           >
                             <MoodScoreIcon style={style} />

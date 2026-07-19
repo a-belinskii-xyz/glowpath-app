@@ -17,6 +17,7 @@ import { MoodScoreIcon } from './MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
+import { moodGlowBoxShadow, moodSubtleFill } from '../design'
 import { ApiError } from '../lib/errors'
 import {
   datetimeLocalToIso,
@@ -323,7 +324,8 @@ export function MoodEntryForm({
               className={`score-option${isSelected ? ' score-option-selected' : ''}`}
               style={{
                 borderColor: isSelected ? option.color : undefined,
-                background: isSelected ? `${option.color}1a` : undefined,
+                background: isSelected ? moodSubtleFill(option.color) : undefined,
+                boxShadow: isSelected ? moodGlowBoxShadow(option.color, 'sm') : undefined,
               }}
               onClick={() => setScore(option.score)}
               aria-pressed={isSelected}

@@ -1,5 +1,6 @@
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
+import { buildMoodTheme, moodGlowForImpact } from '../design'
 import type { MoodEntryStatsResponse, MoodMonthComparisonPublic } from '../types/mood'
 import { MoodScoreIcon } from './MoodScoreIcon'
 
@@ -66,6 +67,12 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
         {scores.map((item) => {
           const heightPercent = totalEntries === 0 ? 0 : (item.count / maxCount) * 100
           const scoreStyle = getScoreStyle(item.score)
+          const color = getScoreColor(item.score)
+          const theme = buildMoodTheme(color)
+          // Impact = share of all entries this emotion accounts for.
+          const impact = totalEntries > 0 ? item.count / totalEntries : 0
+          const glow = moodGlowForImpact(color, impact)
+
           return (
             <div key={item.score} className="emotion-stats-bar-col">
               <span className="emotion-stats-count" aria-hidden={item.count === 0}>
@@ -73,19 +80,25 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
               </span>
               <div className="emotion-stats-bar-track">
                 <div
-                  className="emotion-stats-bar"
+                  className={`emotion-stats-bar${glow ? ' has-glow' : ''}`}
                   style={{
                     height: `${heightPercent}%`,
-                    backgroundColor: getScoreColor(item.score),
+                    backgroundColor: theme.chart,
+                    boxShadow: glow?.boxShadow,
                   }}
                   title={`${item.score_label}: ${item.count}`}
                 />
               </div>
-              <MoodScoreIcon
-                style={scoreStyle}
-                className="emotion-stats-emoji"
-                fallbackScore={item.score}
-              />
+              <span
+                className="emotion-stats-emoji-wrap"
+                style={glow ? { filter: glow.filter } : undefined}
+              >
+                <MoodScoreIcon
+                  style={scoreStyle}
+                  className="emotion-stats-emoji"
+                  fallbackScore={item.score}
+                />
+              </span>
               <span className="emotion-stats-label">{item.score_label}</span>
               <span className="visually-hidden">
                 {item.score_label}: {item.count}

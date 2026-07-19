@@ -16,6 +16,7 @@ import { GoalIconEditor } from '../components/GoalIconEditor'
 import { PopupMenu } from '../components/PopupMenu'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
 import { todayKey } from '../lib/datetime'
 import { isValidHexColor } from '../lib/moodScale'
@@ -332,7 +333,9 @@ export function GoalsPage() {
                 />
                 <span
                   style={{
-                    filter: `drop-shadow(0 0 0.35rem ${isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color}88)`,
+                    filter: moodGlowFilter(
+                      isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color,
+                    ),
                   }}
                 >
                   <GoalIcon

@@ -13,6 +13,7 @@ import { ImageCropModal } from './ImageCropModal'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
+import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
 import {
   readMoodIconBlobForCrop,
@@ -533,7 +534,7 @@ export function MoodPreferencesForm() {
                   aria-hidden
                 />
                 <span
-                  style={{ filter: `drop-shadow(0 0 0.35rem ${previewStyle.color}88)` }}
+                  style={{ filter: moodGlowFilter(previewStyle.color) }}
                 >
                   <MoodScoreIcon
                     style={previewStyle}
@@ -686,7 +687,7 @@ export function MoodPreferencesForm() {
                               >
                                 <span
                                   style={{
-                                    filter: `drop-shadow(0 0 0.35rem ${previewStyle.color}88)`,
+                                    filter: moodGlowFilter(previewStyle.color),
                                   }}
                                 >
                                   <MoodScoreIcon

@@ -1,9 +1,40 @@
 :root {
+  /* —— Chrome System (mood-agnostic UI) —— */
+  --chrome-bg-app: #f3f4f6;
+  --chrome-surface: #ffffff;
+  --chrome-surface-elevated: #ffffff;
+  --chrome-surface-inset: #f3f4f6;
+  --chrome-text-primary: #1f2937;
+  --chrome-text-secondary: #6b7280;
+  --chrome-text-inverse: #ffffff;
+  --chrome-border-subtle: #f3f4f6;
+  --chrome-border-default: #e5e7eb;
+  --chrome-border-strong: #d1d5db;
+  --chrome-action-primary: #2563eb;
+  --chrome-action-primary-hover: #1d4ed8;
+  --chrome-action-danger: #dc2626;
+  --chrome-action-success: #047857;
+  --chrome-action-warning: #b45309;
+  --chrome-focus-ring: #93c5fd;
+  --chrome-focus-ring-soft: rgb(147 197 253 / 35%);
+
+  /* —— Motion System —— */
+  --motion-hover-duration: 120ms;
+  --motion-hover-easing: ease;
+  --motion-selection-duration: 180ms;
+  --motion-selection-easing: ease;
+  --motion-highlight-duration: 350ms;
+  --motion-highlight-easing: ease;
+  --motion-reveal-duration: 220ms;
+  --motion-reveal-easing: ease;
+  --motion-press-duration: 120ms;
+  --motion-press-easing: ease;
+
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1f2937;
-  background: #f3f4f6;
+  color: var(--chrome-text-primary);
+  background: var(--chrome-bg-app);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,7 +52,7 @@ body {
 }
 
 a {
-  color: #2563eb;
+  color: var(--chrome-action-primary);
   text-decoration: none;
 }
 
@@ -44,8 +75,8 @@ input {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--chrome-surface);
+  border-bottom: 1px solid var(--chrome-border-default);
 }
 
 .brand {
@@ -63,7 +94,7 @@ input {
 .link-button {
   border: none;
   background: none;
-  color: #2563eb;
+  color: var(--chrome-action-primary);
   cursor: pointer;
   padding: 0;
 }
@@ -102,13 +133,13 @@ input {
 }
 
 .muted {
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
 }
 
 .card,
 .auth-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--chrome-surface);
+  border: 1px solid var(--chrome-border-default);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -143,18 +174,18 @@ input {
 .form-input {
   width: 100%;
   padding: 0.65rem 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--chrome-border-strong);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--chrome-surface);
 }
 
 .form-input:focus {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--chrome-focus-ring);
   border-color: #60a5fa;
 }
 
 .form-hint {
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -165,36 +196,59 @@ input {
   padding: 0.65rem 1rem;
   border: none;
   border-radius: 8px;
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--chrome-action-primary);
+  color: var(--chrome-text-inverse);
   cursor: pointer;
   text-decoration: none;
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--chrome-action-primary) 32%, transparent),
+    0 0 0.4rem color-mix(in oklab, var(--chrome-action-primary) 42%, transparent);
+  transition:
+    background-color var(--motion-hover-duration) var(--motion-hover-easing),
+    box-shadow var(--motion-hover-duration) var(--motion-hover-easing),
+    transform var(--motion-hover-duration) var(--motion-hover-easing),
+    border-color var(--motion-hover-duration) var(--motion-hover-easing),
+    color var(--motion-hover-duration) var(--motion-hover-easing),
+    opacity var(--motion-hover-duration) var(--motion-hover-easing);
 }
 
-.button:hover {
-  background: #1d4ed8;
+.button:hover:not(:disabled) {
+  background: var(--chrome-action-primary-hover);
   text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 6px color-mix(in oklab, var(--chrome-action-primary) 36%, transparent),
+    0 0 0.7rem color-mix(in oklab, var(--chrome-action-primary) 52%, transparent);
 }
 
 .button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .button-secondary {
-  background: #ffffff;
-  color: #1f2937;
-  border: 1px solid #d1d5db;
+  background: var(--chrome-surface);
+  color: var(--chrome-text-primary);
+  border: 1px solid var(--chrome-border-strong);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
 
-.button-secondary:hover {
+.button-secondary:hover:not(:disabled) {
   background: #f9fafb;
+  box-shadow:
+    0 1px 3px rgb(15 23 42 / 8%),
+    0 0 0.35rem color-mix(in oklab, var(--chrome-action-primary) 18%, transparent);
 }
 
 .button-secondary.is-active {
   background: #eff6ff;
-  border-color: #93c5fd;
-  color: #1d4ed8;
+  border-color: var(--chrome-focus-ring);
+  color: var(--chrome-action-primary-hover);
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--chrome-action-primary) 22%, transparent),
+    0 0 0.45rem color-mix(in oklab, var(--chrome-action-primary) 38%, transparent);
 }
 
 .button-block {
@@ -240,7 +294,7 @@ input {
 .auth-footer {
   margin-top: 1rem;
   text-align: center;
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
 }
 
 .profile-list {
@@ -251,14 +305,14 @@ input {
 
 .profile-list > div {
   padding: 1rem;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--chrome-surface);
+  border: 1px solid var(--chrome-border-default);
   border-radius: 8px;
 }
 
 .profile-list dt {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   margin-bottom: 0.25rem;
 }
 
@@ -283,7 +337,7 @@ input {
 
 .profile-section-lead {
   margin: 0 0 1rem;
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   max-width: 40rem;
 }
 
@@ -313,11 +367,17 @@ code {
 }
 
 .button-danger {
-  background: #dc2626;
+  background: var(--chrome-action-danger);
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--chrome-action-danger) 30%, transparent),
+    0 0 0.4rem color-mix(in oklab, var(--chrome-action-danger) 40%, transparent);
 }
 
-.button-danger:hover {
+.button-danger:hover:not(:disabled) {
   background: #b91c1c;
+  box-shadow:
+    0 2px 6px color-mix(in oklab, var(--chrome-action-danger) 34%, transparent),
+    0 0 0.7rem color-mix(in oklab, var(--chrome-action-danger) 50%, transparent);
 }
 
 .month-nav {
@@ -336,9 +396,9 @@ code {
 .month-calendar {
   margin-bottom: 1.75rem;
   padding: 0.85rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--chrome-border-default);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--chrome-surface);
 }
 
 .calendar-mode-toggle {
@@ -364,8 +424,8 @@ code {
   position: relative;
   border-radius: 10px;
   transition:
-    background-color 220ms ease,
-    box-shadow 220ms ease;
+    background-color var(--motion-reveal-duration) var(--motion-reveal-easing),
+    box-shadow var(--motion-reveal-duration) var(--motion-reveal-easing);
 }
 
 .month-calendar-week.is-week-highlighted {
@@ -396,7 +456,7 @@ code {
   opacity: 0.55;
   pointer-events: none;
   z-index: 0;
-  transition: opacity 220ms ease;
+  transition: opacity var(--motion-reveal-duration) var(--motion-reveal-easing);
 }
 
 .month-calendar-week.is-week-highlighted::after {
@@ -426,7 +486,7 @@ code {
   text-align: center;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -449,13 +509,13 @@ code {
 }
 
 .month-calendar-cell-future {
-  background: #f3f4f6;
+  background: var(--chrome-bg-app);
   opacity: 0.45;
   pointer-events: none;
 }
 
 .month-calendar-cell-today {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--chrome-focus-ring);
   outline-offset: -2px;
   background: #eff6ff;
 }
@@ -473,7 +533,7 @@ code {
 }
 
 .month-calendar-cell-clickable .month-calendar-day-button:hover {
-  background: #e5e7eb;
+  background: var(--chrome-border-default);
 }
 
 .month-calendar-day-button {
@@ -523,7 +583,7 @@ code {
   margin-left: -0.45rem;
   filter: drop-shadow(0 0 0.5px rgba(15, 23, 42, 0.25));
   transform-origin: center bottom;
-  transition: transform 0.18s ease;
+  transition: transform var(--motion-selection-duration) var(--motion-selection-easing);
 }
 
 .month-calendar-emoji:first-child {
@@ -543,24 +603,24 @@ code {
   margin-top: 0.15rem;
   border: 1.5px solid #9ca3af;
   border-radius: 999px;
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   font-size: 1rem;
   font-weight: 500;
   line-height: 1;
 }
 
 .month-calendar-day-link:hover .month-calendar-add {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: var(--chrome-action-primary);
+  color: var(--chrome-action-primary);
   background: #eff6ff;
 }
 
 .emotion-stats {
   margin-bottom: 1.75rem;
   padding: 1rem 1rem 1.15rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--chrome-border-default);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--chrome-surface);
 }
 
 .emotion-stats-header {
@@ -591,11 +651,11 @@ code {
 }
 
 .emotion-stats-comparison-better {
-  color: #047857;
+  color: var(--chrome-action-success);
 }
 
 .emotion-stats-comparison-worse {
-  color: #b45309;
+  color: var(--chrome-action-warning);
 }
 
 .emotion-stats-comparison-similar {
@@ -603,7 +663,7 @@ code {
 }
 
 .emotion-stats-comparison-muted {
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   font-weight: 400;
 }
 
@@ -618,6 +678,7 @@ code {
   gap: 0.65rem;
   align-items: end;
   min-height: 10rem;
+  padding: 0.35rem 0.15rem 0.15rem;
 }
 
 .emotion-stats-bar-col {
@@ -644,15 +705,28 @@ code {
   align-items: flex-end;
   justify-content: center;
   border-radius: 8px 8px 4px 4px;
-  background: #f3f4f6;
-  overflow: hidden;
+  background: var(--chrome-bg-app);
+  overflow: visible;
 }
 
 .emotion-stats-bar {
   width: 100%;
   min-height: 0;
   border-radius: 8px 8px 4px 4px;
-  transition: height 220ms ease;
+  transition:
+    height var(--motion-reveal-duration) var(--motion-reveal-easing),
+    box-shadow var(--motion-reveal-duration) var(--motion-reveal-easing);
+}
+
+.emotion-stats-bar.has-glow {
+  position: relative;
+  z-index: 1;
+}
+
+.emotion-stats-emoji-wrap {
+  display: inline-flex;
+  line-height: 1;
+  transition: filter var(--motion-reveal-duration) var(--motion-reveal-easing);
 }
 
 .emotion-stats-emoji {
@@ -662,7 +736,7 @@ code {
 
 .emotion-stats-label {
   font-size: 0.7rem;
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   text-align: center;
   text-transform: capitalize;
   line-height: 1.2;
@@ -675,10 +749,10 @@ code {
 .goal-week-stats {
   margin-bottom: 1.75rem;
   padding: 1rem 1rem 1.15rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--chrome-border-default);
   border-radius: 12px;
-  background: #ffffff;
-  transition: opacity 200ms ease;
+  background: var(--chrome-surface);
+  transition: opacity var(--motion-reveal-duration) var(--motion-reveal-easing);
 }
 
 .goal-week-stats.is-refreshing {
@@ -686,7 +760,7 @@ code {
 }
 
 .calendar-panel {
-  transition: opacity 200ms ease;
+  transition: opacity var(--motion-reveal-duration) var(--motion-reveal-easing);
 }
 
 .calendar-panel.is-refreshing {
@@ -722,15 +796,15 @@ code {
 }
 
 .goal-week-stats-summary-met {
-  color: #047857;
+  color: var(--chrome-action-success);
 }
 
 .goal-week-stats-summary-progress {
-  color: #1d4ed8;
+  color: var(--chrome-action-primary-hover);
 }
 
 .goal-week-stats-summary-muted {
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   font-weight: 400;
 }
 
@@ -775,6 +849,13 @@ code {
   line-height: 1;
 }
 
+.goal-week-stats-icon-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: filter var(--motion-reveal-duration) var(--motion-reveal-easing);
+}
+
 .goal-week-stats-icon img {
   width: 100%;
   height: 100%;
@@ -798,14 +879,21 @@ code {
   width: 100%;
   height: 0.55rem;
   border-radius: 999px;
-  background: #f3f4f6;
-  overflow: hidden;
+  background: var(--chrome-bg-app);
+  overflow: visible;
 }
 
 .goal-week-stats-fill {
   height: 100%;
   border-radius: inherit;
-  transition: width 220ms ease;
+  transition:
+    width var(--motion-reveal-duration) var(--motion-reveal-easing),
+    box-shadow var(--motion-reveal-duration) var(--motion-reveal-easing);
+}
+
+.goal-week-stats-fill.has-glow {
+  position: relative;
+  z-index: 1;
 }
 
 .goal-week-stats-status {
@@ -815,19 +903,19 @@ code {
 }
 
 .goal-week-stats-status-met {
-  color: #047857;
+  color: var(--chrome-action-success);
 }
 
 .goal-week-stats-status-track {
-  color: #1d4ed8;
+  color: var(--chrome-action-primary-hover);
 }
 
 .goal-week-stats-status-risk {
-  color: #b45309;
+  color: var(--chrome-action-warning);
 }
 
 .goal-week-stats-status-ended {
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
 }
 
 .goal-stats-period-toggle {
@@ -852,7 +940,7 @@ code {
   color: #111827;
   text-align: center;
   line-height: 1.3;
-  transition: opacity 180ms ease;
+  transition: opacity var(--motion-selection-duration) var(--motion-selection-easing);
 }
 
 .goal-week-stats.is-refreshing .goal-week-nav-label {
@@ -889,16 +977,17 @@ code {
   border-radius: 14px;
   background-size: cover;
   background-repeat: no-repeat;
-  transition: box-shadow 0.35s ease, filter 0.35s ease;
+  transition: box-shadow var(--motion-highlight-duration) var(--motion-highlight-easing),
+    filter var(--motion-highlight-duration) var(--motion-highlight-easing);
 }
 
 .day-section-highlight {
-  box-shadow: 0 0 0 2px #93c5fd, 0 0 0 6px rgb(147 197 253 / 35%);
+  box-shadow: 0 0 0 2px var(--chrome-focus-ring), 0 0 0 6px var(--chrome-focus-ring-soft);
   filter: saturate(1.08);
 }
 
 .entry-row-highlight .entry-row {
-  box-shadow: 0 0 0 2px #93c5fd, 0 0 0 6px rgb(147 197 253 / 35%);
+  box-shadow: 0 0 0 2px var(--chrome-focus-ring), 0 0 0 6px var(--chrome-focus-ring-soft);
 }
 
 .day-heading {
@@ -924,14 +1013,14 @@ code {
   position: relative;
   width: 100%;
   text-align: left;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--chrome-border-default);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--chrome-surface);
   display: grid;
 }
 
 .entry-row:hover {
-  border-color: #93c5fd;
+  border-color: var(--chrome-focus-ring);
   background: #f8fafc;
 }
 
@@ -979,9 +1068,9 @@ code {
   display: grid;
   gap: 1rem;
   padding: 1.25rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--chrome-border-default);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--chrome-surface);
 }
 
 .entry-detail-with-actions {
@@ -1013,12 +1102,19 @@ code {
   width: 2.25rem;
   height: 2.25rem;
   padding: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--chrome-border-default);
   border-radius: 8px;
-  background: #ffffff;
-  color: #6b7280;
+  background: var(--chrome-surface);
+  color: var(--chrome-text-secondary);
   text-decoration: none;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+  transition:
+    background-color var(--motion-hover-duration) var(--motion-hover-easing),
+    border-color var(--motion-hover-duration) var(--motion-hover-easing),
+    color var(--motion-hover-duration) var(--motion-hover-easing),
+    box-shadow var(--motion-hover-duration) var(--motion-hover-easing),
+    transform var(--motion-hover-duration) var(--motion-hover-easing);
 }
 
 .entry-icon-button svg {
@@ -1029,25 +1125,38 @@ code {
 .entry-icon-button:hover:not(:disabled) {
   background: #f9fafb;
   color: #111827;
-  border-color: #d1d5db;
+  border-color: var(--chrome-border-strong);
+  box-shadow:
+    0 1px 3px rgb(15 23 42 / 8%),
+    0 0 0.35rem color-mix(in oklab, var(--chrome-action-primary) 16%, transparent);
+  transform: translateY(-1px);
 }
 
 .entry-icon-button.is-favorite {
   color: #e11d48;
   border-color: #fecdd3;
   background: #fff1f2;
+  box-shadow:
+    0 1px 2px color-mix(in oklab, #e11d48 22%, transparent),
+    0 0 0.4rem color-mix(in oklab, #e11d48 36%, transparent);
 }
 
 .entry-icon-button.is-favorite:hover:not(:disabled) {
   color: #be123c;
   border-color: #fda4af;
   background: #ffe4e6;
+  box-shadow:
+    0 2px 5px color-mix(in oklab, #e11d48 28%, transparent),
+    0 0 0.65rem color-mix(in oklab, #e11d48 45%, transparent);
 }
 
 .entry-icon-button-danger:hover:not(:disabled) {
   color: #b91c1c;
   border-color: #fecaca;
   background: #fef2f2;
+  box-shadow:
+    0 1px 3px color-mix(in oklab, var(--chrome-action-danger) 22%, transparent),
+    0 0 0.4rem color-mix(in oklab, var(--chrome-action-danger) 32%, transparent);
 }
 
 .entry-icon-button:disabled {
@@ -1092,7 +1201,7 @@ code {
 }
 
 .entry-time {
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -1110,7 +1219,7 @@ code {
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
@@ -1118,7 +1227,7 @@ code {
 
 .entry-overflow-trigger:hover,
 .entry-overflow-trigger[aria-expanded='true'] {
-  background: #e5e7eb;
+  background: var(--chrome-border-default);
   color: #111827;
 }
 
@@ -1129,9 +1238,9 @@ code {
   z-index: 20;
   min-width: 9.5rem;
   padding: 0.35rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--chrome-border-default);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--chrome-surface);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
   display: grid;
   gap: 0.15rem;
@@ -1153,7 +1262,7 @@ code {
 }
 
 .entry-overflow-item:hover {
-  background: #f3f4f6;
+  background: var(--chrome-bg-app);
 }
 
 .entry-overflow-item-danger {
@@ -1180,12 +1289,12 @@ code {
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   background: #eff6ff;
-  color: #1d4ed8;
+  color: var(--chrome-action-primary-hover);
 }
 
 .entry-goal {
   background: #ecfdf5;
-  color: #047857;
+  color: var(--chrome-action-success);
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -1241,22 +1350,22 @@ code {
   height: 3.5rem;
   border-radius: 0.45rem;
   object-fit: cover;
-  background: #e5e7eb;
+  background: var(--chrome-border-default);
   display: block;
   flex-shrink: 0;
 }
 
 .attachment-image-skeleton {
-  background: #e5e7eb;
+  background: var(--chrome-border-default);
   animation: entry-thumb-pulse 1.2s ease-in-out infinite;
 }
 
 .attachment-image-fallback {
   display: grid;
   place-items: center;
-  color: #6b7280;
+  color: var(--chrome-text-secondary);
   font-size: 0.85rem;
-  background: #e5e7eb;
+  background: var(--chrome-border-default);
 }
 
 .entry-audio-count {
@@ -1311,9 +1420,9 @@ code {
   cursor: pointer;
   box-shadow: 0 1px 2px color-mix(in oklab, var(--audio-accent) 35%, transparent);
   transition:
-    transform 120ms ease,
-    background-color 120ms ease,
-    box-shadow 120ms ease;
+    transform var(--motion-hover-duration) var(--motion-hover-easing),
+    background-color var(--motion-hover-duration) var(--motion-hover-easing),
+    box-shadow var(--motion-hover-duration) var(--motion-hover-easing);
 }
 
 .entry-audio-play:hover {
@@ -1410,7 +1519,7 @@ code {
   width: 100%;
   height: 2.5rem;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--audio-track, #e5e7eb) 80%, white);
+  background: color-mix(in oklab, var(--audio-track, var(--chrome-border-default)) 80%, white);
   animation: entry-thumb-pulse 1.2s ease-in-out infinite;
 }
 
@@ -1543,14 +1652,18 @@ code {
   gap: 0.25rem;
   justify-items: center;
   padding: 0.65rem 0.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--chrome-border-strong);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--chrome-surface);
   cursor: pointer;
+  transition:
+    border-color var(--motion-selection-duration) var(--motion-selection-easing),
+    background-color var(--motion-selection-duration) var(--motion-selection-easing),
+    box-shadow var(--motion-selection-duration) var(--motion-selection-easing);
 }
 
 .score-option-selected {
-  border-color: #2563eb;
+  border-color: var(--chrome-action-primary);
   background: #eff6ff;
 }
 
@@ -1670,7 +1783,7 @@ code {
 
 .image-crop-zoom input[type='range'] {
   width: 100%;
-  accent-color: #2563eb;
+  accent-color: var(--chrome-action-primary);
 }
 
 .image-crop-preview-panel {
@@ -1741,7 +1854,7 @@ code {
   display: grid;
   gap: 0.75rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--chrome-border-default);
 }
 
 .mood-preferences-row:last-child {
@@ -1799,9 +1912,9 @@ code {
   width: 2.75rem;
   height: 2.25rem;
   padding: 0.15rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--chrome-border-strong);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--chrome-surface);
   cursor: pointer;
 }
 
@@ -1852,15 +1965,15 @@ code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--chrome-border-strong);
   border-radius: 0.5rem;
-  background: #ffffff;
+  background: var(--chrome-surface);
   padding: 0.35rem;
   cursor: pointer;
 }
 
 .mood-preferences-builtin-option-selected {
-  border-color: #2563eb;
+  border-color: var(--chrome-action-primary);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
@@ -1910,9 +2023,9 @@ code {
   justify-content: center;
   margin: 0;
   padding: 0.35rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--chrome-border-strong);
   border-radius: 0.65rem;
-  background: #ffffff;
+  background: var(--chrome-surface);
   cursor: pointer;
 }
 
@@ -1922,7 +2035,7 @@ code {
 }
 
 .mood-preferences-upload-tile-selected {
-  border-color: #2563eb;
+  border-color: var(--chrome-action-primary);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
@@ -1953,14 +2066,17 @@ code {
   height: 1.5rem;
   margin: 0;
   padding: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--chrome-border-default);
   border-radius: 0.4rem;
-  background: #ffffff;
+  background: var(--chrome-surface);
   color: #4b5563;
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition: opacity var(--motion-hover-duration) var(--motion-hover-easing),
+    background var(--motion-hover-duration) var(--motion-hover-easing),
+    color var(--motion-hover-duration) var(--motion-hover-easing),
+    border-color var(--motion-hover-duration) var(--motion-hover-easing);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
@@ -1974,7 +2090,7 @@ code {
 .mood-preferences-upload-remove:focus-visible {
   background: #fee2e2;
   border-color: #fecaca;
-  color: #dc2626;
+  color: var(--chrome-action-danger);
 }
 
 .mood-preferences-upload-remove:disabled {
@@ -2095,9 +2211,9 @@ code {
 .markdown-toolbar-btn {
   min-width: 2rem;
   padding: 0.3rem 0.55rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--chrome-border-strong);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--chrome-surface);
   color: #374151;
   font: inherit;
   font-size: 0.8rem;
@@ -2106,7 +2222,7 @@ code {
 }
 
 .markdown-toolbar-btn:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--chrome-bg-app);
 }
 
 .markdown-toolbar-btn:disabled {
@@ -2115,9 +2231,9 @@ code {
 }
 
 .markdown-toolbar-btn-active {
-  border-color: #93c5fd;
+  border-color: var(--chrome-focus-ring);
   background: #eff6ff;
-  color: #1d4ed8;
+  color: var(--chrome-action-primary-hover);
 }
 
 .markdown-wysiwyg {
@@ -2180,7 +2296,7 @@ code {
 .markdown-wysiwyg .ProseMirror blockquote {
   margin: 0.35rem 0;
   padding-left: 0.75rem;
-  border-left: 3px solid #d1d5db;
+  border-left: 3px solid var(--chrome-border-strong);
   color: #4b5563;
 }
 
@@ -2190,12 +2306,12 @@ code {
   font-size: 0.9em;
   padding: 0.1em 0.3em;
   border-radius: 4px;
-  background: #f3f4f6;
+  background: var(--chrome-bg-app);
 }
 
 .markdown-wysiwyg .tiptap a,
 .markdown-wysiwyg .ProseMirror a {
-  color: #2563eb;
+  color: var(--chrome-action-primary);
   text-decoration: underline;
 }
 
@@ -2237,7 +2353,7 @@ code {
 .markdown-note blockquote {
   margin-left: 0;
   padding-left: 0.75rem;
-  border-left: 3px solid #d1d5db;
+  border-left: 3px solid var(--chrome-border-strong);
   color: #4b5563;
 }
 
@@ -2246,13 +2362,13 @@ code {
   font-size: 0.9em;
   padding: 0.1em 0.3em;
   border-radius: 4px;
-  background: #f3f4f6;
+  background: var(--chrome-bg-app);
 }
 
 .markdown-note pre {
   padding: 0.65rem 0.75rem;
   border-radius: 8px;
-  background: #f3f4f6;
+  background: var(--chrome-bg-app);
   overflow-x: auto;
 }
 
@@ -2262,7 +2378,7 @@ code {
 }
 
 .markdown-note a {
-  color: #2563eb;
+  color: var(--chrome-action-primary);
 }
 
 .markdown-note h1,
@@ -2330,17 +2446,17 @@ code {
 }
 
 .tag-chip {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--chrome-border-strong);
   border-radius: 999px;
   padding: 0.35rem 0.75rem;
-  background: #ffffff;
+  background: var(--chrome-surface);
   cursor: pointer;
 }
 
 .tag-chip-selected {
-  border-color: #2563eb;
+  border-color: var(--chrome-action-primary);
   background: #eff6ff;
-  color: #1d4ed8;
+  color: var(--chrome-action-primary-hover);
 }
 
 .goal-chip {
@@ -2359,7 +2475,7 @@ code {
 .goal-chip.tag-chip-selected {
   border-color: #059669;
   background: #ecfdf5;
-  color: #047857;
+  color: var(--chrome-action-success);
 }
 
 .goals-list {
@@ -2438,7 +2554,7 @@ code {
 .goal-week-progress {
   margin: 0 0 0.35rem;
   font-weight: 600;
-  color: #047857;
+  color: var(--chrome-action-success);
 }
 
 .goal-meta {
@@ -2574,7 +2690,7 @@ code {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.35rem 0;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--chrome-bg-app);
   cursor: grab;
 }
 
@@ -2584,7 +2700,7 @@ code {
 }
 
 .tag-list-add {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--chrome-bg-app);
   justify-content: flex-start;
   cursor: default;
   padding-top: 0.65rem;
@@ -2635,17 +2751,27 @@ code {
   width: 2rem;
   height: 2rem;
   border-radius: 999px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #1f2937;
+  border: 1px solid var(--chrome-border-strong);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-primary);
   font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+  transition:
+    background-color var(--motion-hover-duration) var(--motion-hover-easing),
+    border-color var(--motion-hover-duration) var(--motion-hover-easing),
+    box-shadow var(--motion-hover-duration) var(--motion-hover-easing),
+    transform var(--motion-hover-duration) var(--motion-hover-easing);
 }
 
 .icon-button-add:hover {
   background: #f9fafb;
   border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 3px rgb(15 23 42 / 8%),
+    0 0 0.4rem color-mix(in oklab, var(--chrome-action-primary) 22%, transparent);
 }
 
 .tag-editor {

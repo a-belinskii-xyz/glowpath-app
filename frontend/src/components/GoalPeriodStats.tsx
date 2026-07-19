@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import { useLocale } from '../context/LocaleContext'
+import { moodGlowForImpact } from '../design'
 import { todayKey } from '../lib/datetime'
 import type { GoalPeriodStatPublic } from '../types/goal'
 import { GoalIcon } from './GoalIcon'
@@ -196,6 +197,11 @@ export function GoalPeriodStats({
             const target = item.period_target
             const status = goalStatus(item, daysLeft, isCurrentPeriod)
             const widthPercent = Math.min(100, (done / Math.max(1, target)) * 100)
+            // Progress toward own target + share of period completions.
+            const progressImpact = Math.min(1, done / Math.max(1, target))
+            const shareImpact = doneTotal > 0 ? Math.min(done, target) / doneTotal : 0
+            const impact = Math.max(progressImpact * 0.65, shareImpact)
+            const glow = moodGlowForImpact(item.color, impact)
             const statusLabel =
               status === 'met'
                 ? t('goalWeekStats.statusMet')
@@ -209,14 +215,19 @@ export function GoalPeriodStats({
               <li key={item.id} className="goal-week-stats-row">
                 <div className="goal-week-stats-row-top">
                   <span className="goal-week-stats-label">
-                    <GoalIcon
-                      style={{
-                        color: item.color,
-                        icon_type: item.icon_type,
-                        icon: item.icon,
-                      }}
-                      className="goal-week-stats-icon"
-                    />
+                    <span
+                      className="goal-week-stats-icon-wrap"
+                      style={glow ? { filter: glow.filter } : undefined}
+                    >
+                      <GoalIcon
+                        style={{
+                          color: item.color,
+                          icon_type: item.icon_type,
+                          icon: item.icon,
+                        }}
+                        className="goal-week-stats-icon"
+                      />
+                    </span>
                     <span className="goal-week-stats-name">{item.label}</span>
                   </span>
                   <span className="goal-week-stats-progress-text">
@@ -232,10 +243,11 @@ export function GoalPeriodStats({
                   aria-label={`${item.label}: ${done} / ${target}`}
                 >
                   <div
-                    className="goal-week-stats-fill"
+                    className={`goal-week-stats-fill${glow ? ' has-glow' : ''}`}
                     style={{
                       width: `${widthPercent}%`,
                       backgroundColor: item.color,
+                      boxShadow: glow?.boxShadow,
                     }}
                   />
                 </div>

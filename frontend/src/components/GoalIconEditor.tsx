@@ -12,6 +12,7 @@ import { Alert } from './Alert'
 import { GoalIcon } from './GoalIcon'
 import { ImageCropModal } from './ImageCropModal'
 import { useLocale } from '../context/LocaleContext'
+import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
 import {
   readMoodIconBlobForCrop,
@@ -306,7 +307,7 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
           style={{ backgroundColor: draftColor }}
           aria-hidden
         />
-        <span style={{ filter: `drop-shadow(0 0 0.35rem ${draftColor}88)` }}>
+        <span style={{ filter: moodGlowFilter(draftColor) }}>
           <GoalIcon style={style} className="mood-preferences-emoji" />
         </span>
       </div>
@@ -428,7 +429,7 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
                           }
                         }}
                       >
-                        <span style={{ filter: `drop-shadow(0 0 0.35rem ${draftColor}88)` }}>
+                        <span style={{ filter: moodGlowFilter(draftColor) }}>
                           <GoalIcon
                             style={{
                               color: draftColor,

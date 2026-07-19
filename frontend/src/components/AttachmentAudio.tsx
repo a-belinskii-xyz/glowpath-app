@@ -1,11 +1,11 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 
 import { useLocale } from '../context/LocaleContext'
+import { buildMoodTheme } from '../design'
 import {
   getAttachmentObjectUrl,
   getCachedAttachmentObjectUrl,
 } from '../lib/attachmentBlobUrl'
-import { hexToOklab, oklabToHex, washOklab } from '../lib/dayMoodWash'
 import type { AttachmentPublic } from '../types/mood'
 
 type AttachmentAudioProps = {
@@ -27,73 +27,16 @@ type SoftAudioTheme = {
 
 const FALLBACK_ACCENT = '#60a5fa'
 
-function softAudioTheme(hex: string): SoftAudioTheme {
-  const lab = hexToOklab(hex) ?? hexToOklab(FALLBACK_ACCENT)
-  if (!lab) {
-    return {
-      '--audio-surface': '#eff6ff',
-      '--audio-surface-edge': '#dbeafe',
-      '--audio-accent': '#3b82f6',
-      '--audio-ink': '#1e3a5f',
-      '--audio-muted': '#64748b',
-      '--audio-track': '#e2e8f0',
-    }
-  }
-
-  const surface = oklabToHex(
-    washOklab(lab, {
-      washStrength: 0.9,
-      chromaScale: 0.42,
-      orderPower: 1,
-      angleDeg: 0,
-      midStopMinColors: 99,
-    }),
-  )
-  const surfaceEdge = oklabToHex(
-    washOklab(lab, {
-      washStrength: 0.78,
-      chromaScale: 0.55,
-      orderPower: 1,
-      angleDeg: 0,
-      midStopMinColors: 99,
-    }),
-  )
-  const accent = oklabToHex(
-    washOklab(lab, {
-      washStrength: 0.22,
-      chromaScale: 0.92,
-      orderPower: 1,
-      angleDeg: 0,
-      midStopMinColors: 99,
-    }),
-  )
-  const ink = oklabToHex({
-    L: Math.min(0.42, lab.L * 0.55),
-    a: lab.a * 0.55,
-    b: lab.b * 0.55,
-  })
-  const muted = oklabToHex({
-    L: Math.min(0.58, lab.L * 0.7 + 0.12),
-    a: lab.a * 0.28,
-    b: lab.b * 0.28,
-  })
-  const track = oklabToHex(
-    washOklab(lab, {
-      washStrength: 0.86,
-      chromaScale: 0.28,
-      orderPower: 1,
-      angleDeg: 0,
-      midStopMinColors: 99,
-    }),
-  )
-
+/** Maps Mood Theme Builder tokens onto the audio player CSS vars. */
+function softAudioTheme(hex?: string): SoftAudioTheme {
+  const theme = buildMoodTheme(hex || FALLBACK_ACCENT, { fallback: FALLBACK_ACCENT })
   return {
-    '--audio-surface': surface,
-    '--audio-surface-edge': surfaceEdge,
-    '--audio-accent': accent,
-    '--audio-ink': ink,
-    '--audio-muted': muted,
-    '--audio-track': track,
+    '--audio-surface': theme.cssVars['--mood-surface'],
+    '--audio-surface-edge': theme.cssVars['--mood-surface-edge'],
+    '--audio-accent': theme.cssVars['--mood-accent'],
+    '--audio-ink': theme.cssVars['--mood-ink'],
+    '--audio-muted': theme.cssVars['--mood-muted'],
+    '--audio-track': theme.cssVars['--mood-track'],
   }
 }
 
