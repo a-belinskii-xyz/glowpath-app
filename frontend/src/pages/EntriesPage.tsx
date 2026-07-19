@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry } from '../api/moodEntries'
@@ -10,6 +10,7 @@ import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodS
 import { EntryActionMenu } from '../components/EntryActionMenu'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { GoalIcon } from '../components/GoalIcon'
+import { HeartIcon } from '../components/HeartIcon'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
@@ -780,11 +781,6 @@ export function EntriesPage() {
                       <Link className="entry-row-link" to={`/entries/${entry.id}`}>
                         <div className="entry-row-main">
                           <span className="entry-score">
-                            {entry.is_favorite ? (
-                              <span className="entry-favorite-mark" aria-hidden="true">
-                                ★
-                              </span>
-                            ) : null}
                             <MoodScoreIcon
                               style={getMoodScoreStyle(entry.score, scores)}
                               className="entry-score-icon"
@@ -792,9 +788,43 @@ export function EntriesPage() {
                             />{' '}
                             {entry.score_label}
                           </span>
-                          <span className="entry-time">
-                            {formatTime(entry.recorded_at, timeZone, dateLocale)}
-                          </span>
+                          <div className="entry-row-meta">
+                            <span className="entry-time">
+                              {formatTime(entry.recorded_at, timeZone, dateLocale)}
+                            </span>
+                            <button
+                              type="button"
+                              className={`entry-favorite-mark${entry.is_favorite ? ' is-favorite' : ''}`}
+                              style={
+                                entry.is_favorite
+                                  ? ({
+                                      '--entry-favorite-color': getMoodScoreColor(
+                                        entry.score,
+                                        scores,
+                                      ),
+                                    } as CSSProperties)
+                                  : undefined
+                              }
+                              aria-pressed={entry.is_favorite}
+                              aria-label={
+                                entry.is_favorite
+                                  ? t('entries.removeFavorite')
+                                  : t('entries.addFavorite')
+                              }
+                              title={
+                                entry.is_favorite
+                                  ? t('entries.removeFavorite')
+                                  : t('entries.addFavorite')
+                              }
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                void handleToggleFavorite(entry.id, !entry.is_favorite)
+                              }}
+                            >
+                              <HeartIcon filled={entry.is_favorite} />
+                            </button>
+                          </div>
                         </div>
                         {entry.note ? (
                           <MarkdownNote content={entry.note} compact className="entry-note" />
