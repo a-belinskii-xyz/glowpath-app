@@ -111,5 +111,13 @@ class Settings(BaseSettings):
         validation_alias="TELEGRAM_LINK_CODE_EXPIRE_MINUTES",
     )
 
+    # Local semantic search (fastembed + pgvector)
+    embedding_enabled: bool = Field(default=True, validation_alias="EMBEDDING_ENABLED")
+    embedding_model: str = Field(
+        default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        validation_alias="EMBEDDING_MODEL",
+    )
+    embedding_dims: int = Field(default=384, ge=1, validation_alias="EMBEDDING_DIMS")
+
 
 settings = Settings()

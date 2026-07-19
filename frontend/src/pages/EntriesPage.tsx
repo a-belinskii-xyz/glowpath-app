@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
 import { getGoalCalendar, getGoalStats, listGoals } from '../api/goals'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -43,6 +43,8 @@ import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from 
 
 const PAGE_SIZE = 20
 const DAY_FETCH_LIMIT = 100
+const SEARCH_DEBOUNCE_MS = 300
+const SEARCH_LIMIT = 40
 
 function sortEntriesNewestFirst(items: MoodEntryPublic[]): MoodEntryPublic[] {
   return [...items].sort(
@@ -96,6 +98,8 @@ export function EntriesPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [pendingScrollDay, setPendingScrollDay] = useState<string | null>(
     () => searchParams.get('day'),
@@ -109,6 +113,7 @@ export function EntriesPage() {
   const dayLoadRef = useRef<string | null>(null)
 
   const monthBounds = useMemo(() => getMonthBounds(year, month, timeZone), [year, month, timeZone])
+  const isSearchMode = searchQuery.trim().length > 0
   const weekBounds = useMemo(
     () => getIsoWeekBounds(weekAnchorDate, timeZone),
     [timeZone, weekAnchorDate],
@@ -424,6 +429,13 @@ export function EntriesPage() {
   )
 
   useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setSearchQuery(searchInput.trim())
+    }, SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(handle)
+  }, [searchInput])
+
+  useEffect(() => {
     void loadCalendar()
   }, [loadCalendar])
 
@@ -436,18 +448,73 @@ export function EntriesPage() {
   }, [loadGoalStats])
 
   useEffect(() => {
+    if (isSearchMode) {
+      return
+    }
     setEntries([])
     setOffset(0)
     setHasMore(true)
     dayLoadRef.current = null
     void loadPage(0, true)
-  }, [loadPage])
+  }, [isSearchMode, loadPage])
+
+  useEffect(() => {
+    if (!isSearchMode) {
+      return
+    }
+    if (!user?.email_verified) {
+      setIsLoading(false)
+      return
+    }
+    if (loadingRef.current) {
+      return
+    }
+
+    let cancelled = false
+    loadingRef.current = true
+    setIsLoading(true)
+    setError(null)
+    setHasMore(false)
+
+    void (async () => {
+      try {
+        const response = await searchMoodEntries({
+          q: searchQuery,
+          limit: SEARCH_LIMIT,
+        })
+        if (!cancelled) {
+          setEntries(response.items)
+          setOffset(response.items.length)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          if (err instanceof ApiError && err.status === 403) {
+            setError(t('errors.verifyToViewEntries'))
+          } else {
+            setError(err instanceof Error ? err.message : t('errors.failedLoadEntries'))
+          }
+          setEntries([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+        loadingRef.current = false
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      loadingRef.current = false
+    }
+  }, [isSearchMode, locale, searchQuery, t, user?.email_verified])
 
   useEffect(() => {
     const node = loadMoreRef.current
     // Pause while jumping to a calendar day/entry — otherwise newly loaded
     // pages shift the target and the scroll stops mid-feed.
     if (
+      isSearchMode ||
       !node ||
       !hasMore ||
       isLoading ||
@@ -473,6 +540,7 @@ export function EntriesPage() {
     hasMore,
     isLoading,
     isLoadingMore,
+    isSearchMode,
     loadPage,
     offset,
     pendingScrollDay,
@@ -654,10 +722,30 @@ export function EntriesPage() {
           </button>
         </div>
         <div className="page-header-actions">
+          <div className="entries-search">
+            <input
+              type="search"
+              className="form-input entries-search-input"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t('entries.searchPlaceholder')}
+              aria-label={t('entries.searchPlaceholder')}
+            />
+            {searchInput ? (
+              <button
+                type="button"
+                className="button button-secondary button-small entries-search-clear"
+                onClick={() => setSearchInput('')}
+              >
+                {t('entries.searchClear')}
+              </button>
+            ) : null}
+          </div>
           <button
             type="button"
             className={`button button-secondary button-small${favoritesOnly ? ' is-active' : ''}`}
             aria-pressed={favoritesOnly}
+            disabled={isSearchMode}
             onClick={() => setFavoritesOnly((value) => !value)}
           >
             {t('entries.favoritesOnly')}
@@ -670,7 +758,7 @@ export function EntriesPage() {
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      {user?.email_verified ? (
+      {user?.email_verified && !isSearchMode ? (
         <>
           <div className="calendar-mode-toggle" role="group" aria-label={t('calendar.modeGroup')}>
             <button
@@ -724,7 +812,7 @@ export function EntriesPage() {
         </>
       ) : null}
 
-      {user?.email_verified ? (
+      {user?.email_verified && !isSearchMode ? (
         calendarMode === 'goals' ? (
           isGoalStatsLoading && goalStatsItems.length === 0 ? (
             <p className="muted">{t('common.loadingGoalStats')}</p>
@@ -755,10 +843,120 @@ export function EntriesPage() {
         <p className="muted">{t('common.loadingEntries')}</p>
       ) : user?.email_verified && entries.length === 0 ? (
         <p className="muted">
-          {favoritesOnly ? t('entries.noFavoritesThisMonth') : t('entries.noEntriesThisMonth')}
+          {isSearchMode
+            ? t('entries.searchNoResults')
+            : favoritesOnly
+              ? t('entries.noFavoritesThisMonth')
+              : t('entries.noEntriesThisMonth')}
         </p>
       ) : null}
 
+      {isSearchMode ? (
+        <div className="entry-feed">
+          {entries.length > 0 ? (
+            <section className="day-section">
+              <h2 className="day-heading">{t('entries.searchResults')}</h2>
+              <ul className="entry-list">
+                {entries.map((entry) => (
+                  <li key={entry.id} id={`entry-${entry.id}`}>
+                    <article className="entry-row">
+                      <Link className="entry-row-link" to={`/entries/${entry.id}`}>
+                        <div className="entry-row-main">
+                          <span className="entry-score">
+                            <MoodScoreIcon
+                              style={getMoodScoreStyle(entry.score, scores)}
+                              className="entry-score-icon"
+                              fallbackScore={entry.score}
+                            />{' '}
+                            {entry.score_label}
+                          </span>
+                          <div className="entry-row-meta">
+                            <span className="entry-time">
+                              {formatDayHeading(entry.recorded_at, timeZone, dateLocale)}{' '}
+                              {formatTime(entry.recorded_at, timeZone, dateLocale)}
+                            </span>
+                            <button
+                              type="button"
+                              className={`entry-favorite-mark${entry.is_favorite ? ' is-favorite' : ''}`}
+                              style={
+                                entry.is_favorite
+                                  ? ({
+                                      '--entry-favorite-color': getMoodScoreColor(
+                                        entry.score,
+                                        scores,
+                                      ),
+                                    } as CSSProperties)
+                                  : undefined
+                              }
+                              aria-pressed={entry.is_favorite}
+                              aria-label={
+                                entry.is_favorite
+                                  ? t('entries.removeFavorite')
+                                  : t('entries.addFavorite')
+                              }
+                              title={
+                                entry.is_favorite
+                                  ? t('entries.removeFavorite')
+                                  : t('entries.addFavorite')
+                              }
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                void handleToggleFavorite(entry.id, !entry.is_favorite)
+                              }}
+                            >
+                              <HeartIcon filled={entry.is_favorite} />
+                            </button>
+                          </div>
+                        </div>
+                        {entry.note ? (
+                          <MarkdownNote content={entry.note} compact className="entry-note" />
+                        ) : null}
+                        {entry.tags.length > 0 ? (
+                          <div className="entry-tags">
+                            {entry.tags.map((tag) => (
+                              <span key={tag.id} className="entry-tag">
+                                {tag.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {entry.goals.length > 0 ? (
+                          <div className="entry-tags entry-goals">
+                            {entry.goals.map((goal) => (
+                              <span key={goal.id} className="entry-tag entry-goal">
+                                <GoalIcon
+                                  style={{
+                                    color: goal.color,
+                                    icon_type: goal.icon_type,
+                                    icon: goal.icon,
+                                  }}
+                                  className="entry-goal-icon"
+                                />
+                                {goal.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </Link>
+                      <div className="entry-row-media">
+                        <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
+                      </div>
+                      <div className="entry-row-actions">
+                        <EntryActionMenu
+                          entry={entry}
+                          onDelete={handleDelete}
+                          onToggleFavorite={handleToggleFavorite}
+                        />
+                      </div>
+                    </article>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
+      ) : (
       <div className="entry-feed">
         {groupedEntries.map(([key, dayEntries]) => {
           const dayWash = buildGradientWashFromScores(dayEntries, (score) =>
@@ -879,8 +1077,9 @@ export function EntriesPage() {
           )
         })}
       </div>
+      )}
 
-      {hasMore && user?.email_verified ? (
+      {!isSearchMode && hasMore && user?.email_verified ? (
         <div ref={loadMoreRef} className="load-more-sentinel">
           {isLoadingMore ? <p className="muted">{t('common.loadingMore')}</p> : null}
         </div>

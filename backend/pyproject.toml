@@ -8,10 +8,12 @@ dependencies = [
     "authlib>=1.4",
     "email-validator>=2.2",
     "fastapi>=0.115",
+    "fastembed>=0.6",
     "google-auth>=2.37",
     "httpx>=0.28",
     "itsdangerous>=2.2",
     "minio>=7.2",
+    "pgvector>=0.3",
     "psycopg[binary]>=3.2",
     "pwdlib[argon2]>=0.2",
     "pydantic-settings>=2.6",
@@ -69,6 +71,14 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "minio.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fastembed.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pgvector.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

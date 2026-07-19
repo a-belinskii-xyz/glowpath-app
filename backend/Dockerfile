@@ -6,6 +6,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
+ENV FASTEMBED_CACHE_PATH=/var/cache/fastembed
+RUN mkdir -p /var/cache/fastembed
+
 COPY pyproject.toml .
 COPY app ./app
 

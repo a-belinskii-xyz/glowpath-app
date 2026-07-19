@@ -15,6 +15,7 @@ Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and D
 | Attachments | Up to 5 photos + 1 audio per entry, stored in MinIO |
 | Note templates | Reusable markdown snippets for notes; CRUD + reorder; seeded defaults for new users |
 | Entry list & filters | Paginated feed filtered by date range in the user’s timezone; soft day backgrounds mixed from mood colors (see Mood Tracker.md) |
+| Semantic search | Vector search over notes (and voice transcriptions when present) via local fastembed + pgvector; search box on the entries page |
 | Month calendar | Calendar of days with entries; jump to a day in the list |
 | Mood stats | Month mood index and month-over-month comparison (bar chart on home) |
 | Profile & locale | View account info; switch UI language (`en` / `ru`); IANA timezone on the user |
@@ -25,10 +26,11 @@ Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and D
 
 ## Prerequisites
 
-- **Docker** and **Docker Compose** — backend services (API, PostgreSQL, MinIO, MailHog)
+- **Docker** and **Docker Compose** — backend services (API, PostgreSQL with pgvector, MinIO, MailHog)
 - **Python 3.12+** — local backend development (`make install`, `make run`)
 - **Node.js 20+** and **npm** — frontend dev server and build
 
+Compose uses the `pgvector/pgvector:pg16` image so semantic search can store note embeddings in Postgres.
 ## Quick start (full stack)
 
 ### 1. Environment files
@@ -363,6 +365,12 @@ Terminal 2: make frontend-dev
 
 Requires a running DB and MinIO (e.g. `make up`). `make seed` uses `DATABASE_URL` from `backend/.env` and overrides `MINIO_ENDPOINT` to `localhost:$(MINIO_API_PORT)` from the root `.env` so it works from the host against Compose.
 
+After upgrading an existing database (or seeding), backfill semantic-search vectors:
+
+```bash
+make reindex-embeddings
+```
+
 ```bash
 make seed
 # or with options:
@@ -396,6 +404,7 @@ make migrate              # alembic upgrade head
 make migrate-create MSG="add users table"
 make migrate-down         # alembic downgrade -1 (or REV=base / REV=<revision>)
 make seed                 # local mock users/entries/attachments
+make reindex-embeddings   # backfill note embeddings for semantic search
 make frontend-install
 make frontend-dev
 make frontend-build

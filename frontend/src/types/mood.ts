@@ -125,3 +125,8 @@ export type ListMoodEntriesParams = {
   recorded_to?: string
   is_favorite?: boolean
 }
+
+export type SearchMoodEntriesParams = {
+  q: string
+  limit?: number
+}

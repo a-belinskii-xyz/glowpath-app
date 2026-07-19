@@ -3,18 +3,26 @@ from collections.abc import Generator
 
 import pytest
 from app.api.deps import get_email_service, get_storage_service
+from app.config import settings
 from app.db.session import get_db
 from app.main import app
 from app.services.email_service import EmailService, SentEmail
 from app.services.storage import FakeStorage, ObjectStorage
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from pgvector.psycopg import register_vector
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from tests.db_safety import assert_safe_test_database, get_test_database_url
 
 TEST_DATABASE_URL = get_test_database_url()
+
+
+@pytest.fixture(autouse=True)
+def _disable_embeddings_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Avoid downloading fastembed models during the default test suite."""
+    monkeypatch.setattr(settings, "embedding_enabled", False)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -98,6 +106,11 @@ def db_engine():
     if not _database_available():
         pytest.skip("PostgreSQL is not available for auth integration tests")
     engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+
+    @event.listens_for(engine, "connect")
+    def _register_vector(dbapi_connection: object, _connection_record: object) -> None:
+        register_vector(dbapi_connection)
+
     yield engine
     engine.dispose()
 

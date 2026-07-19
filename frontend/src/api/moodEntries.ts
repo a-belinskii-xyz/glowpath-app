@@ -12,6 +12,7 @@ import type {
   MoodEntryPatch,
   MoodEntryPublic,
   MoodEntryStatsResponse,
+  SearchMoodEntriesParams,
 } from '../types/mood'
 import { apiRequest, getApiBaseUrl } from './client'
 import { uploadAttachment } from './upload'
@@ -71,6 +72,20 @@ function buildListQuery(params: ListMoodEntriesParams = {}): string {
 
 export function listMoodEntries(params: ListMoodEntriesParams = {}): Promise<MoodEntryListResponse> {
   return apiRequest<MoodEntryListResponse>(`/v1/mood-entries${buildListQuery(params)}`, {
+    auth: true,
+    headers: moodHeaders(),
+  })
+}
+
+export function searchMoodEntries(
+  params: SearchMoodEntriesParams,
+): Promise<MoodEntryListResponse> {
+  const search = new URLSearchParams()
+  search.set('q', params.q)
+  if (params.limit !== undefined) {
+    search.set('limit', String(params.limit))
+  }
+  return apiRequest<MoodEntryListResponse>(`/v1/mood-entries/search?${search.toString()}`, {
     auth: true,
     headers: moodHeaders(),
   })

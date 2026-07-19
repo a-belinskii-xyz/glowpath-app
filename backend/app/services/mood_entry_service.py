@@ -33,6 +33,7 @@ from app.models.mood_entry_goal import MoodEntryGoal
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
 from app.models.user import User
+from app.services.embedding_service import upsert_entry_embedding
 from app.services.goal_service import goal_is_active_on
 from app.services.storage import ObjectStorage, StorageError
 
@@ -226,6 +227,7 @@ def create_mood_entry(
     db.flush()
     _replace_entry_tags(db, entry, tags)
     _replace_entry_goals(db, entry, goals)
+    upsert_entry_embedding(db, entry)
     db.commit()
     return _get_owned_entry(db, user_id=user_id, entry_id=entry.id)
 
@@ -254,6 +256,34 @@ def list_mood_entries(
             .offset(offset)
         ).all()
     )
+
+
+def search_mood_entries(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    query: str,
+    limit: int,
+) -> list[MoodEntry]:
+    from app.services.embedding_service import embed_texts
+
+    cleaned = query.strip()
+    if not cleaned:
+        raise MoodEntryError("Search query must not be empty", status_code=400)
+
+    query_vector = embed_texts([cleaned])[0]
+    distance = MoodEntry.embedding.cosine_distance(query_vector)
+    stmt = (
+        select(MoodEntry)
+        .options(*_entry_load_options())
+        .where(
+            MoodEntry.user_id == user_id,
+            MoodEntry.embedding.is_not(None),
+        )
+        .order_by(distance)
+        .limit(limit)
+    )
+    return list(db.scalars(stmt).all())
 
 
 def _resolve_user_tz(timezone_name: str) -> ZoneInfo:
@@ -438,6 +468,7 @@ def patch_mood_entry(
     fields: dict[str, Any],
 ) -> MoodEntry:
     entry = _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
+    note_changed = "note" in fields
 
     if "score" in fields and fields["score"] is not None:
         entry.score = fields["score"]
@@ -460,6 +491,9 @@ def patch_mood_entry(
         _replace_entry_goals(db, entry, goals)
     if "is_favorite" in fields and fields["is_favorite"] is not None:
         entry.is_favorite = fields["is_favorite"]
+
+    if note_changed:
+        upsert_entry_embedding(db, entry)
 
     db.commit()
     return _get_owned_entry(db, user_id=user_id, entry_id=entry_id)

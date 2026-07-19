@@ -127,6 +127,23 @@ input {
   gap: 0.5rem;
 }
 
+.entries-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.entries-search-input {
+  width: min(16rem, 100%);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.entries-search-clear {
+  flex-shrink: 0;
+}
+
 .lead {
   color: #4b5563;
   margin-bottom: 1.5rem;

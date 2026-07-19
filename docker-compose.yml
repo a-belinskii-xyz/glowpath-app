@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: mood
       POSTGRES_PASSWORD: mood
@@ -17,7 +17,7 @@ services:
       retries: 5
 
   db-init:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       PGPASSWORD: mood
     depends_on:
@@ -78,6 +78,7 @@ services:
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
       MINIO_ENDPOINT: minio:9000
+      FASTEMBED_CACHE_PATH: /var/cache/fastembed
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -87,6 +88,7 @@ services:
         condition: service_started
     volumes:
       - ./backend/app:/app/app
+      - fastembed_cache:/var/cache/fastembed
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   reminders:
@@ -150,3 +152,4 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  fastembed_cache:

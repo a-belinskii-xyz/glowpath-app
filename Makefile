@@ -6,7 +6,7 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed
+.PHONY: install lint format typecheck test run up down migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed reindex-embeddings
 
 FRONTEND := frontend
 
@@ -88,5 +88,9 @@ SEED_ARGS ?=
 MINIO_API_PORT ?= 9000
 seed: $(MARKER)
 	cd $(BACKEND) && MINIO_ENDPOINT=localhost:$(MINIO_API_PORT) $(BIN)/python -m dev_seed $(SEED_ARGS)
+
+# Recompute semantic-search embeddings for all mood entries (requires EMBEDDING_ENABLED=true).
+reindex-embeddings: $(MARKER)
+	cd $(BACKEND) && $(BIN)/python -m app.jobs.reindex_embeddings
 
 venv: $(VENV)/bin/python

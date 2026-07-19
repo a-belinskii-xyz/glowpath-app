@@ -42,6 +42,7 @@ from app.services.mood_entry_service import (
     get_mood_entry_stats,
     list_mood_entries,
     patch_mood_entry,
+    search_mood_entries,
     serialize_mood_entry,
     upload_attachment,
 )
@@ -167,6 +168,34 @@ def stats_entries(
         _handle_mood_error(exc)
         raise
     return MoodEntryStatsResponse.model_validate(payload)
+
+
+@router.get("/search", response_model=MoodEntryListResponse)
+def search_entries(
+    q: Annotated[str, Query(min_length=1, max_length=500)],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> MoodEntryListResponse:
+    try:
+        entries = search_mood_entries(
+            db,
+            user_id=current_user.id,
+            query=q,
+            limit=limit,
+        )
+    except MoodEntryError as exc:
+        _handle_mood_error(exc)
+        raise
+    label_overrides = get_score_label_overrides(db, user_id=current_user.id)
+    return MoodEntryListResponse(
+        items=[
+            _to_public(entry, locale=locale, label_overrides=label_overrides) for entry in entries
+        ],
+        limit=limit,
+        offset=0,
+    )
 
 
 @router.get("/{entry_id}", response_model=MoodEntryPublic)
