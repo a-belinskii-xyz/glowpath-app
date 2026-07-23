@@ -113,7 +113,7 @@ def link_telegram_account(
         )
     if user.telegram_linked and user.telegram_user_id != telegram_user_id:
         raise TelegramLinkError(
-            "This Mood Tracker account is already linked to another Telegram user",
+            "This GlowPath account is already linked to another Telegram user",
             status_code=409,
         )
 

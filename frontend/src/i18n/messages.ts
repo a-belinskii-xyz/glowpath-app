@@ -8,7 +8,7 @@ type DeepStringLeaves<T> = {
 }
 
 export const en = {
-  brand: 'Mood Tracker',
+  brand: 'glowpath:\\',
   nav: {
     entries: 'Entries',
     goals: 'Goals',
@@ -220,7 +220,7 @@ export const en = {
     verifiedAt: 'Verified at',
     notificationsTitle: 'Notifications',
     notificationsLead:
-      'Choose when Mood Tracker emails you. Times use your profile timezone.',
+      'Choose when GlowPath emails you. Times use your profile timezone.',
     notificationsTimezoneHint: 'Reminder time is interpreted in {timezone}.',
     notificationsEnabled: 'Enable notifications',
     channelEmail: 'Email',
@@ -400,7 +400,7 @@ export const en = {
 } as const
 
 export const ru: DeepStringLeaves<typeof en> = {
-  brand: 'Mood Tracker',
+  brand: 'glowpath:\\',
   nav: {
     entries: 'Записи',
     goals: 'Цели',
@@ -612,7 +612,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     verifiedAt: 'Подтверждён',
     notificationsTitle: 'Уведомления',
     notificationsLead:
-      'Выберите, когда Mood Tracker пишет вам на почту. Время — в часовом поясе профиля.',
+      'Выберите, когда GlowPath пишет вам на почту. Время — в часовом поясе профиля.',
     notificationsTimezoneHint: 'Время напоминаний считается в поясе {timezone}.',
     notificationsEnabled: 'Включить уведомления',
     channelEmail: 'Email',

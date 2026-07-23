@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class TelegramLinkCode(Base):
-    """One-time code that links a Mood Tracker user to a Telegram account."""
+    """One-time code that links a GlowPath user to a Telegram account."""
 
     __tablename__ = table_name("telegram_link_codes")
     __table_args__ = (

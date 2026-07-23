@@ -1,7 +1,7 @@
 [project]
 name = "mood-tracker-telegram-bot"
 version = "0.1.0"
-description = "Telegram webhook bot for Mood Tracker"
+description = "Telegram webhook bot for GlowPath"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

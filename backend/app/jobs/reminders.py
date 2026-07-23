@@ -55,7 +55,7 @@ def run_loop() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Send due Mood Tracker reminder notifications")
+    parser = argparse.ArgumentParser(description="Send due GlowPath reminder notifications")
     parser.add_argument(
         "--once",
         action="store_true",

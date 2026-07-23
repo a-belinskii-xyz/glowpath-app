@@ -5,7 +5,7 @@ from typing import Any
 MESSAGES: dict[str, dict[str, str]] = {
     "en": {
         "help": (
-            "Mood Tracker bot\n\n"
+            "GlowPath bot\n\n"
             "Commands:\n"
             "/log — log your mood\n"
             "/cancel — cancel the current log\n"
@@ -14,19 +14,19 @@ MESSAGES: dict[str, dict[str, str]] = {
             "/help — show this message"
         ),
         "already_linked": (
-            "Your Telegram is already linked to Mood Tracker.\n"
+            "Your Telegram is already linked to GlowPath.\n"
             "Use /log to check in, or /unlink to disconnect."
         ),
         "need_link": (
-            "To link your account, open Profile in Mood Tracker, "
+            "To link your account, open Profile in GlowPath, "
             "tap Connect Telegram, then open the link from there."
         ),
         "linked_ok": (
-            "Telegram is linked to your Mood Tracker account.\n"
+            "Telegram is linked to your GlowPath account.\n"
             "Use /log anytime, or wait for reminders in this chat."
         ),
         "link_failed": "Could not link account: {detail}",
-        "unlinked_ok": "Telegram has been unlinked from Mood Tracker.",
+        "unlinked_ok": "Telegram has been unlinked from GlowPath.",
         "unlink_failed": "Could not unlink: {detail}",
         "not_linked": "Link your account first (Profile → Connect Telegram), then try /log.",
         "choose_score": "How are you feeling?",
@@ -61,7 +61,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     },
     "ru": {
         "help": (
-            "Бот Mood Tracker\n\n"
+            "Бот GlowPath\n\n"
             "Команды:\n"
             "/log — записать настроение\n"
             "/cancel — отменить текущую запись\n"
@@ -70,19 +70,19 @@ MESSAGES: dict[str, dict[str, str]] = {
             "/help — эта справка"
         ),
         "already_linked": (
-            "Telegram уже привязан к Mood Tracker.\n"
+            "Telegram уже привязан к GlowPath.\n"
             "Команда /log — запись, /unlink — отвязать."
         ),
         "need_link": (
-            "Чтобы привязать аккаунт, откройте профиль в Mood Tracker, "
+            "Чтобы привязать аккаунт, откройте профиль в GlowPath, "
             "нажмите «Подключить Telegram» и перейдите по ссылке."
         ),
         "linked_ok": (
-            "Telegram привязан к аккаунту Mood Tracker.\n"
+            "Telegram привязан к аккаунту GlowPath.\n"
             "Пишите /log или ждите напоминания в этом чате."
         ),
         "link_failed": "Не удалось привязать: {detail}",
-        "unlinked_ok": "Telegram отвязан от Mood Tracker.",
+        "unlinked_ok": "Telegram отвязан от GlowPath.",
         "unlink_failed": "Не удалось отвязать: {detail}",
         "not_linked": "Сначала привяжите аккаунт (Профиль → Подключить Telegram), затем /log.",
         "choose_score": "Как вы себя чувствуете?",

@@ -18,7 +18,7 @@ def daily_mood_reminder_message(*, channel: NotificationChannel) -> Notification
 
     if channel is NotificationChannel.TELEGRAM:
         lines = [
-            "Time to log your mood in Mood Tracker.",
+            "Time to log your mood in GlowPath.",
             "",
             f"Open the app: {log_url}",
         ]
@@ -38,13 +38,13 @@ def daily_mood_reminder_message(*, channel: NotificationChannel) -> Notification
 
     body = (
         "Hi,\n\n"
-        "This is your daily Mood Tracker reminder — take a moment to note how you feel today.\n\n"
+        "This is your daily GlowPath reminder — take a moment to note how you feel today.\n\n"
         f"Log your mood: {log_url}\n\n"
         "You can change reminder settings in your profile.\n"
     )
     html_body = (
         "<p>Hi,</p>"
-        "<p>This is your daily Mood Tracker reminder — "
+        "<p>This is your daily GlowPath reminder — "
         "take a moment to note how you feel today.</p>"
         f'<p><a href="{log_url}">Log your mood</a></p>'
         "<p>You can change reminder settings in your profile.</p>"
@@ -81,7 +81,7 @@ def goal_reminder_message(
             "",
             bullet_lines,
             "",
-            f"Open Mood Tracker: {home_url}",
+            f"Open GlowPath: {home_url}",
         ]
         if bot_url:
             lines.extend(["", f"Or continue in the bot: {bot_url}"])
@@ -100,7 +100,7 @@ def goal_reminder_message(
 
     body = (
         "Hi,\n\n"
-        "Some of your Mood Tracker goals are still behind for this week:\n\n"
+        "Some of your GlowPath goals are still behind for this week:\n\n"
         f"{bullet_lines}\n\n"
         f"Review your goals: {home_url}\n\n"
         "You can turn goal reminders off in notification settings.\n"
@@ -108,9 +108,9 @@ def goal_reminder_message(
     items = "".join(f"<li>{label}</li>" for label in goal_labels)
     html_body = (
         "<p>Hi,</p>"
-        "<p>Some of your Mood Tracker goals are still behind for this week:</p>"
+        "<p>Some of your GlowPath goals are still behind for this week:</p>"
         f"<ul>{items}</ul>"
-        f'<p><a href="{home_url}">Open Mood Tracker</a></p>'
+        f'<p><a href="{home_url}">Open GlowPath</a></p>'
         "<p>You can turn goal reminders off in notification settings.</p>"
     )
     return NotificationMessage(

@@ -26,20 +26,20 @@ class EmailService:
     def send_verification_email(self, *, to: str, token: str) -> None:
         verify_url = f"{settings.frontend_url}/verify-email?token={token}"
         body = (
-            "Confirm your Mood Tracker account.\n\n"
+            "Confirm your GlowPath account.\n\n"
             f"Click the link below to verify your email:\n\n"
             f"{verify_url}\n"
         )
-        self.send(to=to, subject="Verify your Mood Tracker email", body=body)
+        self.send(to=to, subject="Verify your GlowPath email", body=body)
 
     def send_password_reset_email(self, *, to: str, token: str) -> None:
         reset_url = f"{settings.frontend_url}/reset-password?token={token}"
         body = (
-            "Reset your Mood Tracker password.\n\n"
+            "Reset your GlowPath password.\n\n"
             f"Click the link below to choose a new password:\n\n"
             f"{reset_url}\n"
         )
-        self.send(to=to, subject="Reset your Mood Tracker password", body=body)
+        self.send(to=to, subject="Reset your GlowPath password", body=body)
 
     def send(
         self,

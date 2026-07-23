@@ -1,1 +1,1 @@
-"""Mood Tracker Telegram bot package."""
+"""GlowPath Telegram bot package."""

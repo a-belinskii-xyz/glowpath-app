@@ -22,7 +22,7 @@ export function HomePage() {
 
   return (
     <section className="page">
-      <h1>{t('brand')}</h1>
+      <h1 className="brand">{t('brand')}</h1>
       <p className="lead">{t('home.lead')}</p>
       <div className="button-row">
         <Link className="button" to="/login">

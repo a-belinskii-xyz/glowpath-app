@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "Mood Tracker"
+    app_name: str = "GlowPath"
     debug: bool = Field(default=False, validation_alias="APP_DEBUG")
     app_public_url: str = Field(
         default="http://localhost:8000",

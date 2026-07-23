@@ -1,6 +1,8 @@
-# Mood Tracker
+# GlowPath
 
-Multi-user mood logging app: FastAPI backend + React frontend, PostgreSQL, and Docker Compose.
+Multi-user mood logging app (**GlowPath**, mark `glowpath:\`): FastAPI backend + React frontend, PostgreSQL, and Docker Compose.
+
+Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-naming-plan.md).
 
 ## Features
 

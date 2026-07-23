@@ -81,8 +81,10 @@ input {
 
 .brand {
   font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: #111827;
   text-decoration: none;
+  letter-spacing: -0.02em;
 }
 
 .nav-links {
