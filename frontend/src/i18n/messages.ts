@@ -10,6 +10,9 @@ type DeepStringLeaves<T> = {
 export const en = {
   brand: 'glowpath:\\',
   nav: {
+    menu: 'Main navigation',
+    sectionTrack: 'Track',
+    sectionAccount: 'Account',
     entries: 'Entries',
     goals: 'Goals',
     tags: 'Tags',
@@ -402,6 +405,9 @@ export const en = {
 export const ru: DeepStringLeaves<typeof en> = {
   brand: 'glowpath:\\',
   nav: {
+    menu: 'Основная навигация',
+    sectionTrack: 'Трекер',
+    sectionAccount: 'Аккаунт',
     entries: 'Записи',
     goals: 'Цели',
     tags: 'Теги',

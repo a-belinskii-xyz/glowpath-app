@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from 'react'
+import { useMemo, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useLocale } from '../context/LocaleContext'
@@ -13,6 +13,9 @@ import type { GoalCalendarDayPublic, GoalPublic, GoalStyle } from '../types/goal
 import type { CalendarDayPublic } from '../types/mood'
 
 export type CalendarMode = 'moods' | 'goals'
+
+/** Keep day cells calm: show a few marks, then +N. */
+const MAX_VISIBLE_MARKS = 3
 
 type MonthCalendarProps = {
   year: number
@@ -61,6 +64,15 @@ function weekIsHighlighted(
   return week.some(
     (cell) =>
       cell.date != null && cell.date >= highlightWeekStart && cell.date < highlightWeekEnd,
+  )
+}
+
+function DayMarks({ children, overflow }: { children: ReactNode; overflow: number }) {
+  return (
+    <span className="month-calendar-emojis" aria-hidden="true">
+      {children}
+      {overflow > 0 ? <span className="month-calendar-more">+{overflow}</span> : null}
+    </span>
   )
 }
 
@@ -156,8 +168,8 @@ export function MonthCalendar({
 
                 const marks =
                   mode === 'goals' ? (
-                    <span className="month-calendar-emojis" aria-hidden="true">
-                      {dayGoals.map((item, index) => {
+                    <DayMarks overflow={Math.max(0, dayGoals.length - MAX_VISIBLE_MARKS)}>
+                      {dayGoals.slice(0, MAX_VISIBLE_MARKS).map((item, index) => {
                         const goal = goalsById.get(item.goal_id)
                         const style = goalStyleFrom(goal)
                         return (
@@ -165,33 +177,33 @@ export function MonthCalendar({
                             key={`${cell.date}-${index}-${item.goal_id}`}
                             className="month-calendar-emoji"
                             style={{
-                              zIndex: dayGoals.length - index,
-                              filter: moodGlowFilter(style.color),
+                              zIndex: MAX_VISIBLE_MARKS - index,
+                              filter: moodGlowFilter(style.color, 'xs'),
                             }}
                           >
                             <GoalIcon style={style} />
                           </span>
                         )
                       })}
-                    </span>
+                    </DayMarks>
                   ) : (
-                    <span className="month-calendar-emojis" aria-hidden="true">
-                      {dayScores.map((item, index) => {
+                    <DayMarks overflow={Math.max(0, dayScores.length - MAX_VISIBLE_MARKS)}>
+                      {dayScores.slice(0, MAX_VISIBLE_MARKS).map((item, index) => {
                         const style = getMoodScoreStyle(item.score, scoreStyles)
                         return (
                           <span
                             key={`${cell.date}-${index}-${item.score}`}
                             className="month-calendar-emoji"
                             style={{
-                              zIndex: dayScores.length - index,
-                              filter: moodGlowFilter(style.color),
+                              zIndex: MAX_VISIBLE_MARKS - index,
+                              filter: moodGlowFilter(style.color, 'xs'),
                             }}
                           >
                             <MoodScoreIcon style={style} />
                           </span>
                         )
                       })}
-                    </span>
+                    </DayMarks>
                   )
 
                 const selectWeek = () => {

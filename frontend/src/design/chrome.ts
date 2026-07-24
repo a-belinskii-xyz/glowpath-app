@@ -6,12 +6,13 @@
 
 export const chrome = {
   bg: {
-    app: '#f3f4f6',
+    app: '#eef1f6',
   },
   surface: {
     default: '#ffffff',
     elevated: '#ffffff',
     inset: '#f3f4f6',
+    glass: 'rgb(255 255 255 / 72%)',
   },
   text: {
     primary: '#1f2937',
@@ -34,6 +35,15 @@ export const chrome = {
     ring: '#93c5fd',
     ringSoft: 'rgb(147 197 253 / 35%)',
   },
+  radius: {
+    shell: '1.5rem',
+    card: '1.15rem',
+    control: '0.75rem',
+    pill: '999px',
+  },
+  shadow: {
+    soft: '0 8px 28px rgb(15 23 42 / 6%)',
+  },
 } as const
 
 export type ChromeTokens = typeof chrome
@@ -44,6 +54,7 @@ export const chromeCssVars = {
   surface: '--chrome-surface',
   surfaceElevated: '--chrome-surface-elevated',
   surfaceInset: '--chrome-surface-inset',
+  surfaceGlass: '--chrome-surface-glass',
   textPrimary: '--chrome-text-primary',
   textSecondary: '--chrome-text-secondary',
   textInverse: '--chrome-text-inverse',
@@ -57,4 +68,9 @@ export const chromeCssVars = {
   actionWarning: '--chrome-action-warning',
   focusRing: '--chrome-focus-ring',
   focusRingSoft: '--chrome-focus-ring-soft',
+  radiusShell: '--chrome-radius-shell',
+  radiusCard: '--chrome-radius-card',
+  radiusControl: '--chrome-radius-control',
+  radiusPill: '--chrome-radius-pill',
+  shadowSoft: '--chrome-shadow-soft',
 } as const

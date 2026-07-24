@@ -1,9 +1,10 @@
 :root {
   /* —— Chrome System (mood-agnostic UI) —— */
-  --chrome-bg-app: #f3f4f6;
+  --chrome-bg-app: #eef1f6;
   --chrome-surface: #ffffff;
   --chrome-surface-elevated: #ffffff;
   --chrome-surface-inset: #f3f4f6;
+  --chrome-surface-glass: rgb(255 255 255 / 72%);
   --chrome-text-primary: #1f2937;
   --chrome-text-secondary: #6b7280;
   --chrome-text-inverse: #ffffff;
@@ -17,6 +18,11 @@
   --chrome-action-warning: #b45309;
   --chrome-focus-ring: #93c5fd;
   --chrome-focus-ring-soft: rgb(147 197 253 / 35%);
+  --chrome-radius-shell: 1.5rem;
+  --chrome-radius-card: 1.15rem;
+  --chrome-radius-control: 0.75rem;
+  --chrome-radius-pill: 999px;
+  --chrome-shadow-soft: 0 8px 28px rgb(15 23 42 / 6%);
 
   /* —— Motion System —— */
   --motion-hover-duration: 120ms;
@@ -69,6 +75,17 @@ input {
   min-height: 100vh;
 }
 
+.app-shell--sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background:
+    radial-gradient(ellipse 80% 50% at 8% 0%, rgb(219 234 254 / 42%), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 92% 8%, rgb(254 226 226 / 28%), transparent 50%),
+    var(--chrome-bg-app);
+}
+
 .app-header {
   display: flex;
   align-items: center;
@@ -87,6 +104,10 @@ input {
   letter-spacing: -0.02em;
 }
 
+.brand:hover {
+  text-decoration: none;
+}
+
 .nav-links {
   display: flex;
   align-items: center;
@@ -101,12 +122,149 @@ input {
   padding: 0;
 }
 
+.app-sidebar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--chrome-radius-shell);
+  background: var(--chrome-surface-glass);
+  border: 1px solid rgb(255 255 255 / 55%);
+  box-shadow: var(--chrome-shadow-soft);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  overflow-x: auto;
+}
+
+.app-sidebar-brand {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+}
+
+.app-sidebar-nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.app-sidebar-section {
+  display: none;
+  margin: 0;
+  padding: 0.85rem 0.85rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chrome-text-secondary);
+}
+
+.app-nav-link {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.45rem 0.8rem;
+  border: none;
+  border-radius: var(--chrome-radius-pill);
+  background: transparent;
+  color: var(--chrome-text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-hover-duration) var(--motion-hover-easing),
+    color var(--motion-hover-duration) var(--motion-hover-easing),
+    box-shadow var(--motion-hover-duration) var(--motion-hover-easing);
+}
+
+.app-nav-link:hover {
+  background: rgb(255 255 255 / 70%);
+  text-decoration: none;
+}
+
+.app-nav-link.is-active {
+  background: var(--chrome-surface);
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgb(15 23 42 / 8%);
+}
+
+.app-nav-logout {
+  color: var(--chrome-text-secondary);
+}
+
 .app-main {
   padding: 2rem 1.5rem;
 }
 
+.app-shell--sidebar .app-main {
+  padding: 0.5rem 0.35rem 1.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+@media (min-width: 900px) {
+  .app-shell--sidebar {
+    display: grid;
+    grid-template-columns: 15.5rem minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+    padding: 1.1rem;
+  }
+
+  .app-sidebar {
+    position: sticky;
+    top: 1.1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    height: calc(100vh - 2.2rem);
+    padding: 1.15rem 0.85rem 1rem;
+    overflow: auto;
+  }
+
+  .app-sidebar-brand {
+    padding: 0.15rem 0.85rem 0.85rem;
+    font-size: 1.05rem;
+  }
+
+  .app-sidebar-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.2rem;
+    flex: 1;
+  }
+
+  .app-sidebar-section {
+    display: block;
+  }
+
+  .app-sidebar-section:first-of-type {
+    padding-top: 0.25rem;
+  }
+
+  .app-nav-link {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0.55rem 0.85rem;
+  }
+
+  .app-nav-logout {
+    margin-top: auto;
+  }
+
+  .app-shell--sidebar .app-main {
+    padding: 0.35rem 0.5rem 1rem;
+  }
+}
+
 .page {
-  max-width: 720px;
+  max-width: 52rem;
   margin: 0 auto;
 }
 
@@ -159,9 +317,9 @@ input {
 .auth-card {
   background: var(--chrome-surface);
   border: 1px solid var(--chrome-border-default);
-  border-radius: 12px;
+  border-radius: var(--chrome-radius-card);
   padding: 1.5rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--chrome-shadow-soft);
 }
 
 .auth-card {
@@ -194,7 +352,7 @@ input {
   width: 100%;
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--chrome-border-strong);
-  border-radius: 8px;
+  border-radius: var(--chrome-radius-control);
   background: var(--chrome-surface);
 }
 
@@ -214,7 +372,7 @@ input {
   justify-content: center;
   padding: 0.65rem 1rem;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--chrome-radius-control);
   background: var(--chrome-action-primary);
   color: var(--chrome-text-inverse);
   cursor: pointer;
@@ -262,12 +420,12 @@ input {
 }
 
 .button-secondary.is-active {
-  background: #eff6ff;
-  border-color: var(--chrome-focus-ring);
+  background: color-mix(in oklab, var(--chrome-action-primary) 10%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-primary) 45%, white);
   color: var(--chrome-action-primary-hover);
   box-shadow:
-    0 1px 2px color-mix(in oklab, var(--chrome-action-primary) 22%, transparent),
-    0 0 0.45rem color-mix(in oklab, var(--chrome-action-primary) 38%, transparent);
+    0 1px 2px color-mix(in oklab, var(--chrome-action-primary) 18%, transparent),
+    0 0 0.4rem color-mix(in oklab, var(--chrome-action-primary) 28%, transparent);
 }
 
 .button-block {
@@ -414,56 +572,65 @@ code {
 
 .month-calendar {
   margin-bottom: 1.75rem;
-  padding: 0.85rem;
-  border: 1px solid var(--chrome-border-default);
-  border-radius: 12px;
+  padding: 1rem 1.05rem 1.1rem;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
+  box-shadow: var(--chrome-shadow-soft);
 }
 
 .calendar-mode-toggle {
   display: inline-flex;
   gap: 0.35rem;
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.85rem;
+  padding: 0.25rem;
+  border-radius: var(--chrome-radius-pill);
+  background: rgb(255 255 255 / 55%);
+  border: 1px solid rgb(255 255 255 / 65%);
+}
+
+.calendar-mode-toggle .button {
+  border-radius: var(--chrome-radius-pill);
 }
 
 .month-calendar-weekdays,
 .month-calendar-week {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.35rem;
+  gap: 0.2rem;
 }
 
 .month-calendar-grid {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.2rem;
 }
 
 .month-calendar-week {
   position: relative;
-  border-radius: 10px;
+  border-radius: 0.85rem;
   transition:
     background-color var(--motion-reveal-duration) var(--motion-reveal-easing),
     box-shadow var(--motion-reveal-duration) var(--motion-reveal-easing);
 }
 
 .month-calendar-week.is-week-highlighted {
-  padding: 0.2rem;
-  margin: -0.05rem -0.1rem;
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35);
+  padding: 0.15rem;
+  margin: 0;
+  box-shadow: none;
 }
 
 .month-calendar-week.is-week-highlighted .month-calendar-cell {
-  background: rgba(255, 255, 255, 0.42);
+  background: transparent;
 }
 
 .month-calendar-week.is-week-highlighted .month-calendar-cell-muted {
-  background: rgba(255, 255, 255, 0.18);
-  opacity: 0.7;
+  background: transparent;
+  opacity: 0.55;
 }
 
 .month-calendar-week.is-week-highlighted .month-calendar-cell-future {
-  background: rgba(243, 244, 246, 0.5);
+  background: transparent;
 }
 
 .month-calendar-week.is-week-highlighted::before {
@@ -472,7 +639,7 @@ code {
   inset: 0;
   border-radius: inherit;
   background-image: var(--week-highlight-gradient);
-  opacity: 0.55;
+  opacity: 0.28;
   pointer-events: none;
   z-index: 0;
   transition: opacity var(--motion-reveal-duration) var(--motion-reveal-easing);
@@ -481,13 +648,13 @@ code {
 .month-calendar-week.is-week-highlighted::after {
   content: '';
   position: absolute;
-  left: 0.35rem;
-  right: 0.35rem;
-  bottom: 0.15rem;
-  height: 3px;
+  left: 0.45rem;
+  right: 0.45rem;
+  bottom: 0.2rem;
+  height: 2px;
   border-radius: 999px;
   background-image: var(--week-strip-gradient);
-  opacity: 0.9;
+  opacity: 0.65;
   pointer-events: none;
   z-index: 2;
 }
@@ -498,45 +665,46 @@ code {
 }
 
 .month-calendar-weekdays {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
 }
 
 .month-calendar-weekday {
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--chrome-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
 }
 
 .month-calendar-cell {
   position: relative;
-  min-height: 4.25rem;
-  padding: 0.15rem;
-  border-radius: 8px;
-  background: #f9fafb;
+  min-height: 3.6rem;
+  padding: 0.1rem;
+  border-radius: 0.65rem;
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.1rem;
 }
 
 .month-calendar-cell-muted {
   background: transparent;
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 .month-calendar-cell-future {
-  background: var(--chrome-bg-app);
-  opacity: 0.45;
+  background: transparent;
+  opacity: 0.4;
   pointer-events: none;
 }
 
 .month-calendar-cell-today {
-  outline: 2px solid var(--chrome-focus-ring);
-  outline-offset: -2px;
-  background: #eff6ff;
+  outline: none;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--chrome-border-strong);
 }
 
 .month-calendar-cell-in-week {
@@ -544,7 +712,8 @@ code {
 }
 
 .month-calendar-week.is-week-highlighted .month-calendar-cell-today {
-  background: rgba(239, 246, 255, 0.72);
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--chrome-action-primary) 45%, #94a3b8);
 }
 
 .month-calendar-cell-clickable .month-calendar-day-button {
@@ -552,21 +721,21 @@ code {
 }
 
 .month-calendar-cell-clickable .month-calendar-day-button:hover {
-  background: var(--chrome-border-default);
+  background: rgb(15 23 42 / 4%);
 }
 
 .month-calendar-day-button {
   width: 100%;
-  min-height: 3.9rem;
+  min-height: 3.35rem;
   margin: 0;
-  padding: 0.25rem 0.15rem 0.35rem;
+  padding: 0.2rem 0.1rem 0.25rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 0.55rem;
   background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.1rem;
   color: inherit;
   font: inherit;
   text-decoration: none;
@@ -577,7 +746,7 @@ code {
 }
 
 .month-calendar-day {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: #374151;
   line-height: 1.2;
@@ -591,16 +760,16 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 0.15rem;
-  min-height: 1.5rem;
+  margin-top: 0.05rem;
+  min-height: 1.25rem;
 }
 
 .month-calendar-emoji {
   display: inline-flex;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   line-height: 1;
-  margin-left: -0.45rem;
-  filter: drop-shadow(0 0 0.5px rgba(15, 23, 42, 0.25));
+  margin-left: -0.32rem;
+  filter: drop-shadow(0 0 0.5px rgba(15, 23, 42, 0.2));
   transform-origin: center bottom;
   transition: transform var(--motion-selection-duration) var(--motion-selection-easing);
 }
@@ -609,37 +778,54 @@ code {
   margin-left: 0;
 }
 
+.month-calendar-more {
+  margin-left: 0.15rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--chrome-text-secondary);
+  line-height: 1;
+}
+
 .month-calendar-day-button:hover .month-calendar-emoji {
-  transform: scale(1.22);
+  transform: scale(1.12);
 }
 
 .month-calendar-add {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-top: 0.15rem;
-  border: 1.5px solid #9ca3af;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+  border: 1.5px solid transparent;
   border-radius: 999px;
   color: var(--chrome-text-secondary);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 500;
   line-height: 1;
+  opacity: 0;
+  transition:
+    opacity var(--motion-hover-duration) var(--motion-hover-easing),
+    border-color var(--motion-hover-duration) var(--motion-hover-easing),
+    color var(--motion-hover-duration) var(--motion-hover-easing),
+    background-color var(--motion-hover-duration) var(--motion-hover-easing);
 }
 
-.month-calendar-day-link:hover .month-calendar-add {
+.month-calendar-day-link:hover .month-calendar-add,
+.month-calendar-day-link:focus-visible .month-calendar-add {
+  opacity: 1;
   border-color: var(--chrome-action-primary);
   color: var(--chrome-action-primary);
-  background: #eff6ff;
+  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
 }
 
 .emotion-stats {
   margin-bottom: 1.75rem;
   padding: 1rem 1rem 1.15rem;
-  border: 1px solid var(--chrome-border-default);
-  border-radius: 12px;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
+  box-shadow: var(--chrome-shadow-soft);
 }
 
 .emotion-stats-header {
@@ -768,9 +954,10 @@ code {
 .goal-week-stats {
   margin-bottom: 1.75rem;
   padding: 1rem 1rem 1.15rem;
-  border: 1px solid var(--chrome-border-default);
-  border-radius: 12px;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
+  box-shadow: var(--chrome-shadow-soft);
   transition: opacity var(--motion-reveal-duration) var(--motion-reveal-easing);
 }
 
@@ -2159,6 +2346,14 @@ code {
   .mood-preferences-upload-remove {
     opacity: 1;
     pointer-events: auto;
+  }
+
+  .month-calendar-add {
+    opacity: 0;
+  }
+
+  .month-calendar-day-link:focus-visible .month-calendar-add {
+    opacity: 1;
   }
 }
 

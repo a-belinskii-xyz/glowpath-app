@@ -1,40 +1,67 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 
 import { CaptureAttribution } from './CaptureAttribution'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 
+function navClassName({ isActive }: { isActive: boolean }) {
+  return `app-nav-link${isActive ? ' is-active' : ''}`
+}
+
 export function Layout() {
   const { isAuthenticated, logout } = useAuth()
   const { t } = useLocale()
 
+  if (!isAuthenticated) {
+    return (
+      <div className="app-shell">
+        <CaptureAttribution />
+        <header className="app-header">
+          <Link to="/" className="brand">
+            {t('brand')}
+          </Link>
+          <nav className="nav-links">
+            <Link to="/login">{t('nav.logIn')}</Link>
+            <Link to="/register">{t('nav.register')}</Link>
+          </nav>
+        </header>
+        <main className="app-main">
+          <Outlet />
+        </main>
+      </div>
+    )
+  }
+
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell--sidebar">
       <CaptureAttribution />
-      <header className="app-header">
-        <Link to="/" className="brand">
+      <aside className="app-sidebar" aria-label={t('nav.menu')}>
+        <Link to="/" className="brand app-sidebar-brand">
           {t('brand')}
         </Link>
-        <nav className="nav-links">
-          {isAuthenticated ? (
-            <>
-              <Link to="/">{t('nav.entries')}</Link>
-              <Link to="/goals">{t('nav.goals')}</Link>
-              <Link to="/tags">{t('nav.tags')}</Link>
-              <Link to="/templates">{t('nav.templates')}</Link>
-              <Link to="/profile">{t('nav.profile')}</Link>
-              <button type="button" className="link-button" onClick={logout}>
-                {t('nav.logOut')}
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">{t('nav.logIn')}</Link>
-              <Link to="/register">{t('nav.register')}</Link>
-            </>
-          )}
+        <nav className="app-sidebar-nav">
+          <p className="app-sidebar-section">{t('nav.sectionTrack')}</p>
+          <NavLink to="/" end className={navClassName}>
+            {t('nav.entries')}
+          </NavLink>
+          <NavLink to="/goals" className={navClassName}>
+            {t('nav.goals')}
+          </NavLink>
+          <NavLink to="/tags" className={navClassName}>
+            {t('nav.tags')}
+          </NavLink>
+          <p className="app-sidebar-section">{t('nav.sectionAccount')}</p>
+          <NavLink to="/templates" className={navClassName}>
+            {t('nav.templates')}
+          </NavLink>
+          <NavLink to="/profile" className={navClassName}>
+            {t('nav.profile')}
+          </NavLink>
+          <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
+            {t('nav.logOut')}
+          </button>
         </nav>
-      </header>
+      </aside>
       <main className="app-main">
         <Outlet />
       </main>
