@@ -4,15 +4,7 @@ import { NotificationSettingsForm } from '../components/NotificationSettingsForm
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
-import { intlLocale } from '../i18n/t'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
-
-function formatDate(value: string | null, locale: string, emptyLabel: string): string {
-  if (!value) {
-    return emptyLabel
-  }
-  return new Date(value).toLocaleString(locale)
-}
 
 export function ProfilePage() {
   const { user, refreshUser } = useAuth()
@@ -32,26 +24,32 @@ export function ProfilePage() {
         </button>
       </div>
 
-      <dl className="profile-list">
-        <div>
-          <dt>{t('common.email')}</dt>
-          <dd>{user.email}</dd>
+      <div className="card profile-account">
+        <div className="profile-account-row">
+          <div className="profile-account-email">
+            <span className="profile-account-label">{t('common.email')}</span>
+            <div className="profile-account-email-value">
+              <span className="profile-account-email-text">{user.email}</span>
+              <span
+                className={`status-pill${user.email_verified ? ' status-pill--ok' : ' status-pill--warn'}`}
+              >
+                {user.email_verified
+                  ? t('profile.emailVerifiedShort')
+                  : t('profile.emailUnverifiedShort')}
+              </span>
+            </div>
+          </div>
         </div>
-        <div>
-          <dt>{t('profile.userId')}</dt>
-          <dd>
-            <code>{user.id}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>{t('common.timezone')}</dt>
-          <dd>{user.timezone}</dd>
-        </div>
-        <div>
-          <dt>
-            <label htmlFor="profile-locale">{t('common.language')}</label>
-          </dt>
-          <dd>
+
+        <div className="profile-account-grid">
+          <div>
+            <span className="profile-account-label">{t('common.timezone')}</span>
+            <p className="profile-account-value--static">{user.timezone}</p>
+          </div>
+          <div>
+            <label className="profile-account-label" htmlFor="profile-locale">
+              {t('common.language')}
+            </label>
             <select
               id="profile-locale"
               className="form-input profile-locale-select"
@@ -64,17 +62,9 @@ export function ProfilePage() {
                 </option>
               ))}
             </select>
-          </dd>
+          </div>
         </div>
-        <div>
-          <dt>{t('profile.emailVerified')}</dt>
-          <dd>{user.email_verified ? t('common.yes') : t('common.no')}</dd>
-        </div>
-        <div>
-          <dt>{t('profile.verifiedAt')}</dt>
-          <dd>{formatDate(user.email_verified_at, intlLocale(locale), t('common.emptyDate'))}</dd>
-        </div>
-      </dl>
+      </div>
 
       <section className="profile-section" aria-labelledby="profile-mood-preferences-heading">
         <h2 id="profile-mood-preferences-heading">{t('profile.moodPreferencesTitle')}</h2>

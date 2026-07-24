@@ -15,13 +15,13 @@ export function CreateEntryPage() {
     dateParam && DATE_RE.test(dateParam) ? datetimeLocalForDate(dateParam, 20) : undefined
 
   return (
-    <section className="page">
+    <section className="page page-entry-create">
       <EmailVerificationBanner />
-      <header className="page-header">
-        <h1>{t('entries.newMoodEntry')}</h1>
-        <Link className="button button-secondary" to="/">
+      <header className="page-header page-header-compact">
+        <Link className="button button-secondary button-small" to="/">
           {t('common.backToEntries')}
         </Link>
+        <h1 className="visually-hidden">{t('entries.newMoodEntry')}</h1>
       </header>
       <MoodEntryForm mode="create" initialRecordedAtLocal={initialRecordedAtLocal} />
     </section>

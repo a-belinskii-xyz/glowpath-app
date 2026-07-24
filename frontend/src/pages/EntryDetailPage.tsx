@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteMoodEntry, getMoodEntry, patchMoodEntry } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
 import { AttachmentAudio } from '../components/AttachmentAudio'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { GoalIcon } from '../components/GoalIcon'
@@ -68,6 +69,7 @@ export function EntryDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
 
   useEffect(() => {
@@ -97,9 +99,10 @@ export function EntryDetailPage() {
   }, [id, locale, t])
 
   const handleDelete = async () => {
-    if (!entry || !window.confirm(t('confirm.deleteEntry'))) {
+    if (!entry) {
       return
     }
+    setConfirmDelete(false)
     setIsDeleting(true)
     setError(null)
     try {
@@ -147,6 +150,17 @@ export function EntryDetailPage() {
       </header>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
+      {confirmDelete && entry ? (
+        <ConfirmDialog
+          open
+          title={t('confirm.deleteEntryTitle')}
+          message={t('confirm.deleteEntry')}
+          confirmLabel={t('common.delete')}
+          isBusy={isDeleting}
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => void handleDelete()}
+        />
+      ) : null}
       {isLoading ? <p className="muted">{t('common.loadingEntry')}</p> : null}
 
       {entry ? (
@@ -249,7 +263,7 @@ export function EntryDetailPage() {
               <button
                 type="button"
                 className="entry-icon-button entry-icon-button-danger"
-                onClick={() => void handleDelete()}
+                onClick={() => setConfirmDelete(true)}
                 disabled={isDeleting}
                 aria-label={isDeleting ? t('common.deleting') : t('common.delete')}
                 title={isDeleting ? t('common.deleting') : t('common.delete')}

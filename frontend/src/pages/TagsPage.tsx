@@ -13,6 +13,7 @@ import {
   reorderTags,
 } from '../api/tagGroups'
 import { Alert } from '../components/Alert'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { PopupMenu } from '../components/PopupMenu'
@@ -45,6 +46,11 @@ export function TagsPage() {
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
   const [draggingTag, setDraggingTag] = useState<{ groupId: string; tagId: string } | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: 'group'; group: TagGroupPublic }
+    | { kind: 'tag'; group: TagGroupPublic; tag: TagPublic }
+    | null
+  >(null)
 
   const reload = async () => {
     const response = await listTagGroups()
@@ -130,7 +136,6 @@ export function TagsPage() {
   }
 
   const handleDeleteGroup = async (group: TagGroupPublic) => {
-    if (!window.confirm(t('confirm.deleteGroup', { label: group.label }))) return
     setError(null)
     try {
       await deleteTagGroup(group.id)
@@ -169,7 +174,6 @@ export function TagsPage() {
   }
 
   const handleDeleteTag = async (group: TagGroupPublic, tag: TagPublic) => {
-    if (!window.confirm(t('confirm.deleteTag', { label: tag.label }))) return
     setError(null)
     try {
       await deleteTag(group.id, tag.id)
@@ -257,10 +261,36 @@ export function TagsPage() {
       </p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
+      {pendingDelete ? (
+        <ConfirmDialog
+          open
+          title={
+            pendingDelete.kind === 'group'
+              ? t('confirm.deleteGroupTitle')
+              : t('confirm.deleteTagTitle')
+          }
+          message={
+            pendingDelete.kind === 'group'
+              ? t('confirm.deleteGroup', { label: pendingDelete.group.label })
+              : t('confirm.deleteTag', { label: pendingDelete.tag.label })
+          }
+          confirmLabel={t('common.delete')}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            const action = pendingDelete
+            setPendingDelete(null)
+            if (action.kind === 'group') {
+              void handleDeleteGroup(action.group)
+            } else {
+              void handleDeleteTag(action.group, action.tag)
+            }
+          }}
+        />
+      ) : null}
       {isLoading ? <p className="muted">{t('common.loadingTags')}</p> : null}
 
       {editor && editorTitle ? (
-        <form className="card form tag-editor" onSubmit={(event) => void handleSubmit(event)}>
+        <form className="card form appearance-form" onSubmit={(event) => void handleSubmit(event)}>
           <h2>{editorTitle}</h2>
           <FormField
             id="tag-name"
@@ -275,7 +305,12 @@ export function TagsPage() {
             <button type="submit" className="button" disabled={isSaving}>
               {isSaving ? t('common.saving') : t('common.save')}
             </button>
-            <button type="button" className="button button-secondary" onClick={closeEditor} disabled={isSaving}>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={closeEditor}
+              disabled={isSaving}
+            >
               {t('common.cancel')}
             </button>
           </div>
@@ -298,7 +333,7 @@ export function TagsPage() {
                 label={<h2>{group.label}</h2>}
                 ariaLabel={t('tagsPage.actionsFor', { label: group.label })}
                 onEdit={() => openEditor({ kind: 'edit-group', group })}
-                onDelete={() => void handleDeleteGroup(group)}
+                onDelete={() => setPendingDelete({ kind: 'group', group })}
               />
               <label className="tag-visibility-toggle">
                 <input
@@ -340,7 +375,7 @@ export function TagsPage() {
                     label={tag.label}
                     ariaLabel={t('tagsPage.actionsFor', { label: tag.label })}
                     onEdit={() => openEditor({ kind: 'edit-tag', group, tag })}
-                    onDelete={() => void handleDeleteTag(group, tag)}
+                    onDelete={() => setPendingDelete({ kind: 'tag', group, tag })}
                   />
                   <span className="tag-drag-hint muted" aria-hidden="true">
                     ⋮⋮

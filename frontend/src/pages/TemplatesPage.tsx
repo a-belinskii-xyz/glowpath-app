@@ -9,6 +9,7 @@ import {
   reorderNoteTemplates,
 } from '../api/noteTemplates'
 import { Alert } from '../components/Alert'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { MarkdownNoteEditor } from '../components/MarkdownNoteEditor'
@@ -39,6 +40,7 @@ export function TemplatesPage() {
   const [body, setBody] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<NoteTemplatePublic | null>(null)
 
   const reload = async () => {
     const response = await listNoteTemplates()
@@ -120,7 +122,6 @@ export function TemplatesPage() {
   }
 
   const handleDelete = async (template: NoteTemplatePublic) => {
-    if (!window.confirm(t('confirm.deleteTemplate', { label: template.label }))) return
     setError(null)
     try {
       await deleteNoteTemplate(template.id)
@@ -178,10 +179,24 @@ export function TemplatesPage() {
       <p className="muted">{t('templatesPage.hint')}</p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
+      {pendingDelete ? (
+        <ConfirmDialog
+          open
+          title={t('confirm.deleteTemplateTitle')}
+          message={t('confirm.deleteTemplate', { label: pendingDelete.label })}
+          confirmLabel={t('common.delete')}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            const template = pendingDelete
+            setPendingDelete(null)
+            void handleDelete(template)
+          }}
+        />
+      ) : null}
       {isLoading ? <p className="muted">{t('common.loadingTemplates')}</p> : null}
 
       {editor && editorTitle ? (
-        <form className="card form tag-editor" onSubmit={(event) => void handleSubmit(event)}>
+        <form className="card form appearance-form" onSubmit={(event) => void handleSubmit(event)}>
           <h2>{editorTitle}</h2>
           <FormField
             id="template-name"
@@ -230,7 +245,7 @@ export function TemplatesPage() {
                 label={<h2>{template.label}</h2>}
                 ariaLabel={t('templatesPage.actionsFor', { label: template.label })}
                 onEdit={() => openEditor({ kind: 'edit', template })}
-                onDelete={() => void handleDelete(template)}
+                onDelete={() => setPendingDelete(template)}
               />
               <span className="tag-drag-hint muted" aria-hidden="true">
                 ⋮⋮

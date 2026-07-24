@@ -9,6 +9,7 @@ import {
   reorderGoals,
 } from '../api/goals'
 import { Alert } from '../components/Alert'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { GoalIcon } from '../components/GoalIcon'
@@ -16,7 +17,7 @@ import { GoalIconEditor } from '../components/GoalIconEditor'
 import { PopupMenu } from '../components/PopupMenu'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
-import { moodGlowFilter } from '../design'
+import { moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
 import { ApiError } from '../lib/errors'
 import { todayKey } from '../lib/datetime'
 import { isValidHexColor } from '../lib/moodScale'
@@ -51,6 +52,7 @@ export function GoalsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGoalId, setTogglingGoalId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<GoalPublic | null>(null)
 
   const reload = async () => {
     const response = await listGoals()
@@ -131,12 +133,14 @@ export function GoalsPage() {
       setError(t('goalsPage.endsOnBeforeStarts'))
       return
     }
-    if (editor.kind === 'create' && !isValidHexColor(draftColor)) {
+    if (!isValidHexColor(draftColor)) {
       setError(t('goalsPage.invalidColor'))
       return
     }
     const emoji = draftEmoji.trim()
-    if (editor.kind === 'create' && !emoji) {
+    const usingUpload =
+      editor.kind === 'edit' && editor.goal.icon_type === 'upload'
+    if (!usingUpload && !emoji) {
       setError(t('goalsPage.emojiRequired'))
       return
     }
@@ -165,6 +169,10 @@ export function GoalsPage() {
           times_per_week: timesPerWeek,
           starts_on: startsOn,
           ends_on: endsOn || null,
+          color: draftColor,
+          ...(usingUpload
+            ? {}
+            : { icon_type: 'emoji' as const, icon: emoji }),
         })
       }
       await reload()
@@ -177,7 +185,6 @@ export function GoalsPage() {
   }
 
   const handleDelete = async (goal: GoalPublic) => {
-    if (!window.confirm(t('confirm.deleteGoal', { label: goal.label }))) return
     setError(null)
     try {
       await deleteGoal(goal.id)
@@ -276,10 +283,24 @@ export function GoalsPage() {
       </p>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
+      {pendingDelete ? (
+        <ConfirmDialog
+          open
+          title={t('confirm.deleteGoalTitle')}
+          message={t('confirm.deleteGoal', { label: pendingDelete.label })}
+          confirmLabel={t('common.delete')}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            const goal = pendingDelete
+            setPendingDelete(null)
+            void handleDelete(goal)
+          }}
+        />
+      ) : null}
       {isLoading ? <p className="muted">{t('common.loadingGoals')}</p> : null}
 
       {editor && editorTitle ? (
-        <form className="card form tag-editor" onSubmit={(event) => void handleSubmit(event)}>
+        <form className="card form appearance-form" onSubmit={(event) => void handleSubmit(event)}>
           <h2>{editorTitle}</h2>
           <FormField
             id="goal-name"
@@ -302,89 +323,51 @@ export function GoalsPage() {
               required
             />
           </label>
-          <label className="form-field">
-            <span className="form-label">{t('goalsPage.startsOn')}</span>
-            <input
-              className="form-input"
-              type="date"
-              value={startsOn}
-              onChange={(event) => setStartsOn(event.target.value)}
-              required
-            />
-          </label>
-          <label className="form-field">
-            <span className="form-label">{t('goalsPage.endsOn')}</span>
-            <input
-              className="form-input"
-              type="date"
-              value={endsOn}
-              min={startsOn || undefined}
-              onChange={(event) => setEndsOn(event.target.value)}
-            />
-            <span className="form-hint">{t('goalsPage.endsOnHint')}</span>
-          </label>
-          {editor.kind === 'create' ? (
-            <div className="goal-icon-create-fields">
-              <div className="mood-preferences-preview">
-                <span
-                  className="mood-preferences-swatch"
-                  style={{ backgroundColor: isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color }}
-                  aria-hidden
-                />
-                <span
-                  style={{
-                    filter: moodGlowFilter(
-                      isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color,
-                    ),
-                  }}
-                >
-                  <GoalIcon
-                    style={{ color: draftColor, icon_type: 'emoji', icon: draftEmoji || '🎯' }}
-                    className="mood-preferences-emoji"
-                  />
-                </span>
-              </div>
-              <div className="mood-preferences-controls">
-                <input
-                  className="mood-preferences-color-input"
-                  type="color"
-                  value={isValidHexColor(draftColor) ? draftColor : DEFAULT_GOAL_STYLE.color}
-                  onChange={(event) => setDraftColor(event.target.value)}
-                  aria-label={t('goalsPage.color')}
-                />
-                <input
-                  className="form-input mood-preferences-hex-input"
-                  type="text"
-                  value={draftColor}
-                  onChange={(event) => setDraftColor(event.target.value)}
-                  pattern="^#[0-9A-Fa-f]{6}$"
-                  spellCheck={false}
-                  aria-label={t('goalsPage.hex')}
-                />
-              </div>
-              <label className="form-field">
-                <span className="form-label">{t('moodPreferences.iconTypeEmoji')}</span>
-                <input
-                  className="form-input mood-preferences-emoji-input"
-                  type="text"
-                  value={draftEmoji}
-                  maxLength={8}
-                  onChange={(event) => setDraftEmoji(event.target.value)}
-                />
-              </label>
-              <p className="form-hint">{t('goalsPage.uploadAfterCreate')}</p>
-            </div>
-          ) : (
-            <GoalIconEditor
-              goal={editor.goal}
-              onGoalChange={(updated) => {
-                setEditor({ kind: 'edit', goal: updated })
-                setGoals((current) =>
-                  current.map((item) => (item.id === updated.id ? updated : item)),
-                )
-              }}
-            />
-          )}
+          <div className="form-field-row">
+            <label className="form-field">
+              <span className="form-label">{t('goalsPage.startsOn')}</span>
+              <input
+                className="form-input"
+                type="date"
+                value={startsOn}
+                onChange={(event) => setStartsOn(event.target.value)}
+                required
+              />
+            </label>
+            <label className="form-field">
+              <span className="form-label">{t('goalsPage.endsOn')}</span>
+              <input
+                className="form-input"
+                type="date"
+                value={endsOn}
+                min={startsOn || undefined}
+                onChange={(event) => setEndsOn(event.target.value)}
+              />
+              <span className="form-hint">{t('goalsPage.endsOnHint')}</span>
+            </label>
+          </div>
+          <GoalIconEditor
+            color={draftColor}
+            onColorChange={setDraftColor}
+            emoji={draftEmoji}
+            onEmojiChange={setDraftEmoji}
+            goal={editor.kind === 'edit' ? editor.goal : undefined}
+            onGoalChange={
+              editor.kind === 'edit'
+                ? (updated) => {
+                    setEditor({ kind: 'edit', goal: updated })
+                    setGoals((current) =>
+                      current.map((item) => (item.id === updated.id ? updated : item)),
+                    )
+                    if (updated.icon_type === 'emoji') {
+                      setDraftEmoji(updated.icon)
+                    }
+                    setDraftColor(updated.color)
+                  }
+                : undefined
+            }
+            disabled={isSaving}
+          />
           <div className="button-row">
             <button type="submit" className="button" disabled={isSaving}>
               {isSaving ? t('common.saving') : t('common.save')}
@@ -412,58 +395,81 @@ export function GoalsPage() {
             onDrop={() => void handleDrop(goal.id)}
             onDragEnd={() => setDraggingId(null)}
           >
-            <header className="goal-card-header">
-              <PopupMenu
-                label={
-                  <h2 className="goal-card-title">
-                    <GoalIcon
-                      style={{
-                        color: goal.color,
-                        icon_type: goal.icon_type,
-                        icon: goal.icon,
-                      }}
-                      className="goal-card-icon"
-                    />
-                    {goal.label}
-                  </h2>
-                }
-                ariaLabel={t('goalsPage.actionsFor', { label: goal.label })}
-                onEdit={() => openEditor({ kind: 'edit', goal })}
-                onDelete={() => void handleDelete(goal)}
-              />
-              <span className="tag-drag-hint muted" aria-hidden="true">
-                ⋮⋮
+            <div
+              className="goal-card-icon-wrap"
+              style={{
+                background: moodSubtleFill(goal.color),
+                boxShadow: moodGlowBoxShadow(goal.color, 'xs'),
+              }}
+            >
+              <span style={{ filter: moodGlowFilter(goal.color, 'xs') }}>
+                <GoalIcon
+                  style={{
+                    color: goal.color,
+                    icon_type: goal.icon_type,
+                    icon: goal.icon,
+                  }}
+                  className="goal-card-icon"
+                />
               </span>
-            </header>
-            <p className="goal-week-progress">
-              {t('goalsPage.weekProgress', {
-                done: goal.completed_this_week,
-                target: goal.times_per_week,
-              })}
-            </p>
-            <p className="muted goal-meta">
-              {goal.ends_on
-                ? t('goalsPage.dateRangeLabel', { start: goal.starts_on, end: goal.ends_on })
-                : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
-            </p>
-            <label className="tag-visibility-toggle">
-              <input
-                type="checkbox"
-                checked={goal.show_on_entry}
-                disabled={togglingGoalId === goal.id || (!goal.show_on_entry && atVisibleLimit)}
-                onChange={() => void handleToggleShowOnEntry(goal)}
-              />
-              <span>{t('goalsPage.showOnEntry')}</span>
-            </label>
-            <label className="tag-visibility-toggle">
-              <input
-                type="checkbox"
-                checked={goal.show_in_stats}
-                disabled={togglingGoalId === goal.id || (!goal.show_in_stats && atStatsLimit)}
-                onChange={() => void handleToggleShowInStats(goal)}
-              />
-              <span>{t('goalsPage.showInStats')}</span>
-            </label>
+            </div>
+
+            <div className="goal-card-body">
+              <div className="goal-card-top">
+                <PopupMenu
+                  label={<h2 className="goal-card-title">{goal.label}</h2>}
+                  ariaLabel={t('goalsPage.actionsFor', { label: goal.label })}
+                  onEdit={() => openEditor({ kind: 'edit', goal })}
+                  onDelete={() => setPendingDelete(goal)}
+                />
+                <p className="goal-week-progress">
+                  {t('goalsPage.weekProgress', {
+                    done: goal.completed_this_week,
+                    target: goal.times_per_week,
+                  })}
+                </p>
+                <span className="tag-drag-hint muted" aria-hidden="true">
+                  ⋮⋮
+                </span>
+              </div>
+
+              <p className="muted goal-meta">
+                {goal.ends_on
+                  ? t('goalsPage.dateRangeLabel', { start: goal.starts_on, end: goal.ends_on })
+                  : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
+              </p>
+
+              <div className="goal-card-flags">
+                <label
+                  className={`goal-flag${goal.show_on_entry ? ' is-on' : ''}`}
+                  title={t('goalsPage.showOnEntry')}
+                >
+                  <input
+                    type="checkbox"
+                    checked={goal.show_on_entry}
+                    disabled={
+                      togglingGoalId === goal.id || (!goal.show_on_entry && atVisibleLimit)
+                    }
+                    onChange={() => void handleToggleShowOnEntry(goal)}
+                  />
+                  <span>{t('goalsPage.showOnEntryShort')}</span>
+                </label>
+                <label
+                  className={`goal-flag${goal.show_in_stats ? ' is-on' : ''}`}
+                  title={t('goalsPage.showInStats')}
+                >
+                  <input
+                    type="checkbox"
+                    checked={goal.show_in_stats}
+                    disabled={
+                      togglingGoalId === goal.id || (!goal.show_in_stats && atStatsLimit)
+                    }
+                    onChange={() => void handleToggleShowInStats(goal)}
+                  />
+                  <span>{t('goalsPage.showInStatsShort')}</span>
+                </label>
+              </div>
+            </div>
           </article>
         ))}
       </div>

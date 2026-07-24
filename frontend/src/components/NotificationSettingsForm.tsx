@@ -80,10 +80,7 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
 
   const needsReminderTime = enabled && (dailyMood || goalReminders)
 
-  const handleEnableReminder = (
-    kind: 'daily' | 'goal',
-    next: boolean,
-  ) => {
+  const handleEnableReminder = (kind: 'daily' | 'goal', next: boolean) => {
     if (kind === 'daily') {
       setDailyMood(next)
     } else {
@@ -140,21 +137,26 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
       {error ? <Alert variant="error">{error}</Alert> : null}
       {success ? <Alert variant="success">{success}</Alert> : null}
 
-      <div className="notification-toggles">
-        <label className="tag-visibility-toggle">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(event) => setEnabled(event.target.checked)}
-          />
-          <span>{t('profile.notificationsEnabled')}</span>
-        </label>
+      <label className="notification-master">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(event) => setEnabled(event.target.checked)}
+        />
+        <span>
+          <span className="notification-master-title">{t('profile.notificationsEnabled')}</span>
+          <span className="notification-master-hint">{t('profile.notificationsEnabledHint')}</span>
+        </span>
+      </label>
 
-        <label className="tag-visibility-toggle">
-          <input type="checkbox" checked disabled readOnly />
+      <fieldset className="notification-group" disabled={!enabled}>
+        <legend className="notification-group-title">{t('profile.notificationChannels')}</legend>
+        <div className="notification-channel-row">
           <span>{t('profile.channelEmail')}</span>
-        </label>
-
+          <span className="status-pill status-pill--ok status-pill--sm">
+            {t('profile.channelAlwaysOn')}
+          </span>
+        </div>
         <label
           className={
             telegramLinked
@@ -169,30 +171,32 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
             onChange={(event) => setTelegramChannel(event.target.checked)}
           />
           <span>
-            {telegramLinked ? t('profile.channelTelegram') : t('profile.channelTelegramLinkFirst')}
+            {telegramLinked
+              ? t('profile.channelTelegram')
+              : t('profile.channelTelegramLinkFirst')}
           </span>
         </label>
+      </fieldset>
 
+      <fieldset className="notification-group" disabled={!enabled}>
+        <legend className="notification-group-title">{t('profile.notificationReminders')}</legend>
         <label className="tag-visibility-toggle">
           <input
             type="checkbox"
             checked={dailyMood}
-            disabled={!enabled}
             onChange={(event) => handleEnableReminder('daily', event.target.checked)}
           />
           <span>{t('profile.dailyMoodReminder')}</span>
         </label>
-
         <label className="tag-visibility-toggle">
           <input
             type="checkbox"
             checked={goalReminders}
-            disabled={!enabled}
             onChange={(event) => handleEnableReminder('goal', event.target.checked)}
           />
           <span>{t('profile.goalReminders')}</span>
         </label>
-      </div>
+      </fieldset>
 
       {needsReminderTime ? (
         <FormField

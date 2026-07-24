@@ -9,6 +9,9 @@ import {
   type MoodIconMeta,
 } from '../api/moodPreferences'
 import { Alert } from './Alert'
+import { ColorPicker } from './ColorPicker'
+import { ConfirmDialog } from './ConfirmDialog'
+import { EmojiPicker } from './EmojiPicker'
 import { ImageCropModal } from './ImageCropModal'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { useLocale } from '../context/LocaleContext'
@@ -20,11 +23,7 @@ import {
   readMoodIconImage,
   type CropValidationError,
 } from '../lib/imageCrop'
-import {
-  defaultBuiltinSlugForScore,
-  getBuiltinMoodIconLabel,
-  MOOD_BUILTIN_ICONS,
-} from '../lib/moodBuiltinIcons'
+import { MOOD_EMOJI_GROUPS } from '../lib/emojiPalette'
 import { revokeMoodIconObjectUrl } from '../lib/moodIconBlobUrl'
 import {
   DEFAULT_MOOD_SCORE_COLORS,
@@ -45,6 +44,13 @@ type PendingCrop = {
   replaceIconId?: string
 }
 
+type PendingConfirm =
+  | { kind: 'reset-score'; score: number; label: string }
+  | { kind: 'reset-all' }
+  | { kind: 'remove-icon'; score: number; iconId: string }
+
+type IconSourceUi = 'emoji' | 'upload'
+
 const MAX_UPLOADS_PER_SCORE = 3
 
 function groupIconsByScore(items: MoodIconMeta[]): Record<number, MoodIconMeta[]> {
@@ -57,6 +63,10 @@ function groupIconsByScore(items: MoodIconMeta[]): Record<number, MoodIconMeta[]
   return grouped
 }
 
+function resolveIconSourceUi(iconType: MoodScoreIconType): IconSourceUi {
+  return iconType === 'upload' ? 'upload' : 'emoji'
+}
+
 export function MoodPreferencesForm() {
   const { locale, t } = useLocale()
   const { scores, isLoading, refreshPreferences, setPreferences } = useMoodPreferences()
@@ -67,9 +77,12 @@ export function MoodPreferencesForm() {
   const [draftEmojis, setDraftEmojis] = useState<Record<number, string>>({})
   const [uploadedIcons, setUploadedIcons] = useState<Record<number, MoodIconMeta[]>>({})
   const [maxUploadsPerScore, setMaxUploadsPerScore] = useState(MAX_UPLOADS_PER_SCORE)
+  const [sourceUiByScore, setSourceUiByScore] = useState<Record<number, IconSourceUi>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
   const [iconBusyScore, setIconBusyScore] = useState<number | null>(null)
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null)
   const [isCropSaving, setIsCropSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -175,10 +188,6 @@ export function MoodPreferencesForm() {
     setDraftLabels((current) => ({ ...current, [score]: value }))
   }
 
-  const handleEmojiDraftChange = (score: number, value: string) => {
-    setDraftEmojis((current) => ({ ...current, [score]: value }))
-  }
-
   const patchIconStyle = async (
     score: number,
     patch: { icon_type: MoodScoreIconType; icon: string; color?: string },
@@ -203,18 +212,12 @@ export function MoodPreferencesForm() {
     }
   }
 
-  const handleIconSourceChange = async (score: number, iconType: MoodScoreIconType) => {
+  const handleIconSourceChange = async (score: number, iconType: IconSourceUi) => {
+    setSourceUiByScore((current) => ({ ...current, [score]: iconType }))
     if (iconType === 'emoji') {
       await patchIconStyle(score, {
         icon_type: 'emoji',
         icon: draftEmojis[score] ?? defaultMoodScoreStyle(score, locale).icon,
-      })
-      return
-    }
-    if (iconType === 'builtin') {
-      await patchIconStyle(score, {
-        icon_type: 'builtin',
-        icon: defaultBuiltinSlugForScore(score),
       })
       return
     }
@@ -228,11 +231,9 @@ export function MoodPreferencesForm() {
     })
   }
 
-  const handleEmojiBlur = async (score: number) => {
-    const emoji = draftEmojis[score]?.trim()
-    if (!emoji) {
-      return
-    }
+  const handleEmojiSelect = async (score: number, emoji: string) => {
+    setDraftEmojis((current) => ({ ...current, [score]: emoji }))
+    setSourceUiByScore((current) => ({ ...current, [score]: 'emoji' }))
     const current = scores[String(score)]
     if (current?.icon_type === 'emoji' && current.icon === emoji) {
       return
@@ -240,15 +241,8 @@ export function MoodPreferencesForm() {
     await patchIconStyle(score, { icon_type: 'emoji', icon: emoji })
   }
 
-  const handleBuiltinSelect = async (score: number, slug: string) => {
-    const current = scores[String(score)]
-    if (current?.icon_type === 'builtin' && current.icon === slug) {
-      return
-    }
-    await patchIconStyle(score, { icon_type: 'builtin', icon: slug })
-  }
-
   const handleUploadSelect = async (score: number, iconId: string) => {
+    setSourceUiByScore((current) => ({ ...current, [score]: 'upload' }))
     const current = scores[String(score)]
     if (current?.icon_type === 'upload' && current.icon === iconId) {
       return
@@ -323,6 +317,7 @@ export function MoodPreferencesForm() {
       }
 
       await refreshUploadedIcons()
+      setSourceUiByScore((current) => ({ ...current, [score]: 'upload' }))
       setSuccess(t('moodPreferences.saved'))
       closeCropEditor()
     } catch (err) {
@@ -441,9 +436,52 @@ export function MoodPreferencesForm() {
     )
   }
 
+  const runPendingConfirm = async () => {
+    if (!pendingConfirm) {
+      return
+    }
+    const action = pendingConfirm
+    setPendingConfirm(null)
+    if (action.kind === 'reset-score') {
+      await handleResetScore(action.score)
+      return
+    }
+    if (action.kind === 'reset-all') {
+      handleResetAll()
+      return
+    }
+    await handleRemoveUpload(action.score, action.iconId)
+  }
+
+  const confirmDialogProps = (() => {
+    if (!pendingConfirm) {
+      return null
+    }
+    if (pendingConfirm.kind === 'reset-score') {
+      return {
+        title: t('confirm.resetMoodScoreTitle'),
+        message: t('confirm.resetMoodScore', { label: pendingConfirm.label }),
+        confirmLabel: t('moodPreferences.resetScore'),
+      }
+    }
+    if (pendingConfirm.kind === 'reset-all') {
+      return {
+        title: t('confirm.resetMoodAllTitle'),
+        message: t('confirm.resetMoodAll'),
+        confirmLabel: t('moodPreferences.resetAll'),
+      }
+    }
+    return {
+      title: t('confirm.removeMoodIconTitle'),
+      message: t('confirm.removeMoodIcon'),
+      confirmLabel: t('moodPreferences.removeIcon'),
+    }
+  })()
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setSuccess(null)
+    setJustSaved(false)
 
     for (const option of moodScoreOptions) {
       const color = draftColors[option.score]
@@ -483,6 +521,7 @@ export function MoodPreferencesForm() {
       })
       applyPreferences(saved)
       setSuccess(t('moodPreferences.saved'))
+      setJustSaved(true)
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageMoodPreferences'))
@@ -493,6 +532,14 @@ export function MoodPreferencesForm() {
       setIsSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (!justSaved) {
+      return
+    }
+    const timer = window.setTimeout(() => setJustSaved(false), 1800)
+    return () => window.clearTimeout(timer)
+  }, [justSaved])
 
   if (isLoading) {
     return <p className="muted">{t('common.loadingMoodPreferences')}</p>
@@ -510,6 +557,16 @@ export function MoodPreferencesForm() {
           onSave={handleCropSave}
         />
       ) : null}
+      {confirmDialogProps ? (
+        <ConfirmDialog
+          open
+          title={confirmDialogProps.title}
+          message={confirmDialogProps.message}
+          confirmLabel={confirmDialogProps.confirmLabel}
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => void runPendingConfirm()}
+        />
+      ) : null}
       {error ? <Alert variant="error">{error}</Alert> : null}
       {success ? <Alert variant="success">{success}</Alert> : null}
 
@@ -521,9 +578,11 @@ export function MoodPreferencesForm() {
             color: draftColors[option.score] ?? option.color,
           }
           const iconBusy = iconBusyScore === option.score
-          const iconType = currentStyle.icon_type
+          const sourceUi =
+            sourceUiByScore[option.score] ?? resolveIconSourceUi(currentStyle.icon_type)
           const scoreUploads = uploadedIcons[option.score] ?? []
           const uploadFull = scoreUploads.length >= maxUploadsPerScore
+          const label = draftLabels[option.score] ?? option.label
 
           return (
             <div key={option.score} className="mood-preferences-row">
@@ -534,6 +593,7 @@ export function MoodPreferencesForm() {
                   aria-hidden
                 />
                 <span
+                  className="mood-preferences-icon-slot"
                   style={{ filter: moodGlowFilter(previewStyle.color) }}
                 >
                   <MoodScoreIcon
@@ -543,220 +603,188 @@ export function MoodPreferencesForm() {
                   />
                 </span>
                 <label className="mood-preferences-label-field">
-                  <span className="visually-hidden">{t('moodPreferences.labelFor', { score: option.score })}</span>
+                  <span className="visually-hidden">
+                    {t('moodPreferences.labelFor', { score: option.score })}
+                  </span>
                   <input
                     className="form-input mood-preferences-label-input"
                     type="text"
-                    value={draftLabels[option.score] ?? option.label}
+                    value={label}
                     maxLength={MAX_MOOD_SCORE_LABEL_LENGTH}
                     onChange={(event) => handleLabelChange(option.score, event.target.value)}
                     aria-label={t('moodPreferences.labelFor', { score: option.score })}
                   />
                 </label>
-              </div>
-
-              <div className="mood-preferences-controls">
-                <input
-                  className="mood-preferences-color-input"
-                  type="color"
-                  value={draftColors[option.score] ?? option.color}
-                  onChange={(event) => handleColorChange(option.score, event.target.value)}
-                  aria-label={t('moodPreferences.colorFor', {
-                    label: draftLabels[option.score] ?? option.label,
-                  })}
-                />
-                <input
-                  className="form-input mood-preferences-hex-input"
-                  type="text"
-                  value={draftColors[option.score] ?? option.color}
-                  onChange={(event) => handleColorChange(option.score, event.target.value)}
-                  pattern="^#[0-9A-Fa-f]{6}$"
-                  spellCheck={false}
-                  aria-label={t('moodPreferences.hexFor', {
-                    label: draftLabels[option.score] ?? option.label,
-                  })}
-                />
                 <button
                   type="button"
-                  className="button button-secondary button-small"
-                  onClick={() => void handleResetScore(option.score)}
+                  className="button button-danger-ghost button-small"
+                  onClick={() =>
+                    setPendingConfirm({
+                      kind: 'reset-score',
+                      score: option.score,
+                      label,
+                    })
+                  }
                   disabled={iconBusy}
                 >
                   {t('moodPreferences.resetScore')}
                 </button>
               </div>
 
+              <ColorPicker
+                id={`mood-color-${option.score}`}
+                value={draftColors[option.score] ?? option.color}
+                onChange={(hex) => handleColorChange(option.score, hex)}
+                disabled={iconBusy}
+                colorLabel={t('moodPreferences.colorFor', { label })}
+                hexLabel={t('moodPreferences.hexFor', { label })}
+              />
+
               <fieldset className="mood-preferences-icon-source" disabled={iconBusy}>
                 <legend className="form-label">{t('moodPreferences.iconSource')}</legend>
-                <div className="mood-preferences-icon-source-options">
-                  <label className="mood-preferences-radio">
-                    <input
-                      type="radio"
-                      name={`icon-source-${option.score}`}
-                      checked={iconType === 'emoji'}
-                      onChange={() => void handleIconSourceChange(option.score, 'emoji')}
-                    />
+                <div
+                  className="segmented-control"
+                  role="radiogroup"
+                  aria-label={t('moodPreferences.iconSource')}
+                >
+                  <button
+                    type="button"
+                    className={`segmented-control-option${sourceUi === 'emoji' ? ' is-active' : ''}`}
+                    aria-pressed={sourceUi === 'emoji'}
+                    onClick={() => void handleIconSourceChange(option.score, 'emoji')}
+                  >
                     {t('moodPreferences.iconTypeEmoji')}
-                  </label>
-                  <label className="mood-preferences-radio">
-                    <input
-                      type="radio"
-                      name={`icon-source-${option.score}`}
-                      checked={iconType === 'builtin'}
-                      onChange={() => void handleIconSourceChange(option.score, 'builtin')}
-                    />
-                    {t('moodPreferences.iconTypeBuiltin')}
-                  </label>
-                  <label className="mood-preferences-radio">
-                    <input
-                      type="radio"
-                      name={`icon-source-${option.score}`}
-                      checked={iconType === 'upload'}
-                      disabled={scoreUploads.length === 0}
-                      onChange={() => void handleIconSourceChange(option.score, 'upload')}
-                    />
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-control-option${sourceUi === 'upload' ? ' is-active' : ''}`}
+                    aria-pressed={sourceUi === 'upload'}
+                    onClick={() => void handleIconSourceChange(option.score, 'upload')}
+                  >
                     {t('moodPreferences.iconTypeUpload')}
-                  </label>
+                  </button>
                 </div>
 
-                {iconType === 'emoji' ? (
-                  <label className="form-field mood-preferences-emoji-field">
-                    <span className="form-label">{t('moodPreferences.iconTypeEmoji')}</span>
-                    <input
-                      className="form-input mood-preferences-emoji-input"
-                      type="text"
+                <div className="mood-preferences-icon-panel">
+                  {sourceUi === 'emoji' ? (
+                    <EmojiPicker
                       value={draftEmojis[option.score] ?? ''}
-                      maxLength={8}
-                      onChange={(event) => handleEmojiDraftChange(option.score, event.target.value)}
-                      onBlur={() => void handleEmojiBlur(option.score)}
+                      groups={MOOD_EMOJI_GROUPS}
+                      groupLabel={(groupId) => t(`moodPreferences.emojiGroup${groupId}`)}
+                      onChange={(emoji) => void handleEmojiSelect(option.score, emoji)}
+                      disabled={iconBusy}
+                      label={t('moodPreferences.chooseEmoji')}
                     />
-                  </label>
-                ) : null}
-
-                {iconType === 'builtin' ? (
-                  <div className="mood-preferences-builtin-grid" role="list">
-                    <p className="form-hint">{t('moodPreferences.selectBuiltinIcon')}</p>
-                    {MOOD_BUILTIN_ICONS.map((icon) => {
-                      const selected = currentStyle.icon === icon.slug
-                      return (
-                        <button
-                          key={icon.slug}
-                          type="button"
-                          role="listitem"
-                          className={`mood-preferences-builtin-option${selected ? ' mood-preferences-builtin-option-selected' : ''}`}
-                          aria-pressed={selected}
-                          aria-label={getBuiltinMoodIconLabel(icon.slug, locale)}
-                          onClick={() => void handleBuiltinSelect(option.score, icon.slug)}
-                        >
-                          <img
-                            src={icon.assetPath}
-                            alt=""
-                            className="mood-preferences-builtin-thumb"
-                          />
-                        </button>
-                      )
-                    })}
-                  </div>
-                ) : null}
-
-                <div className="mood-preferences-upload-section">
-                  {scoreUploads.length > 0 ? (
-                    <>
-                      <p className="form-hint">{t('moodPreferences.selectUploadedIcon')}</p>
-                      <div className="mood-preferences-upload-grid" role="list">
-                        {scoreUploads.map((icon) => {
-                          const selected =
-                            currentStyle.icon_type === 'upload' && currentStyle.icon === icon.id
-                          return (
-                            <div key={icon.id} className="mood-preferences-upload-item" role="listitem">
-                              <button
-                                type="button"
-                                className={`mood-preferences-upload-tile${selected ? ' mood-preferences-upload-tile-selected' : ''}`}
-                                aria-pressed={selected}
-                                aria-label={
-                                  selected ? t('moodPreferences.editIcon') : icon.original_name
-                                }
-                                disabled={iconBusyScore === option.score}
-                                onClick={() => {
-                                  if (selected) {
-                                    void handleRecropUpload(option.score, icon)
-                                  } else {
-                                    void handleUploadSelect(option.score, icon.id)
-                                  }
-                                }}
+                  ) : (
+                    <div className="mood-preferences-upload-section">
+                      <div className="mood-preferences-upload-row">
+                        <div className="mood-preferences-upload-grid" role="list">
+                          {scoreUploads.map((icon) => {
+                            const selected =
+                              currentStyle.icon_type === 'upload' && currentStyle.icon === icon.id
+                            return (
+                              <div
+                                key={icon.id}
+                                className="mood-preferences-upload-item"
+                                role="listitem"
                               >
-                                <span
-                                  style={{
-                                    filter: moodGlowFilter(previewStyle.color),
+                                <button
+                                  type="button"
+                                  className={`mood-preferences-upload-tile${selected ? ' mood-preferences-upload-tile-selected' : ''}`}
+                                  aria-pressed={selected}
+                                  aria-label={
+                                    selected
+                                      ? t('moodPreferences.editIcon')
+                                      : icon.original_name
+                                  }
+                                  disabled={iconBusyScore === option.score}
+                                  onClick={() => {
+                                    if (selected) {
+                                      void handleRecropUpload(option.score, icon)
+                                    } else {
+                                      void handleUploadSelect(option.score, icon.id)
+                                    }
                                   }}
                                 >
-                                  <MoodScoreIcon
+                                  <span
                                     style={{
-                                      color: previewStyle.color,
-                                      icon_type: 'upload',
-                                      icon: icon.id,
-                                      label: draftLabels[option.score] ?? option.label,
+                                      filter: moodGlowFilter(previewStyle.color),
                                     }}
-                                    className="mood-preferences-upload-thumb"
-                                    fallbackScore={option.score}
-                                  />
-                                </span>
-                              </button>
-                              <button
-                                type="button"
-                                className="mood-preferences-upload-remove"
-                                aria-label={t('moodPreferences.removeIcon')}
-                                disabled={iconBusyScore === option.score}
-                                onClick={() => void handleRemoveUpload(option.score, icon.id)}
-                              >
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  width="14"
-                                  height="14"
-                                  aria-hidden="true"
-                                  focusable="false"
+                                  >
+                                    <MoodScoreIcon
+                                      style={{
+                                        color: previewStyle.color,
+                                        icon_type: 'upload',
+                                        icon: icon.id,
+                                        label,
+                                      }}
+                                      className="mood-preferences-upload-thumb"
+                                      fallbackScore={option.score}
+                                    />
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="mood-preferences-upload-remove"
+                                  aria-label={t('moodPreferences.removeIcon')}
+                                  disabled={iconBusyScore === option.score}
+                                  onClick={() =>
+                                    setPendingConfirm({
+                                      kind: 'remove-icon',
+                                      score: option.score,
+                                      iconId: icon.id,
+                                    })
+                                  }
                                 >
-                                  <path
-                                    fill="currentColor"
-                                    d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                  />
-                                </svg>
-                              </button>
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    width="14"
+                                    height="14"
+                                    aria-hidden="true"
+                                    focusable="false"
+                                  >
+                                    <path
+                                      fill="currentColor"
+                                      d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            )
+                          })}
+                          {!uploadFull ? (
+                            <div className="mood-preferences-upload-item" role="listitem">
+                              <label
+                                className={`mood-preferences-upload-add${iconBusy ? ' is-disabled' : ''}`}
+                                aria-label={t('moodPreferences.uploadIcon')}
+                              >
+                                <span aria-hidden="true">+</span>
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/gif"
+                                  className="mood-preferences-upload-input"
+                                  disabled={iconBusy}
+                                  onChange={(event) =>
+                                    void handleUploadSelectFile(option.score, event)
+                                  }
+                                />
+                              </label>
                             </div>
-                          )
-                        })}
+                          ) : null}
+                        </div>
+                        <p className="form-hint mood-preferences-upload-count">
+                          {uploadFull
+                            ? t('moodPreferences.uploadSlotsFull', {
+                                max: String(maxUploadsPerScore),
+                              })
+                            : t('moodPreferences.uploadCount', {
+                                remaining: String(maxUploadsPerScore - scoreUploads.length),
+                                max: String(maxUploadsPerScore),
+                              })}
+                        </p>
                       </div>
-                    </>
-                  ) : null}
-
-                  <div className="mood-preferences-upload-controls">
-                    {uploadFull ? (
-                      <button type="button" className="button button-secondary button-small" disabled>
-                        {t('moodPreferences.uploadIcon')}
-                      </button>
-                    ) : (
-                      <label className="button button-secondary button-small mood-preferences-upload-label">
-                        {t('moodPreferences.uploadIcon')}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
-                          className="mood-preferences-upload-input"
-                          onChange={(event) => void handleUploadSelectFile(option.score, event)}
-                        />
-                      </label>
-                    )}
-                    <span className="form-hint mood-preferences-upload-count">
-                      {t('moodPreferences.uploadCount', {
-                        count: String(scoreUploads.length),
-                        max: String(maxUploadsPerScore),
-                      })}
-                    </span>
-                  </div>
-                  {uploadFull ? (
-                    <p className="form-hint mood-preferences-upload-limit">
-                      {t('moodPreferences.uploadLimitReached', { max: String(maxUploadsPerScore) })}
-                    </p>
-                  ) : null}
+                    </div>
+                  )}
                 </div>
               </fieldset>
             </div>
@@ -767,14 +795,23 @@ export function MoodPreferencesForm() {
       <p className="form-hint">{t('moodPreferences.lead')}</p>
 
       <div className="button-row">
-        <button type="button" className="button button-secondary" onClick={handleResetAll}>
+        <button
+          type="button"
+          className="button button-danger-ghost"
+          onClick={() => setPendingConfirm({ kind: 'reset-all' })}
+        >
           {t('moodPreferences.resetAll')}
         </button>
-        <button type="button" className="button button-secondary" onClick={() => void refreshPreferences()}>
-          {t('common.refresh')}
-        </button>
-        <button type="submit" className="button" disabled={isSaving}>
-          {isSaving ? t('common.saving') : t('moodPreferences.save')}
+        <button
+          type="submit"
+          className={`button${justSaved ? ' is-saved' : ''}`}
+          disabled={isSaving}
+        >
+          {isSaving
+            ? t('common.saving')
+            : justSaved
+              ? t('moodPreferences.saveDone')
+              : t('moodPreferences.save')}
         </button>
       </div>
     </form>

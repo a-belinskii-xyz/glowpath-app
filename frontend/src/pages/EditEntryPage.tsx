@@ -51,13 +51,13 @@ export function EditEntryPage() {
     : '/'
 
   return (
-    <section className="page">
+    <section className="page page-entry-create">
       <EmailVerificationBanner />
-      <header className="page-header">
-        <h1>{t('entries.editMoodEntry')}</h1>
-        <Link className="button button-secondary" to={backToEntries}>
+      <header className="page-header page-header-compact">
+        <Link className="button button-secondary button-small" to={backToEntries}>
           {t('common.backToEntries')}
         </Link>
+        <h1 className="visually-hidden">{t('entries.editMoodEntry')}</h1>
       </header>
 
       {error ? <Alert variant="error">{error}</Alert> : null}

@@ -1,4 +1,5 @@
-import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react'
+import { type ChangeEvent, type FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { listGoals } from '../api/goals'
@@ -26,11 +27,12 @@ import {
   nowDatetimeLocal,
 } from '../lib/datetime'
 import { getMoodScoreOptions } from '../lib/moodScale'
+import { emojiForGroupSlug, emojiForTagSlug } from '../lib/tagEmoji'
 import type { GoalPublic } from '../types/goal'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
 import { getStoredMoodEntrySource } from '../lib/moodEntrySource'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
-import type { TagGroupPublic } from '../types/tag'
+import type { TagGroupPublic, TagPublic } from '../types/tag'
 
 type PendingFile = {
   kind: 'photo' | 'audio'
@@ -55,8 +57,13 @@ export function MoodEntryForm({
   const { scores } = useMoodPreferences()
   const timeZone = user?.timezone ?? 'UTC'
   const moodScoreOptions = getMoodScoreOptions(locale, scores)
+  const templateSheetTitleId = useId()
+  const contextSearchId = useId()
+  const noteSectionRef = useRef<HTMLElement>(null)
+  const [noteScrollToken, setNoteScrollToken] = useState(0)
 
   const [score, setScore] = useState(initialEntry?.score ?? 4)
+  const [moodPicked, setMoodPicked] = useState(mode === 'edit' || initialEntry != null)
   const [recordedAtLocal, setRecordedAtLocal] = useState(
     initialEntry
       ? isoToDatetimeLocal(initialEntry.recorded_at, timeZone)
@@ -72,8 +79,9 @@ export function MoodEntryForm({
   const [tagGroups, setTagGroups] = useState<TagGroupPublic[]>([])
   const [goals, setGoals] = useState<GoalPublic[]>([])
   const [noteTemplates, setNoteTemplates] = useState<NoteTemplatePublic[]>([])
-  const [showOtherGroups, setShowOtherGroups] = useState(false)
-  const [showOtherGoals, setShowOtherGoals] = useState(false)
+  const [contextQuery, setContextQuery] = useState('')
+  const [showMore, setShowMore] = useState((initialEntry?.attachments.length ?? 0) > 0)
+  const [showTemplateSheet, setShowTemplateSheet] = useState(false)
   const [existingAttachments, setExistingAttachments] = useState<AttachmentPublic[]>(
     initialEntry?.attachments ?? [],
   )
@@ -97,20 +105,9 @@ export function MoodEntryForm({
         setTagGroups(tagsResponse.items)
         setNoteTemplates(templatesResponse.items)
         setGoals(goalsResponse.items)
-        const selectedIds = new Set(initialEntry?.tags.map((tag) => tag.id) ?? [])
-        const hasSelectedOther = tagsResponse.items.some(
-          (group) =>
-            !group.show_on_entry && group.tags.some((tag) => selectedIds.has(tag.id)),
-        )
-        if (hasSelectedOther) {
-          setShowOtherGroups(true)
-        }
-        const selectedGoalIdSet = new Set(initialEntry?.goals.map((goal) => goal.id) ?? [])
-        const hasSelectedOtherGoal = goalsResponse.items.some(
-          (goal) => !goal.show_on_entry && selectedGoalIdSet.has(goal.id),
-        )
-        if (hasSelectedOtherGoal) {
-          setShowOtherGoals(true)
+
+        if ((initialEntry?.attachments.length ?? 0) > 0) {
+          setShowMore(true)
         }
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
@@ -126,15 +123,90 @@ export function MoodEntryForm({
     void loadCatalog()
   }, [initialEntry, locale, t])
 
+  useEffect(() => {
+    if (!showTemplateSheet) {
+      return
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowTemplateSheet(false)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showTemplateSheet])
+
+  useEffect(() => {
+    if (noteScrollToken === 0) {
+      return
+    }
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const timer = window.setTimeout(
+      () => {
+        noteSectionRef.current?.scrollIntoView({
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          block: 'start',
+        })
+      },
+      prefersReducedMotion ? 0 : 140,
+    )
+    return () => window.clearTimeout(timer)
+  }, [noteScrollToken])
+
   const entryDate = recordedAtLocal.split('T')[0] ?? ''
-  const activeGoals = goals.filter(
-    (goal) =>
-      goal.starts_on <= entryDate && (goal.ends_on === null || goal.ends_on >= entryDate),
+  const activeGoals = useMemo(
+    () =>
+      goals.filter(
+        (goal) =>
+          goal.starts_on <= entryDate && (goal.ends_on === null || goal.ends_on >= entryDate),
+      ),
+    [goals, entryDate],
   )
-  const primaryGroups = tagGroups.filter((group) => group.show_on_entry)
-  const otherGroups = tagGroups.filter((group) => !group.show_on_entry)
   const primaryGoals = activeGoals.filter((goal) => goal.show_on_entry)
   const otherGoals = activeGoals.filter((goal) => !goal.show_on_entry)
+
+  const primaryGroups = useMemo(
+    () => tagGroups.filter((group) => group.show_on_entry),
+    [tagGroups],
+  )
+  const otherGroups = useMemo(
+    () => tagGroups.filter((group) => !group.show_on_entry),
+    [tagGroups],
+  )
+
+  const visiblePrimaryGroups = useMemo(() => {
+    const query = contextQuery.trim().toLowerCase()
+    return primaryGroups
+      .map((group) => ({
+        ...group,
+        tags: query
+          ? group.tags.filter(
+              (tag) =>
+                tag.label.toLowerCase().includes(query) ||
+                tag.slug.toLowerCase().includes(query),
+            )
+          : group.tags,
+      }))
+      .filter((group) => group.tags.length > 0)
+  }, [primaryGroups, contextQuery])
+
+  const visibleOtherGroups = useMemo(() => {
+    const query = contextQuery.trim().toLowerCase()
+    return otherGroups
+      .map((group) => ({
+        ...group,
+        tags: query
+          ? group.tags.filter(
+              (tag) =>
+                tag.label.toLowerCase().includes(query) ||
+                tag.slug.toLowerCase().includes(query),
+            )
+          : group.tags,
+      }))
+      .filter((group) => group.tags.length > 0)
+  }, [otherGroups, contextQuery])
+
+  const detailsVisible = moodPicked || mode === 'edit'
 
   const toggleTag = (tagId: string) => {
     setSelectedTagIds((current) =>
@@ -154,29 +226,54 @@ export function MoodEntryForm({
       return
     }
     setNote(templateBody)
+    setShowTemplateSheet(false)
   }
 
-  const renderTagGroup = (group: TagGroupPublic) => (
-    <fieldset key={group.id} className="tag-group">
-      <legend className="tag-group-label">{group.label}</legend>
-      <div className="tag-chips">
-        {group.tags.map((tag) => {
-          const selected = selectedTagIds.includes(tag.id)
-          return (
-            <button
-              key={tag.id}
-              type="button"
-              className={`tag-chip${selected ? ' tag-chip-selected' : ''}`}
-              onClick={() => toggleTag(tag.id)}
-              aria-pressed={selected}
-            >
-              {tag.label}
-            </button>
-          )
-        })}
-      </div>
-    </fieldset>
-  )
+  const pickMood = (nextScore: number) => {
+    setScore(nextScore)
+    setMoodPicked(true)
+    setNoteScrollToken((token) => token + 1)
+  }
+
+  const moodPhrase = (scoreValue: number) => t(`entries.moodPhrase.${scoreValue}`)
+
+  const renderTagChip = (tag: TagPublic) => {
+    const selected = selectedTagIds.includes(tag.id)
+    const emoji = emojiForTagSlug(tag.slug)
+    return (
+      <button
+        key={tag.id}
+        type="button"
+        className={`tag-chip${emoji ? ' tag-chip-iconic' : ''}${selected ? ' tag-chip-selected' : ''}`}
+        onClick={() => toggleTag(tag.id)}
+        aria-pressed={selected}
+      >
+        {emoji ? (
+          <span className="tag-chip-emoji" aria-hidden="true">
+            {emoji}
+          </span>
+        ) : null}
+        <span className="tag-chip-text">{tag.label}</span>
+      </button>
+    )
+  }
+
+  const renderTagGroup = (group: TagGroupPublic) => {
+    const groupEmoji = emojiForGroupSlug(group.slug)
+    return (
+      <fieldset key={group.id} className="entry-context-section">
+        <legend className="entry-context-section-label">
+          {groupEmoji ? (
+            <span className="entry-context-section-emoji" aria-hidden="true">
+              {groupEmoji}
+            </span>
+          ) : null}
+          {group.label}
+        </legend>
+        <div className="tag-chips">{group.tags.map(renderTagChip)}</div>
+      </fieldset>
+    )
+  }
 
   const renderGoalChip = (goal: GoalPublic) => {
     const selected = selectedGoalIds.includes(goal.id)
@@ -213,6 +310,13 @@ export function MoodEntryForm({
     existingAttachments.filter((item) => item.kind === 'photo').length + pendingPhotos.length
   const hasAudio =
     existingAttachments.some((item) => item.kind === 'audio') || pendingAudio !== null
+  const moreSummaryParts: string[] = []
+  if (photoCount > 0) {
+    moreSummaryParts.push(t('entries.photos', { count: photoCount }))
+  }
+  if (hasAudio) {
+    moreSummaryParts.push(t('entries.audio', { count: 1 }))
+  }
 
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
@@ -267,6 +371,10 @@ export function MoodEntryForm({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+    if (!moodPicked && mode === 'create') {
+      setError(t('entries.pickMoodFirst'))
+      return
+    }
     setError(null)
     setIsSubmitting(true)
 
@@ -291,9 +399,7 @@ export function MoodEntryForm({
         await patchMoodEntry(initialEntry.id, payload)
         await uploadPendingFiles(initialEntry.id)
       }
-      navigate(
-        entriesListPathForInstant(payload.recorded_at, timeZone, savedId),
-      )
+      navigate(entriesListPathForInstant(payload.recorded_at, timeZone, savedId))
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToSaveEntries'))
@@ -309,240 +415,358 @@ export function MoodEntryForm({
     kind === 'photo' ? t('entries.kindPhoto') : kind === 'audio' ? t('entries.kindAudio') : kind
 
   return (
-    <form className="form mood-entry-form" onSubmit={handleSubmit}>
+    <form className="form mood-entry-form entry-journey" onSubmit={handleSubmit}>
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <fieldset className="form-field">
-        <legend className="form-label">{t('entries.moodScore')}</legend>
-        <div className="score-picker">
+      <section className="entry-mood-hero" aria-labelledby="entry-mood-question">
+        <h2 id="entry-mood-question" className="entry-mood-question">
+          {t('entries.howAreYouFeeling')}
+        </h2>
+
+        <div
+          className="mood-card-rail"
+          role="group"
+          aria-label={t('entries.moodScore')}
+        >
           {moodScoreOptions.map((option) => {
-            const isSelected = score === option.score
+            const isSelected = moodPicked && score === option.score
             return (
-            <button
-              key={option.score}
-              type="button"
-              className={`score-option${isSelected ? ' score-option-selected' : ''}`}
-              style={{
-                borderColor: isSelected ? option.color : undefined,
-                background: isSelected ? moodSubtleFill(option.color) : undefined,
-                boxShadow: isSelected ? moodGlowBoxShadow(option.color, 'sm') : undefined,
-              }}
-              onClick={() => setScore(option.score)}
-              aria-pressed={isSelected}
-            >
-              <MoodScoreIcon
-                style={option.style}
-                className="score-emoji"
-                fallbackScore={option.score}
-              />
-              <span className="score-label">{option.label}</span>
-            </button>
+              <button
+                key={option.score}
+                type="button"
+                className={`mood-card${isSelected ? ' mood-card-selected' : ''}`}
+                style={{
+                  ['--mood-card-color' as string]: option.color,
+                  borderColor: isSelected ? option.color : undefined,
+                  background: isSelected ? moodSubtleFill(option.color) : undefined,
+                  boxShadow: isSelected ? moodGlowBoxShadow(option.color, 'md') : undefined,
+                }}
+                onClick={() => pickMood(option.score)}
+                aria-pressed={isSelected}
+              >
+                <MoodScoreIcon
+                  style={option.style}
+                  className="mood-card-emoji"
+                  fallbackScore={option.score}
+                />
+                <span className="mood-card-label">{option.label}</span>
+                <span className="mood-card-phrase">{moodPhrase(option.score)}</span>
+              </button>
             )
           })}
         </div>
-      </fieldset>
 
-      <label className="form-field">
-        <span className="form-label">{t('entries.recordedAt')}</span>
-        <input
-          className="form-input"
-          type="datetime-local"
-          value={recordedAtLocal}
-          onChange={(event) => setRecordedAtLocal(event.target.value)}
-          required
-        />
-      </label>
+        {!moodPicked ? (
+          <p className="entry-mood-hint muted">{t('entries.pickMoodHint')}</p>
+        ) : null}
+      </section>
 
-      <div className="note-template-insert">
-        <div className="note-template-insert-header">
-          <span className="form-label">{t('entries.insertTemplate')}</span>
-          <Link to="/templates" className="button button-secondary button-small">
-            {t('entries.manageTemplates')}
-          </Link>
-        </div>
-        {noteTemplates.length > 0 ? (
-          <div className="note-template-chips">
-            {noteTemplates.map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                className="tag-chip"
-                onClick={() => insertTemplate(template)}
-              >
-                {template.label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">{t('entries.noTemplates')}</p>
-        )}
-      </div>
+      {detailsVisible ? (
+        <div className="entry-details-reveal">
+          <div className="entry-journey-connector" aria-hidden="true" />
 
-      <MarkdownNoteEditor
-        value={note}
-        onChange={setNote}
-        label={t('common.note')}
-        placeholder={t('markdown.placeholder')}
-      />
-
-      <section className="tag-sections">
-        <div className="tag-sections-header">
-          <h2 className="section-title">{t('common.goals')}</h2>
-          <Link to="/goals" className="button button-secondary button-small">
-            {t('entries.manageGoals')}
-          </Link>
-        </div>
-        {isLoadingGoals ? (
-          <p className="muted">{t('common.loadingGoals')}</p>
-        ) : activeGoals.length === 0 ? (
-          <p className="muted">{t('entries.noGoalsForDate')}</p>
-        ) : (
-          <>
-            <div className="tag-chips">{primaryGoals.map(renderGoalChip)}</div>
-            {otherGoals.length > 0 ? (
-              <div className="tag-other-section">
+          <section ref={noteSectionRef} className="entry-chapter entry-note-block">
+            <MarkdownNoteEditor
+              value={note}
+              onChange={setNote}
+              label={t('entries.whatsOnYourMind')}
+              placeholder={t('entries.notePlaceholder')}
+              toolbar="simple"
+              toolbarPlacement="after"
+              size="large"
+              actions={
                 <button
                   type="button"
                   className="button button-secondary button-small"
-                  onClick={() => setShowOtherGoals((current) => !current)}
-                  aria-expanded={showOtherGoals}
+                  onClick={() => setShowTemplateSheet(true)}
                 >
-                  {showOtherGoals ? t('entries.hideOther') : t('entries.other')}
+                  {t('entries.useTemplate')}
                 </button>
-                {showOtherGoals ? (
-                  <div className="tag-chips">{otherGoals.map(renderGoalChip)}</div>
+              }
+            />
+          </section>
+
+          <div className="entry-journey-connector" aria-hidden="true" />
+
+          <section className="entry-chapter" aria-labelledby="entry-context-title">
+            <h2 id="entry-context-title" className="entry-chapter-title">
+              {t('entries.whatHappenedToday')}
+            </h2>
+            <p className="entry-chapter-lead muted">{t('entries.contextLead')}</p>
+
+            {isLoadingTags ? (
+              <p className="muted">{t('common.loadingTags')}</p>
+            ) : tagGroups.length === 0 ? (
+              <p className="muted">{t('entries.noContextTags')}</p>
+            ) : (
+              <div className="entry-context-search">
+                <label className="visually-hidden" htmlFor={contextSearchId}>
+                  {t('entries.searchContext')}
+                </label>
+                <input
+                  id={contextSearchId}
+                  className="form-input entry-context-search-input"
+                  type="search"
+                  value={contextQuery}
+                  onChange={(event) => setContextQuery(event.target.value)}
+                  placeholder={t('entries.searchContextPlaceholder')}
+                  autoComplete="off"
+                />
+                {visiblePrimaryGroups.length === 0 && visibleOtherGroups.length === 0 ? (
+                  <p className="muted entry-context-empty">{t('entries.noContextMatches')}</p>
+                ) : (
+                  <div className="entry-context-sections">
+                    {visiblePrimaryGroups.map(renderTagGroup)}
+                    {visibleOtherGroups.length > 0 ? (
+                      <>
+                        <p className="entry-context-more-label muted">{t('entries.other')}</p>
+                        {visibleOtherGroups.map(renderTagGroup)}
+                      </>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <div className="entry-journey-connector" aria-hidden="true" />
+
+          <section className="entry-chapter" aria-labelledby="entry-goals-title">
+            <h2 id="entry-goals-title" className="entry-chapter-title">
+              {t('entries.goalsToday')}
+            </h2>
+            <p className="entry-chapter-lead muted">{t('entries.goalsLead')}</p>
+            {isLoadingGoals ? (
+              <p className="muted">{t('common.loadingGoals')}</p>
+            ) : activeGoals.length === 0 ? (
+              <p className="muted">{t('entries.noGoalsForDate')}</p>
+            ) : (
+              <>
+                <div className="tag-chips">{primaryGoals.map(renderGoalChip)}</div>
+                {otherGoals.length > 0 ? (
+                  <div className="tag-chips tag-chips-secondary">
+                    {otherGoals.map(renderGoalChip)}
+                  </div>
                 ) : null}
+              </>
+            )}
+          </section>
+
+          <div className="entry-journey-connector entry-journey-connector-soft" aria-hidden="true" />
+
+          <section className="entry-chapter entry-chapter-soft">
+            <button
+              type="button"
+              className={`entry-disclosure-toggle${showMore ? ' is-open' : ''}`}
+              onClick={() => setShowMore((open) => !open)}
+              aria-expanded={showMore}
+            >
+              <span>
+                {showMore ? t('entries.hideMore') : t('entries.addMore')}
+                {!showMore && moreSummaryParts.length > 0 ? (
+                  <span className="entry-disclosure-summary">
+                    {' · '}
+                    {moreSummaryParts.join(' · ')}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+            {showMore ? (
+              <div className="entry-disclosure-body entry-more-body">
+                <label className="form-field">
+                  <span className="form-label">{t('entries.recordedAt')}</span>
+                  <input
+                    className="form-input"
+                    type="datetime-local"
+                    value={recordedAtLocal}
+                    onChange={(event) => setRecordedAtLocal(event.target.value)}
+                    required
+                  />
+                </label>
+
+                <div className="attachments-section">
+                  <h3 className="entry-subheading">{t('entries.attachments')}</h3>
+                  <div className="attachment-inputs">
+                    <label className="form-field">
+                      <span className="form-label">
+                        {t('entries.photos', { count: photoCount })}
+                      </span>
+                      <input
+                        className="form-input"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        multiple
+                        onChange={handlePhotoChange}
+                        disabled={photoCount >= 5}
+                      />
+                    </label>
+                    <label className="form-field">
+                      <span className="form-label">
+                        {t('entries.audio', { count: hasAudio ? 1 : 0 })}
+                      </span>
+                      <input
+                        className="form-input"
+                        type="file"
+                        accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
+                        onChange={handleAudioChange}
+                        disabled={hasAudio}
+                      />
+                    </label>
+                  </div>
+                  <ul className="attachment-list">
+                    {existingAttachments.map((attachment) => (
+                      <li key={attachment.id}>
+                        <span>
+                          {t('entries.attachmentItem', {
+                            kind: kindLabel(attachment.kind),
+                            name: attachment.original_name,
+                          })}
+                        </span>
+                        {mode === 'edit' ? (
+                          <button
+                            type="button"
+                            className="link-button"
+                            onClick={() => void removeExistingAttachment(attachment.id)}
+                          >
+                            {t('common.remove')}
+                          </button>
+                        ) : null}
+                      </li>
+                    ))}
+                    {pendingPhotos.map((pending, index) => (
+                      <li key={`photo-${pending.file.name}-${index}`}>
+                        <span>
+                          {t('entries.attachmentItem', {
+                            kind: t('entries.kindPhoto'),
+                            name: pending.file.name,
+                          })}
+                        </span>
+                        <button
+                          type="button"
+                          className="link-button"
+                          onClick={() => removePendingPhoto(index)}
+                        >
+                          {t('common.remove')}
+                        </button>
+                      </li>
+                    ))}
+                    {pendingAudio ? (
+                      <li>
+                        <span>
+                          {t('entries.attachmentItem', {
+                            kind: t('entries.kindAudio'),
+                            name: pendingAudio.name,
+                          })}
+                        </span>
+                        <button
+                          type="button"
+                          className="link-button"
+                          onClick={() => setPendingAudio(null)}
+                        >
+                          {t('common.remove')}
+                        </button>
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
               </div>
             ) : null}
-          </>
-        )}
-      </section>
+          </section>
 
-      <section className="tag-sections">
-        <div className="tag-sections-header">
-          <h2 className="section-title">{t('common.tags')}</h2>
-          <Link to="/tags" className="button button-secondary button-small">
-            {t('entries.manageTags')}
-          </Link>
+          <div className="entry-form-footer">
+            <div className="button-row entry-save-row">
+              <button className="button" type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? t('common.saving')
+                  : mode === 'create'
+                    ? t('entries.createEntry')
+                    : t('entries.saveChanges')}
+              </button>
+              <button
+                className="button button-secondary"
+                type="button"
+                onClick={() =>
+                  navigate(
+                    initialEntry
+                      ? entriesListPathForInstant(
+                          initialEntry.recorded_at,
+                          timeZone,
+                          initialEntry.id,
+                        )
+                      : '/',
+                  )
+                }
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+            <nav className="entry-configure" aria-label={t('entries.configure')}>
+              <Link to="/tags">{t('common.tags')}</Link>
+              <span aria-hidden="true">·</span>
+              <Link to="/goals">{t('common.goals')}</Link>
+              <span aria-hidden="true">·</span>
+              <Link to="/templates">{t('entries.templatesLink')}</Link>
+            </nav>
+          </div>
         </div>
-        {isLoadingTags ? (
-          <p className="muted">{t('common.loadingTags')}</p>
-        ) : (
-          <>
-            {primaryGroups.map(renderTagGroup)}
-            {otherGroups.length > 0 ? (
-              <div className="tag-other-section">
-                <button
-                  type="button"
-                  className="button button-secondary button-small"
-                  onClick={() => setShowOtherGroups((current) => !current)}
-                  aria-expanded={showOtherGroups}
+      ) : null}
+
+      {showTemplateSheet
+        ? createPortal(
+            <div
+              className="entry-sheet-backdrop"
+              role="presentation"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) {
+                  setShowTemplateSheet(false)
+                }
+              }}
+            >
+              <div
+                className="entry-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={templateSheetTitleId}
+              >
+                <div className="entry-sheet-header">
+                  <h2 id={templateSheetTitleId}>{t('entries.useTemplate')}</h2>
+                  <button
+                    type="button"
+                    className="button button-secondary button-small"
+                    onClick={() => setShowTemplateSheet(false)}
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+                {noteTemplates.length > 0 ? (
+                  <ul className="entry-sheet-list">
+                    {noteTemplates.map((template) => (
+                      <li key={template.id}>
+                        <button
+                          type="button"
+                          className="entry-sheet-item"
+                          onClick={() => insertTemplate(template)}
+                        >
+                          {template.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">{t('entries.noTemplates')}</p>
+                )}
+                <Link
+                  to="/templates"
+                  className="button button-secondary button-small entry-sheet-manage"
+                  onClick={() => setShowTemplateSheet(false)}
                 >
-                  {showOtherGroups ? t('entries.hideOther') : t('entries.other')}
-                </button>
-                {showOtherGroups ? otherGroups.map(renderTagGroup) : null}
+                  {t('entries.manageTemplates')}
+                </Link>
               </div>
-            ) : null}
-          </>
-        )}
-      </section>
-
-      <section className="attachments-section">
-        <h2 className="section-title">{t('entries.attachments')}</h2>
-        <div className="attachment-inputs">
-          <label className="form-field">
-            <span className="form-label">{t('entries.photos', { count: photoCount })}</span>
-            <input
-              className="form-input"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              multiple
-              onChange={handlePhotoChange}
-              disabled={photoCount >= 5}
-            />
-          </label>
-          <label className="form-field">
-            <span className="form-label">{t('entries.audio', { count: hasAudio ? 1 : 0 })}</span>
-            <input
-              className="form-input"
-              type="file"
-              accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
-              onChange={handleAudioChange}
-              disabled={hasAudio}
-            />
-          </label>
-        </div>
-        <ul className="attachment-list">
-          {existingAttachments.map((attachment) => (
-            <li key={attachment.id}>
-              <span>
-                {t('entries.attachmentItem', {
-                  kind: kindLabel(attachment.kind),
-                  name: attachment.original_name,
-                })}
-              </span>
-              {mode === 'edit' ? (
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => void removeExistingAttachment(attachment.id)}
-                >
-                  {t('common.remove')}
-                </button>
-              ) : null}
-            </li>
-          ))}
-          {pendingPhotos.map((pending, index) => (
-            <li key={`photo-${pending.file.name}-${index}`}>
-              <span>
-                {t('entries.attachmentItem', {
-                  kind: t('entries.kindPhoto'),
-                  name: pending.file.name,
-                })}
-              </span>
-              <button type="button" className="link-button" onClick={() => removePendingPhoto(index)}>
-                {t('common.remove')}
-              </button>
-            </li>
-          ))}
-          {pendingAudio ? (
-            <li>
-              <span>
-                {t('entries.attachmentItem', {
-                  kind: t('entries.kindAudio'),
-                  name: pendingAudio.name,
-                })}
-              </span>
-              <button type="button" className="link-button" onClick={() => setPendingAudio(null)}>
-                {t('common.remove')}
-              </button>
-            </li>
-          ) : null}
-        </ul>
-      </section>
-
-      <div className="button-row">
-        <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting
-            ? t('common.saving')
-            : mode === 'create'
-              ? t('entries.createEntry')
-              : t('entries.saveChanges')}
-        </button>
-        <button
-          className="button button-secondary"
-          type="button"
-          onClick={() =>
-            navigate(
-              initialEntry
-                ? entriesListPathForInstant(initialEntry.recorded_at, timeZone, initialEntry.id)
-                : '/',
-            )
-          }
-        >
-          {t('common.cancel')}
-        </button>
-      </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </form>
   )
 }

@@ -6,20 +6,13 @@ import {
   unlinkTelegram,
 } from '../api/telegram'
 import { Alert } from './Alert'
+import { ConfirmDialog } from './ConfirmDialog'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
-import { intlLocale } from '../i18n/t'
 import type { TelegramLinkPublic } from '../types/telegram'
 
-function formatLinkedAt(value: string | null, locale: string, empty: string): string {
-  if (!value) {
-    return empty
-  }
-  return new Date(value).toLocaleString(intlLocale(locale))
-}
-
 export function TelegramLinkForm() {
-  const { locale, t } = useLocale()
+  const { t } = useLocale()
   const [status, setStatus] = useState<TelegramLinkPublic | null>(null)
   const [deepLink, setDeepLink] = useState<string | null>(null)
   const [code, setCode] = useState<string | null>(null)
@@ -27,6 +20,7 @@ export function TelegramLinkForm() {
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
 
   const load = async () => {
     setIsLoading(true)
@@ -70,6 +64,7 @@ export function TelegramLinkForm() {
   }
 
   const handleUnlink = async () => {
+    setConfirmUnlink(false)
     setIsBusy(true)
     setError(null)
     setSuccess(null)
@@ -101,47 +96,49 @@ export function TelegramLinkForm() {
 
   return (
     <div className="card form profile-telegram-form">
+      {confirmUnlink ? (
+        <ConfirmDialog
+          open
+          title={t('confirm.unlinkTelegramTitle')}
+          message={t('confirm.unlinkTelegram')}
+          confirmLabel={t('profile.telegramUnlink')}
+          isBusy={isBusy}
+          onCancel={() => setConfirmUnlink(false)}
+          onConfirm={() => void handleUnlink()}
+        />
+      ) : null}
       {error ? <Alert variant="error">{error}</Alert> : null}
       {success ? <Alert variant="success">{success}</Alert> : null}
 
+      <div className="profile-connection-status">
+        <span
+          className={`status-pill${linked ? ' status-pill--ok' : ' status-pill--muted'}`}
+        >
+          {linked ? t('profile.telegramLinkedShort') : t('profile.telegramNotLinked')}
+        </span>
+      </div>
+
       {linked ? (
-        <>
-          <p className="profile-telegram-status">
-            {t('profile.telegramLinked', {
-              id: String(status?.telegram_user_id ?? ''),
-            })}
-          </p>
-          <p className="form-hint">
-            {t('profile.telegramLinkedAt', {
-              date: formatLinkedAt(
-                status?.telegram_linked_at ?? null,
-                locale,
-                t('common.emptyDate'),
-              ),
-            })}
-          </p>
-          <div className="button-row">
-            <button
-              type="button"
-              className="button button-secondary"
-              disabled={isBusy}
-              onClick={() => void handleRefresh()}
-            >
-              {t('common.refresh')}
-            </button>
+        <div className="button-row">
+          <button
+            type="button"
+            className="button button-secondary"
+            disabled={isBusy}
+            onClick={() => void handleRefresh()}
+          >
+            {t('common.refresh')}
+          </button>
             <button
               type="button"
               className="button button-danger"
               disabled={isBusy}
-              onClick={() => void handleUnlink()}
+              onClick={() => setConfirmUnlink(true)}
             >
               {isBusy ? t('common.saving') : t('profile.telegramUnlink')}
             </button>
-          </div>
-        </>
+        </div>
       ) : (
         <>
-          <p className="profile-telegram-status">{t('profile.telegramNotLinked')}</p>
           {!status?.bot_configured ? (
             <p className="form-hint">{t('profile.telegramBotHint')}</p>
           ) : null}

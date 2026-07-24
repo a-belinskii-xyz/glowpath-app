@@ -9,24 +9,22 @@ import {
   uploadGoalIcon,
 } from '../api/goals'
 import { Alert } from './Alert'
+import { ColorPicker } from './ColorPicker'
+import { ConfirmDialog } from './ConfirmDialog'
+import { EmojiPicker } from './EmojiPicker'
 import { GoalIcon } from './GoalIcon'
 import { ImageCropModal } from './ImageCropModal'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
+import { GOAL_EMOJI_GROUPS } from '../lib/emojiPalette'
 import {
   readMoodIconBlobForCrop,
   readMoodIconImage,
   type CropValidationError,
 } from '../lib/imageCrop'
-import {
-  getBuiltinMoodIconLabel,
-  MOOD_BUILTIN_ICONS,
-} from '../lib/moodBuiltinIcons'
 import { revokeGoalIconObjectUrl } from '../lib/goalIconBlobUrl'
-import { isValidHexColor } from '../lib/moodScale'
 import type { GoalIconMeta, GoalPublic, GoalStyle } from '../types/goal'
-import type { MoodScoreIconType } from '../types/moodPreferences'
 
 type PendingCrop = {
   image: HTMLImageElement
@@ -37,28 +35,53 @@ type PendingCrop = {
 
 const MAX_UPLOADS_PER_GOAL = 3
 
+type IconSourceUi = 'emoji' | 'upload'
+
 type GoalIconEditorProps = {
-  goal: GoalPublic
-  onGoalChange: (goal: GoalPublic) => void
+  /** Controlled color draft (saved with the parent form). */
+  color: string
+  onColorChange: (color: string) => void
+  /** Controlled emoji draft (saved with the parent form when source is emoji). */
+  emoji: string
+  onEmojiChange: (emoji: string) => void
+  /** When set, upload management is available (edit mode). */
+  goal?: GoalPublic
+  onGoalChange?: (goal: GoalPublic) => void
+  disabled?: boolean
 }
 
-export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
-  const { locale, t } = useLocale()
-  const [draftColor, setDraftColor] = useState(goal.color)
-  const [draftEmoji, setDraftEmoji] = useState(goal.icon_type === 'emoji' ? goal.icon : '🎯')
+function resolveIconSourceUi(goal: GoalPublic | undefined): IconSourceUi {
+  return goal?.icon_type === 'upload' ? 'upload' : 'emoji'
+}
+
+export function GoalIconEditor({
+  color,
+  onColorChange,
+  emoji,
+  onEmojiChange,
+  goal,
+  onGoalChange,
+  disabled = false,
+}: GoalIconEditorProps) {
+  const { t } = useLocale()
   const [uploadedIcons, setUploadedIcons] = useState<GoalIconMeta[]>([])
   const [maxUploads, setMaxUploads] = useState(MAX_UPLOADS_PER_GOAL)
   const [iconBusy, setIconBusy] = useState(false)
+  const [sourceUi, setSourceUi] = useState<IconSourceUi>(() => resolveIconSourceUi(goal))
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null)
+  const [pendingRemoveIconId, setPendingRemoveIconId] = useState<string | null>(null)
   const [isCropSaving, setIsCropSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const style: GoalStyle = {
-    color: draftColor,
-    icon_type: goal.icon_type,
-    icon: goal.icon,
-  }
   const uploadFull = uploadedIcons.length >= maxUploads
+  const previewStyle: GoalStyle = {
+    color,
+    icon_type: sourceUi === 'upload' && goal?.icon_type === 'upload' ? 'upload' : 'emoji',
+    icon:
+      sourceUi === 'upload' && goal?.icon_type === 'upload'
+        ? goal.icon
+        : emoji || '🎯',
+  }
 
   const cropValidationMessage = (reason: CropValidationError): string => {
     if (reason === 'tooSmall') {
@@ -89,13 +112,14 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
   }, [pendingCrop])
 
   useEffect(() => {
-    setDraftColor(goal.color)
-    if (goal.icon_type === 'emoji') {
-      setDraftEmoji(goal.icon)
-    }
-  }, [goal.color, goal.icon, goal.icon_type, goal.id])
+    setSourceUi(resolveIconSourceUi(goal))
+  }, [goal?.id, goal?.icon_type])
 
   useEffect(() => {
+    if (!goal) {
+      setUploadedIcons([])
+      return
+    }
     let cancelled = false
     void getGoalIcons(goal.id)
       .then((response) => {
@@ -113,18 +137,18 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
     return () => {
       cancelled = true
     }
-  }, [goal.id])
+  }, [goal?.id])
 
-  const applyStyle = async (patch: {
-    color?: string
-    icon_type?: MoodScoreIconType
-    icon?: string
-  }) => {
+  const applyUploadStyle = async (iconId: string) => {
+    if (!goal || !onGoalChange) {
+      return
+    }
     setIconBusy(true)
     setError(null)
     try {
-      const updated = await patchGoal(goal.id, patch)
+      const updated = await patchGoal(goal.id, { icon_type: 'upload', icon: iconId })
       onGoalChange(updated)
+      setSourceUi('upload')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.failedSave'))
     } finally {
@@ -132,85 +156,72 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
     }
   }
 
-  const handleColorBlur = async () => {
-    if (!isValidHexColor(draftColor)) {
-      setDraftColor(goal.color)
-      return
-    }
-    if (draftColor.toLowerCase() === goal.color.toLowerCase()) {
-      return
-    }
-    await applyStyle({ color: draftColor })
-  }
-
-  const handleIconSourceChange = async (iconType: MoodScoreIconType) => {
-    if (iconType === goal.icon_type) {
-      return
-    }
-    if (iconType === 'emoji') {
-      await applyStyle({ icon_type: 'emoji', icon: draftEmoji || '🎯' })
-      return
-    }
-    if (iconType === 'builtin') {
-      await applyStyle({ icon_type: 'builtin', icon: MOOD_BUILTIN_ICONS[0]?.slug ?? 'awful-cloud' })
+  const handleSourceChange = async (next: IconSourceUi) => {
+    if (next === 'emoji') {
+      setSourceUi('emoji')
+      if (goal && onGoalChange && goal.icon_type !== 'emoji') {
+        setIconBusy(true)
+        setError(null)
+        try {
+          const updated = await patchGoal(goal.id, {
+            icon_type: 'emoji',
+            icon: emoji || '🎯',
+          })
+          onGoalChange(updated)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : t('errors.failedSave'))
+        } finally {
+          setIconBusy(false)
+        }
+      }
       return
     }
     if (uploadedIcons.length === 0) {
+      setSourceUi('upload')
       return
     }
-    await applyStyle({ icon_type: 'upload', icon: uploadedIcons[uploadedIcons.length - 1].id })
+    await applyUploadStyle(uploadedIcons[uploadedIcons.length - 1].id)
   }
 
-  const handleEmojiBlur = async () => {
-    const emoji = draftEmoji.trim()
-    if (!emoji || emoji === goal.icon) {
-      return
-    }
-    await applyStyle({ icon_type: 'emoji', icon: emoji })
-  }
-
-  const handleBuiltinSelect = async (slug: string) => {
-    if (goal.icon_type === 'builtin' && goal.icon === slug) {
-      return
-    }
-    await applyStyle({ icon_type: 'builtin', icon: slug })
-  }
-
-  const handleUploadSelect = async (iconId: string) => {
-    if (goal.icon_type === 'upload' && goal.icon === iconId) {
-      return
-    }
-    await applyStyle({ icon_type: 'upload', icon: iconId })
+  const handleEmojiSelect = (next: string) => {
+    onEmojiChange(next)
+    setSourceUi('emoji')
   }
 
   const handleUploadSelectFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file) {
+    if (!file || !goal) {
+      return
+    }
+    setError(null)
+    const loaded = await readMoodIconImage(file)
+    if ('error' in loaded) {
+      setError(cropValidationMessage(loaded.error))
+      return
+    }
+    setPendingCrop({
+      image: loaded.image,
+      objectUrl: loaded.objectUrl,
+      fileName: file.name || 'icon.png',
+    })
+  }
+
+  const handleRecropUpload = async (icon: GoalIconMeta) => {
+    if (!goal) {
       return
     }
     setError(null)
     try {
-      const { image, objectUrl } = await readMoodIconImage(file)
-      setPendingCrop({
-        image,
-        objectUrl,
-        fileName: file.name || 'icon.png',
-      })
-    } catch (err) {
-      const reason = (err as { reason?: CropValidationError }).reason
-      setError(reason ? cropValidationMessage(reason) : t('moodPreferences.uploadFailed'))
-    }
-  }
-
-  const handleRecropUpload = async (icon: GoalIconMeta) => {
-    setError(null)
-    try {
       const blob = await fetchGoalIconBlob(icon.id)
-      const { image, objectUrl } = await readMoodIconBlobForCrop(blob, icon.original_name)
+      const loaded = await readMoodIconBlobForCrop(blob)
+      if ('error' in loaded) {
+        setError(cropValidationMessage(loaded.error))
+        return
+      }
       setPendingCrop({
-        image,
-        objectUrl,
+        image: loaded.image,
+        objectUrl: loaded.objectUrl,
         fileName: icon.original_name,
         replaceIconId: icon.id,
       })
@@ -220,7 +231,7 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
   }
 
   const handleCropSave = async (croppedFile: File) => {
-    if (!pendingCrop) {
+    if (!pendingCrop || !goal || !onGoalChange) {
       return
     }
     setIsCropSaving(true)
@@ -256,6 +267,7 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
       setMaxUploads(listed.max_per_goal)
       if (resultGoal) {
         onGoalChange(resultGoal)
+        setSourceUi('upload')
       }
       closeCropEditor()
     } catch (err) {
@@ -265,6 +277,9 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
   }
 
   const handleRemoveUpload = async (iconId: string) => {
+    if (!goal || !onGoalChange) {
+      return
+    }
     setIconBusy(true)
     setError(null)
     try {
@@ -279,6 +294,9 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
       const updated = goalsResponse.items.find((item) => item.id === goal.id)
       if (updated) {
         onGoalChange(updated)
+        if (updated.icon_type !== 'upload') {
+          setSourceUi('emoji')
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('moodPreferences.uploadFailed'))
@@ -287,8 +305,11 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
     }
   }
 
+  const busy = disabled || iconBusy
+  const label = goal?.label ?? t('goalsPage.appearance')
+
   return (
-    <div className="goal-icon-editor">
+    <div className="goal-icon-editor appearance-editor">
       {pendingCrop ? (
         <ImageCropModal
           image={pendingCrop.image}
@@ -300,201 +321,168 @@ export function GoalIconEditor({ goal, onGoalChange }: GoalIconEditorProps) {
         />
       ) : null}
       {error ? <Alert variant="error">{error}</Alert> : null}
+      {pendingRemoveIconId ? (
+        <ConfirmDialog
+          open
+          title={t('confirm.removeGoalIconTitle')}
+          message={t('confirm.removeGoalIcon')}
+          confirmLabel={t('moodPreferences.removeIcon')}
+          isBusy={iconBusy}
+          onCancel={() => setPendingRemoveIconId(null)}
+          onConfirm={() => {
+            const iconId = pendingRemoveIconId
+            setPendingRemoveIconId(null)
+            void handleRemoveUpload(iconId)
+          }}
+        />
+      ) : null}
 
       <div className="mood-preferences-preview">
         <span
           className="mood-preferences-swatch"
-          style={{ backgroundColor: draftColor }}
+          style={{ backgroundColor: color }}
           aria-hidden
         />
-        <span style={{ filter: moodGlowFilter(draftColor) }}>
-          <GoalIcon style={style} className="mood-preferences-emoji" />
+        <span className="mood-preferences-icon-slot" style={{ filter: moodGlowFilter(color) }}>
+          <GoalIcon style={previewStyle} className="mood-preferences-emoji" />
         </span>
       </div>
 
-      <div className="mood-preferences-controls">
-        <input
-          className="mood-preferences-color-input"
-          type="color"
-          value={isValidHexColor(draftColor) ? draftColor : goal.color}
-          onChange={(event) => setDraftColor(event.target.value)}
-          onBlur={() => void handleColorBlur()}
-          disabled={iconBusy}
-          aria-label={t('goalsPage.colorFor', { label: goal.label })}
-        />
-        <input
-          className="form-input mood-preferences-hex-input"
-          type="text"
-          value={draftColor}
-          onChange={(event) => setDraftColor(event.target.value)}
-          onBlur={() => void handleColorBlur()}
-          pattern="^#[0-9A-Fa-f]{6}$"
-          spellCheck={false}
-          disabled={iconBusy}
-          aria-label={t('goalsPage.hexFor', { label: goal.label })}
-        />
-      </div>
+      <ColorPicker
+        id={goal ? `goal-color-${goal.id}` : 'goal-color-new'}
+        value={color}
+        onChange={onColorChange}
+        disabled={busy}
+        colorLabel={t('goalsPage.colorFor', { label })}
+        hexLabel={t('goalsPage.hexFor', { label })}
+      />
 
-      <fieldset className="mood-preferences-icon-source" disabled={iconBusy}>
+      <fieldset className="mood-preferences-icon-source" disabled={busy}>
         <legend className="form-label">{t('moodPreferences.iconSource')}</legend>
-        <div className="mood-preferences-icon-source-options">
-          <label className="mood-preferences-radio">
-            <input
-              type="radio"
-              name={`goal-icon-source-${goal.id}`}
-              checked={goal.icon_type === 'emoji'}
-              onChange={() => void handleIconSourceChange('emoji')}
-            />
+        <div
+          className="segmented-control"
+          role="radiogroup"
+          aria-label={t('moodPreferences.iconSource')}
+        >
+          <button
+            type="button"
+            className={`segmented-control-option${sourceUi === 'emoji' ? ' is-active' : ''}`}
+            aria-pressed={sourceUi === 'emoji'}
+            onClick={() => void handleSourceChange('emoji')}
+          >
             {t('moodPreferences.iconTypeEmoji')}
-          </label>
-          <label className="mood-preferences-radio">
-            <input
-              type="radio"
-              name={`goal-icon-source-${goal.id}`}
-              checked={goal.icon_type === 'builtin'}
-              onChange={() => void handleIconSourceChange('builtin')}
-            />
-            {t('moodPreferences.iconTypeBuiltin')}
-          </label>
-          <label className="mood-preferences-radio">
-            <input
-              type="radio"
-              name={`goal-icon-source-${goal.id}`}
-              checked={goal.icon_type === 'upload'}
-              disabled={uploadedIcons.length === 0}
-              onChange={() => void handleIconSourceChange('upload')}
-            />
+          </button>
+          <button
+            type="button"
+            className={`segmented-control-option${sourceUi === 'upload' ? ' is-active' : ''}`}
+            aria-pressed={sourceUi === 'upload'}
+            disabled={!goal}
+            title={!goal ? t('goalsPage.uploadAfterCreate') : undefined}
+            onClick={() => void handleSourceChange('upload')}
+          >
             {t('moodPreferences.iconTypeUpload')}
-          </label>
+          </button>
         </div>
 
-        {goal.icon_type === 'emoji' ? (
-          <label className="form-field mood-preferences-emoji-field">
-            <span className="form-label">{t('moodPreferences.iconTypeEmoji')}</span>
-            <input
-              className="form-input mood-preferences-emoji-input"
-              type="text"
-              value={draftEmoji}
-              maxLength={8}
-              onChange={(event) => setDraftEmoji(event.target.value)}
-              onBlur={() => void handleEmojiBlur()}
+        <div className="mood-preferences-icon-panel">
+          {sourceUi === 'emoji' ? (
+            <EmojiPicker
+              value={emoji}
+              groups={GOAL_EMOJI_GROUPS}
+              groupLabel={(groupId) => t(`goalsPage.emojiGroup${groupId}`)}
+              onChange={handleEmojiSelect}
+              disabled={busy}
+              label={t('moodPreferences.chooseEmoji')}
             />
-          </label>
-        ) : null}
-
-        {goal.icon_type === 'builtin' ? (
-          <div className="mood-preferences-builtin-grid" role="list">
-            <p className="form-hint">{t('moodPreferences.selectBuiltinIcon')}</p>
-            {MOOD_BUILTIN_ICONS.map((icon) => {
-              const selected = goal.icon === icon.slug
-              return (
-                <button
-                  key={icon.slug}
-                  type="button"
-                  role="listitem"
-                  className={`mood-preferences-builtin-option${selected ? ' mood-preferences-builtin-option-selected' : ''}`}
-                  aria-pressed={selected}
-                  aria-label={getBuiltinMoodIconLabel(icon.slug, locale)}
-                  onClick={() => void handleBuiltinSelect(icon.slug)}
-                >
-                  <img src={icon.assetPath} alt="" className="mood-preferences-builtin-thumb" />
-                </button>
-              )
-            })}
-          </div>
-        ) : null}
-
-        <div className="mood-preferences-upload-section">
-          {uploadedIcons.length > 0 ? (
-            <>
-              <p className="form-hint">{t('moodPreferences.selectUploadedIcon')}</p>
-              <div className="mood-preferences-upload-grid" role="list">
-                {uploadedIcons.map((icon) => {
-                  const selected = goal.icon_type === 'upload' && goal.icon === icon.id
-                  return (
-                    <div key={icon.id} className="mood-preferences-upload-item" role="listitem">
-                      <button
-                        type="button"
-                        className={`mood-preferences-upload-tile${selected ? ' mood-preferences-upload-tile-selected' : ''}`}
-                        aria-pressed={selected}
-                        aria-label={
-                          selected ? t('moodPreferences.editIcon') : icon.original_name
-                        }
-                        disabled={iconBusy}
-                        onClick={() => {
-                          if (selected) {
-                            void handleRecropUpload(icon)
-                          } else {
-                            void handleUploadSelect(icon.id)
+          ) : goal ? (
+            <div className="mood-preferences-upload-section">
+              <div className="mood-preferences-upload-row">
+                <div className="mood-preferences-upload-grid" role="list">
+                  {uploadedIcons.map((icon) => {
+                    const selected = goal.icon_type === 'upload' && goal.icon === icon.id
+                    return (
+                      <div key={icon.id} className="mood-preferences-upload-item" role="listitem">
+                        <button
+                          type="button"
+                          className={`mood-preferences-upload-tile${selected ? ' mood-preferences-upload-tile-selected' : ''}`}
+                          aria-pressed={selected}
+                          aria-label={
+                            selected ? t('moodPreferences.editIcon') : icon.original_name
                           }
-                        }}
-                      >
-                        <span style={{ filter: moodGlowFilter(draftColor) }}>
-                          <GoalIcon
-                            style={{
-                              color: draftColor,
-                              icon_type: 'upload',
-                              icon: icon.id,
-                            }}
-                            className="mood-preferences-upload-thumb"
-                          />
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className="mood-preferences-upload-remove"
-                        aria-label={t('moodPreferences.removeIcon')}
-                        disabled={iconBusy}
-                        onClick={() => void handleRemoveUpload(icon.id)}
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          width="14"
-                          height="14"
-                          aria-hidden="true"
-                          focusable="false"
+                          disabled={busy}
+                          onClick={() => {
+                            if (selected) {
+                              void handleRecropUpload(icon)
+                            } else {
+                              void applyUploadStyle(icon.id)
+                            }
+                          }}
                         >
-                          <path
-                            fill="currentColor"
-                            d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                          />
-                        </svg>
-                      </button>
+                          <span style={{ filter: moodGlowFilter(color) }}>
+                            <GoalIcon
+                              style={{
+                                color,
+                                icon_type: 'upload',
+                                icon: icon.id,
+                              }}
+                              className="mood-preferences-upload-thumb"
+                            />
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="mood-preferences-upload-remove"
+                          aria-label={t('moodPreferences.removeIcon')}
+                          disabled={busy}
+                          onClick={() => setPendingRemoveIconId(icon.id)}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            aria-hidden="true"
+                            focusable="false"
+                          >
+                            <path
+                              fill="currentColor"
+                              d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    )
+                  })}
+                  {!uploadFull ? (
+                    <div className="mood-preferences-upload-item" role="listitem">
+                      <label
+                        className={`mood-preferences-upload-add${busy ? ' is-disabled' : ''}`}
+                        aria-label={t('goalsPage.uploadIcon')}
+                      >
+                        <span aria-hidden="true">+</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="mood-preferences-upload-input"
+                          disabled={busy}
+                          onChange={(event) => void handleUploadSelectFile(event)}
+                        />
+                      </label>
                     </div>
-                  )
-                })}
+                  ) : null}
+                </div>
+                <p className="form-hint mood-preferences-upload-count">
+                  {uploadFull
+                    ? t('goalsPage.uploadSlotsFull', { max: String(maxUploads) })
+                    : t('goalsPage.uploadCount', {
+                        remaining: String(maxUploads - uploadedIcons.length),
+                        max: String(maxUploads),
+                      })}
+                </p>
               </div>
-            </>
-          ) : null}
-
-          <div className="mood-preferences-upload-controls">
-            {uploadFull ? (
-              <button type="button" className="button button-secondary button-small" disabled>
-                {t('goalsPage.uploadIcon')}
-              </button>
-            ) : (
-              <label className="button button-secondary button-small mood-preferences-upload-label">
-                {t('goalsPage.uploadIcon')}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="mood-preferences-upload-input"
-                  onChange={(event) => void handleUploadSelectFile(event)}
-                />
-              </label>
-            )}
-            <span className="form-hint mood-preferences-upload-count">
-              {t('goalsPage.uploadCount', {
-                count: String(uploadedIcons.length),
-                max: String(maxUploads),
-              })}
-            </span>
-          </div>
-          {uploadFull ? (
-            <p className="form-hint mood-preferences-upload-limit">
-              {t('goalsPage.uploadLimitReached', { max: String(maxUploads) })}
-            </p>
-          ) : null}
+            </div>
+          ) : (
+            <p className="form-hint">{t('goalsPage.uploadAfterCreate')}</p>
+          )}
         </div>
       </fieldset>
     </div>

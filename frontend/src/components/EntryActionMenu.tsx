@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Link } from 'react-router-dom'
 
+import { ConfirmDialog } from './ConfirmDialog'
 import { useLocale } from '../context/LocaleContext'
 import type { MoodEntryPublic } from '../types/mood'
 
@@ -14,6 +15,7 @@ type EntryActionMenuProps = {
 export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActionMenuProps) {
   const { t } = useLocale()
   const [isOpen, setIsOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,11 +41,9 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
     }
   }, [isOpen])
 
-  const handleDelete = () => {
-    if (window.confirm(t('confirm.deleteEntry'))) {
-      onDelete(entry.id)
-    }
+  const handleDeleteClick = () => {
     setIsOpen(false)
+    setConfirmDelete(true)
   }
 
   const handleToggleFavorite = () => {
@@ -53,6 +53,19 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
 
   return (
     <div className="entry-overflow" ref={containerRef}>
+      {confirmDelete ? (
+        <ConfirmDialog
+          open
+          title={t('confirm.deleteEntryTitle')}
+          message={t('confirm.deleteEntry')}
+          confirmLabel={t('common.delete')}
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            setConfirmDelete(false)
+            onDelete(entry.id)
+          }}
+        />
+      ) : null}
       <button
         type="button"
         className="entry-overflow-trigger"
@@ -93,7 +106,7 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
             type="button"
             className="entry-overflow-item entry-overflow-item-danger"
             role="menuitem"
-            onClick={handleDelete}
+            onClick={handleDeleteClick}
           >
             {t('common.delete')}
           </button>
