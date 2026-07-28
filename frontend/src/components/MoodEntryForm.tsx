@@ -15,6 +15,7 @@ import { Alert } from './Alert'
 import { GoalIcon } from './GoalIcon'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { MoodScoreIcon } from './MoodScoreIcon'
+import { TagIcon } from './TagIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
@@ -27,7 +28,7 @@ import {
   nowDatetimeLocal,
 } from '../lib/datetime'
 import { getMoodScoreOptions } from '../lib/moodScale'
-import { emojiForGroupSlug, emojiForTagSlug } from '../lib/tagEmoji'
+import { emojiForGroupSlug } from '../lib/tagEmoji'
 import type { GoalPublic } from '../types/goal'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
 import { getStoredMoodEntrySource } from '../lib/moodEntrySource'
@@ -239,20 +240,31 @@ export function MoodEntryForm({
 
   const renderTagChip = (tag: TagPublic) => {
     const selected = selectedTagIds.includes(tag.id)
-    const emoji = emojiForTagSlug(tag.slug)
     return (
       <button
         key={tag.id}
         type="button"
-        className={`tag-chip${emoji ? ' tag-chip-iconic' : ''}${selected ? ' tag-chip-selected' : ''}`}
+        className={`tag-chip tag-chip-iconic${selected ? ' tag-chip-selected' : ''}`}
+        style={
+          selected
+            ? {
+                background: moodSubtleFill(tag.color),
+                borderColor: tag.color,
+                color: tag.color,
+              }
+            : undefined
+        }
         onClick={() => toggleTag(tag.id)}
         aria-pressed={selected}
       >
-        {emoji ? (
-          <span className="tag-chip-emoji" aria-hidden="true">
-            {emoji}
-          </span>
-        ) : null}
+        <TagIcon
+          style={{
+            color: tag.color,
+            icon_type: tag.icon_type,
+            icon: tag.icon,
+          }}
+          className="tag-chip-icon"
+        />
         <span className="tag-chip-text">{tag.label}</span>
       </button>
     )

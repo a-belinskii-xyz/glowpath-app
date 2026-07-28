@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import uuid
 
+from app.core.default_tag_groups import (
+    DEFAULT_TAG_COLOR,
+    DEFAULT_TAG_ICON,
+    DEFAULT_TAG_ICON_TYPE,
+    KNOWN_TAG_STYLES,
+)
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
 from app.services.user_provisioning import (
@@ -44,6 +50,10 @@ def provision_tags(
         db.add(group)
         db.flush()
         for tag_order, custom_tag in enumerate(custom_group.tags):
+            color, icon = KNOWN_TAG_STYLES.get(
+                custom_tag.slug,
+                (DEFAULT_TAG_COLOR, DEFAULT_TAG_ICON),
+            )
             db.add(
                 Tag(
                     id=rng.uuid("tag", f"{persona.key}:{custom_group.slug}:{custom_tag.slug}"),
@@ -52,6 +62,9 @@ def provision_tags(
                     slug=custom_tag.slug,
                     labels=dict(custom_tag.labels),
                     sort_order=tag_order,
+                    color=color,
+                    icon_type=DEFAULT_TAG_ICON_TYPE,
+                    icon=icon,
                 )
             )
         db.flush()

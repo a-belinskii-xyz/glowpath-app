@@ -15,6 +15,7 @@ from app.models.user_goal_icon import UserGoalIcon
 from app.models.user_mood_icon import UserMoodIcon
 from app.models.user_mood_preferences import UserMoodPreferences
 from app.models.user_notification_settings import UserNotificationSettings
+from app.models.user_tag_icon import UserTagIcon
 
 __all__ = [
     "AuthToken",
@@ -34,4 +35,5 @@ __all__ = [
     "UserMoodIcon",
     "UserMoodPreferences",
     "UserNotificationSettings",
+    "UserTagIcon",
 ]

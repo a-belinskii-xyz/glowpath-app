@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from app.models.user_mood_icon import UserMoodIcon
     from app.models.user_mood_preferences import UserMoodPreferences
     from app.models.user_notification_settings import UserNotificationSettings
+    from app.models.user_tag_icon import UserTagIcon
 from app.models.user_mood_preferences import UserMoodPreferences
 
 
@@ -77,6 +78,7 @@ class User(TimestampMixin, Base):
     )
     mood_icons: Mapped[list["UserMoodIcon"]] = relationship(back_populates="user")
     goal_icons: Mapped[list["UserGoalIcon"]] = relationship(back_populates="user")
+    tag_icons: Mapped[list["UserTagIcon"]] = relationship(back_populates="user")
 
     @property
     def telegram_linked(self) -> bool:

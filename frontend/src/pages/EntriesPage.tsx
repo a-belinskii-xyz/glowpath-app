@@ -13,6 +13,7 @@ import { GoalIcon } from '../components/GoalIcon'
 import { HeartIcon } from '../components/HeartIcon'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
+import { TagIcon } from '../components/TagIcon'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -36,7 +37,7 @@ import {
   todayKey,
   weekIntersectsMonth,
 } from '../lib/datetime'
-import { buildGradientWashFromScores, motion } from '../design'
+import { buildGradientWashFromScores, moodSubtleFill, motion } from '../design'
 import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
@@ -915,7 +916,22 @@ export function EntriesPage() {
                         {entry.tags.length > 0 ? (
                           <div className="entry-tags">
                             {entry.tags.map((tag) => (
-                              <span key={tag.id} className="entry-tag">
+                              <span
+                                key={tag.id}
+                                className="entry-tag"
+                                style={{
+                                  background: moodSubtleFill(tag.color),
+                                  color: tag.color,
+                                }}
+                              >
+                                <TagIcon
+                                  style={{
+                                    color: tag.color,
+                                    icon_type: tag.icon_type,
+                                    icon: tag.icon,
+                                  }}
+                                  className="entry-tag-icon"
+                                />
                                 {tag.label}
                               </span>
                             ))}
@@ -1030,7 +1046,22 @@ export function EntriesPage() {
                         {entry.tags.length > 0 ? (
                           <div className="entry-tags">
                             {entry.tags.map((tag) => (
-                              <span key={tag.id} className="entry-tag">
+                              <span
+                                key={tag.id}
+                                className="entry-tag"
+                                style={{
+                                  background: moodSubtleFill(tag.color),
+                                  color: tag.color,
+                                }}
+                              >
+                                <TagIcon
+                                  style={{
+                                    color: tag.color,
+                                    icon_type: tag.icon_type,
+                                    icon: tag.icon,
+                                  }}
+                                  className="entry-tag-icon"
+                                />
                                 {tag.label}
                               </span>
                             ))}

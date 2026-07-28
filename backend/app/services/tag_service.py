@@ -10,12 +10,21 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
+from app.core.default_tag_groups import (
+    DEFAULT_TAG_COLOR,
+    DEFAULT_TAG_ICON,
+    DEFAULT_TAG_ICON_TYPE,
+)
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
+from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
+from app.core.mood_scale import MoodScoreIconType, is_valid_hex_color
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
+from app.models.user_tag_icon import UserTagIcon
 
 _SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
+_MAX_EMOJI_LENGTH = 8
 
 
 class TagError(Exception):
@@ -147,6 +156,9 @@ def create_tag(
     labels: dict[str, str],
     slug: str | None = None,
     sort_order: int | None = None,
+    color: str | None = None,
+    icon_type: str | None = None,
+    icon: str | None = None,
 ) -> Tag:
     group = get_tag_group(db, user_id=user_id, group_id=group_id)
     resolved_slug = slug or _unique_tag_slug(db, group_id=group.id, base=_slugify(labels))
@@ -158,12 +170,23 @@ def create_tag(
             select(func.max(Tag.sort_order)).where(Tag.group_id == group.id),
         )
     )
+    style = _validate_tag_style(
+        db,
+        user_id=user_id,
+        tag_id=None,
+        color=color if color is not None else DEFAULT_TAG_COLOR,
+        icon_type=icon_type if icon_type is not None else DEFAULT_TAG_ICON_TYPE,
+        icon=icon if icon is not None else DEFAULT_TAG_ICON,
+    )
     tag = Tag(
         group_id=group.id,
         user_id=user_id,
         slug=resolved_slug,
         labels=labels,
         sort_order=resolved_order,
+        color=style["color"],
+        icon_type=style["icon_type"],
+        icon=style["icon"],
     )
     db.add(tag)
     try:
@@ -171,7 +194,7 @@ def create_tag(
     except IntegrityError as exc:
         db.rollback()
         raise TagError("Tag slug already exists in this group", status_code=409) from exc
-    return _get_owned_tag(db, user_id=user_id, tag_id=tag.id)
+    return get_owned_tag(db, user_id=user_id, tag_id=tag.id)
 
 
 def patch_tag(
@@ -183,8 +206,11 @@ def patch_tag(
     slug: str | None = None,
     labels: dict[str, str] | None = None,
     sort_order: int | None = None,
+    color: str | None = None,
+    icon_type: str | None = None,
+    icon: str | None = None,
 ) -> Tag:
-    tag = _get_owned_tag(db, user_id=user_id, tag_id=tag_id)
+    tag = get_owned_tag(db, user_id=user_id, tag_id=tag_id)
     if tag.group_id != group_id:
         raise TagError("Tag not found in this group", status_code=404)
     if slug is not None:
@@ -193,12 +219,24 @@ def patch_tag(
         tag.labels = labels
     if sort_order is not None:
         tag.sort_order = sort_order
+    if color is not None or icon_type is not None or icon is not None:
+        style = _validate_tag_style(
+            db,
+            user_id=user_id,
+            tag_id=tag.id,
+            color=color if color is not None else tag.color,
+            icon_type=icon_type if icon_type is not None else tag.icon_type,
+            icon=icon if icon is not None else tag.icon,
+        )
+        tag.color = style["color"]
+        tag.icon_type = style["icon_type"]
+        tag.icon = style["icon"]
     try:
         db.commit()
     except IntegrityError as exc:
         db.rollback()
         raise TagError("Tag slug already exists in this group", status_code=409) from exc
-    return _get_owned_tag(db, user_id=user_id, tag_id=tag_id)
+    return get_owned_tag(db, user_id=user_id, tag_id=tag_id)
 
 
 def delete_tag(
@@ -208,7 +246,7 @@ def delete_tag(
     group_id: uuid.UUID,
     tag_id: uuid.UUID,
 ) -> None:
-    tag = _get_owned_tag(db, user_id=user_id, tag_id=tag_id)
+    tag = get_owned_tag(db, user_id=user_id, tag_id=tag_id)
     if tag.group_id != group_id:
         raise TagError("Tag not found in this group", status_code=404)
     if _tag_is_linked(db, tag_id=tag.id):
@@ -255,6 +293,9 @@ def serialize_tag(tag: Tag, *, locale: str) -> dict[str, Any]:
         "labels": tag.labels,
         "group_id": tag.group_id,
         "sort_order": tag.sort_order,
+        "color": tag.color,
+        "icon_type": tag.icon_type,
+        "icon": tag.icon,
     }
 
 
@@ -296,11 +337,77 @@ def _ensure_visible_slot_available(db: Session, *, user_id: uuid.UUID) -> None:
         )
 
 
-def _get_owned_tag(db: Session, *, user_id: uuid.UUID, tag_id: uuid.UUID) -> Tag:
+def get_owned_tag(db: Session, *, user_id: uuid.UUID, tag_id: uuid.UUID) -> Tag:
     tag = db.scalar(select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id))
     if tag is None:
         raise TagError("Tag not found", status_code=404)
     return tag
+
+
+def _validate_tag_style(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    tag_id: uuid.UUID | None,
+    color: str,
+    icon_type: str,
+    icon: str,
+) -> dict[str, str]:
+    if not is_valid_hex_color(color):
+        raise TagError(f"Invalid color: {color!r}")
+
+    try:
+        resolved_type = MoodScoreIconType(icon_type)
+    except ValueError as exc:
+        raise TagError(f"Unknown icon type: {icon_type!r}") from exc
+
+    if not isinstance(icon, str) or not icon.strip():
+        raise TagError("Icon must be a non-empty string")
+    resolved_icon = icon.strip()
+
+    if resolved_type is MoodScoreIconType.EMOJI:
+        if len(resolved_icon) > _MAX_EMOJI_LENGTH:
+            raise TagError(f"Emoji must be at most {_MAX_EMOJI_LENGTH} characters")
+    elif resolved_type is MoodScoreIconType.BUILTIN:
+        if not is_valid_builtin_icon_slug(resolved_icon):
+            raise TagError(f"Unknown built-in icon: {resolved_icon!r}")
+    elif resolved_type is MoodScoreIconType.UPLOAD:
+        if tag_id is None:
+            raise TagError("Uploaded icons can only be set after the tag is created")
+        if not _icon_belongs_to_tag(
+            db,
+            user_id=user_id,
+            tag_id=tag_id,
+            icon_id=resolved_icon,
+        ):
+            raise TagError("Uploaded icon was not found for this tag")
+
+    return {
+        "color": color,
+        "icon_type": resolved_type.value,
+        "icon": resolved_icon,
+    }
+
+
+def _icon_belongs_to_tag(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    icon_id: str,
+) -> bool:
+    try:
+        parsed_id = uuid.UUID(icon_id)
+    except ValueError:
+        return False
+    row = db.scalar(
+        select(UserTagIcon.id).where(
+            UserTagIcon.id == parsed_id,
+            UserTagIcon.user_id == user_id,
+            UserTagIcon.tag_id == tag_id,
+        )
+    )
+    return row is not None
 
 
 def _tag_is_linked(db: Session, *, tag_id: uuid.UUID) -> bool:

@@ -11,15 +11,20 @@ import {
   patchTagGroup,
   reorderTagGroups,
   reorderTags,
+  uploadTagIcon,
 } from '../api/tagGroups'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { PopupMenu } from '../components/PopupMenu'
+import { TagIcon } from '../components/TagIcon'
+import { TagIconEditor } from '../components/TagIconEditor'
 import { useLocale } from '../context/LocaleContext'
+import { moodGlowFilter, moodSubtleFill } from '../design'
 import { ApiError } from '../lib/errors'
-import type { TagGroupPublic, TagPublic } from '../types/tag'
+import { isValidHexColor } from '../lib/moodScale'
+import { DEFAULT_TAG_STYLE, type TagGroupPublic, type TagPublic } from '../types/tag'
 
 type EditorMode =
   | { kind: 'create-group' }
@@ -42,6 +47,9 @@ export function TagsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [editor, setEditor] = useState<EditorMode | null>(null)
   const [name, setName] = useState('')
+  const [draftColor, setDraftColor] = useState(DEFAULT_TAG_STYLE.color)
+  const [draftEmoji, setDraftEmoji] = useState(DEFAULT_TAG_STYLE.icon)
+  const [pendingUpload, setPendingUpload] = useState<File | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
@@ -60,6 +68,7 @@ export function TagsPage() {
 
   const visibleCount = groups.filter((group) => group.show_on_entry).length
   const atVisibleLimit = visibleCount >= visibleLimit
+  const editingTag = editor?.kind === 'edit-tag' || editor?.kind === 'create-tag'
 
   useEffect(() => {
     const load = async () => {
@@ -85,16 +94,26 @@ export function TagsPage() {
     setEditor(mode)
     if (mode.kind === 'create-group' || mode.kind === 'create-tag') {
       setName('')
+      setDraftColor(DEFAULT_TAG_STYLE.color)
+      setDraftEmoji(DEFAULT_TAG_STYLE.icon)
+      setPendingUpload(null)
     } else if (mode.kind === 'edit-group') {
       setName(mode.group.label)
+      setPendingUpload(null)
     } else {
       setName(mode.tag.label)
+      setDraftColor(mode.tag.color)
+      setDraftEmoji(mode.tag.icon_type === 'emoji' ? mode.tag.icon : DEFAULT_TAG_STYLE.icon)
+      setPendingUpload(null)
     }
   }
 
   const closeEditor = () => {
     setEditor(null)
     setName('')
+    setDraftColor(DEFAULT_TAG_STYLE.color)
+    setDraftEmoji(DEFAULT_TAG_STYLE.icon)
+    setPendingUpload(null)
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -105,6 +124,21 @@ export function TagsPage() {
     if (!trimmed) {
       setError(t('tagsPage.nameRequired'))
       return
+    }
+
+    if (editingTag) {
+      if (!isValidHexColor(draftColor)) {
+        setError(t('tagsPage.invalidColor'))
+        return
+      }
+      const emoji = draftEmoji.trim()
+      const usingUpload =
+        (editor.kind === 'edit-tag' && editor.tag.icon_type === 'upload') ||
+        (editor.kind === 'create-tag' && pendingUpload !== null)
+      if (!usingUpload && !emoji) {
+        setError(t('tagsPage.emojiRequired'))
+        return
+      }
     }
 
     const existingLabels =
@@ -122,9 +156,24 @@ export function TagsPage() {
       } else if (editor.kind === 'edit-group') {
         await patchTagGroup(editor.group.id, { labels })
       } else if (editor.kind === 'create-tag') {
-        await createTag(editor.group.id, { labels })
+        const created = await createTag(editor.group.id, {
+          labels,
+          color: draftColor,
+          icon_type: 'emoji',
+          icon: draftEmoji.trim() || DEFAULT_TAG_STYLE.icon,
+        })
+        if (pendingUpload) {
+          await uploadTagIcon(editor.group.id, created.id, pendingUpload)
+        }
       } else {
-        await patchTag(editor.group.id, editor.tag.id, { labels })
+        const usingUpload = editor.tag.icon_type === 'upload'
+        await patchTag(editor.group.id, editor.tag.id, {
+          labels,
+          color: draftColor,
+          ...(usingUpload
+            ? {}
+            : { icon_type: 'emoji' as const, icon: draftEmoji.trim() }),
+        })
       }
       await reload()
       closeEditor()
@@ -301,6 +350,44 @@ export function TagsPage() {
             autoFocus
             maxLength={64}
           />
+          {editingTag ? (
+            <TagIconEditor
+              color={draftColor}
+              onColorChange={setDraftColor}
+              emoji={draftEmoji}
+              onEmojiChange={setDraftEmoji}
+              groupId={editor.kind === 'edit-tag' || editor.kind === 'create-tag' ? editor.group.id : undefined}
+              tag={editor.kind === 'edit-tag' ? editor.tag : undefined}
+              pendingUpload={editor.kind === 'create-tag' ? pendingUpload : null}
+              onPendingUploadChange={
+                editor.kind === 'create-tag' ? setPendingUpload : undefined
+              }
+              onTagChange={
+                editor.kind === 'edit-tag'
+                  ? (updated) => {
+                      if (updated.icon_type === 'emoji') {
+                        setDraftEmoji(updated.icon)
+                      }
+                      setDraftColor(updated.color)
+                      setEditor({ kind: 'edit-tag', group: editor.group, tag: updated })
+                      setGroups((current) =>
+                        current.map((group) =>
+                          group.id === editor.group.id
+                            ? {
+                                ...group,
+                                tags: group.tags.map((item) =>
+                                  item.id === updated.id ? updated : item,
+                                ),
+                              }
+                            : group,
+                        ),
+                      )
+                    }
+                  : undefined
+              }
+              disabled={isSaving}
+            />
+          ) : null}
           <div className="button-row">
             <button type="submit" className="button" disabled={isSaving}>
               {isSaving ? t('common.saving') : t('common.save')}
@@ -372,7 +459,26 @@ export function TagsPage() {
                   onDragEnd={() => setDraggingTag(null)}
                 >
                   <PopupMenu
-                    label={tag.label}
+                    label={
+                      <span className="tag-list-item-label">
+                        <span
+                          className="tag-list-item-icon"
+                          style={{
+                            background: moodSubtleFill(tag.color),
+                            filter: moodGlowFilter(tag.color, 'xs'),
+                          }}
+                        >
+                          <TagIcon
+                            style={{
+                              color: tag.color,
+                              icon_type: tag.icon_type,
+                              icon: tag.icon,
+                            }}
+                          />
+                        </span>
+                        {tag.label}
+                      </span>
+                    }
                     ariaLabel={t('tagsPage.actionsFor', { label: tag.label })}
                     onEdit={() => openEditor({ kind: 'edit-tag', group, tag })}
                     onDelete={() => setPendingDelete({ kind: 'tag', group, tag })}

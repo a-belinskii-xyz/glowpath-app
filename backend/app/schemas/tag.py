@@ -4,6 +4,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.mood_scale import MoodScoreIconType
+
 _SLUG_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
@@ -32,6 +34,8 @@ def _validate_labels(value: dict[str, str]) -> dict[str, str]:
 
 Slug = Annotated[str, Field(min_length=1, max_length=64)]
 Labels = Annotated[dict[str, str], Field(min_length=1)]
+Color = Annotated[str, Field(min_length=7, max_length=7)]
+IconValue = Annotated[str, Field(min_length=1, max_length=64)]
 
 
 class TagPublic(BaseModel):
@@ -41,6 +45,9 @@ class TagPublic(BaseModel):
     labels: dict[str, str]
     group_id: uuid.UUID
     sort_order: int
+    color: str
+    icon_type: MoodScoreIconType
+    icon: str
 
 
 class TagGroupPublic(BaseModel):
@@ -102,6 +109,9 @@ class TagCreate(BaseModel):
     labels: Labels
     slug: Slug | None = None
     sort_order: int | None = None
+    color: Color | None = None
+    icon_type: MoodScoreIconType | None = None
+    icon: IconValue | None = None
 
     @field_validator("slug")
     @classmethod
@@ -120,6 +130,9 @@ class TagPatch(BaseModel):
     slug: Slug | None = None
     labels: Labels | None = None
     sort_order: int | None = None
+    color: Color | None = None
+    icon_type: MoodScoreIconType | None = None
+    icon: IconValue | None = None
 
     @field_validator("slug")
     @classmethod
@@ -142,3 +155,25 @@ class TagReorderRequest(BaseModel):
 
 class TagGroupReorderRequest(BaseModel):
     ordered_ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class TagIconMetaPublic(BaseModel):
+    id: uuid.UUID
+    tag_id: uuid.UUID
+    mime_type: str
+    size_bytes: int
+    original_name: str
+
+
+class TagIconPublic(BaseModel):
+    id: uuid.UUID
+    tag_id: uuid.UUID
+    mime_type: str
+    size_bytes: int
+    original_name: str
+    tag: TagPublic
+
+
+class TagIconListResponse(BaseModel):
+    items: list[TagIconMetaPublic]
+    max_per_tag: int = 3

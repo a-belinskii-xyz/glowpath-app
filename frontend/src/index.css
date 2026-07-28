@@ -1793,16 +1793,17 @@ code {
   border-radius: 999px;
   background: #eff6ff;
   color: var(--chrome-action-primary-hover);
-}
-
-.entry-goal {
-  background: #ecfdf5;
-  color: var(--chrome-action-success);
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
 }
 
+.entry-goal {
+  background: #ecfdf5;
+  color: var(--chrome-action-success);
+}
+
+.entry-tag-icon,
 .entry-goal-icon {
   display: inline-flex;
   width: 0.95rem;
@@ -1813,6 +1814,7 @@ code {
   justify-content: center;
 }
 
+.entry-tag-icon img,
 .entry-goal-icon img {
   width: 100%;
   height: 100%;
@@ -3388,6 +3390,22 @@ code {
   line-height: 1;
 }
 
+.tag-chip-icon {
+  display: inline-flex;
+  width: 1.05rem;
+  height: 1.05rem;
+  line-height: 1;
+  font-size: 1.05rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-chip-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .tag-chip-text {
   font-size: 0.85rem;
 }
@@ -3702,6 +3720,29 @@ code {
   padding: 0.35rem 0;
   border-top: 1px solid var(--chrome-bg-app);
   cursor: grab;
+}
+
+.tag-list-item-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tag-list-item-icon {
+  display: inline-flex;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.45rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.tag-list-item-icon img {
+  width: 1rem;
+  height: 1rem;
+  object-fit: contain;
 }
 
 .tag-list li.is-dragging,

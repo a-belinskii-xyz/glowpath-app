@@ -6,6 +6,9 @@ export type MoodEntryTag = {
   slug: string
   label: string
   group_id: string
+  color: string
+  icon_type: MoodScoreIconType
+  icon: string
 }
 
 export type MoodEntryGoal = {

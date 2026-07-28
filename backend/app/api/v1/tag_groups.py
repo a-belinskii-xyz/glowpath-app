@@ -1,14 +1,18 @@
 import uuid
+from typing import Annotated
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_verified_user, get_locale
+from app.api.deps import get_current_verified_user, get_locale, get_storage_service
 from app.config import settings
 from app.db.session import get_db
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
 from app.models.user import User
+from app.models.user_tag_icon import UserTagIcon
 from app.schemas.tag import (
     TagCreate,
     TagGroupCreate,
@@ -16,9 +20,21 @@ from app.schemas.tag import (
     TagGroupPatch,
     TagGroupPublic,
     TagGroupReorderRequest,
+    TagIconListResponse,
+    TagIconMetaPublic,
+    TagIconPublic,
     TagPatch,
     TagPublic,
     TagReorderRequest,
+)
+from app.services.storage import ObjectStorage, StorageError
+from app.services.tag_icon_service import (
+    MAX_ICONS_PER_TAG,
+    TagIconError,
+    delete_tag_icon_by_id,
+    download_tag_icon,
+    list_tag_icons,
+    upload_tag_icon,
 )
 from app.services.tag_service import (
     TagError,
@@ -26,6 +42,7 @@ from app.services.tag_service import (
     create_tag_group,
     delete_tag,
     delete_tag_group,
+    get_owned_tag,
     list_tag_groups,
     patch_tag,
     patch_tag_group,
@@ -40,6 +57,14 @@ router = APIRouter(tags=["tag-groups"])
 
 
 def _handle_tag_error(exc: TagError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+def _handle_icon_error(exc: TagIconError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+def _handle_storage_error(exc: StorageError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
 
@@ -59,6 +84,29 @@ def _to_list_response(groups: list[TagGroup], *, locale: str) -> TagGroupListRes
         items=items,
         entry_visible_tag_group_limit=settings.entry_visible_tag_group_limit,
     )
+
+
+def _icon_meta(icon: UserTagIcon) -> TagIconMetaPublic:
+    return TagIconMetaPublic(
+        id=icon.id,
+        tag_id=icon.tag_id,
+        mime_type=icon.mime_type,
+        size_bytes=icon.size_bytes,
+        original_name=icon.original_name,
+    )
+
+
+def _ensure_tag_in_group(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    group_id: uuid.UUID,
+    tag_id: uuid.UUID,
+) -> Tag:
+    tag = get_owned_tag(db, user_id=user_id, tag_id=tag_id)
+    if tag.group_id != group_id:
+        raise TagError("Tag not found in this group", status_code=404)
+    return tag
 
 
 @router.get("", response_model=TagGroupListResponse)
@@ -110,6 +158,62 @@ def reorder_groups(
         _handle_tag_error(exc)
         raise
     return _to_list_response(groups, locale=locale)
+
+
+@router.get("/icons/id/{icon_id}")
+def download_tag_icon_endpoint(
+    icon_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+) -> FastAPIResponse:
+    try:
+        icon, data = download_tag_icon(
+            db,
+            user_id=current_user.id,
+            icon_id=icon_id,
+            storage=storage,
+        )
+    except TagIconError as exc:
+        _handle_icon_error(exc)
+        raise
+    except StorageError as exc:
+        _handle_storage_error(exc)
+        raise
+
+    filename = quote(icon.original_name)
+    return FastAPIResponse(
+        content=data,
+        media_type=icon.mime_type,
+        headers={"Content-Disposition": f"inline; filename*=UTF-8''{filename}"},
+    )
+
+
+@router.delete(
+    "/icons/id/{icon_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_tag_icon_endpoint(
+    icon_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+) -> Response:
+    try:
+        delete_tag_icon_by_id(
+            db,
+            user_id=current_user.id,
+            icon_id=icon_id,
+            storage=storage,
+        )
+    except TagIconError as exc:
+        _handle_icon_error(exc)
+        raise
+    except StorageError as exc:
+        _handle_storage_error(exc)
+        raise
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch("/{group_id}", response_model=TagGroupPublic)
@@ -170,6 +274,9 @@ def create_group_tag(
             slug=body.slug,
             labels=body.labels,
             sort_order=body.sort_order,
+            color=body.color,
+            icon_type=body.icon_type.value if body.icon_type is not None else None,
+            icon=body.icon,
         )
     except TagError as exc:
         _handle_tag_error(exc)
@@ -198,6 +305,83 @@ def reorder_group_tags(
     return _to_group_public(group, locale=locale)
 
 
+@router.get("/{group_id}/tags/{tag_id}/icons", response_model=TagIconListResponse)
+def list_tag_icons_endpoint(
+    group_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> TagIconListResponse:
+    try:
+        _ensure_tag_in_group(
+            db,
+            user_id=current_user.id,
+            group_id=group_id,
+            tag_id=tag_id,
+        )
+        icons = list_tag_icons(db, user_id=current_user.id, tag_id=tag_id)
+    except TagError as exc:
+        _handle_tag_error(exc)
+        raise
+    return TagIconListResponse(
+        items=[_icon_meta(icon) for icon in icons],
+        max_per_tag=MAX_ICONS_PER_TAG,
+    )
+
+
+@router.post(
+    "/{group_id}/tags/{tag_id}/icons",
+    status_code=status.HTTP_201_CREATED,
+    response_model=TagIconPublic,
+)
+async def upload_tag_icon_endpoint(
+    group_id: uuid.UUID,
+    tag_id: uuid.UUID,
+    file: Annotated[UploadFile, File()],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+    locale: str = Depends(get_locale),
+) -> TagIconPublic:
+    data = await file.read()
+    original_name = file.filename or "icon"
+    content_type = file.content_type or "application/octet-stream"
+    try:
+        _ensure_tag_in_group(
+            db,
+            user_id=current_user.id,
+            group_id=group_id,
+            tag_id=tag_id,
+        )
+        icon, tag = upload_tag_icon(
+            db,
+            user_id=current_user.id,
+            tag_id=tag_id,
+            data=data,
+            content_type=content_type,
+            original_name=original_name,
+            storage=storage,
+        )
+    except TagError as exc:
+        _handle_tag_error(exc)
+        raise
+    except TagIconError as exc:
+        _handle_icon_error(exc)
+        raise
+    except StorageError as exc:
+        _handle_storage_error(exc)
+        raise
+
+    return TagIconPublic(
+        id=icon.id,
+        tag_id=icon.tag_id,
+        mime_type=icon.mime_type,
+        size_bytes=icon.size_bytes,
+        original_name=icon.original_name,
+        tag=_to_tag_public(tag, locale=locale),
+    )
+
+
 @router.patch("/{group_id}/tags/{tag_id}", response_model=TagPublic)
 def update_group_tag(
     group_id: uuid.UUID,
@@ -216,6 +400,9 @@ def update_group_tag(
             slug=body.slug,
             labels=body.labels,
             sort_order=body.sort_order,
+            color=body.color,
+            icon_type=body.icon_type.value if body.icon_type is not None else None,
+            icon=body.icon,
         )
     except TagError as exc:
         _handle_tag_error(exc)

@@ -11,9 +11,11 @@ import { GoalIcon } from '../components/GoalIcon'
 import { HeartIcon } from '../components/HeartIcon'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
+import { TagIcon } from '../components/TagIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
+import { moodSubtleFill } from '../design'
 import { intlLocale } from '../i18n/t'
 import { ApiError } from '../lib/errors'
 import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/datetime'
@@ -189,7 +191,22 @@ export function EntryDetailPage() {
               {entry.tags.length > 0 ? (
                 <div className="entry-tags">
                   {entry.tags.map((tag) => (
-                    <span key={tag.id} className="entry-tag">
+                    <span
+                      key={tag.id}
+                      className="entry-tag"
+                      style={{
+                        background: moodSubtleFill(tag.color),
+                        color: tag.color,
+                      }}
+                    >
+                      <TagIcon
+                        style={{
+                          color: tag.color,
+                          icon_type: tag.icon_type,
+                          icon: tag.icon,
+                        }}
+                        className="entry-tag-icon"
+                      />
                       {tag.label}
                     </span>
                   ))}

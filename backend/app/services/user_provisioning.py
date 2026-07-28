@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.core.default_goals import DEFAULT_GOALS
 from app.core.default_note_templates import DEFAULT_NOTE_TEMPLATES
-from app.core.default_tag_groups import DEFAULT_TAG_GROUPS
+from app.core.default_tag_groups import DEFAULT_TAG_GROUPS, DEFAULT_TAG_ICON_TYPE
 from app.models.goal import Goal
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
@@ -38,6 +38,9 @@ def provision_default_tags(db: Session, user_id: uuid.UUID) -> None:
                     slug=default_tag.slug,
                     labels=dict(default_tag.labels),
                     sort_order=tag_order,
+                    color=default_tag.color,
+                    icon_type=DEFAULT_TAG_ICON_TYPE,
+                    icon=default_tag.icon,
                 )
             )
 

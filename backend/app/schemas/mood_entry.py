@@ -54,6 +54,9 @@ class MoodEntryTagPublic(BaseModel):
     slug: str
     label: str
     group_id: uuid.UUID
+    color: str
+    icon_type: str
+    icon: str
 
 
 class MoodEntryGoalPublic(BaseModel):
