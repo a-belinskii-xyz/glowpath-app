@@ -178,7 +178,7 @@ export function MonthCalendar({
                             className="month-calendar-emoji"
                             style={{
                               zIndex: MAX_VISIBLE_MARKS - index,
-                              filter: moodGlowFilter(style.color, 'xs'),
+                              filter: moodGlowFilter(style.color),
                             }}
                           >
                             <GoalIcon style={style} />
@@ -196,7 +196,7 @@ export function MonthCalendar({
                             className="month-calendar-emoji"
                             style={{
                               zIndex: MAX_VISIBLE_MARKS - index,
-                              filter: moodGlowFilter(style.color, 'xs'),
+                              filter: moodGlowFilter(style.color),
                             }}
                           >
                             <MoodScoreIcon style={style} />
@@ -212,6 +212,27 @@ export function MonthCalendar({
                   }
                 }
 
+                const marksSummary =
+                  mode === 'goals'
+                    ? dayGoals
+                        .slice(0, MAX_VISIBLE_MARKS)
+                        .map((item) => goalsById.get(item.goal_id)?.label ?? '🎯')
+                        .join(', ')
+                    : dayScores
+                        .slice(0, MAX_VISIBLE_MARKS)
+                        .map((item) => getMoodScoreStyle(item.score, scoreStyles).label)
+                        .join(', ')
+                const dayTitle =
+                  cell.date && hasEntries
+                    ? t('calendar.tooltipWithEntries', {
+                        date: cell.date,
+                        count: entryCount,
+                        marks: marksSummary || String(entryCount),
+                      })
+                    : cell.date && canInteract
+                      ? t('calendar.tooltipEmpty', { date: cell.date })
+                      : undefined
+
                 return (
                   <div
                     key={cell.key}
@@ -226,6 +247,7 @@ export function MonthCalendar({
                       .filter(Boolean)
                       .join(' ')}
                     role="gridcell"
+                    title={dayTitle}
                     aria-label={
                       cell.date
                         ? hasEntries

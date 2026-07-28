@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useLocale } from '../context/LocaleContext'
+import { IconButton } from './IconButton'
+import { MoreIcon } from './icons'
 
-type PopupMenuProps = {
-  label: ReactNode
-  ariaLabel: string
-  onEdit: () => void
-  onDelete: () => void
+export type PopupMenuItem = {
+  id: string
+  label: string
+  onSelect: () => void
+  danger?: boolean
 }
 
-export function PopupMenu({ label, ariaLabel, onEdit, onDelete }: PopupMenuProps) {
+type PopupMenuProps = {
+  ariaLabel: string
+  items: PopupMenuItem[]
+  trigger?: ReactNode
+}
+
+export function PopupMenu({ ariaLabel, items, trigger }: PopupMenuProps) {
   const { t } = useLocale()
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -39,40 +47,50 @@ export function PopupMenu({ label, ariaLabel, onEdit, onDelete }: PopupMenuProps
 
   return (
     <div className="popup-menu" ref={containerRef}>
-      <button
-        type="button"
-        className="popup-menu-trigger"
-        aria-label={ariaLabel}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((open) => !open)}
-      >
-        {label}
-      </button>
+      {trigger ? (
+        <button
+          type="button"
+          className="popup-menu-trigger"
+          aria-label={ariaLabel}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((open) => !open)}
+        >
+          {trigger}
+        </button>
+      ) : (
+        <IconButton
+          label={ariaLabel}
+          variant="ghost"
+          size="sm"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((open) => !open)}
+        >
+          <MoreIcon />
+        </IconButton>
+      )}
       {isOpen ? (
         <div className="entry-overflow-menu popup-menu-panel" role="menu" aria-label={ariaLabel}>
-          <button
-            type="button"
-            className="entry-overflow-item"
-            role="menuitem"
-            onClick={() => {
-              setIsOpen(false)
-              onEdit()
-            }}
-          >
-            {t('common.edit')}
-          </button>
-          <button
-            type="button"
-            className="entry-overflow-item entry-overflow-item-danger"
-            role="menuitem"
-            onClick={() => {
-              setIsOpen(false)
-              onDelete()
-            }}
-          >
-            {t('common.delete')}
-          </button>
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`entry-overflow-item${item.danger ? ' entry-overflow-item-danger' : ''}`}
+              role="menuitem"
+              onClick={() => {
+                setIsOpen(false)
+                item.onSelect()
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+          {items.length === 0 ? (
+            <span className="entry-overflow-item" role="menuitem" aria-disabled="true">
+              {t('common.close')}
+            </span>
+          ) : null}
         </div>
       ) : null}
     </div>

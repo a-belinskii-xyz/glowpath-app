@@ -1,5 +1,4 @@
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
-import { MoodPreferencesForm } from '../components/MoodPreferencesForm'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
 import { useAuth } from '../context/AuthContext'
@@ -65,12 +64,6 @@ export function ProfilePage() {
           </div>
         </div>
       </div>
-
-      <section className="profile-section" aria-labelledby="profile-mood-preferences-heading">
-        <h2 id="profile-mood-preferences-heading">{t('profile.moodPreferencesTitle')}</h2>
-        <p className="profile-section-lead">{t('profile.moodPreferencesLead')}</p>
-        <MoodPreferencesForm />
-      </section>
 
       <section className="profile-section" aria-labelledby="profile-telegram-heading">
         <h2 id="profile-telegram-heading">{t('profile.telegramTitle')}</h2>

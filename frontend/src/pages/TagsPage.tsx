@@ -1,4 +1,4 @@
-import { type DragEvent, type FormEvent, useEffect, useState } from 'react'
+import { type DragEvent, type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
@@ -15,14 +15,24 @@ import {
 } from '../api/tagGroups'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { DragHandle } from '../components/DragHandle'
+import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
-import { PopupMenu } from '../components/PopupMenu'
+import { IconButton } from '../components/IconButton'
+import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { TagIcon } from '../components/TagIcon'
 import { TagIconEditor } from '../components/TagIconEditor'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter, moodSubtleFill } from '../design'
 import { ApiError } from '../lib/errors'
+import {
+  dropEdgeFromClientY,
+  dropIndexForEdge,
+  moveItem,
+  moveItemById,
+  type DropEdge,
+} from '../lib/listReorder'
 import { isValidHexColor } from '../lib/moodScale'
 import { DEFAULT_TAG_STYLE, type TagGroupPublic, type TagPublic } from '../types/tag'
 
@@ -31,13 +41,6 @@ type EditorMode =
   | { kind: 'edit-group'; group: TagGroupPublic }
   | { kind: 'create-tag'; group: TagGroupPublic }
   | { kind: 'edit-tag'; group: TagGroupPublic; tag: TagPublic }
-
-function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
-  const next = [...items]
-  const [item] = next.splice(fromIndex, 1)
-  next.splice(toIndex, 0, item)
-  return next
-}
 
 export function TagsPage() {
   const { locale, t } = useLocale()
@@ -54,6 +57,15 @@ export function TagsPage() {
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
   const [draggingTag, setDraggingTag] = useState<{ groupId: string; tagId: string } | null>(null)
+  const [groupDropTarget, setGroupDropTarget] = useState<{
+    id: string
+    edge: DropEdge
+  } | null>(null)
+  const [tagDropTarget, setTagDropTarget] = useState<{
+    groupId: string
+    tagId: string
+    edge: DropEdge
+  } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: 'group'; group: TagGroupPublic }
     | { kind: 'tag'; group: TagGroupPublic; tag: TagPublic }
@@ -108,13 +120,13 @@ export function TagsPage() {
     }
   }
 
-  const closeEditor = () => {
+  const closeEditor = useCallback(() => {
     setEditor(null)
     setName('')
     setDraftColor(DEFAULT_TAG_STYLE.color)
     setDraftEmoji(DEFAULT_TAG_STYLE.icon)
     setPendingUpload(null)
-  }
+  }, [])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -170,9 +182,7 @@ export function TagsPage() {
         await patchTag(editor.group.id, editor.tag.id, {
           labels,
           color: draftColor,
-          ...(usingUpload
-            ? {}
-            : { icon_type: 'emoji' as const, icon: draftEmoji.trim() }),
+          ...(usingUpload ? {} : { icon_type: 'emoji' as const, icon: draftEmoji.trim() }),
         })
       }
       await reload()
@@ -235,18 +245,7 @@ export function TagsPage() {
     }
   }
 
-  const handleGroupDrop = async (targetGroupId: string) => {
-    if (!draggingGroupId || draggingGroupId === targetGroupId) {
-      setDraggingGroupId(null)
-      return
-    }
-    const fromIndex = groups.findIndex((group) => group.id === draggingGroupId)
-    const toIndex = groups.findIndex((group) => group.id === targetGroupId)
-    setDraggingGroupId(null)
-    if (fromIndex < 0 || toIndex < 0) return
-
-    const previous = groups
-    const next = moveItem(groups, fromIndex, toIndex)
+  const persistGroupOrder = async (next: TagGroupPublic[], previous: TagGroupPublic[]) => {
     setGroups(next)
     try {
       const response = await reorderTagGroups({ ordered_ids: next.map((group) => group.id) })
@@ -257,18 +256,76 @@ export function TagsPage() {
     }
   }
 
-  const handleTagDrop = async (group: TagGroupPublic, targetTagId: string) => {
+  const clearGroupDrag = () => {
+    setDraggingGroupId(null)
+    setGroupDropTarget(null)
+  }
+
+  const clearTagDrag = () => {
+    setDraggingTag(null)
+    setTagDropTarget(null)
+  }
+
+  const handleGroupDrop = async (targetGroupId: string, edge: DropEdge) => {
+    if (!draggingGroupId || draggingGroupId === targetGroupId) {
+      clearGroupDrag()
+      return
+    }
+    const fromIndex = groups.findIndex((group) => group.id === draggingGroupId)
+    const targetIndex = groups.findIndex((group) => group.id === targetGroupId)
+    clearGroupDrag()
+    if (fromIndex < 0 || targetIndex < 0) return
+    const toIndex = dropIndexForEdge(fromIndex, targetIndex, edge)
+    if (toIndex === fromIndex) return
+    await persistGroupOrder(moveItem(groups, fromIndex, toIndex), groups)
+  }
+
+  const handleMoveGroup = async (groupId: string, direction: 'up' | 'down') => {
+    const next = moveItemById(groups, groupId, direction)
+    if (next === groups) return
+    await persistGroupOrder(next, groups)
+  }
+
+  const handleTagDrop = async (
+    group: TagGroupPublic,
+    targetTagId: string,
+    edge: DropEdge,
+  ) => {
     if (!draggingTag || draggingTag.groupId !== group.id || draggingTag.tagId === targetTagId) {
-      setDraggingTag(null)
+      clearTagDrag()
       return
     }
     const fromIndex = group.tags.findIndex((tag) => tag.id === draggingTag.tagId)
-    const toIndex = group.tags.findIndex((tag) => tag.id === targetTagId)
-    setDraggingTag(null)
-    if (fromIndex < 0 || toIndex < 0) return
+    const targetIndex = group.tags.findIndex((tag) => tag.id === targetTagId)
+    clearTagDrag()
+    if (fromIndex < 0 || targetIndex < 0) return
+    const toIndex = dropIndexForEdge(fromIndex, targetIndex, edge)
+    if (toIndex === fromIndex) return
 
     const previous = groups
     const nextTags = moveItem(group.tags, fromIndex, toIndex)
+    setGroups((current) =>
+      current.map((item) => (item.id === group.id ? { ...item, tags: nextTags } : item)),
+    )
+    try {
+      const updated = await reorderTags(group.id, {
+        ordered_ids: nextTags.map((tag) => tag.id),
+      })
+      setGroups((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+    } catch (err) {
+      setGroups(previous)
+      setError(err instanceof Error ? err.message : t('errors.failedReorderTags'))
+    }
+  }
+
+  const handleMoveTag = async (
+    group: TagGroupPublic,
+    tagId: string,
+    direction: 'up' | 'down',
+  ) => {
+    const nextTags = moveItemById(group.tags, tagId, direction)
+    if (nextTags === group.tags) return
+    const previous = groups
     setGroups((current) =>
       current.map((item) => (item.id === group.id ? { ...item, tags: nextTags } : item)),
     )
@@ -294,6 +351,15 @@ export function TagsPage() {
             ? t('tagsPage.editTag', { label: editor.tag.label })
             : null
 
+  const selectedGroupId =
+    editor && 'group' in editor
+      ? editor.group.id
+      : editor?.kind === 'create-group'
+        ? null
+        : null
+  const selectedTagId = editor?.kind === 'edit-tag' ? editor.tag.id : null
+  const drawerColors = groups.flatMap((group) => group.tags.map((tag) => tag.color))
+
   return (
     <section className="page">
       <EmailVerificationBanner />
@@ -305,9 +371,11 @@ export function TagsPage() {
         </button>
       </header>
 
-      <p className="muted tag-visibility-hint">
-        {t('tagsPage.hint', { limit: visibleLimit, count: visibleCount })}
-      </p>
+      <div className="limit-pills">
+        <span className="limit-pill">
+          {t('tagsPage.hintCompact', { limit: visibleLimit, count: visibleCount })}
+        </span>
+      </div>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
       {pendingDelete ? (
@@ -338,9 +406,13 @@ export function TagsPage() {
       ) : null}
       {isLoading ? <p className="muted">{t('common.loadingTags')}</p> : null}
 
-      {editor && editorTitle ? (
-        <form className="card form appearance-form" onSubmit={(event) => void handleSubmit(event)}>
-          <h2>{editorTitle}</h2>
+      <EditorDrawer
+        open={Boolean(editor && editorTitle)}
+        title={editorTitle ?? ''}
+        onClose={closeEditor}
+        accentColors={drawerColors}
+      >
+        <form className="form appearance-form-drawer" onSubmit={(event) => void handleSubmit(event)}>
           <FormField
             id="tag-name"
             label={t('common.name')}
@@ -356,7 +428,11 @@ export function TagsPage() {
               onColorChange={setDraftColor}
               emoji={draftEmoji}
               onEmojiChange={setDraftEmoji}
-              groupId={editor.kind === 'edit-tag' || editor.kind === 'create-tag' ? editor.group.id : undefined}
+              groupId={
+                editor.kind === 'edit-tag' || editor.kind === 'create-tag'
+                  ? editor.group.id
+                  : undefined
+              }
               tag={editor.kind === 'edit-tag' ? editor.tag : undefined}
               pendingUpload={editor.kind === 'create-tag' ? pendingUpload : null}
               onPendingUploadChange={
@@ -402,26 +478,92 @@ export function TagsPage() {
             </button>
           </div>
         </form>
-      ) : null}
+      </EditorDrawer>
 
       <div className="tag-groups-list">
-        {groups.map((group) => (
+        {groups.map((group, groupIndex) => (
           <article
             key={group.id}
-            className={`card tag-group-card${draggingGroupId === group.id ? ' is-dragging' : ''}`}
-            draggable
-            onDragStart={() => setDraggingGroupId(group.id)}
-            onDragOver={(event: DragEvent) => event.preventDefault()}
-            onDrop={() => void handleGroupDrop(group.id)}
-            onDragEnd={() => setDraggingGroupId(null)}
+            className={[
+              'card',
+              'tag-group-card',
+              draggingGroupId === group.id ? 'is-dragging' : '',
+              selectedGroupId === group.id ? 'is-selected' : '',
+              groupDropTarget?.id === group.id ? `is-drop-${groupDropTarget.edge}` : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onDragOver={(event: DragEvent) => {
+              if (!draggingGroupId || draggingGroupId === group.id) return
+              event.preventDefault()
+              const edge = dropEdgeFromClientY(event.clientY, event.currentTarget)
+              setGroupDropTarget((current) =>
+                current?.id === group.id && current.edge === edge
+                  ? current
+                  : { id: group.id, edge },
+              )
+            }}
+            onDragLeave={(event: DragEvent) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                setGroupDropTarget((current) => (current?.id === group.id ? null : current))
+              }
+            }}
+            onDrop={(event: DragEvent) => {
+              event.preventDefault()
+              const edge =
+                groupDropTarget?.id === group.id
+                  ? groupDropTarget.edge
+                  : dropEdgeFromClientY(event.clientY, event.currentTarget)
+              void handleGroupDrop(group.id, edge)
+            }}
           >
             <header className="tag-group-card-header">
-              <PopupMenu
-                label={<h2>{group.label}</h2>}
-                ariaLabel={t('tagsPage.actionsFor', { label: group.label })}
-                onEdit={() => openEditor({ kind: 'edit-group', group })}
-                onDelete={() => setPendingDelete({ kind: 'group', group })}
-              />
+              <div className="tag-group-title-row">
+                <h2>{group.label}</h2>
+                <div className="list-row-actions">
+                  <IconButton
+                    label={t('common.edit')}
+                    size="sm"
+                    onClick={() => openEditor({ kind: 'edit-group', group })}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('tagsPage.moveUp')}
+                    size="sm"
+                    disabled={groupIndex === 0}
+                    onClick={() => void handleMoveGroup(group.id, 'up')}
+                  >
+                    <ArrowUpIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('tagsPage.moveDown')}
+                    size="sm"
+                    disabled={groupIndex === groups.length - 1}
+                    onClick={() => void handleMoveGroup(group.id, 'down')}
+                  >
+                    <ArrowDownIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('common.delete')}
+                    size="sm"
+                    variant="danger"
+                    onClick={() => setPendingDelete({ kind: 'group', group })}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                  <DragHandle
+                    label={t('tagsPage.dragGroup', { label: group.label })}
+                    onDragStart={() => {
+                      setDraggingGroupId(group.id)
+                      setGroupDropTarget(null)
+                    }}
+                    onDragEnd={clearGroupDrag}
+                    onMoveUp={() => void handleMoveGroup(group.id, 'up')}
+                    onMoveDown={() => void handleMoveGroup(group.id, 'down')}
+                  />
+                </div>
+              </div>
               <label className="tag-visibility-toggle">
                 <input
                   type="checkbox"
@@ -435,67 +577,133 @@ export function TagsPage() {
               </label>
             </header>
             <ul className="tag-list">
-              {group.tags.map((tag) => (
-                <li
-                  key={tag.id}
-                  className={
-                    draggingTag?.tagId === tag.id && draggingTag.groupId === group.id
-                      ? 'is-dragging'
-                      : undefined
-                  }
-                  draggable
-                  onDragStart={(event) => {
-                    event.stopPropagation()
-                    setDraggingTag({ groupId: group.id, tagId: tag.id })
-                  }}
-                  onDragOver={(event: DragEvent) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                  }}
-                  onDrop={(event) => {
-                    event.stopPropagation()
-                    void handleTagDrop(group, tag.id)
-                  }}
-                  onDragEnd={() => setDraggingTag(null)}
-                >
-                  <PopupMenu
-                    label={
-                      <span className="tag-list-item-label">
-                        <span
-                          className="tag-list-item-icon"
+              {group.tags.map((tag, tagIndex) => {
+                const isDraggingTag =
+                  draggingTag?.tagId === tag.id && draggingTag.groupId === group.id
+                const dropEdge =
+                  tagDropTarget?.groupId === group.id && tagDropTarget.tagId === tag.id
+                    ? tagDropTarget.edge
+                    : null
+                return (
+                  <li
+                    key={tag.id}
+                    className={[
+                      isDraggingTag ? 'is-dragging' : '',
+                      selectedTagId === tag.id ? 'is-selected' : '',
+                      dropEdge ? `is-drop-${dropEdge}` : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ') || undefined}
+                    onDragOver={(event: DragEvent) => {
+                      if (
+                        !draggingTag ||
+                        draggingTag.groupId !== group.id ||
+                        draggingTag.tagId === tag.id
+                      ) {
+                        return
+                      }
+                      event.preventDefault()
+                      event.stopPropagation()
+                      const edge = dropEdgeFromClientY(event.clientY, event.currentTarget)
+                      setTagDropTarget((current) =>
+                        current?.groupId === group.id &&
+                        current.tagId === tag.id &&
+                        current.edge === edge
+                          ? current
+                          : { groupId: group.id, tagId: tag.id, edge },
+                      )
+                    }}
+                    onDragLeave={(event: DragEvent) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                        setTagDropTarget((current) =>
+                          current?.groupId === group.id && current.tagId === tag.id
+                            ? null
+                            : current,
+                        )
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      const edge =
+                        tagDropTarget?.groupId === group.id && tagDropTarget.tagId === tag.id
+                          ? tagDropTarget.edge
+                          : dropEdgeFromClientY(event.clientY, event.currentTarget)
+                      void handleTagDrop(group, tag.id, edge)
+                    }}
+                  >
+                    <span className="tag-list-item-label">
+                      <span
+                        className="tag-list-item-icon"
+                        style={{
+                          background: moodSubtleFill(tag.color),
+                          filter: moodGlowFilter(tag.color, 'xs'),
+                        }}
+                      >
+                        <TagIcon
                           style={{
-                            background: moodSubtleFill(tag.color),
-                            filter: moodGlowFilter(tag.color, 'xs'),
+                            color: tag.color,
+                            icon_type: tag.icon_type,
+                            icon: tag.icon,
                           }}
-                        >
-                          <TagIcon
-                            style={{
-                              color: tag.color,
-                              icon_type: tag.icon_type,
-                              icon: tag.icon,
-                            }}
-                          />
-                        </span>
-                        {tag.label}
+                        />
                       </span>
-                    }
-                    ariaLabel={t('tagsPage.actionsFor', { label: tag.label })}
-                    onEdit={() => openEditor({ kind: 'edit-tag', group, tag })}
-                    onDelete={() => setPendingDelete({ kind: 'tag', group, tag })}
-                  />
-                  <span className="tag-drag-hint muted" aria-hidden="true">
-                    ⋮⋮
-                  </span>
-                </li>
-              ))}
+                      <span className="tag-list-item-text">{tag.label}</span>
+                    </span>
+                    <div className="list-row-actions">
+                      <IconButton
+                        label={t('common.edit')}
+                        size="sm"
+                        onClick={() => openEditor({ kind: 'edit-tag', group, tag })}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        label={t('tagsPage.moveUp')}
+                        size="sm"
+                        disabled={tagIndex === 0}
+                        onClick={() => void handleMoveTag(group, tag.id, 'up')}
+                      >
+                        <ArrowUpIcon />
+                      </IconButton>
+                      <IconButton
+                        label={t('tagsPage.moveDown')}
+                        size="sm"
+                        disabled={tagIndex === group.tags.length - 1}
+                        onClick={() => void handleMoveTag(group, tag.id, 'down')}
+                      >
+                        <ArrowDownIcon />
+                      </IconButton>
+                      <IconButton
+                        label={t('common.delete')}
+                        size="sm"
+                        variant="danger"
+                        onClick={() => setPendingDelete({ kind: 'tag', group, tag })}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                      <DragHandle
+                        label={t('tagsPage.dragTag', { label: tag.label })}
+                        onDragStart={() => {
+                          setDraggingTag({ groupId: group.id, tagId: tag.id })
+                          setTagDropTarget(null)
+                        }}
+                        onDragEnd={clearTagDrag}
+                        onMoveUp={() => void handleMoveTag(group, tag.id, 'up')}
+                        onMoveDown={() => void handleMoveTag(group, tag.id, 'down')}
+                      />
+                    </div>
+                  </li>
+                )
+              })}
               <li className="tag-list-add">
                 <button
                   type="button"
-                  className="icon-button-add"
-                  aria-label={t('tagsPage.addTagTo', { label: group.label })}
+                  className="button button-secondary button-small tag-list-add-button"
                   onClick={() => openEditor({ kind: 'create-tag', group })}
                 >
-                  +
+                  <span aria-hidden="true">+</span>
+                  {t('tagsPage.addTag')}
                 </button>
               </li>
             </ul>

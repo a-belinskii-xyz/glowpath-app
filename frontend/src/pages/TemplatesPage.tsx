@@ -1,4 +1,4 @@
-import { type DragEvent, type FormEvent, useEffect, useState } from 'react'
+import { type DragEvent, type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
@@ -10,27 +10,32 @@ import {
 } from '../api/noteTemplates'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { DragHandle } from '../components/DragHandle'
+import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
-import { MarkdownNoteEditor } from '../components/MarkdownNoteEditor'
+import { IconButton } from '../components/IconButton'
+import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { MarkdownNote } from '../components/MarkdownNote'
-import { PopupMenu } from '../components/PopupMenu'
+import { MarkdownNoteEditor } from '../components/MarkdownNoteEditor'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError } from '../lib/errors'
+import {
+  dropEdgeFromClientY,
+  dropIndexForEdge,
+  moveItem,
+  moveItemById,
+  type DropEdge,
+} from '../lib/listReorder'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 
-type EditorMode =
-  | { kind: 'create' }
-  | { kind: 'edit'; template: NoteTemplatePublic }
+type EditorMode = { kind: 'create' } | { kind: 'edit'; template: NoteTemplatePublic }
 
-function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
-  const next = [...items]
-  const [item] = next.splice(fromIndex, 1)
-  next.splice(toIndex, 0, item)
-  return next
+type TemplatesPageProps = {
+  embedded?: boolean
 }
 
-export function TemplatesPage() {
+export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
   const { locale, t } = useLocale()
   const [templates, setTemplates] = useState<NoteTemplatePublic[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +45,7 @@ export function TemplatesPage() {
   const [body, setBody] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ id: string; edge: DropEdge } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<NoteTemplatePublic | null>(null)
 
   const reload = async () => {
@@ -78,11 +84,11 @@ export function TemplatesPage() {
     }
   }
 
-  const closeEditor = () => {
+  const closeEditor = useCallback(() => {
     setEditor(null)
     setName('')
     setBody('')
-  }
+  }, [])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -134,18 +140,7 @@ export function TemplatesPage() {
     }
   }
 
-  const handleDrop = async (targetId: string) => {
-    if (!draggingId || draggingId === targetId) {
-      setDraggingId(null)
-      return
-    }
-    const fromIndex = templates.findIndex((item) => item.id === draggingId)
-    const toIndex = templates.findIndex((item) => item.id === targetId)
-    setDraggingId(null)
-    if (fromIndex < 0 || toIndex < 0) return
-
-    const previous = templates
-    const next = moveItem(templates, fromIndex, toIndex)
+  const persistOrder = async (next: NoteTemplatePublic[], previous: NoteTemplatePublic[]) => {
     setTemplates(next)
     try {
       const response = await reorderNoteTemplates({
@@ -158,16 +153,42 @@ export function TemplatesPage() {
     }
   }
 
+  const clearDrag = () => {
+    setDraggingId(null)
+    setDropTarget(null)
+  }
+
+  const handleDrop = async (targetId: string, edge: DropEdge) => {
+    if (!draggingId || draggingId === targetId) {
+      clearDrag()
+      return
+    }
+    const fromIndex = templates.findIndex((item) => item.id === draggingId)
+    const targetIndex = templates.findIndex((item) => item.id === targetId)
+    clearDrag()
+    if (fromIndex < 0 || targetIndex < 0) return
+    const toIndex = dropIndexForEdge(fromIndex, targetIndex, edge)
+    if (toIndex === fromIndex) return
+    await persistOrder(moveItem(templates, fromIndex, toIndex), templates)
+  }
+
+  const handleMove = async (templateId: string, direction: 'up' | 'down') => {
+    const next = moveItemById(templates, templateId, direction)
+    if (next === templates) return
+    await persistOrder(next, templates)
+  }
+
   const editorTitle =
     editor?.kind === 'create'
       ? t('templatesPage.addTemplate')
       : editor?.kind === 'edit'
         ? t('templatesPage.editTemplate', { label: editor.template.label })
         : null
+  const selectedId = editor?.kind === 'edit' ? editor.template.id : null
 
   return (
-    <section className="page">
-      <EmailVerificationBanner />
+    <section className={embedded ? undefined : 'page'}>
+      {embedded ? null : <EmailVerificationBanner />}
 
       <header className="page-header">
         <h1>{t('templatesPage.title')}</h1>
@@ -195,9 +216,8 @@ export function TemplatesPage() {
       ) : null}
       {isLoading ? <p className="muted">{t('common.loadingTemplates')}</p> : null}
 
-      {editor && editorTitle ? (
-        <form className="card form appearance-form" onSubmit={(event) => void handleSubmit(event)}>
-          <h2>{editorTitle}</h2>
+      <EditorDrawer open={Boolean(editor && editorTitle)} title={editorTitle ?? ''} onClose={closeEditor}>
+        <form className="form appearance-form-drawer" onSubmit={(event) => void handleSubmit(event)}>
           <FormField
             id="template-name"
             label={t('common.name')}
@@ -227,38 +247,109 @@ export function TemplatesPage() {
             </button>
           </div>
         </form>
-      ) : null}
+      </EditorDrawer>
 
       <div className="note-templates-list">
-        {templates.map((template) => (
+        {templates.map((template, index) => (
           <article
             key={template.id}
-            className={`card note-template-card${draggingId === template.id ? ' is-dragging' : ''}`}
-            draggable
-            onDragStart={() => setDraggingId(template.id)}
-            onDragOver={(event: DragEvent) => event.preventDefault()}
-            onDrop={() => void handleDrop(template.id)}
-            onDragEnd={() => setDraggingId(null)}
+            className={[
+              'card',
+              'note-template-card',
+              draggingId === template.id ? 'is-dragging' : '',
+              selectedId === template.id ? 'is-selected' : '',
+              dropTarget?.id === template.id ? `is-drop-${dropTarget.edge}` : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onDragOver={(event: DragEvent) => {
+              if (!draggingId || draggingId === template.id) return
+              event.preventDefault()
+              const edge = dropEdgeFromClientY(event.clientY, event.currentTarget)
+              setDropTarget((current) =>
+                current?.id === template.id && current.edge === edge
+                  ? current
+                  : { id: template.id, edge },
+              )
+            }}
+            onDragLeave={(event: DragEvent) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                setDropTarget((current) => (current?.id === template.id ? null : current))
+              }
+            }}
+            onDrop={(event: DragEvent) => {
+              event.preventDefault()
+              const edge =
+                dropTarget?.id === template.id
+                  ? dropTarget.edge
+                  : dropEdgeFromClientY(event.clientY, event.currentTarget)
+              void handleDrop(template.id, edge)
+            }}
           >
             <header className="note-template-card-header">
-              <PopupMenu
-                label={<h2>{template.label}</h2>}
-                ariaLabel={t('templatesPage.actionsFor', { label: template.label })}
-                onEdit={() => openEditor({ kind: 'edit', template })}
-                onDelete={() => setPendingDelete(template)}
-              />
-              <span className="tag-drag-hint muted" aria-hidden="true">
-                ⋮⋮
-              </span>
+              <div className="note-template-title-row">
+                <h2>{template.label}</h2>
+                <div className="list-row-actions">
+                  <IconButton
+                    label={t('common.edit')}
+                    size="sm"
+                    onClick={() => openEditor({ kind: 'edit', template })}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('templatesPage.moveUp')}
+                    size="sm"
+                    disabled={index === 0}
+                    onClick={() => void handleMove(template.id, 'up')}
+                  >
+                    <ArrowUpIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('templatesPage.moveDown')}
+                    size="sm"
+                    disabled={index === templates.length - 1}
+                    onClick={() => void handleMove(template.id, 'down')}
+                  >
+                    <ArrowDownIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('common.delete')}
+                    size="sm"
+                    variant="danger"
+                    onClick={() => setPendingDelete(template)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                  <DragHandle
+                    label={t('templatesPage.dragTemplate', { label: template.label })}
+                    onDragStart={() => {
+                      setDraggingId(template.id)
+                      setDropTarget(null)
+                    }}
+                    onDragEnd={clearDrag}
+                    onMoveUp={() => void handleMove(template.id, 'up')}
+                    onMoveDown={() => void handleMove(template.id, 'down')}
+                  />
+                </div>
+              </div>
             </header>
-            <MarkdownNote content={template.body} compact className="note-template-preview" />
+            <button
+              type="button"
+              className="note-template-preview-button"
+              onClick={() => openEditor({ kind: 'edit', template })}
+            >
+              <MarkdownNote content={template.body} compact className="note-template-preview" />
+            </button>
           </article>
         ))}
       </div>
 
-      <p className="muted">
-        <Link to="/">{t('common.backToEntries')}</Link>
-      </p>
+      {embedded ? null : (
+        <p className="muted">
+          <Link to="/">{t('common.backToEntries')}</Link>
+        </p>
+      )}
     </section>
   )
 }

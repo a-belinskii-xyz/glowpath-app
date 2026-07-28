@@ -1,4 +1,4 @@
-import { type DragEvent, type FormEvent, useEffect, useState } from 'react'
+import { type DragEvent, type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
@@ -10,27 +10,30 @@ import {
 } from '../api/goals'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { DragHandle } from '../components/DragHandle'
+import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { GoalIcon } from '../components/GoalIcon'
 import { GoalIconEditor } from '../components/GoalIconEditor'
-import { PopupMenu } from '../components/PopupMenu'
+import { IconButton } from '../components/IconButton'
+import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
-import { moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
-import { ApiError } from '../lib/errors'
+import { moodGlowFilter, moodSubtleFill } from '../design'
 import { todayKey } from '../lib/datetime'
+import { ApiError } from '../lib/errors'
+import {
+  dropEdgeFromClientY,
+  dropIndexForEdge,
+  moveItem,
+  moveItemById,
+  type DropEdge,
+} from '../lib/listReorder'
 import { isValidHexColor } from '../lib/moodScale'
 import { DEFAULT_GOAL_STYLE, type GoalPublic } from '../types/goal'
 
 type EditorMode = { kind: 'create' } | { kind: 'edit'; goal: GoalPublic }
-
-function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
-  const next = [...items]
-  const [item] = next.splice(fromIndex, 1)
-  next.splice(toIndex, 0, item)
-  return next
-}
 
 export function GoalsPage() {
   const { user } = useAuth()
@@ -52,6 +55,7 @@ export function GoalsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGoalId, setTogglingGoalId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ id: string; edge: DropEdge } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<GoalPublic | null>(null)
 
   const reload = async () => {
@@ -105,12 +109,12 @@ export function GoalsPage() {
     }
   }
 
-  const closeEditor = () => {
+  const closeEditor = useCallback(() => {
     setEditor(null)
     setName('')
     setDraftColor(DEFAULT_GOAL_STYLE.color)
     setDraftEmoji(DEFAULT_GOAL_STYLE.icon)
-  }
+  }, [])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -138,8 +142,7 @@ export function GoalsPage() {
       return
     }
     const emoji = draftEmoji.trim()
-    const usingUpload =
-      editor.kind === 'edit' && editor.goal.icon_type === 'upload'
+    const usingUpload = editor.kind === 'edit' && editor.goal.icon_type === 'upload'
     if (!usingUpload && !emoji) {
       setError(t('goalsPage.emojiRequired'))
       return
@@ -170,9 +173,7 @@ export function GoalsPage() {
           starts_on: startsOn,
           ends_on: endsOn || null,
           color: draftColor,
-          ...(usingUpload
-            ? {}
-            : { icon_type: 'emoji' as const, icon: emoji }),
+          ...(usingUpload ? {} : { icon_type: 'emoji' as const, icon: emoji }),
         })
       }
       await reload()
@@ -233,28 +234,40 @@ export function GoalsPage() {
     }
   }
 
-  const handleDrop = async (targetId: string) => {
-    if (!draggingId || draggingId === targetId) {
-      setDraggingId(null)
-      return
-    }
-    const fromIndex = goals.findIndex((item) => item.id === draggingId)
-    const toIndex = goals.findIndex((item) => item.id === targetId)
-    setDraggingId(null)
-    if (fromIndex < 0 || toIndex < 0) return
-
-    const previous = goals
-    const next = moveItem(goals, fromIndex, toIndex)
+  const persistOrder = async (next: GoalPublic[], previous: GoalPublic[]) => {
     setGoals(next)
     try {
-      const response = await reorderGoals({
-        ordered_ids: next.map((item) => item.id),
-      })
+      const response = await reorderGoals({ ordered_ids: next.map((item) => item.id) })
       setGoals(response.items)
     } catch (err) {
       setGoals(previous)
       setError(err instanceof Error ? err.message : t('errors.failedReorderGoals'))
     }
+  }
+
+  const clearDrag = () => {
+    setDraggingId(null)
+    setDropTarget(null)
+  }
+
+  const handleDrop = async (targetId: string, edge: DropEdge) => {
+    if (!draggingId || draggingId === targetId) {
+      clearDrag()
+      return
+    }
+    const fromIndex = goals.findIndex((item) => item.id === draggingId)
+    const targetIndex = goals.findIndex((item) => item.id === targetId)
+    clearDrag()
+    if (fromIndex < 0 || targetIndex < 0) return
+    const toIndex = dropIndexForEdge(fromIndex, targetIndex, edge)
+    if (toIndex === fromIndex) return
+    await persistOrder(moveItem(goals, fromIndex, toIndex), goals)
+  }
+
+  const handleMove = async (goalId: string, direction: 'up' | 'down') => {
+    const next = moveItemById(goals, goalId, direction)
+    if (next === goals) return
+    await persistOrder(next, goals)
   }
 
   const editorTitle =
@@ -263,6 +276,8 @@ export function GoalsPage() {
       : editor?.kind === 'edit'
         ? t('goalsPage.editGoal', { label: editor.goal.label })
         : null
+  const selectedGoalId = editor?.kind === 'edit' ? editor.goal.id : null
+  const drawerColors = goals.map((goal) => goal.color)
 
   return (
     <section className="page">
@@ -275,12 +290,14 @@ export function GoalsPage() {
         </button>
       </header>
 
-      <p className="muted tag-visibility-hint">
-        {t('goalsPage.hint', { limit: visibleLimit, count: visibleCount })}
-      </p>
-      <p className="muted tag-visibility-hint">
-        {t('goalsPage.statsHint', { limit: statsLimit, count: statsCount })}
-      </p>
+      <div className="limit-pills" aria-label={t('goalsPage.hint', { limit: visibleLimit, count: visibleCount })}>
+        <span className="limit-pill">
+          {t('goalsPage.hintCompact', { limit: visibleLimit, count: visibleCount })}
+        </span>
+        <span className="limit-pill">
+          {t('goalsPage.statsHintCompact', { limit: statsLimit, count: statsCount })}
+        </span>
+      </div>
 
       {error ? <Alert variant="error">{error}</Alert> : null}
       {pendingDelete ? (
@@ -299,9 +316,37 @@ export function GoalsPage() {
       ) : null}
       {isLoading ? <p className="muted">{t('common.loadingGoals')}</p> : null}
 
-      {editor && editorTitle ? (
-        <form className="card form appearance-form" onSubmit={(event) => void handleSubmit(event)}>
-          <h2>{editorTitle}</h2>
+      <EditorDrawer
+        open={Boolean(editor && editorTitle)}
+        title={editorTitle ?? ''}
+        onClose={closeEditor}
+        accentColors={drawerColors}
+        footer={
+          <div className="button-row">
+            <button
+              type="submit"
+              form="goal-editor-form"
+              className="button"
+              disabled={isSaving}
+            >
+              {isSaving ? t('common.saving') : t('common.save')}
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={closeEditor}
+              disabled={isSaving}
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        }
+      >
+        <form
+          id="goal-editor-form"
+          className="form appearance-form-drawer"
+          onSubmit={(event) => void handleSubmit(event)}
+        >
           <FormField
             id="goal-name"
             label={t('common.name')}
@@ -351,9 +396,9 @@ export function GoalsPage() {
             onColorChange={setDraftColor}
             emoji={draftEmoji}
             onEmojiChange={setDraftEmoji}
-            goal={editor.kind === 'edit' ? editor.goal : undefined}
+            goal={editor?.kind === 'edit' ? editor.goal : undefined}
             onGoalChange={
-              editor.kind === 'edit'
+              editor?.kind === 'edit'
                 ? (updated) => {
                     setEditor({ kind: 'edit', goal: updated })
                     setGoals((current) =>
@@ -368,82 +413,111 @@ export function GoalsPage() {
             }
             disabled={isSaving}
           />
-          <div className="button-row">
-            <button type="submit" className="button" disabled={isSaving}>
-              {isSaving ? t('common.saving') : t('common.save')}
-            </button>
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={closeEditor}
-              disabled={isSaving}
-            >
-              {t('common.cancel')}
-            </button>
-          </div>
         </form>
-      ) : null}
+      </EditorDrawer>
 
       <div className="goals-list">
-        {goals.map((goal) => (
+        {goals.map((goal, index) => (
           <article
             key={goal.id}
-            className={`card goal-card${draggingId === goal.id ? ' is-dragging' : ''}`}
-            draggable
-            onDragStart={() => setDraggingId(goal.id)}
-            onDragOver={(event: DragEvent) => event.preventDefault()}
-            onDrop={() => void handleDrop(goal.id)}
-            onDragEnd={() => setDraggingId(null)}
+            className={[
+              'card',
+              'goal-card',
+              draggingId === goal.id ? 'is-dragging' : '',
+              selectedGoalId === goal.id ? 'is-selected' : '',
+              dropTarget?.id === goal.id ? `is-drop-${dropTarget.edge}` : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onDragOver={(event: DragEvent) => {
+              if (!draggingId || draggingId === goal.id) return
+              event.preventDefault()
+              const edge = dropEdgeFromClientY(event.clientY, event.currentTarget)
+              setDropTarget((current) =>
+                current?.id === goal.id && current.edge === edge
+                  ? current
+                  : { id: goal.id, edge },
+              )
+            }}
+            onDragLeave={(event: DragEvent) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                setDropTarget((current) => (current?.id === goal.id ? null : current))
+              }
+            }}
+            onDrop={(event: DragEvent) => {
+              event.preventDefault()
+              const edge =
+                dropTarget?.id === goal.id
+                  ? dropTarget.edge
+                  : dropEdgeFromClientY(event.clientY, event.currentTarget)
+              void handleDrop(goal.id, edge)
+            }}
           >
-            <div
-              className="goal-card-icon-wrap"
-              style={{
-                background: moodSubtleFill(goal.color),
-                boxShadow: moodGlowBoxShadow(goal.color, 'xs'),
-              }}
-            >
-              <span style={{ filter: moodGlowFilter(goal.color, 'xs') }}>
-                <GoalIcon
+            <header className="goal-card-header">
+              <div className="goal-card-title-row">
+                <span
+                  className="goal-card-icon-wrap"
                   style={{
-                    color: goal.color,
-                    icon_type: goal.icon_type,
-                    icon: goal.icon,
+                    background: moodSubtleFill(goal.color),
+                    filter: moodGlowFilter(goal.color, 'xs'),
                   }}
-                  className="goal-card-icon"
-                />
-              </span>
-            </div>
-
-            <div className="goal-card-body">
-              <div className="goal-card-top">
-                <PopupMenu
-                  label={<h2 className="goal-card-title">{goal.label}</h2>}
-                  ariaLabel={t('goalsPage.actionsFor', { label: goal.label })}
-                  onEdit={() => openEditor({ kind: 'edit', goal })}
-                  onDelete={() => setPendingDelete(goal)}
-                />
-                <p className="goal-week-progress">
-                  {t('goalsPage.weekProgress', {
-                    done: goal.completed_this_week,
-                    target: goal.times_per_week,
-                  })}
-                </p>
-                <span className="tag-drag-hint muted" aria-hidden="true">
-                  ⋮⋮
-                </span>
-              </div>
-
-              <p className="muted goal-meta">
-                {goal.ends_on
-                  ? t('goalsPage.dateRangeLabel', { start: goal.starts_on, end: goal.ends_on })
-                  : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
-              </p>
-
-              <div className="goal-card-flags">
-                <label
-                  className={`goal-flag${goal.show_on_entry ? ' is-on' : ''}`}
-                  title={t('goalsPage.showOnEntry')}
                 >
+                  <GoalIcon
+                    style={{
+                      color: goal.color,
+                      icon_type: goal.icon_type,
+                      icon: goal.icon,
+                    }}
+                    className="goal-card-icon"
+                  />
+                </span>
+                <h2>{goal.label}</h2>
+                <div className="list-row-actions">
+                  <IconButton
+                    label={t('common.edit')}
+                    size="sm"
+                    onClick={() => openEditor({ kind: 'edit', goal })}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('goalsPage.moveUp')}
+                    size="sm"
+                    disabled={index === 0}
+                    onClick={() => void handleMove(goal.id, 'up')}
+                  >
+                    <ArrowUpIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('goalsPage.moveDown')}
+                    size="sm"
+                    disabled={index === goals.length - 1}
+                    onClick={() => void handleMove(goal.id, 'down')}
+                  >
+                    <ArrowDownIcon />
+                  </IconButton>
+                  <IconButton
+                    label={t('common.delete')}
+                    size="sm"
+                    variant="danger"
+                    onClick={() => setPendingDelete(goal)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                  <DragHandle
+                    label={t('goalsPage.dragGoal', { label: goal.label })}
+                    onDragStart={() => {
+                      setDraggingId(goal.id)
+                      setDropTarget(null)
+                    }}
+                    onDragEnd={clearDrag}
+                    onMoveUp={() => void handleMove(goal.id, 'up')}
+                    onMoveDown={() => void handleMove(goal.id, 'down')}
+                  />
+                </div>
+              </div>
+              <div className="goal-card-toggles">
+                <label className="tag-visibility-toggle" title={t('goalsPage.showOnEntry')}>
                   <input
                     type="checkbox"
                     checked={goal.show_on_entry}
@@ -454,10 +528,7 @@ export function GoalsPage() {
                   />
                   <span>{t('goalsPage.showOnEntryShort')}</span>
                 </label>
-                <label
-                  className={`goal-flag${goal.show_in_stats ? ' is-on' : ''}`}
-                  title={t('goalsPage.showInStats')}
-                >
+                <label className="tag-visibility-toggle" title={t('goalsPage.showInStats')}>
                   <input
                     type="checkbox"
                     checked={goal.show_in_stats}
@@ -469,6 +540,22 @@ export function GoalsPage() {
                   <span>{t('goalsPage.showInStatsShort')}</span>
                 </label>
               </div>
+            </header>
+            <div className="goal-card-meta">
+              <p className="muted goal-meta">
+                {goal.ends_on
+                  ? t('goalsPage.dateRangeLabel', {
+                      start: goal.starts_on,
+                      end: goal.ends_on,
+                    })
+                  : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
+              </p>
+              <p className="goal-week-progress">
+                {t('goalsPage.weekProgress', {
+                  done: goal.completed_this_week,
+                  target: goal.times_per_week,
+                })}
+              </p>
             </div>
           </article>
         ))}

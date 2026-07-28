@@ -9,11 +9,11 @@ import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
 import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodStats'
 import { EntryActionMenu } from '../components/EntryActionMenu'
 import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
-import { GoalIcon } from '../components/GoalIcon'
+import { EntryTagsCompact } from '../components/EntryTagsCompact'
 import { HeartIcon } from '../components/HeartIcon'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
-import { TagIcon } from '../components/TagIcon'
+import { MonthControl } from '../components/MonthControl'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -37,7 +37,7 @@ import {
   todayKey,
   weekIntersectsMonth,
 } from '../lib/datetime'
-import { buildGradientWashFromScores, moodSubtleFill, motion } from '../design'
+import { buildGradientWashFromScores, moodGlowFilter, motion } from '../design'
 import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
@@ -713,15 +713,13 @@ export function EntriesPage() {
       <EmailVerificationBanner />
 
       <header className="page-header">
-        <div className="month-nav">
-          <button type="button" className="button button-secondary button-small" onClick={goToPreviousMonth}>
-            {t('common.previous')}
-          </button>
-          <h1>{formatMonthHeading(year, month, dateLocale)}</h1>
-          <button type="button" className="button button-secondary button-small" onClick={goToNextMonth}>
-            {t('common.next')}
-          </button>
-        </div>
+        <MonthControl
+          label={formatMonthHeading(year, month, dateLocale)}
+          previousLabel={t('calendar.previousMonth')}
+          nextLabel={t('calendar.nextMonth')}
+          onPrevious={goToPreviousMonth}
+          onNext={goToNextMonth}
+        />
         <div className="page-header-actions">
           <div className="entries-search">
             <input
@@ -761,10 +759,14 @@ export function EntriesPage() {
 
       {user?.email_verified && !isSearchMode ? (
         <>
-          <div className="calendar-mode-toggle" role="group" aria-label={t('calendar.modeGroup')}>
+          <div
+            className="segmented-control"
+            role="group"
+            aria-label={t('calendar.modeGroup')}
+          >
             <button
               type="button"
-              className={`button button-secondary button-small${calendarMode === 'moods' ? ' is-active' : ''}`}
+              className={`segmented-control-option${calendarMode === 'moods' ? ' is-active' : ''}`}
               aria-pressed={calendarMode === 'moods'}
               onClick={() => setCalendarMode('moods')}
             >
@@ -772,7 +774,7 @@ export function EntriesPage() {
             </button>
             <button
               type="button"
-              className={`button button-secondary button-small${calendarMode === 'goals' ? ' is-active' : ''}`}
+              className={`segmented-control-option${calendarMode === 'goals' ? ' is-active' : ''}`}
               aria-pressed={calendarMode === 'goals'}
               onClick={() => setCalendarMode('goals')}
             >
@@ -864,11 +866,17 @@ export function EntriesPage() {
                       <Link className="entry-row-link" to={`/entries/${entry.id}`}>
                         <div className="entry-row-main">
                           <span className="entry-score">
-                            <MoodScoreIcon
-                              style={getMoodScoreStyle(entry.score, scores)}
-                              className="entry-score-icon"
-                              fallbackScore={entry.score}
-                            />{' '}
+                            <span
+                              style={{
+                                filter: moodGlowFilter(getMoodScoreColor(entry.score, scores)),
+                              }}
+                            >
+                              <MoodScoreIcon
+                                style={getMoodScoreStyle(entry.score, scores)}
+                                className="entry-score-icon"
+                                fallbackScore={entry.score}
+                              />
+                            </span>{' '}
                             {entry.score_label}
                           </span>
                           <div className="entry-row-meta">
@@ -913,47 +921,7 @@ export function EntriesPage() {
                         {entry.note ? (
                           <MarkdownNote content={entry.note} compact className="entry-note" />
                         ) : null}
-                        {entry.tags.length > 0 ? (
-                          <div className="entry-tags">
-                            {entry.tags.map((tag) => (
-                              <span
-                                key={tag.id}
-                                className="entry-tag"
-                                style={{
-                                  background: moodSubtleFill(tag.color),
-                                  color: tag.color,
-                                }}
-                              >
-                                <TagIcon
-                                  style={{
-                                    color: tag.color,
-                                    icon_type: tag.icon_type,
-                                    icon: tag.icon,
-                                  }}
-                                  className="entry-tag-icon"
-                                />
-                                {tag.label}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                        {entry.goals.length > 0 ? (
-                          <div className="entry-tags entry-goals">
-                            {entry.goals.map((goal) => (
-                              <span key={goal.id} className="entry-tag entry-goal">
-                                <GoalIcon
-                                  style={{
-                                    color: goal.color,
-                                    icon_type: goal.icon_type,
-                                    icon: goal.icon,
-                                  }}
-                                  className="entry-goal-icon"
-                                />
-                                {goal.label}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
+                        <EntryTagsCompact tags={entry.tags} goals={entry.goals} />
                       </Link>
                       <div className="entry-row-media">
                         <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
@@ -995,11 +963,17 @@ export function EntriesPage() {
                       <Link className="entry-row-link" to={`/entries/${entry.id}`}>
                         <div className="entry-row-main">
                           <span className="entry-score">
-                            <MoodScoreIcon
-                              style={getMoodScoreStyle(entry.score, scores)}
-                              className="entry-score-icon"
-                              fallbackScore={entry.score}
-                            />{' '}
+                            <span
+                              style={{
+                                filter: moodGlowFilter(getMoodScoreColor(entry.score, scores)),
+                              }}
+                            >
+                              <MoodScoreIcon
+                                style={getMoodScoreStyle(entry.score, scores)}
+                                className="entry-score-icon"
+                                fallbackScore={entry.score}
+                              />
+                            </span>{' '}
                             {entry.score_label}
                           </span>
                           <div className="entry-row-meta">
@@ -1043,47 +1017,7 @@ export function EntriesPage() {
                         {entry.note ? (
                           <MarkdownNote content={entry.note} compact className="entry-note" />
                         ) : null}
-                        {entry.tags.length > 0 ? (
-                          <div className="entry-tags">
-                            {entry.tags.map((tag) => (
-                              <span
-                                key={tag.id}
-                                className="entry-tag"
-                                style={{
-                                  background: moodSubtleFill(tag.color),
-                                  color: tag.color,
-                                }}
-                              >
-                                <TagIcon
-                                  style={{
-                                    color: tag.color,
-                                    icon_type: tag.icon_type,
-                                    icon: tag.icon,
-                                  }}
-                                  className="entry-tag-icon"
-                                />
-                                {tag.label}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                        {entry.goals.length > 0 ? (
-                          <div className="entry-tags entry-goals">
-                            {entry.goals.map((goal) => (
-                              <span key={goal.id} className="entry-tag entry-goal">
-                                <GoalIcon
-                                  style={{
-                                    color: goal.color,
-                                    icon_type: goal.icon_type,
-                                    icon: goal.icon,
-                                  }}
-                                  className="entry-goal-icon"
-                                />
-                                {goal.label}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
+                        <EntryTagsCompact tags={entry.tags} goals={entry.goals} />
                       </Link>
                       <div className="entry-row-media">
                         <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />

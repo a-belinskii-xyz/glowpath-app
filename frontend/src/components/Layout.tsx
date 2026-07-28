@@ -50,10 +50,10 @@ export function Layout() {
           <NavLink to="/tags" className={navClassName}>
             {t('nav.tags')}
           </NavLink>
-          <p className="app-sidebar-section">{t('nav.sectionAccount')}</p>
-          <NavLink to="/templates" className={navClassName}>
-            {t('nav.templates')}
+          <NavLink to="/tracker-settings" className={navClassName}>
+            {t('nav.trackerSettings')}
           </NavLink>
+          <p className="app-sidebar-section">{t('nav.sectionAccount')}</p>
           <NavLink to="/profile" className={navClassName}>
             {t('nav.profile')}
           </NavLink>

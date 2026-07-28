@@ -34,7 +34,6 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
   const { t, tp } = useLocale()
   const { getScoreColor, getScoreStyle } = useMoodPreferences()
   const { scores, total_entries: totalEntries, month_index: monthIndex, comparison } = stats
-  const maxCount = Math.max(1, ...scores.map((item) => item.count))
   const currentLabel = formatIndex(comparison.current_index ?? monthIndex)
   const previousLabel = formatIndex(comparison.previous_index)
 
@@ -63,20 +62,32 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
         </p>
       ) : null}
 
-      <div className="emotion-stats-chart" role="img" aria-label={t('emotionStats.chartAria')}>
+      <p className="emotion-stats-indexes muted">{t('emotionStats.distributionHint')}</p>
+
+      <div
+        className="emotion-stats-chart"
+        role="img"
+        aria-label={t('emotionStats.chartAria')}
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, scores.length)}, minmax(0, 1fr))` }}
+      >
         {scores.map((item) => {
-          const heightPercent = totalEntries === 0 ? 0 : (item.count / maxCount) * 100
+          const percent = totalEntries === 0 ? 0 : Math.round((item.count / totalEntries) * 100)
+          const heightPercent = totalEntries === 0 ? 0 : percent
           const scoreStyle = getScoreStyle(item.score)
           const color = getScoreColor(item.score)
           const theme = buildMoodTheme(color)
-          // Impact = share of all entries this emotion accounts for.
           const impact = totalEntries > 0 ? item.count / totalEntries : 0
           const glow = moodGlowForImpact(color, impact)
 
           return (
             <div key={item.score} className="emotion-stats-bar-col">
               <span className="emotion-stats-count" aria-hidden={item.count === 0}>
-                {item.count > 0 ? item.count : ''}
+                {item.count > 0
+                  ? t('emotionStats.countWithPercent', {
+                      count: item.count,
+                      percent,
+                    })
+                  : ''}
               </span>
               <div className="emotion-stats-bar-track">
                 <div
@@ -86,7 +97,7 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
                     backgroundColor: theme.chart,
                     boxShadow: glow?.boxShadow,
                   }}
-                  title={`${item.score_label}: ${item.count}`}
+                  title={`${item.score_label}: ${item.count} (${percent}%)`}
                 />
               </div>
               <span
@@ -101,7 +112,7 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
               </span>
               <span className="emotion-stats-label">{item.score_label}</span>
               <span className="visually-hidden">
-                {item.score_label}: {item.count}
+                {item.score_label}: {item.count} ({percent}%)
               </span>
             </div>
           )

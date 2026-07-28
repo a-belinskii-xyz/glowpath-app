@@ -104,14 +104,16 @@ export function ImageCropModal({
 
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !busy) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
         onCancel()
       }
     }
 
-    document.addEventListener('keydown', handleKey)
+    document.addEventListener('keydown', handleKey, true)
     return () => {
       document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', handleKey)
+      document.removeEventListener('keydown', handleKey, true)
     }
   }, [busy, onCancel])
 

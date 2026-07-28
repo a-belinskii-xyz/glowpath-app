@@ -147,10 +147,10 @@ export function GoalPeriodStats({
         ) : null}
       </div>
 
-      <div className="goal-stats-period-toggle" role="group" aria-label={t('goalWeekStats.periodGroup')}>
+      <div className="segmented-control" role="group" aria-label={t('goalWeekStats.periodGroup')}>
         <button
           type="button"
-          className={`button button-secondary button-small${period === 'week' ? ' is-active' : ''}`}
+          className={`segmented-control-option${period === 'week' ? ' is-active' : ''}`}
           aria-pressed={period === 'week'}
           onClick={() => onPeriodChange('week')}
         >
@@ -158,7 +158,7 @@ export function GoalPeriodStats({
         </button>
         <button
           type="button"
-          className={`button button-secondary button-small${period === 'month' ? ' is-active' : ''}`}
+          className={`segmented-control-option${period === 'month' ? ' is-active' : ''}`}
           aria-pressed={period === 'month'}
           onClick={() => onPeriodChange('month')}
         >

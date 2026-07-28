@@ -19,7 +19,7 @@ import { TagIcon } from './TagIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
-import { moodGlowBoxShadow, moodSubtleFill } from '../design'
+import { moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
 import { ApiError } from '../lib/errors'
 import {
   datetimeLocalToIso,
@@ -456,11 +456,13 @@ export function MoodEntryForm({
                 onClick={() => pickMood(option.score)}
                 aria-pressed={isSelected}
               >
-                <MoodScoreIcon
-                  style={option.style}
-                  className="mood-card-emoji"
-                  fallbackScore={option.score}
-                />
+                <span style={{ filter: moodGlowFilter(option.color) }}>
+                  <MoodScoreIcon
+                    style={option.style}
+                    className="mood-card-emoji"
+                    fallbackScore={option.score}
+                  />
+                </span>
                 <span className="mood-card-label">{option.label}</span>
                 <span className="mood-card-phrase">{moodPhrase(option.score)}</span>
               </button>
@@ -717,7 +719,7 @@ export function MoodEntryForm({
               <span aria-hidden="true">·</span>
               <Link to="/goals">{t('common.goals')}</Link>
               <span aria-hidden="true">·</span>
-              <Link to="/templates">{t('entries.templatesLink')}</Link>
+              <Link to="/tracker-settings?tab=templates">{t('entries.templatesLink')}</Link>
             </nav>
           </div>
         </div>
@@ -767,8 +769,8 @@ export function MoodEntryForm({
                 ) : (
                   <p className="muted">{t('entries.noTemplates')}</p>
                 )}
-                <Link
-                  to="/templates"
+                  <Link
+                  to="/tracker-settings?tab=templates"
                   className="button button-secondary button-small entry-sheet-manage"
                   onClick={() => setShowTemplateSheet(false)}
                 >

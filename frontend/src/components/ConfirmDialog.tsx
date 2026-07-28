@@ -38,17 +38,21 @@ export function ConfirmDialog({
       return
     }
     const previous = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     confirmRef.current?.focus()
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !isBusy) {
         event.preventDefault()
+        event.stopImmediatePropagation()
         onCancel()
       }
     }
-    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('keydown', onKeyDown, true)
     return () => {
-      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('keydown', onKeyDown, true)
+      document.body.style.overflow = previousOverflow
       previous?.focus?.()
     }
   }, [open, isBusy, onCancel])
@@ -59,7 +63,7 @@ export function ConfirmDialog({
 
   return createPortal(
     <div
-      className="confirm-dialog-backdrop"
+      className={`confirm-dialog-backdrop${variant === 'danger' ? ' confirm-dialog-backdrop--danger' : ''}`}
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isBusy) {

@@ -19,7 +19,7 @@ import { RegisterPage } from './pages/RegisterPage'
 import { ResendVerificationPage } from './pages/ResendVerificationPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { TagsPage } from './pages/TagsPage'
-import { TemplatesPage } from './pages/TemplatesPage'
+import { TemplatesRedirect, TrackerSettingsPage } from './pages/TrackerSettingsPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
 function App() {
@@ -28,33 +28,34 @@ function App() {
       <AuthProvider>
         <MoodPreferencesProvider>
           <BrowserRouter>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route index element={<HomePage />} />
-              <Route path="verify-email" element={<VerifyEmailPage />} />
-              <Route path="auth/google/callback" element={<GoogleCallbackPage />} />
+            <Routes>
+              <Route element={<Layout />}>
+                <Route index element={<HomePage />} />
+                <Route path="verify-email" element={<VerifyEmailPage />} />
+                <Route path="auth/google/callback" element={<GoogleCallbackPage />} />
 
-              <Route element={<AuthCardLayout />}>
-                <Route path="login" element={<LoginPage />} />
-                <Route path="register" element={<RegisterPage />} />
-                <Route path="forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="reset-password" element={<ResetPasswordPage />} />
-                <Route path="resend-verification" element={<ResendVerificationPage />} />
+                <Route element={<AuthCardLayout />}>
+                  <Route path="login" element={<LoginPage />} />
+                  <Route path="register" element={<RegisterPage />} />
+                  <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="reset-password" element={<ResetPasswordPage />} />
+                  <Route path="resend-verification" element={<ResendVerificationPage />} />
+                </Route>
+
+                <Route element={<ProtectedRoute />}>
+                  <Route path="entries/new" element={<CreateEntryPage />} />
+                  <Route path="entries/:id/edit" element={<EditEntryPage />} />
+                  <Route path="entries/:id" element={<EntryDetailPage />} />
+                  <Route path="tags" element={<TagsPage />} />
+                  <Route path="goals" element={<GoalsPage />} />
+                  <Route path="tracker-settings" element={<TrackerSettingsPage />} />
+                  <Route path="templates" element={<TemplatesRedirect />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                </Route>
+
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
-
-              <Route element={<ProtectedRoute />}>
-                <Route path="entries/new" element={<CreateEntryPage />} />
-                <Route path="entries/:id/edit" element={<EditEntryPage />} />
-                <Route path="entries/:id" element={<EntryDetailPage />} />
-                <Route path="tags" element={<TagsPage />} />
-                <Route path="goals" element={<GoalsPage />} />
-                <Route path="templates" element={<TemplatesPage />} />
-                <Route path="profile" element={<ProfilePage />} />
-              </Route>
-
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
+            </Routes>
           </BrowserRouter>
         </MoodPreferencesProvider>
       </AuthProvider>
