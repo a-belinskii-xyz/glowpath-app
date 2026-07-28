@@ -34,6 +34,7 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
   const { t, tp } = useLocale()
   const { getScoreColor, getScoreStyle } = useMoodPreferences()
   const { scores, total_entries: totalEntries, month_index: monthIndex, comparison } = stats
+  const maxCount = Math.max(1, ...scores.map((item) => item.count))
   const currentLabel = formatIndex(comparison.current_index ?? monthIndex)
   const previousLabel = formatIndex(comparison.previous_index)
 
@@ -72,7 +73,7 @@ export function EmotionStatsBarChart({ stats }: EmotionStatsBarChartProps) {
       >
         {scores.map((item) => {
           const percent = totalEntries === 0 ? 0 : Math.round((item.count / totalEntries) * 100)
-          const heightPercent = totalEntries === 0 ? 0 : percent
+          const heightPercent = totalEntries === 0 ? 0 : (item.count / maxCount) * 100
           const scoreStyle = getScoreStyle(item.score)
           const color = getScoreColor(item.score)
           const theme = buildMoodTheme(color)
