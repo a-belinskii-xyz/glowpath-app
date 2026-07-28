@@ -24,7 +24,7 @@ import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/
 import { TagIcon } from '../components/TagIcon'
 import { TagIconEditor, type PendingIconUpload } from '../components/TagIconEditor'
 import { useLocale } from '../context/LocaleContext'
-import { moodGlowFilter, moodSubtleFill } from '../design'
+import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
 import {
   dropEdgeFromClientY,
@@ -639,11 +639,13 @@ export function TagsPage() {
                   >
                     <span className="tag-list-item-label">
                       <span
+                        className="mood-preferences-swatch"
+                        style={{ backgroundColor: tag.color }}
+                        aria-hidden
+                      />
+                      <span
                         className="tag-list-item-icon"
-                        style={{
-                          background: moodSubtleFill(tag.color),
-                          filter: moodGlowFilter(tag.color, 'xs'),
-                        }}
+                        style={{ filter: moodGlowFilter(tag.color) }}
                       >
                         <TagIcon
                           style={{

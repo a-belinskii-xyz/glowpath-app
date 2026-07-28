@@ -20,7 +20,7 @@ import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
-import { moodGlowFilter, moodSubtleFill } from '../design'
+import { moodGlowFilter } from '../design'
 import { todayKey } from '../lib/datetime'
 import { ApiError } from '../lib/errors'
 import {
@@ -416,150 +416,152 @@ export function GoalsPage() {
         </form>
       </EditorDrawer>
 
-      <div className="goals-list">
-        {goals.map((goal, index) => (
-          <article
-            key={goal.id}
-            className={[
-              'card',
-              'goal-card',
-              draggingId === goal.id ? 'is-dragging' : '',
-              selectedGoalId === goal.id ? 'is-selected' : '',
-              dropTarget?.id === goal.id ? `is-drop-${dropTarget.edge}` : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onDragOver={(event: DragEvent) => {
-              if (!draggingId || draggingId === goal.id) return
-              event.preventDefault()
-              const edge = dropEdgeFromClientY(event.clientY, event.currentTarget)
-              setDropTarget((current) =>
-                current?.id === goal.id && current.edge === edge
-                  ? current
-                  : { id: goal.id, edge },
-              )
-            }}
-            onDragLeave={(event: DragEvent) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-                setDropTarget((current) => (current?.id === goal.id ? null : current))
-              }
-            }}
-            onDrop={(event: DragEvent) => {
-              event.preventDefault()
-              const edge =
-                dropTarget?.id === goal.id
-                  ? dropTarget.edge
-                  : dropEdgeFromClientY(event.clientY, event.currentTarget)
-              void handleDrop(goal.id, edge)
-            }}
-          >
-            <header className="goal-card-header">
-              <div className="goal-card-title-row">
-                <span
-                  className="goal-card-icon-wrap"
-                  style={{
-                    background: moodSubtleFill(goal.color),
-                    filter: moodGlowFilter(goal.color, 'xs'),
-                  }}
-                >
-                  <GoalIcon
-                    style={{
-                      color: goal.color,
-                      icon_type: goal.icon_type,
-                      icon: goal.icon,
-                    }}
-                    className="goal-card-icon"
-                  />
-                </span>
-                <h2>{goal.label}</h2>
-                <div className="list-row-actions">
-                  <IconButton
-                    label={t('common.edit')}
-                    size="sm"
-                    onClick={() => openEditor({ kind: 'edit', goal })}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    label={t('goalsPage.moveUp')}
-                    size="sm"
-                    disabled={index === 0}
-                    onClick={() => void handleMove(goal.id, 'up')}
-                  >
-                    <ArrowUpIcon />
-                  </IconButton>
-                  <IconButton
-                    label={t('goalsPage.moveDown')}
-                    size="sm"
-                    disabled={index === goals.length - 1}
-                    onClick={() => void handleMove(goal.id, 'down')}
-                  >
-                    <ArrowDownIcon />
-                  </IconButton>
-                  <IconButton
-                    label={t('common.delete')}
-                    size="sm"
-                    variant="danger"
-                    onClick={() => setPendingDelete(goal)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                  <DragHandle
-                    label={t('goalsPage.dragGoal', { label: goal.label })}
-                    onDragStart={() => {
-                      setDraggingId(goal.id)
-                      setDropTarget(null)
-                    }}
-                    onDragEnd={clearDrag}
-                    onMoveUp={() => void handleMove(goal.id, 'up')}
-                    onMoveDown={() => void handleMove(goal.id, 'down')}
-                  />
+      {goals.length > 0 ? (
+        <div className="card goals-panel">
+          <div className="goals-list">
+            {goals.map((goal, index) => (
+              <article
+                key={goal.id}
+                className={[
+                  'goal-row',
+                  draggingId === goal.id ? 'is-dragging' : '',
+                  selectedGoalId === goal.id ? 'is-selected' : '',
+                  dropTarget?.id === goal.id ? `is-drop-${dropTarget.edge}` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onDragOver={(event: DragEvent) => {
+                  if (!draggingId || draggingId === goal.id) return
+                  event.preventDefault()
+                  const edge = dropEdgeFromClientY(event.clientY, event.currentTarget)
+                  setDropTarget((current) =>
+                    current?.id === goal.id && current.edge === edge
+                      ? current
+                      : { id: goal.id, edge },
+                  )
+                }}
+                onDragLeave={(event: DragEvent) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                    setDropTarget((current) => (current?.id === goal.id ? null : current))
+                  }
+                }}
+                onDrop={(event: DragEvent) => {
+                  event.preventDefault()
+                  const edge =
+                    dropTarget?.id === goal.id
+                      ? dropTarget.edge
+                      : dropEdgeFromClientY(event.clientY, event.currentTarget)
+                  void handleDrop(goal.id, edge)
+                }}
+              >
+                <header className="goal-card-header">
+                  <div className="goal-card-title-row">
+                    <span
+                      className="mood-preferences-swatch"
+                      style={{ backgroundColor: goal.color }}
+                      aria-hidden
+                    />
+                    <span style={{ filter: moodGlowFilter(goal.color) }}>
+                      <GoalIcon
+                        style={{
+                          color: goal.color,
+                          icon_type: goal.icon_type,
+                          icon: goal.icon,
+                        }}
+                        className="goal-card-icon"
+                      />
+                    </span>
+                    <h2>{goal.label}</h2>
+                    <div className="list-row-actions">
+                      <IconButton
+                        label={t('common.edit')}
+                        size="sm"
+                        onClick={() => openEditor({ kind: 'edit', goal })}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        label={t('goalsPage.moveUp')}
+                        size="sm"
+                        disabled={index === 0}
+                        onClick={() => void handleMove(goal.id, 'up')}
+                      >
+                        <ArrowUpIcon />
+                      </IconButton>
+                      <IconButton
+                        label={t('goalsPage.moveDown')}
+                        size="sm"
+                        disabled={index === goals.length - 1}
+                        onClick={() => void handleMove(goal.id, 'down')}
+                      >
+                        <ArrowDownIcon />
+                      </IconButton>
+                      <IconButton
+                        label={t('common.delete')}
+                        size="sm"
+                        variant="danger"
+                        onClick={() => setPendingDelete(goal)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                      <DragHandle
+                        label={t('goalsPage.dragGoal', { label: goal.label })}
+                        onDragStart={() => {
+                          setDraggingId(goal.id)
+                          setDropTarget(null)
+                        }}
+                        onDragEnd={clearDrag}
+                        onMoveUp={() => void handleMove(goal.id, 'up')}
+                        onMoveDown={() => void handleMove(goal.id, 'down')}
+                      />
+                    </div>
+                  </div>
+                  <div className="goal-card-toggles">
+                    <label className="tag-visibility-toggle" title={t('goalsPage.showOnEntry')}>
+                      <input
+                        type="checkbox"
+                        checked={goal.show_on_entry}
+                        disabled={
+                          togglingGoalId === goal.id || (!goal.show_on_entry && atVisibleLimit)
+                        }
+                        onChange={() => void handleToggleShowOnEntry(goal)}
+                      />
+                      <span>{t('goalsPage.showOnEntryShort')}</span>
+                    </label>
+                    <label className="tag-visibility-toggle" title={t('goalsPage.showInStats')}>
+                      <input
+                        type="checkbox"
+                        checked={goal.show_in_stats}
+                        disabled={
+                          togglingGoalId === goal.id || (!goal.show_in_stats && atStatsLimit)
+                        }
+                        onChange={() => void handleToggleShowInStats(goal)}
+                      />
+                      <span>{t('goalsPage.showInStatsShort')}</span>
+                    </label>
+                  </div>
+                </header>
+                <div className="goal-card-meta">
+                  <p className="muted goal-meta">
+                    {goal.ends_on
+                      ? t('goalsPage.dateRangeLabel', {
+                          start: goal.starts_on,
+                          end: goal.ends_on,
+                        })
+                      : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
+                  </p>
+                  <p className="goal-week-progress">
+                    {t('goalsPage.weekProgress', {
+                      done: goal.completed_this_week,
+                      target: goal.times_per_week,
+                    })}
+                  </p>
                 </div>
-              </div>
-              <div className="goal-card-toggles">
-                <label className="tag-visibility-toggle" title={t('goalsPage.showOnEntry')}>
-                  <input
-                    type="checkbox"
-                    checked={goal.show_on_entry}
-                    disabled={
-                      togglingGoalId === goal.id || (!goal.show_on_entry && atVisibleLimit)
-                    }
-                    onChange={() => void handleToggleShowOnEntry(goal)}
-                  />
-                  <span>{t('goalsPage.showOnEntryShort')}</span>
-                </label>
-                <label className="tag-visibility-toggle" title={t('goalsPage.showInStats')}>
-                  <input
-                    type="checkbox"
-                    checked={goal.show_in_stats}
-                    disabled={
-                      togglingGoalId === goal.id || (!goal.show_in_stats && atStatsLimit)
-                    }
-                    onChange={() => void handleToggleShowInStats(goal)}
-                  />
-                  <span>{t('goalsPage.showInStatsShort')}</span>
-                </label>
-              </div>
-            </header>
-            <div className="goal-card-meta">
-              <p className="muted goal-meta">
-                {goal.ends_on
-                  ? t('goalsPage.dateRangeLabel', {
-                      start: goal.starts_on,
-                      end: goal.ends_on,
-                    })
-                  : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
-              </p>
-              <p className="goal-week-progress">
-                {t('goalsPage.weekProgress', {
-                  done: goal.completed_this_week,
-                  target: goal.times_per_week,
-                })}
-              </p>
-            </div>
-          </article>
-        ))}
-      </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <p className="muted">
         <Link to="/">{t('common.backToEntries')}</Link>
