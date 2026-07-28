@@ -44,6 +44,7 @@ export type MoodIconPublic = {
   mime_type: string
   size_bytes: number
   original_name: string
+  has_source: boolean
   preferences: MoodPreferencesPublic
 }
 
@@ -53,6 +54,7 @@ export type MoodIconMeta = {
   mime_type: string
   size_bytes: number
   original_name: string
+  has_source: boolean
 }
 
 export type MoodIconListResponse = {
@@ -108,6 +110,10 @@ export function getMoodIconUrl(iconId: string): string {
   return `${getApiBaseUrl()}/v1/mood-preferences/icons/id/${iconId}`
 }
 
+export function getMoodIconSourceUrl(iconId: string): string {
+  return `${getApiBaseUrl()}/v1/mood-preferences/icons/id/${iconId}/source`
+}
+
 export async function fetchMoodIconBlob(
   iconId: string,
   retryOnUnauthorized = true,
@@ -138,9 +144,46 @@ export async function fetchMoodIconBlob(
   return response.blob()
 }
 
-export async function uploadMoodIcon(score: number, file: File): Promise<MoodIconPublic> {
+export async function fetchMoodIconSourceBlob(
+  iconId: string,
+  retryOnUnauthorized = true,
+): Promise<Blob> {
+  const headers: Record<string, string> = { Accept: '*/*' }
+  const accessToken = getAccessToken()
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+
+  const response = await fetch(getMoodIconSourceUrl(iconId), {
+    method: 'GET',
+    headers,
+  })
+
+  if (response.status === 401 && retryOnUnauthorized) {
+    const refreshed = await refreshTokensOnce()
+    if (refreshed) {
+      return fetchMoodIconSourceBlob(iconId, false)
+    }
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new ApiError(parseApiError(response.status, payload), response.status)
+  }
+
+  return response.blob()
+}
+
+export async function uploadMoodIcon(
+  score: number,
+  file: File,
+  source?: File | null,
+): Promise<MoodIconPublic> {
   const formData = new FormData()
   formData.append('file', file)
+  if (source) {
+    formData.append('source', source)
+  }
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -160,7 +203,7 @@ export async function uploadMoodIcon(score: number, file: File): Promise<MoodIco
   if (response.status === 401) {
     const refreshed = await refreshTokensOnce()
     if (refreshed) {
-      return uploadMoodIcon(score, file)
+      return uploadMoodIcon(score, file, source)
     }
   }
 

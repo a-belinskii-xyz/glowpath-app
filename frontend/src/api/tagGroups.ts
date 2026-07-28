@@ -135,6 +135,10 @@ export function getTagIconUrl(iconId: string): string {
   return `${getApiBaseUrl()}/v1/tag-groups/icons/id/${iconId}`
 }
 
+export function getTagIconSourceUrl(iconId: string): string {
+  return `${getApiBaseUrl()}/v1/tag-groups/icons/id/${iconId}/source`
+}
+
 export async function fetchTagIconBlob(
   iconId: string,
   retryOnUnauthorized = true,
@@ -165,13 +169,47 @@ export async function fetchTagIconBlob(
   return response.blob()
 }
 
+export async function fetchTagIconSourceBlob(
+  iconId: string,
+  retryOnUnauthorized = true,
+): Promise<Blob> {
+  const headers: Record<string, string> = { Accept: '*/*' }
+  const accessToken = getAccessToken()
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+
+  const response = await fetch(getTagIconSourceUrl(iconId), {
+    method: 'GET',
+    headers,
+  })
+
+  if (response.status === 401 && retryOnUnauthorized) {
+    const refreshed = await refreshTokensOnce()
+    if (refreshed) {
+      return fetchTagIconSourceBlob(iconId, false)
+    }
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new ApiError(parseApiError(response.status, payload), response.status)
+  }
+
+  return response.blob()
+}
+
 export async function uploadTagIcon(
   groupId: string,
   tagId: string,
   file: File,
+  source?: File | null,
 ): Promise<TagIconPublic> {
   const formData = new FormData()
   formData.append('file', file)
+  if (source) {
+    formData.append('source', source)
+  }
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -191,7 +229,7 @@ export async function uploadTagIcon(
   if (response.status === 401) {
     const refreshed = await refreshTokensOnce()
     if (refreshed) {
-      return uploadTagIcon(groupId, tagId, file)
+      return uploadTagIcon(groupId, tagId, file, source)
     }
   }
 

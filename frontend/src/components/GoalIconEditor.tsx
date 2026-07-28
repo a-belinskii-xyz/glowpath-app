@@ -3,6 +3,7 @@ import { type ChangeEvent, useCallback, useEffect, useState } from 'react'
 import {
   deleteGoalIcon,
   fetchGoalIconBlob,
+  fetchGoalIconSourceBlob,
   getGoalIcons,
   listGoals,
   patchGoal,
@@ -19,6 +20,7 @@ import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
 import { GOAL_EMOJI_GROUPS } from '../lib/emojiPalette'
 import {
+  blobToNamedFile,
   readMoodIconBlobForCrop,
   readMoodIconImage,
   type CropValidationError,
@@ -30,6 +32,7 @@ type PendingCrop = {
   image: HTMLImageElement
   objectUrl: string
   fileName: string
+  sourceFile: File
   replaceIconId?: string
 }
 
@@ -204,6 +207,7 @@ export function GoalIconEditor({
       image: loaded.image,
       objectUrl: loaded.objectUrl,
       fileName: file.name || 'icon.png',
+      sourceFile: file,
     })
   }
 
@@ -213,7 +217,9 @@ export function GoalIconEditor({
     }
     setError(null)
     try {
-      const blob = await fetchGoalIconBlob(icon.id)
+      const blob = icon.has_source
+        ? await fetchGoalIconSourceBlob(icon.id)
+        : await fetchGoalIconBlob(icon.id)
       const loaded = await readMoodIconBlobForCrop(blob)
       if ('error' in loaded) {
         setError(cropValidationMessage(loaded.error))
@@ -223,6 +229,7 @@ export function GoalIconEditor({
         image: loaded.image,
         objectUrl: loaded.objectUrl,
         fileName: icon.original_name,
+        sourceFile: blobToNamedFile(blob, icon.original_name),
         replaceIconId: icon.id,
       })
     } catch (err) {
@@ -238,6 +245,7 @@ export function GoalIconEditor({
     setError(null)
     try {
       const replaceId = pendingCrop.replaceIconId
+      const sourceFile = pendingCrop.sourceFile
       let resultGoal: GoalPublic | null = null
 
       if (replaceId) {
@@ -245,10 +253,10 @@ export function GoalIconEditor({
         if (atLimit) {
           await deleteGoalIcon(replaceId)
           revokeGoalIconObjectUrl(replaceId)
-          const result = await uploadGoalIcon(goal.id, croppedFile)
+          const result = await uploadGoalIcon(goal.id, croppedFile, sourceFile)
           resultGoal = result.goal
         } else {
-          const result = await uploadGoalIcon(goal.id, croppedFile)
+          const result = await uploadGoalIcon(goal.id, croppedFile, sourceFile)
           resultGoal = result.goal
           try {
             await deleteGoalIcon(replaceId)
@@ -258,7 +266,7 @@ export function GoalIconEditor({
           }
         }
       } else {
-        const result = await uploadGoalIcon(goal.id, croppedFile)
+        const result = await uploadGoalIcon(goal.id, croppedFile, sourceFile)
         resultGoal = result.goal
       }
 

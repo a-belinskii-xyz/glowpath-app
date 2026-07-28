@@ -59,6 +59,7 @@ class MoodIconPublic(BaseModel):
     mime_type: str
     size_bytes: int
     original_name: str
+    has_source: bool = False
     preferences: MoodPreferencesPublic
 
 
@@ -68,6 +69,7 @@ class MoodIconMetaPublic(BaseModel):
     mime_type: str
     size_bytes: int
     original_name: str
+    has_source: bool = False
 
 
 class MoodIconListResponse(BaseModel):

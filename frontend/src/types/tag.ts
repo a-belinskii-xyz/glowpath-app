@@ -81,6 +81,7 @@ export type TagIconMeta = {
   mime_type: string
   size_bytes: number
   original_name: string
+  has_source: boolean
 }
 
 export type TagIconListResponse = {
@@ -94,5 +95,6 @@ export type TagIconPublic = {
   mime_type: string
   size_bytes: number
   original_name: string
+  has_source: boolean
   tag: TagPublic
 }

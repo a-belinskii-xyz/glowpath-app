@@ -166,6 +166,7 @@ class GoalIconMetaPublic(BaseModel):
     mime_type: str
     size_bytes: int
     original_name: str
+    has_source: bool = False
 
 
 class GoalIconPublic(BaseModel):
@@ -174,6 +175,7 @@ class GoalIconPublic(BaseModel):
     mime_type: str
     size_bytes: int
     original_name: str
+    has_source: bool = False
     goal: GoalPublic
 
 

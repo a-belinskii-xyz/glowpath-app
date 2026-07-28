@@ -163,6 +163,7 @@ class TagIconMetaPublic(BaseModel):
     mime_type: str
     size_bytes: int
     original_name: str
+    has_source: bool = False
 
 
 class TagIconPublic(BaseModel):
@@ -171,6 +172,7 @@ class TagIconPublic(BaseModel):
     mime_type: str
     size_bytes: int
     original_name: str
+    has_source: bool = False
     tag: TagPublic
 
 

@@ -3,6 +3,7 @@ import { type ChangeEvent, type FormEvent, useCallback, useEffect, useState } fr
 import {
   deleteMoodIcon,
   fetchMoodIconBlob,
+  fetchMoodIconSourceBlob,
   getMoodIcons,
   patchMoodPreferences,
   uploadMoodIcon,
@@ -22,6 +23,7 @@ import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
 import {
+  blobToNamedFile,
   readMoodIconBlobForCrop,
   readMoodIconImage,
   type CropValidationError,
@@ -43,6 +45,8 @@ type PendingCrop = {
   image: HTMLImageElement
   objectUrl: string
   fileName: string
+  /** Original image used for cropping; uploaded alongside the cropped display icon. */
+  sourceFile: File
   /** When set, Save replaces this icon instead of adding a new one. */
   replaceIconId?: string
 }
@@ -281,6 +285,7 @@ export function MoodPreferencesForm() {
       image: loaded.image,
       objectUrl: loaded.objectUrl,
       fileName: file.name,
+      sourceFile: file,
     })
   }
 
@@ -291,6 +296,7 @@ export function MoodPreferencesForm() {
 
     const score = pendingCrop.score
     const replaceIconId = pendingCrop.replaceIconId
+    const sourceFile = pendingCrop.sourceFile
     setIsCropSaving(true)
     setIconBusyScore(score)
     setError(null)
@@ -303,10 +309,10 @@ export function MoodPreferencesForm() {
         if (atLimit) {
           await deleteMoodIcon(replaceIconId)
           revokeMoodIconObjectUrl(replaceIconId)
-          const result = await uploadMoodIcon(score, croppedFile)
+          const result = await uploadMoodIcon(score, croppedFile, sourceFile)
           applyPreferences(result.preferences)
         } else {
-          const result = await uploadMoodIcon(score, croppedFile)
+          const result = await uploadMoodIcon(score, croppedFile, sourceFile)
           applyPreferences(result.preferences)
           try {
             await deleteMoodIcon(replaceIconId)
@@ -316,7 +322,7 @@ export function MoodPreferencesForm() {
           }
         }
       } else {
-        const result = await uploadMoodIcon(score, croppedFile)
+        const result = await uploadMoodIcon(score, croppedFile, sourceFile)
         applyPreferences(result.preferences)
       }
 
@@ -342,7 +348,12 @@ export function MoodPreferencesForm() {
     setError(null)
     setSuccess(null)
     try {
-      const blob = await fetchMoodIconBlob(icon.id)
+      let blob: Blob
+      if (icon.has_source) {
+        blob = await fetchMoodIconSourceBlob(icon.id)
+      } else {
+        blob = await fetchMoodIconBlob(icon.id)
+      }
       const loaded = await readMoodIconBlobForCrop(blob)
       if ('error' in loaded) {
         setError(cropValidationMessage(loaded.error))
@@ -353,6 +364,7 @@ export function MoodPreferencesForm() {
         image: loaded.image,
         objectUrl: loaded.objectUrl,
         fileName: icon.original_name,
+        sourceFile: blobToNamedFile(blob, icon.original_name),
         replaceIconId: icon.id,
       })
     } catch (err) {

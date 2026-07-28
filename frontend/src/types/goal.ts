@@ -100,6 +100,7 @@ export type GoalIconMeta = {
   mime_type: string
   size_bytes: number
   original_name: string
+  has_source: boolean
 }
 
 export type GoalIconListResponse = {
@@ -113,6 +114,7 @@ export type GoalIconPublic = {
   mime_type: string
   size_bytes: number
   original_name: string
+  has_source: boolean
   goal: GoalPublic
 }
 

@@ -128,6 +128,10 @@ export function getGoalIconUrl(iconId: string): string {
   return `${getApiBaseUrl()}/v1/goals/icons/id/${iconId}`
 }
 
+export function getGoalIconSourceUrl(iconId: string): string {
+  return `${getApiBaseUrl()}/v1/goals/icons/id/${iconId}/source`
+}
+
 export async function fetchGoalIconBlob(
   iconId: string,
   retryOnUnauthorized = true,
@@ -158,9 +162,46 @@ export async function fetchGoalIconBlob(
   return response.blob()
 }
 
-export async function uploadGoalIcon(goalId: string, file: File): Promise<GoalIconPublic> {
+export async function fetchGoalIconSourceBlob(
+  iconId: string,
+  retryOnUnauthorized = true,
+): Promise<Blob> {
+  const headers: Record<string, string> = { Accept: '*/*' }
+  const accessToken = getAccessToken()
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+
+  const response = await fetch(getGoalIconSourceUrl(iconId), {
+    method: 'GET',
+    headers,
+  })
+
+  if (response.status === 401 && retryOnUnauthorized) {
+    const refreshed = await refreshTokensOnce()
+    if (refreshed) {
+      return fetchGoalIconSourceBlob(iconId, false)
+    }
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new ApiError(parseApiError(response.status, payload), response.status)
+  }
+
+  return response.blob()
+}
+
+export async function uploadGoalIcon(
+  goalId: string,
+  file: File,
+  source?: File | null,
+): Promise<GoalIconPublic> {
   const formData = new FormData()
   formData.append('file', file)
+  if (source) {
+    formData.append('source', source)
+  }
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -180,7 +221,7 @@ export async function uploadGoalIcon(goalId: string, file: File): Promise<GoalIc
   if (response.status === 401) {
     const refreshed = await refreshTokensOnce()
     if (refreshed) {
-      return uploadGoalIcon(goalId, file)
+      return uploadGoalIcon(goalId, file, source)
     }
   }
 

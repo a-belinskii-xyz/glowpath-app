@@ -22,7 +22,7 @@ import { FormField } from '../components/FormField'
 import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { TagIcon } from '../components/TagIcon'
-import { TagIconEditor } from '../components/TagIconEditor'
+import { TagIconEditor, type PendingIconUpload } from '../components/TagIconEditor'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter, moodSubtleFill } from '../design'
 import { ApiError } from '../lib/errors'
@@ -52,7 +52,7 @@ export function TagsPage() {
   const [name, setName] = useState('')
   const [draftColor, setDraftColor] = useState(DEFAULT_TAG_STYLE.color)
   const [draftEmoji, setDraftEmoji] = useState(DEFAULT_TAG_STYLE.icon)
-  const [pendingUpload, setPendingUpload] = useState<File | null>(null)
+  const [pendingUpload, setPendingUpload] = useState<PendingIconUpload | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
@@ -175,7 +175,12 @@ export function TagsPage() {
           icon: draftEmoji.trim() || DEFAULT_TAG_STYLE.icon,
         })
         if (pendingUpload) {
-          await uploadTagIcon(editor.group.id, created.id, pendingUpload)
+          await uploadTagIcon(
+            editor.group.id,
+            created.id,
+            pendingUpload.cropped,
+            pendingUpload.source,
+          )
         }
       } else {
         const usingUpload = editor.tag.icon_type === 'upload'

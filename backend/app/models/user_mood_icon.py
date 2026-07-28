@@ -47,5 +47,8 @@ class UserMoodIcon(TimestampMixin, Base):
     mime_type: Mapped[str] = mapped_column(String(127))
     size_bytes: Mapped[int] = mapped_column(BigInteger)
     original_name: Mapped[str] = mapped_column(String(255))
+    source_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    source_mime_type: Mapped[str | None] = mapped_column(String(127), nullable=True)
+    source_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="mood_icons")

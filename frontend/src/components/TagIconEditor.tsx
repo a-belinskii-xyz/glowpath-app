@@ -3,6 +3,7 @@ import { type ChangeEvent, useCallback, useEffect, useState } from 'react'
 import {
   deleteTagIcon,
   fetchTagIconBlob,
+  fetchTagIconSourceBlob,
   getTagIcons,
   listTagGroups,
   patchTag,
@@ -19,6 +20,7 @@ import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
 import { TAG_EMOJI_GROUPS } from '../lib/emojiPalette'
 import {
+  blobToNamedFile,
   readMoodIconBlobForCrop,
   readMoodIconImage,
   type CropValidationError,
@@ -26,10 +28,16 @@ import {
 import { revokeTagIconObjectUrl } from '../lib/tagIconBlobUrl'
 import type { TagIconMeta, TagPublic, TagStyle } from '../types/tag'
 
+export type PendingIconUpload = {
+  cropped: File
+  source: File
+}
+
 type PendingCrop = {
   image: HTMLImageElement
   objectUrl: string
   fileName: string
+  sourceFile: File
   replaceIconId?: string
 }
 
@@ -50,17 +58,17 @@ type TagIconEditorProps = {
   tag?: TagPublic
   onTagChange?: (tag: TagPublic) => void
   /**
-   * Create mode: cropped file staged until the tag is saved.
-   * Parent uploads it after createTag succeeds.
+   * Create mode: cropped + source files staged until the tag is saved.
+   * Parent uploads them after createTag succeeds.
    */
-  pendingUpload?: File | null
-  onPendingUploadChange?: (file: File | null) => void
+  pendingUpload?: PendingIconUpload | null
+  onPendingUploadChange?: (upload: PendingIconUpload | null) => void
   disabled?: boolean
 }
 
 function resolveIconSourceUi(
   tag: TagPublic | undefined,
-  pendingUpload: File | null | undefined,
+  pendingUpload: PendingIconUpload | null | undefined,
 ): IconSourceUi {
   if (tag?.icon_type === 'upload' || pendingUpload) {
     return 'upload'
@@ -135,7 +143,7 @@ export function TagIconEditor({
       setPendingPreviewUrl(null)
       return
     }
-    const objectUrl = URL.createObjectURL(pendingUpload)
+    const objectUrl = URL.createObjectURL(pendingUpload.cropped)
     setPendingPreviewUrl(objectUrl)
     return () => {
       URL.revokeObjectURL(objectUrl)
@@ -244,6 +252,7 @@ export function TagIconEditor({
       image: loaded.image,
       objectUrl: loaded.objectUrl,
       fileName: file.name || 'icon.png',
+      sourceFile: file,
     })
   }
 
@@ -253,7 +262,9 @@ export function TagIconEditor({
     }
     setError(null)
     try {
-      const blob = await fetchTagIconBlob(icon.id)
+      const blob = icon.has_source
+        ? await fetchTagIconSourceBlob(icon.id)
+        : await fetchTagIconBlob(icon.id)
       const loaded = await readMoodIconBlobForCrop(blob)
       if ('error' in loaded) {
         setError(cropValidationMessage(loaded.error))
@@ -263,6 +274,7 @@ export function TagIconEditor({
         image: loaded.image,
         objectUrl: loaded.objectUrl,
         fileName: icon.original_name,
+        sourceFile: blobToNamedFile(blob, icon.original_name),
         replaceIconId: icon.id,
       })
     } catch (err) {
@@ -275,7 +287,7 @@ export function TagIconEditor({
       return
     }
     setError(null)
-    const loaded = await readMoodIconBlobForCrop(pendingUpload)
+    const loaded = await readMoodIconBlobForCrop(pendingUpload.source)
     if ('error' in loaded) {
       setError(cropValidationMessage(loaded.error))
       return
@@ -283,7 +295,8 @@ export function TagIconEditor({
     setPendingCrop({
       image: loaded.image,
       objectUrl: loaded.objectUrl,
-      fileName: pendingUpload.name || 'icon.png',
+      fileName: pendingUpload.source.name || 'icon.png',
+      sourceFile: pendingUpload.source,
     })
   }
 
@@ -299,7 +312,10 @@ export function TagIconEditor({
       }
       setIsCropSaving(true)
       setError(null)
-      onPendingUploadChange(croppedFile)
+      onPendingUploadChange({
+        cropped: croppedFile,
+        source: pendingCrop.sourceFile,
+      })
       setSourceUi('upload')
       closeCropEditor()
       return
@@ -312,6 +328,7 @@ export function TagIconEditor({
     setError(null)
     try {
       const replaceId = pendingCrop.replaceIconId
+      const sourceFile = pendingCrop.sourceFile
       let resultTag: TagPublic | null = null
 
       if (replaceId) {
@@ -319,10 +336,10 @@ export function TagIconEditor({
         if (atLimit) {
           await deleteTagIcon(replaceId)
           revokeTagIconObjectUrl(replaceId)
-          const result = await uploadTagIcon(groupId, tag.id, croppedFile)
+          const result = await uploadTagIcon(groupId, tag.id, croppedFile, sourceFile)
           resultTag = result.tag
         } else {
-          const result = await uploadTagIcon(groupId, tag.id, croppedFile)
+          const result = await uploadTagIcon(groupId, tag.id, croppedFile, sourceFile)
           resultTag = result.tag
           try {
             await deleteTagIcon(replaceId)
@@ -332,7 +349,7 @@ export function TagIconEditor({
           }
         }
       } else {
-        const result = await uploadTagIcon(groupId, tag.id, croppedFile)
+        const result = await uploadTagIcon(groupId, tag.id, croppedFile, sourceFile)
         resultTag = result.tag
       }
 
@@ -582,7 +599,7 @@ export function TagIconEditor({
                         type="button"
                         className="mood-preferences-upload-tile mood-preferences-upload-tile-selected"
                         aria-pressed
-                        aria-label={pendingUpload.name || t('tagsPage.uploadPendingHint')}
+                        aria-label={pendingUpload.cropped.name || t('tagsPage.uploadPendingHint')}
                         disabled={busy}
                       >
                         <span style={{ filter: moodGlowFilter(color) }}>

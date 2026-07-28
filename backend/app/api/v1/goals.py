@@ -30,6 +30,7 @@ from app.services.goal_icon_service import (
     GoalIconError,
     delete_goal_icon_by_id,
     download_goal_icon,
+    download_goal_icon_source,
     list_goal_icons,
     upload_goal_icon,
 )
@@ -95,6 +96,7 @@ def _icon_meta(icon: UserGoalIcon) -> GoalIconMetaPublic:
         mime_type=icon.mime_type,
         size_bytes=icon.size_bytes,
         original_name=icon.original_name,
+        has_source=bool(icon.source_storage_key),
     )
 
 
@@ -232,6 +234,37 @@ def download_goal_icon_endpoint(
     )
 
 
+@router.get("/icons/id/{icon_id}/source")
+def download_goal_icon_source_endpoint(
+    icon_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+) -> FastAPIResponse:
+    try:
+        icon, data = download_goal_icon_source(
+            db,
+            user_id=current_user.id,
+            icon_id=icon_id,
+            storage=storage,
+        )
+    except GoalIconError as exc:
+        _handle_icon_error(exc)
+        raise
+    except StorageError as exc:
+        _handle_storage_error(exc)
+        raise
+
+    filename = quote(icon.original_name)
+    return FastAPIResponse(
+        content=data,
+        media_type=icon.source_mime_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f"inline; filename*=UTF-8''{filename}",
+        },
+    )
+
+
 @router.delete(
     "/icons/id/{icon_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -287,6 +320,7 @@ def list_goal_icons_endpoint(
 async def upload_goal_icon_endpoint(
     goal_id: uuid.UUID,
     file: UploadFile = File(),
+    source: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
     storage: ObjectStorage = Depends(get_storage_service),
@@ -295,6 +329,13 @@ async def upload_goal_icon_endpoint(
     data = await file.read()
     original_name = file.filename or "icon"
     content_type = file.content_type or "application/octet-stream"
+    source_data: bytes | None = None
+    source_content_type: str | None = None
+    source_original_name: str | None = None
+    if source is not None:
+        source_data = await source.read()
+        source_content_type = source.content_type or "application/octet-stream"
+        source_original_name = source.filename or original_name
     try:
         icon, goal = upload_goal_icon(
             db,
@@ -304,6 +345,9 @@ async def upload_goal_icon_endpoint(
             content_type=content_type,
             original_name=original_name,
             storage=storage,
+            source_data=source_data,
+            source_content_type=source_content_type,
+            source_original_name=source_original_name,
         )
     except GoalIconError as exc:
         _handle_icon_error(exc)
@@ -322,6 +366,7 @@ async def upload_goal_icon_endpoint(
         mime_type=icon.mime_type,
         size_bytes=icon.size_bytes,
         original_name=icon.original_name,
+        has_source=bool(icon.source_storage_key),
         goal=_to_public(goal, locale=locale, completed_this_week=counts.get(goal.id, 0)),
     )
 

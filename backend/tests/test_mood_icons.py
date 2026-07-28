@@ -180,3 +180,68 @@ def test_mood_icon_download_requires_owner(
         headers=_auth_headers(token_b),
     )
     assert forbidden.status_code == 404
+
+
+def test_mood_icon_stores_and_serves_source_for_recrop(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    storage: FakeStorage,
+) -> None:
+    token = register_verify_and_login(
+        auth_client, mailer, f"mood-icon-source-{uuid.uuid4()}@example.com"
+    )
+    headers = _auth_headers(token)
+
+    upload = auth_client.post(
+        "/v1/mood-preferences/icons/2",
+        headers=headers,
+        files={
+            "file": ("icon.png", io.BytesIO(b"cropped-bytes"), "image/png"),
+            "source": ("photo.jpg", io.BytesIO(b"original-source-bytes"), "image/jpeg"),
+        },
+    )
+    assert upload.status_code == 201
+    body = upload.json()
+    icon_id = body["id"]
+    assert body["has_source"] is True
+    assert len(storage._objects) == 2
+
+    listed = auth_client.get("/v1/mood-preferences/icons?score=2", headers=headers)
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["has_source"] is True
+
+    display = auth_client.get(f"/v1/mood-preferences/icons/id/{icon_id}", headers=headers)
+    assert display.status_code == 200
+    assert display.content == b"cropped-bytes"
+
+    source = auth_client.get(f"/v1/mood-preferences/icons/id/{icon_id}/source", headers=headers)
+    assert source.status_code == 200
+    assert source.content == b"original-source-bytes"
+    assert source.headers["content-type"].startswith("image/jpeg")
+
+    delete = auth_client.delete(f"/v1/mood-preferences/icons/id/{icon_id}", headers=headers)
+    assert delete.status_code == 204
+    assert len(storage._objects) == 0
+
+
+def test_mood_icon_source_missing_returns_404(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    storage: FakeStorage,
+) -> None:
+    token = register_verify_and_login(
+        auth_client, mailer, f"mood-icon-no-source-{uuid.uuid4()}@example.com"
+    )
+    headers = _auth_headers(token)
+
+    upload = auth_client.post(
+        "/v1/mood-preferences/icons/3",
+        headers=headers,
+        files={"file": ("icon.png", io.BytesIO(b"cropped-only"), "image/png")},
+    )
+    icon_id = upload.json()["id"]
+    assert upload.json()["has_source"] is False
+
+    source = auth_client.get(f"/v1/mood-preferences/icons/id/{icon_id}/source", headers=headers)
+    assert source.status_code == 404
+    assert len(storage._objects) == 1
