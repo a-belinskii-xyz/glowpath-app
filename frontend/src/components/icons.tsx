@@ -124,3 +124,17 @@ export function ArrowDownIcon(props: IconProps) {
     </BaseIcon>
   )
 }
+
+export function AudioIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M12 4v16M8 8v8M16 8v8M4 10.5v3M20 10.5v3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}

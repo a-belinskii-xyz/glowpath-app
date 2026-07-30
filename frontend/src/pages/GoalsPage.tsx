@@ -474,6 +474,8 @@ export function GoalsPage() {
                       />
                     </span>
                     <h2>{goal.label}</h2>
+                  </div>
+                  <div className="goal-card-controls">
                     <div className="list-row-actions">
                       <IconButton
                         label={t('common.edit')}
@@ -517,30 +519,30 @@ export function GoalsPage() {
                         onMoveDown={() => void handleMove(goal.id, 'down')}
                       />
                     </div>
-                  </div>
-                  <div className="goal-card-toggles">
-                    <label className="tag-visibility-toggle" title={t('goalsPage.showOnEntry')}>
-                      <input
-                        type="checkbox"
-                        checked={goal.show_on_entry}
-                        disabled={
-                          togglingGoalId === goal.id || (!goal.show_on_entry && atVisibleLimit)
-                        }
-                        onChange={() => void handleToggleShowOnEntry(goal)}
-                      />
-                      <span>{t('goalsPage.showOnEntryShort')}</span>
-                    </label>
-                    <label className="tag-visibility-toggle" title={t('goalsPage.showInStats')}>
-                      <input
-                        type="checkbox"
-                        checked={goal.show_in_stats}
-                        disabled={
-                          togglingGoalId === goal.id || (!goal.show_in_stats && atStatsLimit)
-                        }
-                        onChange={() => void handleToggleShowInStats(goal)}
-                      />
-                      <span>{t('goalsPage.showInStatsShort')}</span>
-                    </label>
+                    <div className="goal-card-toggles">
+                      <label className="tag-visibility-toggle" title={t('goalsPage.showOnEntry')}>
+                        <input
+                          type="checkbox"
+                          checked={goal.show_on_entry}
+                          disabled={
+                            togglingGoalId === goal.id || (!goal.show_on_entry && atVisibleLimit)
+                          }
+                          onChange={() => void handleToggleShowOnEntry(goal)}
+                        />
+                        <span>{t('goalsPage.showOnEntryShort')}</span>
+                      </label>
+                      <label className="tag-visibility-toggle" title={t('goalsPage.showInStats')}>
+                        <input
+                          type="checkbox"
+                          checked={goal.show_in_stats}
+                          disabled={
+                            togglingGoalId === goal.id || (!goal.show_in_stats && atStatsLimit)
+                          }
+                          onChange={() => void handleToggleShowInStats(goal)}
+                        />
+                        <span>{t('goalsPage.showInStatsShort')}</span>
+                      </label>
+                    </div>
                   </div>
                 </header>
                 <div className="goal-card-meta">

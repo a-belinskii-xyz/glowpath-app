@@ -1,6 +1,5 @@
 /**
  * Gradient recipes — named presets for the shared Gradient Engine.
- * Day / week / strip use the same math with different knobs.
  */
 
 export type GradientRecipe = {
@@ -24,22 +23,6 @@ export const gradientRecipes = {
     orderPower: 1.35,
     angleDeg: 148,
     midStopMinColors: 3,
-  },
-  /** Calendar week band (goals mode). */
-  week: {
-    washStrength: 0.78,
-    chromaScale: 0.58,
-    orderPower: 1.35,
-    angleDeg: 90,
-    midStopMinColors: 2,
-  },
-  /** Richer bottom strip under a highlighted week. */
-  weekStrip: {
-    washStrength: 0.55,
-    chromaScale: 0.72,
-    orderPower: 1.35,
-    angleDeg: 90,
-    midStopMinColors: 2,
   },
 } as const satisfies Record<string, GradientRecipe>
 

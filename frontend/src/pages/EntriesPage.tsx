@@ -73,8 +73,14 @@ export function EntriesPage() {
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
 
-  const initialMonth =
-    parseYearMonthParam(searchParams.get('month')) ?? getCurrentYearMonth(timeZone)
+  const initialMonth = (() => {
+    const now = getCurrentYearMonth(timeZone)
+    const parsed = parseYearMonthParam(searchParams.get('month')) ?? now
+    if (parsed.year > now.year || (parsed.year === now.year && parsed.month > now.month)) {
+      return now
+    }
+    return parsed
+  })()
 
   const [year, setYear] = useState(initialMonth.year)
   const [month, setMonth] = useState(initialMonth.month)
@@ -126,6 +132,12 @@ export function EntriesPage() {
   )
   const currentMonth = useMemo(() => getCurrentYearMonth(timeZone), [timeZone])
   const isCurrentMonthView = year === currentMonth.year && month === currentMonth.month
+  const canGoNextMonth =
+    year < currentMonth.year || (year === currentMonth.year && month < currentMonth.month)
+  const monthTitleSizeLabels = useMemo(
+    () => Array.from({ length: 12 }, (_, index) => formatMonthHeading(year, index, dateLocale)),
+    [dateLocale, year],
+  )
   const goalStatsBounds = goalStatsPeriod === 'week' ? weekBounds : monthBounds
   const isCurrentGoalPeriod =
     goalStatsPeriod === 'week'
@@ -174,13 +186,18 @@ export function EntriesPage() {
 
   const setMonthView = useCallback(
     (nextYear: number, nextMonth: number) => {
-      setYear(nextYear)
-      setMonth(nextMonth)
+      const capped =
+        nextYear > currentMonth.year ||
+        (nextYear === currentMonth.year && nextMonth > currentMonth.month)
+          ? currentMonth
+          : { year: nextYear, month: nextMonth }
+      setYear(capped.year)
+      setMonth(capped.month)
       setPendingScrollDay(null)
       setPendingScrollEntry(null)
-      updateMonthParams(nextYear, nextMonth)
+      updateMonthParams(capped.year, capped.month)
     },
-    [updateMonthParams],
+    [currentMonth, updateMonthParams],
   )
 
   useEffect(() => {
@@ -188,11 +205,19 @@ export function EntriesPage() {
     if (!parsed) {
       return
     }
-    if (parsed.year !== year || parsed.month !== month) {
-      setYear(parsed.year)
-      setMonth(parsed.month)
+    const capped =
+      parsed.year > currentMonth.year ||
+      (parsed.year === currentMonth.year && parsed.month > currentMonth.month)
+        ? currentMonth
+        : parsed
+    if (capped.year !== year || capped.month !== month) {
+      setYear(capped.year)
+      setMonth(capped.month)
+      if (capped.year !== parsed.year || capped.month !== parsed.month) {
+        updateMonthParams(capped.year, capped.month)
+      }
     }
-  }, [month, searchParams, year])
+  }, [currentMonth, month, searchParams, updateMonthParams, year])
 
   const scrollToDay = useCallback((date: string) => {
     const node = document.getElementById(`day-${date}`)
@@ -652,6 +677,9 @@ export function EntriesPage() {
   }
 
   const goToNextMonth = () => {
+    if (!canGoNextMonth) {
+      return
+    }
     if (month === 11) {
       setMonthView(year + 1, 0)
       return
@@ -736,13 +764,15 @@ export function EntriesPage() {
       <header className="page-header">
         <MonthControl
           label={formatMonthHeading(year, month, dateLocale)}
+          sizeLabels={monthTitleSizeLabels}
           previousLabel={t('calendar.previousMonth')}
           nextLabel={t('calendar.nextMonth')}
           onPrevious={goToPreviousMonth}
           onNext={goToNextMonth}
+          canGoNext={canGoNextMonth}
         />
         <div className="page-header-actions">
-          <div className="entries-search">
+          <div className={`entries-search${searchInput ? ' has-clear' : ''}`}>
             <input
               type="search"
               className="form-input entries-search-input"
@@ -754,10 +784,11 @@ export function EntriesPage() {
             {searchInput ? (
               <button
                 type="button"
-                className="button button-secondary button-small entries-search-clear"
+                className="entries-search-clear"
                 onClick={() => setSearchInput('')}
+                aria-label={t('entries.searchClear')}
               >
-                {t('entries.searchClear')}
+                ×
               </button>
             ) : null}
           </div>
@@ -814,16 +845,6 @@ export function EntriesPage() {
                 moodDays={calendarDays}
                 goalDays={goalCalendarDays}
                 goalsById={goalsById}
-                highlightWeekStart={
-                  calendarMode === 'goals' && goalStatsPeriod === 'week'
-                    ? weekBounds.period_start
-                    : null
-                }
-                highlightWeekEnd={
-                  calendarMode === 'goals' && goalStatsPeriod === 'week'
-                    ? weekBounds.period_end
-                    : null
-                }
                 onDayWithEntries={handleDayWithEntries}
                 onSelectWeekDay={
                   calendarMode === 'goals' && goalStatsPeriod === 'week'
@@ -859,20 +880,28 @@ export function EntriesPage() {
         ) : isStatsLoading ? (
           <p className="muted">{t('common.loadingStats')}</p>
         ) : stats ? (
-          <EmotionStatsBarChart stats={stats} />
+          <EmotionStatsBarChart
+            stats={stats}
+            todayDate={todayKey(timeZone)}
+            canAddToday={isCurrentMonthView}
+          />
         ) : null
       ) : null}
 
       {isLoading ? (
         <p className="muted">{t('common.loadingEntries')}</p>
       ) : user?.email_verified && entries.length === 0 ? (
-        <p className="muted">
-          {isSearchMode
-            ? t('entries.searchNoResults')
-            : favoritesOnly
-              ? t('entries.noFavoritesThisMonth')
-              : t('entries.noEntriesThisMonth')}
-        </p>
+        <div className="entry-feed">
+          <section className="day-section">
+            <p className="muted entry-feed-empty">
+              {isSearchMode
+                ? t('entries.searchNoResults')
+                : favoritesOnly
+                  ? t('entries.noFavoritesThisMonth')
+                  : t('entries.noEntriesThisMonth')}
+            </p>
+          </section>
+        </div>
       ) : null}
 
       {isSearchMode ? (

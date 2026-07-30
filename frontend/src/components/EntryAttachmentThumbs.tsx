@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { AttachmentImage } from './AttachmentImage'
+import { AudioIcon } from './icons'
 import { PhotoLightbox } from './PhotoLightbox'
 import { useLocale } from '../context/LocaleContext'
 import type { AttachmentPublic } from '../types/mood'
@@ -115,8 +116,12 @@ export function EntryAttachmentThumbs({
           )
         ) : null}
         {audioCount > 0 ? (
-          <span className="entry-audio-count muted">
-            {t('media.audioCount', { count: audioCount })}
+          <span
+            className="entry-audio-badge muted"
+            aria-label={t('media.audioCount', { count: audioCount })}
+            title={t('media.audioCount', { count: audioCount })}
+          >
+            <AudioIcon className="entry-audio-badge-icon" />
           </span>
         ) : null}
       </div>

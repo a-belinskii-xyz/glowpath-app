@@ -8,14 +8,18 @@ import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { datetimeLocalForDate } from '../lib/datetime'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const SCORE_RE = /^[1-5]$/
 
 export function CreateEntryPage() {
   const { t } = useLocale()
   const { scores } = useMoodPreferences()
   const [searchParams] = useSearchParams()
   const dateParam = searchParams.get('date')
+  const scoreParam = searchParams.get('score')
   const initialRecordedAtLocal =
     dateParam && DATE_RE.test(dateParam) ? datetimeLocalForDate(dateParam, 20) : undefined
+  const initialScore =
+    scoreParam && SCORE_RE.test(scoreParam) ? Number(scoreParam) : undefined
   usePageAmbientGlow(Object.values(scores).map((style) => style.color))
 
   return (
@@ -27,7 +31,11 @@ export function CreateEntryPage() {
         </Link>
         <h1 className="visually-hidden">{t('entries.newMoodEntry')}</h1>
       </header>
-      <MoodEntryForm mode="create" initialRecordedAtLocal={initialRecordedAtLocal} />
+      <MoodEntryForm
+        mode="create"
+        initialRecordedAtLocal={initialRecordedAtLocal}
+        initialScore={initialScore}
+      />
     </section>
   )
 }

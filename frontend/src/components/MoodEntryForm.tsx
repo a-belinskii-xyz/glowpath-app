@@ -66,12 +66,15 @@ type MoodEntryFormProps = {
   initialEntry?: MoodEntryPublic
   /** Prefill `datetime-local` in create mode (e.g. from calendar day). */
   initialRecordedAtLocal?: string
+  /** Prefill mood score in create mode (e.g. from empty-state picker). */
+  initialScore?: number
 }
 
 export function MoodEntryForm({
   mode,
   initialEntry,
   initialRecordedAtLocal,
+  initialScore,
 }: MoodEntryFormProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -87,8 +90,15 @@ export function MoodEntryForm({
   const [noteScrollToken, setNoteScrollToken] = useState(0)
   const [draftHydrated, setDraftHydrated] = useState(mode !== 'create')
 
-  const [score, setScore] = useState(initialEntry?.score ?? 4)
-  const [moodPicked, setMoodPicked] = useState(mode === 'edit' || initialEntry != null)
+  const prefilledScore =
+    initialEntry?.score ??
+    (initialScore != null && moodScoreOptions.some((option) => option.score === initialScore)
+      ? initialScore
+      : undefined)
+  const [score, setScore] = useState(prefilledScore ?? 4)
+  const [moodPicked, setMoodPicked] = useState(
+    mode === 'edit' || initialEntry != null || prefilledScore != null,
+  )
   const [recordedAtLocal, setRecordedAtLocal] = useState(
     initialEntry
       ? isoToDatetimeLocal(initialEntry.recorded_at, timeZone)
@@ -167,8 +177,11 @@ export function MoodEntryForm({
     if (dateKey) {
       const draft = getMoodEntryDraft(user.id, dateKey)
       if (draft) {
-        setScore(draft.score)
-        setMoodPicked(draft.moodPicked)
+        // URL/chart-picked mood wins over a saved draft score.
+        if (prefilledScore == null) {
+          setScore(draft.score)
+          setMoodPicked(draft.moodPicked)
+        }
         setRecordedAtLocal(draft.recordedAtLocal)
         setNote(draft.note)
         setSelectedTagIds(draft.selectedTagIds)
@@ -177,7 +190,7 @@ export function MoodEntryForm({
       }
     }
     setDraftHydrated(true)
-  }, [mode, user?.id, initialRecordedAtLocal, timeZone])
+  }, [mode, user?.id, initialRecordedAtLocal, timeZone, prefilledScore])
 
   useEffect(() => {
     if (mode !== 'create' || !user?.id || !draftHydrated) {
