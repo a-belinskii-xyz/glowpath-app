@@ -180,4 +180,5 @@ def test_patch_me_rejects_unknown_timezone(
         json={"timezone": "Not/A_Real_Zone"},
     )
     assert response.status_code == 400
-    assert "Unknown timezone" in response.json()["detail"]
+    assert "Unknown timezone" in response.json()["detail"]["message"]
+    assert response.json()["detail"]["code"] == "invalid_timezone"

@@ -8,8 +8,8 @@ import {
   patchNoteTemplate,
   reorderNoteTemplates,
 } from '../api/noteTemplates'
-import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { DragHandle } from '../components/DragHandle'
 import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -19,7 +19,7 @@ import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MarkdownNoteEditor } from '../components/MarkdownNoteEditor'
 import { useLocale } from '../context/LocaleContext'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import {
   dropEdgeFromClientY,
   dropIndexForEdge,
@@ -47,6 +47,8 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: string; edge: DropEdge } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<NoteTemplatePublic | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const reload = async () => {
     const response = await listNoteTemplates()
@@ -63,7 +65,7 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToViewTemplates'))
         } else {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadTemplates'))
+          setError(formatApiError(err, t, 'errors.failedLoadTemplates'))
         }
       } finally {
         setIsLoading(false)
@@ -121,22 +123,26 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
       await reload()
       closeEditor()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedSave'))
+      setError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleDelete = async (template: NoteTemplatePublic) => {
-    setError(null)
+    setDeleteError(null)
+    setIsDeleting(true)
     try {
       await deleteNoteTemplate(template.id)
       await reload()
+      setPendingDelete(null)
       if (editor?.kind === 'edit' && editor.template.id === template.id) {
         closeEditor()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedDeleteTemplate'))
+      setDeleteError(formatApiError(err, t, 'errors.failedDeleteTemplate'))
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -149,7 +155,7 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
       setTemplates(response.items)
     } catch (err) {
       setTemplates(previous)
-      setError(err instanceof Error ? err.message : t('errors.failedReorderTemplates'))
+      setError(formatApiError(err, t, 'errors.failedReorderTemplates'))
     }
   }
 
@@ -199,18 +205,22 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
 
       <p className="muted">{t('templatesPage.hint')}</p>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {pendingDelete ? (
         <ConfirmDialog
           open
           title={t('confirm.deleteTemplateTitle')}
           message={t('confirm.deleteTemplate', { label: pendingDelete.label })}
           confirmLabel={t('common.delete')}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => {
-            const template = pendingDelete
+          isBusy={isDeleting}
+          error={deleteError}
+          onCancel={() => {
+            if (isDeleting) return
             setPendingDelete(null)
-            void handleDelete(template)
+            setDeleteError(null)
+          }}
+          onConfirm={() => {
+            void handleDelete(pendingDelete)
           }}
         />
       ) : null}
@@ -317,7 +327,10 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
                     label={t('common.delete')}
                     size="sm"
                     variant="danger"
-                    onClick={() => setPendingDelete(template)}
+                    onClick={() => {
+                      setDeleteError(null)
+                      setPendingDelete(template)
+                    }}
                   >
                     <DeleteIcon />
                   </IconButton>

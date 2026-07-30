@@ -9,7 +9,7 @@ import {
   patchTag,
   uploadTagIcon,
 } from '../api/tagGroups'
-import { Alert } from './Alert'
+import { PageErrorAlert } from './PageErrorAlert'
 import { ColorPicker } from './ColorPicker'
 import { ConfirmDialog } from './ConfirmDialog'
 import { EmojiPicker } from './EmojiPicker'
@@ -17,7 +17,7 @@ import { ImageCropModal } from './ImageCropModal'
 import { TagIcon } from './TagIcon'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
-import { ApiError } from '../lib/errors'
+import { formatApiError } from '../lib/errors'
 import { TAG_EMOJI_GROUPS } from '../lib/emojiPalette'
 import {
   blobToNamedFile,
@@ -189,7 +189,7 @@ export function TagIconEditor({
       onTagChange(updated)
       setSourceUi('upload')
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedSave'))
+      setError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
       setIconBusy(false)
     }
@@ -209,7 +209,7 @@ export function TagIconEditor({
           })
           onTagChange(updated)
         } catch (err) {
-          setError(err instanceof Error ? err.message : t('errors.failedSave'))
+          setError(formatApiError(err, t, 'errors.failedSave'))
         } finally {
           setIconBusy(false)
         }
@@ -278,7 +278,7 @@ export function TagIconEditor({
         replaceIconId: icon.id,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('moodPreferences.uploadFailed'))
+      setError(formatApiError(err, t, 'moodPreferences.uploadFailed'))
     }
   }
 
@@ -362,7 +362,7 @@ export function TagIconEditor({
       }
       closeCropEditor()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('moodPreferences.uploadFailed'))
+      setError(formatApiError(err, t, 'moodPreferences.uploadFailed'))
       setIsCropSaving(false)
     }
   }
@@ -391,8 +391,9 @@ export function TagIconEditor({
           setSourceUi('emoji')
         }
       }
+      setPendingRemoveIconId(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('moodPreferences.uploadFailed'))
+      setError(formatApiError(err, t, 'moodPreferences.uploadFailed'))
     } finally {
       setIconBusy(false)
     }
@@ -413,7 +414,7 @@ export function TagIconEditor({
           onSave={(file) => void handleCropSave(file)}
         />
       ) : null}
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={pendingRemoveIconId ? null : error} />
       {pendingRemoveIconId ? (
         <ConfirmDialog
           open
@@ -421,11 +422,16 @@ export function TagIconEditor({
           message={t('confirm.removeTagIcon')}
           confirmLabel={t('moodPreferences.removeIcon')}
           isBusy={iconBusy}
-          onCancel={() => setPendingRemoveIconId(null)}
-          onConfirm={() => {
-            const iconId = pendingRemoveIconId
+          error={error}
+          onCancel={() => {
+            if (iconBusy) return
             setPendingRemoveIconId(null)
-            void handleRemoveUpload(iconId)
+            setError(null)
+          }}
+          onConfirm={() => {
+            if (pendingRemoveIconId) {
+              void handleRemoveUpload(pendingRemoveIconId)
+            }
           }}
         />
       ) : null}

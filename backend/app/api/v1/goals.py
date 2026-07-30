@@ -3,12 +3,13 @@ from datetime import datetime
 from typing import Annotated
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale, get_storage_service
 from app.config import settings
+from app.core.errors import raise_http_error
 from app.db.session import get_db
 from app.models.goal import Goal
 from app.models.user import User
@@ -53,15 +54,15 @@ router = APIRouter(tags=["goals"])
 
 
 def _handle_error(exc: GoalError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_icon_error(exc: GoalIconError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_storage_error(exc: StorageError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _to_public(goal: Goal, *, locale: str, completed_this_week: int = 0) -> GoalPublic:

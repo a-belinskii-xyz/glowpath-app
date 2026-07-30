@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntry, patchMoodEntry } from '../api/moodEntries'
-import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AttachmentAudio } from '../components/AttachmentAudio'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -20,7 +20,7 @@ import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter, moodSubtleFill } from '../design'
 import { intlLocale } from '../i18n/t'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/datetime'
 import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
@@ -66,7 +66,7 @@ export function EntryDetailPage() {
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToViewEntry'))
         } else {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadEntry'))
+          setError(formatApiError(err, t, 'errors.failedLoadEntry'))
         }
       } finally {
         setIsLoading(false)
@@ -80,14 +80,15 @@ export function EntryDetailPage() {
     if (!entry) {
       return
     }
-    setConfirmDelete(false)
     setIsDeleting(true)
     setError(null)
     try {
       await deleteMoodEntry(entry.id)
+      setConfirmDelete(false)
       navigate(entriesListPathForInstant(entry.recorded_at, timeZone))
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedDeleteEntry'))
+      setError(formatApiError(err, t, 'errors.failedDeleteEntry'))
+    } finally {
       setIsDeleting(false)
     }
   }
@@ -106,7 +107,7 @@ export function EntryDetailPage() {
       setEntry(updated)
     } catch (err) {
       setEntry(previous)
-      setError(err instanceof Error ? err.message : t('errors.failedSaveEntry'))
+      setError(formatApiError(err, t, 'errors.failedSaveEntry'))
     } finally {
       setIsTogglingFavorite(false)
     }
@@ -169,7 +170,7 @@ export function EntryDetailPage() {
         </div>
       </header>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={confirmDelete ? null : error} />
       {confirmDelete && entry ? (
         <ConfirmDialog
           open
@@ -177,7 +178,12 @@ export function EntryDetailPage() {
           message={t('confirm.deleteEntry')}
           confirmLabel={t('common.delete')}
           isBusy={isDeleting}
-          onCancel={() => setConfirmDelete(false)}
+          error={error}
+          onCancel={() => {
+            if (isDeleting) return
+            setConfirmDelete(false)
+            setError(null)
+          }}
           onConfirm={() => void handleDelete()}
         />
       ) : null}

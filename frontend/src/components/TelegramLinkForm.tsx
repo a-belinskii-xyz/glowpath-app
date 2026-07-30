@@ -6,9 +6,10 @@ import {
   unlinkTelegram,
 } from '../api/telegram'
 import { Alert } from './Alert'
+import { PageErrorAlert } from './PageErrorAlert'
 import { ConfirmDialog } from './ConfirmDialog'
 import { useLocale } from '../context/LocaleContext'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import type { TelegramLinkPublic } from '../types/telegram'
 
 export function TelegramLinkForm() {
@@ -21,6 +22,7 @@ export function TelegramLinkForm() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [confirmUnlink, setConfirmUnlink] = useState(false)
+  const [unlinkError, setUnlinkError] = useState<string | null>(null)
 
   const load = async () => {
     setIsLoading(true)
@@ -32,7 +34,7 @@ export function TelegramLinkForm() {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageTelegram'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.failedLoadTelegram'))
+        setError(formatApiError(err, t, 'errors.failedLoadTelegram'))
       }
     } finally {
       setIsLoading(false)
@@ -53,10 +55,13 @@ export function TelegramLinkForm() {
       setCode(created.code)
       setSuccess(t('profile.telegramCodeReady'))
     } catch (err) {
-      if (err instanceof ApiError && err.status === 503) {
+      if (
+        err instanceof ApiError &&
+        (err.code === 'telegram_bot_not_configured' || err.status === 503)
+      ) {
         setError(t('errors.telegramBotNotConfigured'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.failedConnectTelegram'))
+        setError(formatApiError(err, t, 'errors.failedConnectTelegram'))
       }
     } finally {
       setIsBusy(false)
@@ -64,7 +69,7 @@ export function TelegramLinkForm() {
   }
 
   const handleUnlink = async () => {
-    setConfirmUnlink(false)
+    setUnlinkError(null)
     setIsBusy(true)
     setError(null)
     setSuccess(null)
@@ -73,9 +78,10 @@ export function TelegramLinkForm() {
       setStatus(next)
       setDeepLink(null)
       setCode(null)
+      setConfirmUnlink(false)
       setSuccess(t('profile.telegramUnlinked'))
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedUnlinkTelegram'))
+      setUnlinkError(formatApiError(err, t, 'errors.failedUnlinkTelegram'))
     } finally {
       setIsBusy(false)
     }
@@ -103,11 +109,16 @@ export function TelegramLinkForm() {
           message={t('confirm.unlinkTelegram')}
           confirmLabel={t('profile.telegramUnlink')}
           isBusy={isBusy}
-          onCancel={() => setConfirmUnlink(false)}
+          error={unlinkError}
+          onCancel={() => {
+            if (isBusy) return
+            setConfirmUnlink(false)
+            setUnlinkError(null)
+          }}
           onConfirm={() => void handleUnlink()}
         />
       ) : null}
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {success ? <Alert variant="success">{success}</Alert> : null}
 
       <div className="profile-connection-status">

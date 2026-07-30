@@ -12,7 +12,7 @@ import {
 } from '../api/moodEntries'
 import { listNoteTemplates } from '../api/noteTemplates'
 import { listTagGroups } from '../api/tagGroups'
-import { Alert } from './Alert'
+import { PageErrorAlert } from './PageErrorAlert'
 import { GoalIcon } from './GoalIcon'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { MoodScoreIcon } from './MoodScoreIcon'
@@ -22,7 +22,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import {
   datetimeLocalToIso,
   entriesListPathForInstant,
@@ -157,7 +157,7 @@ export function MoodEntryForm({
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToManageEntries'))
         } else {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadTags'))
+          setError(formatApiError(err, t, 'errors.failedLoadTags'))
         }
       } finally {
         setIsLoadingTags(false)
@@ -527,7 +527,7 @@ export function MoodEntryForm({
       await deleteMoodEntryAttachment(initialEntry.id, draft.attachment.id)
       setPhotoDrafts((current) => current.filter((item) => item.key !== key))
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedRemoveAttachment'))
+      setError(formatApiError(err, t, 'errors.failedRemoveAttachment'))
     }
   }
 
@@ -539,7 +539,7 @@ export function MoodEntryForm({
       await deleteMoodEntryAttachment(initialEntry.id, existingAudio.id)
       setExistingAudio(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedRemoveAttachment'))
+      setError(formatApiError(err, t, 'errors.failedRemoveAttachment'))
     }
   }
 
@@ -600,7 +600,7 @@ export function MoodEntryForm({
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToSaveEntries'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.failedSaveEntry'))
+        setError(formatApiError(err, t, 'errors.failedSaveEntry'))
       }
     } finally {
       setIsSubmitting(false)
@@ -612,7 +612,7 @@ export function MoodEntryForm({
 
   return (
     <form className="form mood-entry-form entry-journey" onSubmit={handleSubmit}>
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
 
       <section className="entry-mood-hero" aria-labelledby="entry-mood-question">
         <div className="entry-when" role="group" aria-label={t('entries.recordedAt')}>

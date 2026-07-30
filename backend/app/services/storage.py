@@ -4,13 +4,19 @@ from minio import Minio
 from minio.error import S3Error
 
 from app.config import settings
+from app.core.errors import AppError
 
 
-class StorageError(Exception):
-    def __init__(self, message: str, *, status_code: int = 500) -> None:
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+class StorageError(AppError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str,
+        status_code: int = 500,
+        params: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(message, code=code, status_code=status_code, params=params)
 
 
 class ObjectStorage:
@@ -55,7 +61,9 @@ class MinioStorage(ObjectStorage):
             if not self._client.bucket_exists(self._bucket):
                 self._client.make_bucket(self._bucket)
         except S3Error as exc:
-            raise StorageError(f"Failed to ensure bucket: {exc}") from exc
+            raise StorageError(
+                f"Failed to ensure bucket: {exc}", code="storage_bucket_failed"
+            ) from exc
         self._bucket_ready = True
 
     def put_object(self, *, key: str, data: bytes, content_type: str) -> None:
@@ -71,14 +79,18 @@ class MinioStorage(ObjectStorage):
                 content_type=content_type,
             )
         except S3Error as exc:
-            raise StorageError(f"Failed to upload object: {exc}") from exc
+            raise StorageError(
+                f"Failed to upload object: {exc}", code="storage_upload_failed"
+            ) from exc
 
     def get_object(self, *, key: str) -> bytes:
         self.ensure_bucket()
         try:
             response = self._client.get_object(self._bucket, key)
         except S3Error as exc:
-            raise StorageError("Object not found", status_code=404) from exc
+            raise StorageError(
+                "Object not found", code="storage_object_not_found", status_code=404
+            ) from exc
         try:
             return response.read()
         finally:
@@ -90,7 +102,9 @@ class MinioStorage(ObjectStorage):
         try:
             self._client.remove_object(self._bucket, key)
         except S3Error as exc:
-            raise StorageError(f"Failed to delete object: {exc}") from exc
+            raise StorageError(
+                f"Failed to delete object: {exc}", code="storage_delete_failed"
+            ) from exc
 
 
 class FakeStorage(ObjectStorage):
@@ -109,7 +123,9 @@ class FakeStorage(ObjectStorage):
         try:
             data, _content_type = self._objects[key]
         except KeyError as exc:
-            raise StorageError("Object not found", status_code=404) from exc
+            raise StorageError(
+                "Object not found", code="storage_object_not_found", status_code=404
+            ) from exc
         return data
 
     def delete_object(self, *, key: str) -> None:

@@ -27,9 +27,17 @@ class TelegramNotifier(BaseNotifier):
 
     def send(self, *, recipient: str, message: NotificationMessage) -> SentNotification:
         if not self._bot_token:
-            raise NotificationError("Telegram bot token is not configured", status_code=503)
+            raise NotificationError(
+                "Telegram bot token is not configured",
+                code="telegram_bot_not_configured",
+                status_code=503,
+            )
         if not recipient.strip():
-            raise NotificationError("Telegram recipient is empty", status_code=400)
+            raise NotificationError(
+                "Telegram recipient is empty",
+                code="telegram_recipient_empty",
+                status_code=400,
+            )
 
         text = message.body.strip() or message.subject
         url = f"{TELEGRAM_API}/bot{self._bot_token}/sendMessage"
@@ -44,12 +52,14 @@ class TelegramNotifier(BaseNotifier):
         except httpx.HTTPError as exc:
             raise NotificationError(
                 f"Failed to send Telegram notification: {exc}",
+                code="telegram_send_failed",
                 status_code=502,
             ) from exc
 
         if not isinstance(payload, dict) or not payload.get("ok"):
             raise NotificationError(
                 f"Telegram API rejected sendMessage: {payload}",
+                code="telegram_send_rejected",
                 status_code=502,
             )
 

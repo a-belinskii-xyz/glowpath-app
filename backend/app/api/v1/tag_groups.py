@@ -2,12 +2,13 @@ import uuid
 from typing import Annotated
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale, get_storage_service
 from app.config import settings
+from app.core.errors import raise_http_error
 from app.db.session import get_db
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
@@ -58,15 +59,15 @@ router = APIRouter(tags=["tag-groups"])
 
 
 def _handle_tag_error(exc: TagError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_icon_error(exc: TagIconError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_storage_error(exc: StorageError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _to_group_public(group: TagGroup, *, locale: str) -> TagGroupPublic:
@@ -107,7 +108,9 @@ def _ensure_tag_in_group(
 ) -> Tag:
     tag = get_owned_tag(db, user_id=user_id, tag_id=tag_id)
     if tag.group_id != group_id:
-        raise TagError("Tag not found in this group", status_code=404)
+        raise TagError(
+            "Tag not found in this group", code="tag_not_found_in_group", status_code=404
+        )
     return tag
 
 

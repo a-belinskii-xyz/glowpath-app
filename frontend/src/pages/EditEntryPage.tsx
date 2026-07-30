@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { getMoodEntry } from '../api/moodEntries'
-import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { MoodEntryForm } from '../components/MoodEntryForm'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import { entriesListPathForInstant } from '../lib/datetime'
 import { getMoodScoreColor } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
@@ -50,7 +50,7 @@ export function EditEntryPage() {
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToEditEntries'))
         } else {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadEntry'))
+          setError(formatApiError(err, t, 'errors.failedLoadEntry'))
         }
       } finally {
         setIsLoading(false)
@@ -74,7 +74,7 @@ export function EditEntryPage() {
         <h1 className="visually-hidden">{t('entries.editMoodEntry')}</h1>
       </header>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {isLoading ? <p className="muted">{t('common.loadingEntry')}</p> : null}
       {entry ? <MoodEntryForm mode="edit" initialEntry={entry} /> : null}
     </section>

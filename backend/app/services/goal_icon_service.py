@@ -7,6 +7,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.models.goal import (
     DEFAULT_GOAL_ICON,
     DEFAULT_GOAL_ICON_TYPE,
@@ -23,11 +24,8 @@ MAX_ICONS_PER_GOAL = 3
 _UNSAFE_FILENAME_RE = re.compile(r"[^\w.\-]+", re.ASCII)
 
 
-class GoalIconError(Exception):
-    def __init__(self, message: str, *, status_code: int = 400) -> None:
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+class GoalIconError(AppError):
+    pass
 
 
 def _safe_filename(name: str) -> str:
@@ -66,9 +64,13 @@ def _validate_image_payload(
 ) -> str:
     mime_type = content_type.split(";")[0].strip().lower()
     if mime_type not in ALLOWED_PHOTO_MIME_TYPES:
-        raise GoalIconError("Unsupported image MIME type")
+        raise GoalIconError("Unsupported image MIME type", code="unsupported_image_mime")
     if len(data) > max_bytes:
-        raise GoalIconError(f"Icon exceeds {limit_label} limit")
+        raise GoalIconError(
+            f"Icon exceeds {limit_label} limit",
+            code="icon_too_large",
+            params={"limit": limit_label},
+        )
     return mime_type
 
 
@@ -80,7 +82,7 @@ def get_owned_icon(db: Session, *, user_id: uuid.UUID, icon_id: uuid.UUID) -> Us
         )
     )
     if icon is None:
-        raise GoalIconError("Goal icon not found", status_code=404)
+        raise GoalIconError("Goal icon not found", code="goal_icon_not_found", status_code=404)
     return icon
 
 
@@ -160,7 +162,11 @@ def upload_goal_icon(
     )
     size_bytes = len(data)
     if count_icons_for_goal(db, user_id=user_id, goal_id=goal_id) >= MAX_ICONS_PER_GOAL:
-        raise GoalIconError(f"At most {MAX_ICONS_PER_GOAL} uploaded icons are allowed per goal")
+        raise GoalIconError(
+            f"At most {MAX_ICONS_PER_GOAL} uploaded icons are allowed per goal",
+            code="goal_icon_limit",
+            params={"max": str(MAX_ICONS_PER_GOAL)},
+        )
 
     source_mime_type: str | None = None
     source_size_bytes: int | None = None
@@ -252,7 +258,9 @@ def download_goal_icon_source(
 ) -> tuple[UserGoalIcon, bytes]:
     icon = get_owned_icon(db, user_id=user_id, icon_id=icon_id)
     if not icon.source_storage_key or not icon.source_mime_type:
-        raise GoalIconError("Goal icon source not found", status_code=404)
+        raise GoalIconError(
+            "Goal icon source not found", code="goal_icon_source_not_found", status_code=404
+        )
     data = storage.get_object(key=icon.source_storage_key)
     return icon, data
 

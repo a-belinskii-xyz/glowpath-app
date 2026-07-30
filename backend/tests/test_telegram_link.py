@@ -182,7 +182,8 @@ def test_expired_link_code(
         },
     )
     assert response.status_code == 400
-    assert "expired" in response.json()["detail"].lower()
+    assert "expired" in response.json()["detail"]["message"].lower()
+    assert response.json()["detail"]["code"] == "telegram_link_code_expired"
 
 
 def test_cannot_link_same_telegram_to_two_users(

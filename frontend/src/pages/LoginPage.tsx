@@ -2,12 +2,12 @@ import { FormEvent, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { getGoogleLoginUrl } from '../api/auth'
-import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 
 const AUTH_RETURN_TO_KEY = 'auth_return_to'
 
@@ -42,10 +42,10 @@ export function LoginPage() {
       await login({ email, password })
       navigate(postLoginPath(location.state as LoginLocationState | null), { replace: true })
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
+      if (err instanceof ApiError && (err.code === 'email_not_verified' || err.status === 403)) {
         setError(t('errors.emailNotVerified'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.loginFailed'))
+        setError(formatApiError(err, t, 'errors.loginFailed'))
       }
     } finally {
       setIsSubmitting(false)
@@ -57,7 +57,7 @@ export function LoginPage() {
       <h1>{t('auth.logInTitle')}</h1>
       <p className="muted">{t('auth.logInSubtitle')}</p>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
 
       <form className="form" onSubmit={handleSubmit}>
         <FormField

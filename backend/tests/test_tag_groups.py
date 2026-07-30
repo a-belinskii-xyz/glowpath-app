@@ -144,12 +144,14 @@ def test_cannot_delete_tag_in_use(
         headers=headers,
     )
     assert blocked_tag.status_code == 409
+    assert blocked_tag.json()["detail"]["code"] == "tag_in_use"
 
     blocked_group = auth_client.delete(
         f"/v1/tag-groups/{tag.group_id}",
         headers=headers,
     )
     assert blocked_group.status_code == 409
+    assert blocked_group.json()["detail"]["code"] == "tag_group_in_use"
 
 
 def test_tag_isolation_between_users(
@@ -245,7 +247,9 @@ def test_show_on_entry_toggle_and_limit(
         headers=headers,
     )
     assert blocked.status_code == 400
-    assert "at most 2" in blocked.json()["detail"]
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "tag_group_visibility_limit"
+    assert "at most 2" in detail["message"]
 
     # Free a slot, then enable the custom group.
     freed = auth_client.patch(

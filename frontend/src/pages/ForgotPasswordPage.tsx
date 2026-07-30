@@ -2,9 +2,11 @@ import { FormEvent, useState } from 'react'
 
 import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { useLocale } from '../context/LocaleContext'
+import { formatApiError } from '../lib/errors'
 
 export function ForgotPasswordPage() {
   const { t } = useLocale()
@@ -23,7 +25,7 @@ export function ForgotPasswordPage() {
       const response = await forgotPassword(email)
       setMessage(response.message)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.requestFailed'))
+      setError(formatApiError(err, t, 'errors.requestFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -34,7 +36,7 @@ export function ForgotPasswordPage() {
       <h1>{t('auth.forgotTitle')}</h1>
       <p className="muted">{t('auth.forgotSubtitle')}</p>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {message ? <Alert variant="success">{message}</Alert> : null}
 
       <form className="form" onSubmit={handleSubmit}>

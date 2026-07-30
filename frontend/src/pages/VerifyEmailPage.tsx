@@ -3,7 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { verifyEmail } from '../api/auth'
 import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { useLocale } from '../context/LocaleContext'
+import { formatApiError } from '../lib/errors'
 
 export function VerifyEmailPage() {
   const { t } = useLocale()
@@ -25,7 +27,7 @@ export function VerifyEmailPage() {
         const response = await verifyEmail(token)
         setMessage(response.message)
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('errors.verificationFailed'))
+        setError(formatApiError(err, t, 'errors.verificationFailed'))
       } finally {
         setIsLoading(false)
       }
@@ -39,7 +41,7 @@ export function VerifyEmailPage() {
       <h1>{t('auth.verifyTitle')}</h1>
 
       {isLoading ? <p className="muted">{t('auth.verifying')}</p> : null}
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {message ? <Alert variant="success">{message}</Alert> : null}
 
       {!isLoading ? (

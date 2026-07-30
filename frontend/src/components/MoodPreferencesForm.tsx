@@ -10,6 +10,7 @@ import {
   type MoodIconMeta,
 } from '../api/moodPreferences'
 import { Alert } from './Alert'
+import { PageErrorAlert } from './PageErrorAlert'
 import { ColorPicker } from './ColorPicker'
 import { ConfirmDialog } from './ConfirmDialog'
 import { EditorDrawer } from './EditorDrawer'
@@ -21,7 +22,7 @@ import { MoodScoreIcon } from './MoodScoreIcon'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import {
   blobToNamedFile,
   readMoodIconBlobForCrop,
@@ -212,7 +213,7 @@ export function MoodPreferencesForm() {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageMoodPreferences'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.failedSave'))
+        setError(formatApiError(err, t, 'errors.failedSave'))
       }
       throw err
     } finally {
@@ -334,7 +335,7 @@ export function MoodPreferencesForm() {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageMoodPreferences'))
       } else {
-        setError(err instanceof Error ? err.message : t('moodPreferences.uploadFailed'))
+        setError(formatApiError(err, t, 'moodPreferences.uploadFailed'))
       }
       setIsCropSaving(false)
       await refreshUploadedIcons().catch(() => undefined)
@@ -371,7 +372,7 @@ export function MoodPreferencesForm() {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageMoodPreferences'))
       } else {
-        setError(err instanceof Error ? err.message : t('moodPreferences.imageLoadFailed'))
+        setError(formatApiError(err, t, 'moodPreferences.imageLoadFailed'))
       }
     } finally {
       setIconBusyScore(null)
@@ -391,7 +392,7 @@ export function MoodPreferencesForm() {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageMoodPreferences'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.failedSave'))
+        setError(formatApiError(err, t, 'errors.failedSave'))
       }
     } finally {
       setIconBusyScore(null)
@@ -425,7 +426,7 @@ export function MoodPreferencesForm() {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageMoodPreferences'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.failedSave'))
+        setError(formatApiError(err, t, 'errors.failedSave'))
       }
     } finally {
       setIconBusyScore(null)
@@ -542,7 +543,7 @@ export function MoodPreferencesForm() {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageMoodPreferences'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.failedSave'))
+        setError(formatApiError(err, t, 'errors.failedSave'))
       }
     } finally {
       setIsSaving(false)
@@ -813,7 +814,7 @@ export function MoodPreferencesForm() {
           onConfirm={() => void runPendingConfirm()}
         />
       ) : null}
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {success ? <Alert variant="success">{success}</Alert> : null}
 
       <p className="form-hint">{t('moodPreferences.listLead')}</p>

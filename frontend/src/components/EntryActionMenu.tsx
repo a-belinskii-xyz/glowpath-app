@@ -4,11 +4,12 @@ import { Link } from 'react-router-dom'
 
 import { ConfirmDialog } from './ConfirmDialog'
 import { useLocale } from '../context/LocaleContext'
+import { formatApiError } from '../lib/errors'
 import type { MoodEntryPublic } from '../types/mood'
 
 type EntryActionMenuProps = {
   entry: MoodEntryPublic
-  onDelete: (entryId: string) => void
+  onDelete: (entryId: string) => void | Promise<void>
   onToggleFavorite: (entryId: string, isFavorite: boolean) => void
 }
 
@@ -16,6 +17,8 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
   const { t } = useLocale()
   const [isOpen, setIsOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -43,7 +46,21 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
 
   const handleDeleteClick = () => {
     setIsOpen(false)
+    setDeleteError(null)
     setConfirmDelete(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      await onDelete(entry.id)
+      setConfirmDelete(false)
+    } catch (err) {
+      setDeleteError(formatApiError(err, t, 'errors.failedDeleteEntry'))
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleToggleFavorite = () => {
@@ -59,11 +76,14 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
           title={t('confirm.deleteEntryTitle')}
           message={t('confirm.deleteEntry')}
           confirmLabel={t('common.delete')}
-          onCancel={() => setConfirmDelete(false)}
-          onConfirm={() => {
+          isBusy={isDeleting}
+          error={deleteError}
+          onCancel={() => {
+            if (isDeleting) return
             setConfirmDelete(false)
-            onDelete(entry.id)
+            setDeleteError(null)
           }}
+          onConfirm={() => void handleConfirmDelete()}
         />
       ) : null}
       <button
@@ -79,16 +99,8 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
       {isOpen ? (
         <div className="entry-overflow-menu" role="menu" aria-label={t('entryActions.ariaLabel')}>
           <Link
-            className="entry-overflow-item"
             role="menuitem"
-            to={`/entries/${entry.id}`}
-            onClick={() => setIsOpen(false)}
-          >
-            {t('common.open')}
-          </Link>
-          <Link
             className="entry-overflow-item"
-            role="menuitem"
             to={`/entries/${entry.id}/edit`}
             onClick={() => setIsOpen(false)}
           >
@@ -96,16 +108,16 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
           </Link>
           <button
             type="button"
-            className="entry-overflow-item"
             role="menuitem"
+            className="entry-overflow-item"
             onClick={handleToggleFavorite}
           >
             {entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')}
           </button>
           <button
             type="button"
-            className="entry-overflow-item entry-overflow-item-danger"
             role="menuitem"
+            className="entry-overflow-item entry-overflow-item-danger"
             onClick={handleDeleteClick}
           >
             {t('common.delete')}

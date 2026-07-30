@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.auth_token_purpose import AuthTokenPurpose
+from app.core.errors import AppError
 from app.core.security import (
     auth_token_expires_at,
     create_access_token,
@@ -35,16 +36,15 @@ from app.services.user_provisioning import (
 )
 
 
-class AuthError(Exception):
-    def __init__(self, message: str, *, status_code: int = 400) -> None:
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+class AuthError(AppError):
+    pass
 
 
 class EmailNotVerifiedError(AuthError):
     def __init__(self) -> None:
-        super().__init__("Email address is not verified", status_code=403)
+        super().__init__(
+            "Email address is not verified", code="email_not_verified", status_code=403
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,11 +95,13 @@ def register_user(
     try:
         timezone_name = normalize_timezone(timezone)
     except ValueError as exc:
-        raise AuthError(str(exc), status_code=400) from exc
+        raise AuthError(str(exc), code="invalid_timezone", status_code=400) from exc
 
     existing = db.scalar(select(User).where(User.email == normalized_email))
     if existing is not None:
-        raise AuthError("Email is already registered", status_code=409)
+        raise AuthError(
+            "Email is already registered", code="email_already_registered", status_code=409
+        )
 
     user = User(
         email=normalized_email,
@@ -130,9 +132,9 @@ def login_user(db: Session, *, email: str, password: str) -> TokenPair:
     normalized_email = normalize_email(email)
     user = db.scalar(select(User).where(User.email == normalized_email))
     if user is None or user.password_hash is None:
-        raise AuthError("Invalid email or password", status_code=401)
+        raise AuthError("Invalid email or password", code="invalid_credentials", status_code=401)
     if not verify_password(password, user.password_hash):
-        raise AuthError("Invalid email or password", status_code=401)
+        raise AuthError("Invalid email or password", code="invalid_credentials", status_code=401)
     if user.email_verified_at is None:
         raise EmailNotVerifiedError()
     return issue_token_pair(user.id)
@@ -142,11 +144,15 @@ def refresh_access_token(db: Session, *, refresh_token: str) -> TokenPair:
     try:
         user_id = decode_refresh_token(refresh_token)
     except jwt.PyJWTError as exc:
-        raise AuthError("Invalid or expired refresh token", status_code=401) from exc
+        raise AuthError(
+            "Invalid or expired refresh token", code="invalid_refresh_token", status_code=401
+        ) from exc
 
     user = get_user_by_id(db, user_id)
     if user is None:
-        raise AuthError("Invalid or expired refresh token", status_code=401)
+        raise AuthError(
+            "Invalid or expired refresh token", code="invalid_refresh_token", status_code=401
+        )
     if user.email_verified_at is None:
         raise EmailNotVerifiedError()
     return issue_token_pair(user.id)
@@ -156,7 +162,9 @@ def verify_email(db: Session, *, token: str) -> None:
     auth_token = _get_active_token(db, raw_token=token, purpose=AuthTokenPurpose.EMAIL_VERIFY)
     user = db.get(User, auth_token.user_id)
     if user is None:
-        raise AuthError("Invalid verification token", status_code=400)
+        raise AuthError(
+            "Invalid verification token", code="invalid_verification_token", status_code=400
+        )
 
     user.email_verified_at = datetime.now(UTC)
     auth_token.used_at = datetime.now(UTC)
@@ -235,7 +243,7 @@ def reset_password(db: Session, *, token: str, new_password: str) -> None:
     auth_token = _get_active_token(db, raw_token=token, purpose=AuthTokenPurpose.PASSWORD_RESET)
     user = db.get(User, auth_token.user_id)
     if user is None:
-        raise AuthError("Invalid reset token", status_code=400)
+        raise AuthError("Invalid reset token", code="invalid_reset_token", status_code=400)
 
     user.password_hash = hash_password(new_password)
     auth_token.used_at = datetime.now(UTC)
@@ -244,7 +252,7 @@ def reset_password(db: Session, *, token: str, new_password: str) -> None:
 
 def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPair:
     if not profile.email:
-        raise AuthError("Google account has no email", status_code=400)
+        raise AuthError("Google account has no email", code="google_no_email", status_code=400)
 
     normalized_email = normalize_email(profile.email)
     user_by_google = db.scalar(select(User).where(User.google_sub == profile.sub))
@@ -254,7 +262,11 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPai
     user_by_email = db.scalar(select(User).where(User.email == normalized_email))
     if user_by_email is not None:
         if user_by_email.google_sub is not None and user_by_email.google_sub != profile.sub:
-            raise AuthError("Email is linked to another Google account", status_code=409)
+            raise AuthError(
+                "Email is linked to another Google account",
+                code="email_linked_other_google",
+                status_code=409,
+            )
         user_by_email.google_sub = profile.sub
         if profile.email_verified and user_by_email.email_verified_at is None:
             user_by_email.email_verified_at = datetime.now(UTC)
@@ -279,7 +291,9 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPai
 
 def verify_google_id_token(id_token: str) -> GoogleProfile:
     if not settings.google_client_id:
-        raise AuthError("Google OAuth is not configured", status_code=503)
+        raise AuthError(
+            "Google OAuth is not configured", code="google_oauth_not_configured", status_code=503
+        )
 
     try:
         payload = cast(
@@ -291,12 +305,14 @@ def verify_google_id_token(id_token: str) -> GoogleProfile:
             ),
         )
     except ValueError as exc:
-        raise AuthError("Invalid Google ID token", status_code=401) from exc
+        raise AuthError(
+            "Invalid Google ID token", code="invalid_google_id_token", status_code=401
+        ) from exc
 
     sub = payload.get("sub")
     email = payload.get("email")
     if not isinstance(sub, str) or not isinstance(email, str):
-        raise AuthError("Invalid Google ID token", status_code=401)
+        raise AuthError("Invalid Google ID token", code="invalid_google_id_token", status_code=401)
 
     email_verified = bool(payload.get("email_verified"))
     return GoogleProfile(sub=sub, email=email, email_verified=email_verified)
@@ -310,11 +326,11 @@ def update_user_timezone(db: Session, *, user_id: uuid.UUID, timezone: str) -> U
     try:
         timezone_name = normalize_timezone(timezone)
     except ValueError as exc:
-        raise AuthError(str(exc), status_code=400) from exc
+        raise AuthError(str(exc), code="invalid_timezone", status_code=400) from exc
 
     user = db.get(User, user_id)
     if user is None:
-        raise AuthError("User not found", status_code=404)
+        raise AuthError("User not found", code="user_not_found", status_code=404)
 
     user.timezone = timezone_name
     db.commit()
@@ -348,7 +364,7 @@ def _create_auth_token(
 
     user = db.get(User, user_id)
     if user is None:
-        raise AuthError("User not found", status_code=500)
+        raise AuthError("User not found", code="user_not_found", status_code=500)
 
     if purpose is AuthTokenPurpose.EMAIL_VERIFY:
         email_service.send_verification_email(to=user.email, token=raw_token)
@@ -368,9 +384,13 @@ def _get_active_token(db: Session, *, raw_token: str, purpose: AuthTokenPurpose)
         )
     )
     if auth_token is None:
-        raise AuthError("Invalid or expired token", status_code=400)
+        raise AuthError(
+            "Invalid or expired token", code="invalid_or_expired_token", status_code=400
+        )
     if auth_token.expires_at < datetime.now(UTC):
-        raise AuthError("Invalid or expired token", status_code=400)
+        raise AuthError(
+            "Invalid or expired token", code="invalid_or_expired_token", status_code=400
+        )
     return auth_token
 
 

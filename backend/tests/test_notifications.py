@@ -170,7 +170,8 @@ def test_notification_settings_require_time_when_reminders_enabled(
         },
     )
     assert response.status_code == 400
-    assert "daily_mood_reminder_time" in response.json()["detail"]
+    assert "daily_mood_reminder_time" in response.json()["detail"]["message"]
+    assert response.json()["detail"]["code"] == "reminder_time_required"
 
 
 def test_process_due_reminders_sends_daily_mood(
@@ -489,4 +490,5 @@ def test_notification_settings_reject_telegram_without_link(
         json={"channels": ["email", "telegram"]},
     )
     assert response.status_code == 400
-    assert "link" in response.json()["detail"].lower()
+    assert "link" in response.json()["detail"]["message"].lower()
+    assert response.json()["detail"]["code"] == "telegram_link_required"

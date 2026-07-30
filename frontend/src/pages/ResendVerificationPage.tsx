@@ -2,9 +2,11 @@ import { FormEvent, useState } from 'react'
 
 import { resendVerification } from '../api/auth'
 import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { useLocale } from '../context/LocaleContext'
+import { formatApiError } from '../lib/errors'
 
 export function ResendVerificationPage() {
   const { t } = useLocale()
@@ -23,7 +25,7 @@ export function ResendVerificationPage() {
       const response = await resendVerification(email)
       setMessage(response.message)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.requestFailed'))
+      setError(formatApiError(err, t, 'errors.requestFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -34,7 +36,7 @@ export function ResendVerificationPage() {
       <h1>{t('auth.resendTitle')}</h1>
       <p className="muted">{t('auth.resendSubtitle')}</p>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {message ? <Alert variant="success">{message}</Alert> : null}
 
       <form className="form" onSubmit={handleSubmit}>

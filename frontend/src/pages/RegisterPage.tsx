@@ -2,11 +2,13 @@ import { FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { detectTimezone } from '../lib/timezones'
+import { formatApiError } from '../lib/errors'
 
 export function RegisterPage() {
   const { register } = useAuth()
@@ -35,7 +37,7 @@ export function RegisterPage() {
       const message = await register({ email, password, password_confirm: passwordConfirm, timezone })
       setSuccess(message)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.registrationFailed'))
+      setError(formatApiError(err, t, 'errors.registrationFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -46,7 +48,7 @@ export function RegisterPage() {
       <h1>{t('auth.createAccountTitle')}</h1>
       <p className="muted">{t('auth.createAccountSubtitle')}</p>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {success ? <Alert variant="success">{success}</Alert> : null}
 
       <form className="form" onSubmit={handleSubmit}>

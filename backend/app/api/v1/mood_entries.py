@@ -8,7 +8,6 @@ from fastapi import (
     Depends,
     File,
     Form,
-    HTTPException,
     Query,
     Response,
     UploadFile,
@@ -19,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale, get_storage_service
 from app.core.attachment_kind import AttachmentKind
+from app.core.errors import raise_http_error
 from app.db.session import get_db
 from app.models.mood_entry import MoodEntry
 from app.models.user import User
@@ -55,11 +55,11 @@ router = APIRouter(tags=["mood-entries"])
 
 
 def _handle_mood_error(exc: MoodEntryError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_storage_error(exc: StorageError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _to_public(

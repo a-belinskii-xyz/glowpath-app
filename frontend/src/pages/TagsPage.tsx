@@ -13,8 +13,8 @@ import {
   reorderTags,
   uploadTagIcon,
 } from '../api/tagGroups'
-import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { DragHandle } from '../components/DragHandle'
 import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -26,7 +26,7 @@ import { TagIconEditor, type PendingIconUpload } from '../components/TagIconEdit
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import {
   dropEdgeFromClientY,
   dropIndexForEdge,
@@ -72,6 +72,8 @@ export function TagsPage() {
     | { kind: 'tag'; group: TagGroupPublic; tag: TagPublic }
     | null
   >(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const reload = async () => {
     const response = await listTagGroups()
@@ -93,7 +95,7 @@ export function TagsPage() {
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToViewTags'))
         } else {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadTags'))
+          setError(formatApiError(err, t, 'errors.failedLoadTags'))
         }
       } finally {
         setIsLoading(false)
@@ -194,22 +196,26 @@ export function TagsPage() {
       await reload()
       closeEditor()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedSave'))
+      setError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleDeleteGroup = async (group: TagGroupPublic) => {
-    setError(null)
+    setDeleteError(null)
+    setIsDeleting(true)
     try {
       await deleteTagGroup(group.id)
       await reload()
+      setPendingDelete(null)
       if (editor && 'group' in editor && editor.group.id === group.id) {
         closeEditor()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedDeleteGroup'))
+      setDeleteError(formatApiError(err, t, 'errors.failedDeleteGroup'))
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -232,22 +238,26 @@ export function TagsPage() {
       setGroups((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     } catch (err) {
       setGroups(previous)
-      setError(err instanceof Error ? err.message : t('errors.failedUpdateVisibility'))
+      setError(formatApiError(err, t, 'errors.failedUpdateVisibility'))
     } finally {
       setTogglingGroupId(null)
     }
   }
 
   const handleDeleteTag = async (group: TagGroupPublic, tag: TagPublic) => {
-    setError(null)
+    setDeleteError(null)
+    setIsDeleting(true)
     try {
       await deleteTag(group.id, tag.id)
       await reload()
+      setPendingDelete(null)
       if (editor?.kind === 'edit-tag' && editor.tag.id === tag.id) {
         closeEditor()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedDeleteTag'))
+      setDeleteError(formatApiError(err, t, 'errors.failedDeleteTag'))
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -258,7 +268,7 @@ export function TagsPage() {
       setGroups(response.items)
     } catch (err) {
       setGroups(previous)
-      setError(err instanceof Error ? err.message : t('errors.failedReorderGroups'))
+      setError(formatApiError(err, t, 'errors.failedReorderGroups'))
     }
   }
 
@@ -320,7 +330,7 @@ export function TagsPage() {
       setGroups((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     } catch (err) {
       setGroups(previous)
-      setError(err instanceof Error ? err.message : t('errors.failedReorderTags'))
+      setError(formatApiError(err, t, 'errors.failedReorderTags'))
     }
   }
 
@@ -342,7 +352,7 @@ export function TagsPage() {
       setGroups((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     } catch (err) {
       setGroups(previous)
-      setError(err instanceof Error ? err.message : t('errors.failedReorderTags'))
+      setError(formatApiError(err, t, 'errors.failedReorderTags'))
     }
   }
 
@@ -384,7 +394,7 @@ export function TagsPage() {
         </span>
       </div>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {pendingDelete ? (
         <ConfirmDialog
           open
@@ -399,14 +409,18 @@ export function TagsPage() {
               : t('confirm.deleteTag', { label: pendingDelete.tag.label })
           }
           confirmLabel={t('common.delete')}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => {
-            const action = pendingDelete
+          isBusy={isDeleting}
+          error={deleteError}
+          onCancel={() => {
+            if (isDeleting) return
             setPendingDelete(null)
-            if (action.kind === 'group') {
-              void handleDeleteGroup(action.group)
+            setDeleteError(null)
+          }}
+          onConfirm={() => {
+            if (pendingDelete.kind === 'group') {
+              void handleDeleteGroup(pendingDelete.group)
             } else {
-              void handleDeleteTag(action.group, action.tag)
+              void handleDeleteTag(pendingDelete.group, pendingDelete.tag)
             }
           }}
         />
@@ -555,7 +569,10 @@ export function TagsPage() {
                     label={t('common.delete')}
                     size="sm"
                     variant="danger"
-                    onClick={() => setPendingDelete({ kind: 'group', group })}
+                    onClick={() => {
+                      setDeleteError(null)
+                      setPendingDelete({ kind: 'group', group })
+                    }}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -687,7 +704,10 @@ export function TagsPage() {
                         label={t('common.delete')}
                         size="sm"
                         variant="danger"
-                        onClick={() => setPendingDelete({ kind: 'tag', group, tag })}
+                        onClick={() => {
+                          setDeleteError(null)
+                          setPendingDelete({ kind: 'tag', group, tag })
+                        }}
                       >
                         <DeleteIcon />
                       </IconButton>

@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
 import { getGoalCalendar, getGoalStats, listGoals } from '../api/goals'
-import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
 import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodStats'
@@ -19,7 +19,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { intlLocale } from '../i18n/t'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import {
   dayKey,
   formatDayHeading,
@@ -272,7 +272,7 @@ export function EntriesPage() {
       }
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 403)) {
-        setError(err instanceof Error ? err.message : t('errors.failedLoadCalendar'))
+        setError(formatApiError(err, t, 'errors.failedLoadCalendar'))
       }
       setCalendarDays([])
       setGoalCalendarDays([])
@@ -305,7 +305,7 @@ export function EntriesPage() {
       setStats(response)
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 403)) {
-        setError(err instanceof Error ? err.message : t('errors.failedLoadStats'))
+        setError(formatApiError(err, t, 'errors.failedLoadStats'))
       }
       setStats(null)
     } finally {
@@ -330,7 +330,7 @@ export function EntriesPage() {
       setGoalStatsPeriodDays(response.period_days)
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 403)) {
-        setError(err instanceof Error ? err.message : t('errors.failedLoadGoalStats'))
+        setError(formatApiError(err, t, 'errors.failedLoadGoalStats'))
       }
       setGoalStatsItems([])
     } finally {
@@ -381,7 +381,7 @@ export function EntriesPage() {
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToViewEntries'))
         } else {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadEntries'))
+          setError(formatApiError(err, t, 'errors.failedLoadEntries'))
         }
       } finally {
         setIsLoading(false)
@@ -437,7 +437,7 @@ export function EntriesPage() {
         return items.some((entry) => dayKey(entry.recorded_at, timeZone) === date)
       } catch (err) {
         if (!(err instanceof ApiError && err.status === 403)) {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadEntries'))
+          setError(formatApiError(err, t, 'errors.failedLoadEntries'))
         }
         return false
       } finally {
@@ -518,7 +518,7 @@ export function EntriesPage() {
           if (err instanceof ApiError && err.status === 403) {
             setError(t('errors.verifyToViewEntries'))
           } else {
-            setError(err instanceof Error ? err.message : t('errors.failedLoadEntries'))
+            setError(formatApiError(err, t, 'errors.failedLoadEntries'))
           }
           setEntries([])
         }
@@ -714,15 +714,11 @@ export function EntriesPage() {
   }
 
   const handleDelete = async (entryId: string) => {
-    try {
-      await deleteMoodEntry(entryId)
-      setEntries((current) => current.filter((entry) => entry.id !== entryId))
-      void loadCalendar()
-      void loadStats()
-      void loadGoalStats()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedDeleteEntry'))
-    }
+    await deleteMoodEntry(entryId)
+    setEntries((current) => current.filter((entry) => entry.id !== entryId))
+    void loadCalendar()
+    void loadStats()
+    void loadGoalStats()
   }
 
   const handleToggleFavorite = async (entryId: string, isFavorite: boolean) => {
@@ -747,7 +743,7 @@ export function EntriesPage() {
           : mergeEntries(current, [previous])
         return restored
       })
-      setError(err instanceof Error ? err.message : t('errors.failedSaveEntry'))
+      setError(formatApiError(err, t, 'errors.failedSaveEntry'))
     }
   }
 
@@ -807,7 +803,7 @@ export function EntriesPage() {
         </div>
       </header>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
 
       {user?.email_verified && !isSearchMode ? (
         <>

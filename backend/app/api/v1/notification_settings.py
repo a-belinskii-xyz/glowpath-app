@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user
+from app.core.errors import raise_http_error
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.notification_settings import (
@@ -49,5 +50,5 @@ def patch_notification_settings(
             goal_reminders_enabled=body.goal_reminders_enabled,
         )
     except NotificationSettingsError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        raise_http_error(exc)
     return NotificationSettingsPublic.model_validate(serialize_settings(prefs))

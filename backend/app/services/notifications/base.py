@@ -4,17 +4,16 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from app.core.errors import AppError
+
 
 class NotificationChannel(StrEnum):
     EMAIL = "email"
     TELEGRAM = "telegram"
 
 
-class NotificationError(Exception):
-    def __init__(self, message: str, *, status_code: int = 500) -> None:
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+class NotificationError(AppError):
+    pass
 
 
 @dataclass(frozen=True, slots=True)

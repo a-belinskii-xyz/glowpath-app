@@ -6,9 +6,10 @@ import {
 } from '../api/notificationSettings'
 import { getTelegramLink } from '../api/telegram'
 import { Alert } from './Alert'
+import { PageErrorAlert } from './PageErrorAlert'
 import { FormField } from './FormField'
 import { useLocale } from '../context/LocaleContext'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import type { NotificationChannel, NotificationSettingsPublic } from '../types/notificationSettings'
 
 const DEFAULT_REMINDER_TIME = '20:00'
@@ -69,7 +70,7 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToManageNotifications'))
         } else {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadNotifications'))
+          setError(formatApiError(err, t, 'errors.failedLoadNotifications'))
         }
       } finally {
         setIsLoading(false)
@@ -121,7 +122,7 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToManageNotifications'))
       } else {
-        setError(err instanceof Error ? err.message : t('errors.failedSave'))
+        setError(formatApiError(err, t, 'errors.failedSave'))
       }
     } finally {
       setIsSaving(false)
@@ -134,7 +135,7 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
 
   return (
     <form className="card form profile-notifications-form" onSubmit={(e) => void handleSubmit(e)}>
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {success ? <Alert variant="success">{success}</Alert> : null}
 
       <label className="notification-master">

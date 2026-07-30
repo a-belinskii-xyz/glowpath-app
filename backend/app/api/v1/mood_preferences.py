@@ -1,11 +1,12 @@
 import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale, get_storage_service
+from app.core.errors import raise_http_error
 from app.core.i18n import resolve_label
 from app.core.mood_builtin_icons import MOOD_BUILTIN_ICONS
 from app.db.session import get_db
@@ -41,15 +42,15 @@ router = APIRouter(tags=["mood-preferences"])
 
 
 def _handle_preferences_error(exc: MoodPreferencesError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_icon_error(exc: MoodIconError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_storage_error(exc: StorageError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _icon_meta(icon: UserMoodIcon) -> MoodIconMetaPublic:

@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
 from app.core.mood_scale import (
     MoodScore,
@@ -25,11 +26,8 @@ _MAX_EMOJI_LENGTH = 8
 _MAX_LABEL_LENGTH = 40
 
 
-class MoodPreferencesError(Exception):
-    def __init__(self, message: str, *, status_code: int = 400) -> None:
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+class MoodPreferencesError(AppError):
+    pass
 
 
 def get_or_create_preferences(db: Session, *, user_id: uuid.UUID) -> UserMoodPreferences:
@@ -194,11 +192,17 @@ def _coerce_label(score: MoodScore, raw: Any, *, patch_includes_label: bool) -> 
     if raw is None or (isinstance(raw, str) and not raw.strip()):
         return None
     if not isinstance(raw, str):
-        raise MoodPreferencesError(f"Label for score {score.value} must be a string")
+        raise MoodPreferencesError(
+            f"Label for score {score.value} must be a string",
+            code="mood_label_must_be_string",
+            params={"score": str(score.value)},
+        )
     label = raw.strip()
     if len(label) > _MAX_LABEL_LENGTH:
         raise MoodPreferencesError(
-            f"Label for score {score.value} must be at most {_MAX_LABEL_LENGTH} characters"
+            f"Label for score {score.value} must be at most {_MAX_LABEL_LENGTH} characters",
+            code="mood_label_too_long",
+            params={"score": str(score.value), "max": str(_MAX_LABEL_LENGTH)},
         )
     return label
 
@@ -214,35 +218,53 @@ def _coerce_style(
 ) -> MoodScoreStyle:
     color = raw.get("color", default_style.color)
     if not isinstance(color, str) or not is_valid_hex_color(color):
-        raise MoodPreferencesError(f"Invalid color for score {score.value}: {color!r}")
+        raise MoodPreferencesError(
+            f"Invalid color for score {score.value}: {color!r}",
+            code="invalid_mood_color",
+            params={"score": str(score.value), "color": str(color)},
+        )
 
     icon_type_raw = raw.get("icon_type", default_style.icon_type.value)
     try:
         icon_type = MoodScoreIconType(icon_type_raw)
     except ValueError as exc:
         raise MoodPreferencesError(
-            f"Unknown icon type for score {score.value}: {icon_type_raw!r}"
+            f"Unknown icon type for score {score.value}: {icon_type_raw!r}",
+            code="unknown_icon_type",
+            params={"score": str(score.value), "icon_type": str(icon_type_raw)},
         ) from exc
 
     icon = raw.get("icon", default_style.icon)
     if not isinstance(icon, str) or not icon.strip():
-        raise MoodPreferencesError(f"Icon for score {score.value} must be a non-empty string")
+        raise MoodPreferencesError(
+            f"Icon for score {score.value} must be a non-empty string",
+            code="icon_required",
+            params={"score": str(score.value)},
+        )
     icon = icon.strip()
 
     if icon_type is MoodScoreIconType.EMOJI:
         if len(icon) > _MAX_EMOJI_LENGTH:
             raise MoodPreferencesError(
-                f"Emoji for score {score.value} must be at most {_MAX_EMOJI_LENGTH} characters"
+                f"Emoji for score {score.value} must be at most {_MAX_EMOJI_LENGTH} characters",
+                code="emoji_too_long",
+                params={"score": str(score.value), "max": str(_MAX_EMOJI_LENGTH)},
             )
     elif icon_type is MoodScoreIconType.BUILTIN:
         if not is_valid_builtin_icon_slug(icon):
-            raise MoodPreferencesError(f"Unknown built-in icon for score {score.value}: {icon!r}")
+            raise MoodPreferencesError(
+                f"Unknown built-in icon for score {score.value}: {icon!r}",
+                code="unknown_builtin_icon",
+                params={"score": str(score.value), "icon": icon},
+            )
     elif icon_type is MoodScoreIconType.UPLOAD:
         belongs = _icon_belongs_to_user(db, user_id=user_id, icon_id=icon, score=score)
         if not belongs and strict_upload:
             raise MoodPreferencesError(
                 f"Uploaded icon for score {score.value} was not found",
+                code="uploaded_icon_not_found",
                 status_code=400,
+                params={"score": str(score.value)},
             )
         if not belongs:
             return default_mood_score_style(score)
@@ -255,7 +277,11 @@ def _parse_score_key(raw_score: str) -> MoodScore:
         score = int(raw_score)
         return MoodScore(score)
     except (TypeError, ValueError) as exc:
-        raise MoodPreferencesError(f"Unknown mood score: {raw_score!r}") from exc
+        raise MoodPreferencesError(
+            f"Unknown mood score: {raw_score!r}",
+            code="unknown_mood_score",
+            params={"score": str(raw_score)},
+        ) from exc
 
 
 def _icon_belongs_to_user(

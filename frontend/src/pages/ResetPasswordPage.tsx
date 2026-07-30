@@ -3,9 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { resetPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { useLocale } from '../context/LocaleContext'
+import { formatApiError } from '../lib/errors'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -45,7 +47,7 @@ export function ResetPasswordPage() {
       setSuccess(response.message)
       setTimeout(() => navigate('/login'), 1500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.passwordResetFailed'))
+      setError(formatApiError(err, t, 'errors.passwordResetFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -66,7 +68,7 @@ export function ResetPasswordPage() {
       <h1>{t('auth.resetTitle')}</h1>
       <p className="muted">{t('auth.resetSubtitle')}</p>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {success ? <Alert variant="success">{success}</Alert> : null}
 
       <form className="form" onSubmit={handleSubmit}>

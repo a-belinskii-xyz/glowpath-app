@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { formatApiError } from '../lib/errors'
 
 function parseHashTokens(): { accessToken: string; refreshToken: string } | null {
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
@@ -37,7 +38,7 @@ export function GoogleCallbackPage() {
         sessionStorage.removeItem('auth_return_to')
         navigate(returnTo && returnTo !== '/login' ? returnTo : '/', { replace: true })
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('errors.googleFailed'))
+        setError(formatApiError(err, t, 'errors.googleFailed'))
       }
     }
 
@@ -47,7 +48,7 @@ export function GoogleCallbackPage() {
   return (
     <section className="page narrow">
       <h1>{t('auth.googleTitle')}</h1>
-      {error ? <Alert variant="error">{error}</Alert> : <p className="muted">{t('auth.googleCompleting')}</p>}
+      {error ? <PageErrorAlert error={error} /> : <p className="muted">{t('auth.googleCompleting')}</p>}
     </section>
   )
 }

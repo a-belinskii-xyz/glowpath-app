@@ -22,7 +22,11 @@ class EmailNotifier(BaseNotifier):
 
     def send(self, *, recipient: str, message: NotificationMessage) -> SentNotification:
         if not recipient.strip():
-            raise NotificationError("Email recipient is empty", status_code=400)
+            raise NotificationError(
+                "Email recipient is empty",
+                code="email_recipient_empty",
+                status_code=400,
+            )
         try:
             self._email_service.send(
                 to=recipient,
@@ -33,6 +37,7 @@ class EmailNotifier(BaseNotifier):
         except OSError as exc:
             raise NotificationError(
                 f"Failed to send email notification: {exc}",
+                code="email_send_failed",
                 status_code=502,
             ) from exc
         return SentNotification(

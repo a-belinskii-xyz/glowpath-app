@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale
+from app.core.errors import raise_http_error
 from app.db.session import get_db
 from app.models.note_template import NoteTemplate
 from app.models.user import User
@@ -29,7 +30,7 @@ router = APIRouter(tags=["note-templates"])
 
 
 def _handle_error(exc: NoteTemplateError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _to_public(template: NoteTemplate, *, locale: str) -> NoteTemplatePublic:

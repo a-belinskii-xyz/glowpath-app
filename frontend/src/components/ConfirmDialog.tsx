@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useLocale } from '../context/LocaleContext'
+import { Alert } from './Alert'
 
 export type ConfirmDialogProps = {
   open: boolean
@@ -12,6 +13,7 @@ export type ConfirmDialogProps = {
   /** Visual tone for destructive actions. */
   variant?: 'danger' | 'default'
   isBusy?: boolean
+  error?: string | null
   onConfirm: () => void
   onCancel: () => void
 }
@@ -24,6 +26,7 @@ export function ConfirmDialog({
   cancelLabel,
   variant = 'danger',
   isBusy = false,
+  error = null,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -84,6 +87,7 @@ export function ConfirmDialog({
         <p id={messageId} className="confirm-dialog-message">
           {message}
         </p>
+        {error ? <Alert variant="error">{error}</Alert> : null}
         <div className="button-row confirm-dialog-actions">
           <button
             type="button"

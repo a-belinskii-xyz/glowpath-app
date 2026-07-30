@@ -9,17 +9,15 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
 from app.models.note_template import NoteTemplate
 
 _SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
 
 
-class NoteTemplateError(Exception):
-    def __init__(self, message: str, *, status_code: int = 400) -> None:
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+class NoteTemplateError(AppError):
+    pass
 
 
 def list_note_templates(db: Session, *, user_id: uuid.UUID) -> list[NoteTemplate]:
@@ -45,7 +43,9 @@ def get_note_template(
         )
     )
     if template is None:
-        raise NoteTemplateError("Note template not found", status_code=404)
+        raise NoteTemplateError(
+            "Note template not found", code="note_template_not_found", status_code=404
+        )
     return template
 
 
@@ -79,7 +79,9 @@ def create_note_template(
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise NoteTemplateError("Note template slug already exists", status_code=409) from exc
+        raise NoteTemplateError(
+            "Note template slug already exists", code="note_template_slug_exists", status_code=409
+        ) from exc
     return get_note_template(db, user_id=user_id, template_id=template.id)
 
 
@@ -106,7 +108,9 @@ def patch_note_template(
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise NoteTemplateError("Note template slug already exists", status_code=409) from exc
+        raise NoteTemplateError(
+            "Note template slug already exists", code="note_template_slug_exists", status_code=409
+        ) from exc
     return get_note_template(db, user_id=user_id, template_id=template_id)
 
 
@@ -127,6 +131,7 @@ def reorder_note_templates(
     if set(ordered_ids) != set(by_id):
         raise NoteTemplateError(
             "ordered_ids must include every note template exactly once",
+            code="note_template_reorder_mismatch",
             status_code=400,
         )
     for index, template_id in enumerate(ordered_ids):

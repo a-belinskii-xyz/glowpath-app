@@ -1,11 +1,12 @@
 from typing import cast
 
-from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_email_service
 from app.config import settings
+from app.core.errors import raise_http_error, structured_detail
 from app.core.google_oauth import oauth
 from app.db.session import get_db
 from app.models.user import User
@@ -55,9 +56,7 @@ def _to_user_public(user: User) -> UserPublic:
 
 
 def _handle_auth_error(exc: AuthError) -> None:
-    from fastapi import HTTPException
-
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _to_token_response(tokens: TokenPair) -> TokenResponse:
@@ -154,9 +153,13 @@ def reset_password_endpoint(
 @router.get("/google/login")
 async def google_login(request: Request) -> Response:
     if not settings.google_client_id or not settings.google_client_secret:
-        from fastapi import HTTPException
-
-        raise HTTPException(status_code=503, detail="Google OAuth is not configured")
+        raise HTTPException(
+            status_code=503,
+            detail=structured_detail(
+                code="google_oauth_not_configured",
+                message="Google OAuth is not configured",
+            ),
+        )
     return cast(
         Response,
         await oauth.google.authorize_redirect(request, settings.google_redirect_uri),
@@ -165,24 +168,46 @@ async def google_login(request: Request) -> Response:
 
 @router.get("/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)) -> RedirectResponse:
-    from fastapi import HTTPException
-
     if not settings.google_client_id or not settings.google_client_secret:
-        raise HTTPException(status_code=503, detail="Google OAuth is not configured")
+        raise HTTPException(
+            status_code=503,
+            detail=structured_detail(
+                code="google_oauth_not_configured",
+                message="Google OAuth is not configured",
+            ),
+        )
 
     try:
         token = await oauth.google.authorize_access_token(request)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Google authorization failed") from exc
+        raise HTTPException(
+            status_code=400,
+            detail=structured_detail(
+                code="google_authorization_failed",
+                message="Google authorization failed",
+            ),
+        ) from exc
 
     user_info = token.get("userinfo")
     if not isinstance(user_info, dict):
-        raise HTTPException(status_code=400, detail="Google user info missing")
+        raise HTTPException(
+            status_code=400,
+            detail=structured_detail(
+                code="google_user_info_missing",
+                message="Google user info missing",
+            ),
+        )
 
     sub = user_info.get("sub")
     email = user_info.get("email")
     if not isinstance(sub, str) or not isinstance(email, str):
-        raise HTTPException(status_code=400, detail="Google user info incomplete")
+        raise HTTPException(
+            status_code=400,
+            detail=structured_detail(
+                code="google_user_info_incomplete",
+                message="Google user info incomplete",
+            ),
+        )
 
     profile = GoogleProfile(
         sub=sub,

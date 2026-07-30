@@ -8,6 +8,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.errors import AppError
 from app.core.i18n import normalize_locale
 from app.core.security import hash_token
 from app.models.telegram_link_code import TelegramLinkCode
@@ -16,11 +17,8 @@ from app.models.user_notification_settings import UserNotificationSettings
 from app.services.notifications.base import NotificationChannel
 
 
-class TelegramLinkError(Exception):
-    def __init__(self, message: str, *, status_code: int = 400) -> None:
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+class TelegramLinkError(AppError):
+    pass
 
 
 def bot_is_configured() -> bool:
@@ -40,10 +38,13 @@ def serialize_link_status(user: User) -> dict[str, object]:
 
 def create_link_code(db: Session, *, user: User) -> tuple[str, TelegramLinkCode, str]:
     if not bot_is_configured():
-        raise TelegramLinkError("Telegram bot is not configured", status_code=503)
+        raise TelegramLinkError(
+            "Telegram bot is not configured", code="telegram_bot_not_configured", status_code=503
+        )
     if user.telegram_linked:
         raise TelegramLinkError(
             "Telegram is already linked. Unlink it before connecting another account.",
+            code="telegram_already_linked",
             status_code=409,
         )
 
@@ -95,25 +96,33 @@ def link_telegram_account(
         .order_by(TelegramLinkCode.created_at.desc())
     )
     if row is None:
-        raise TelegramLinkError("Invalid or already used link code", status_code=400)
+        raise TelegramLinkError(
+            "Invalid or already used link code", code="telegram_link_code_invalid", status_code=400
+        )
     if row.expires_at <= now:
-        raise TelegramLinkError("Link code has expired", status_code=400)
+        raise TelegramLinkError(
+            "Link code has expired", code="telegram_link_code_expired", status_code=400
+        )
 
     user = db.get(User, row.user_id)
     if user is None:
-        raise TelegramLinkError("User not found", status_code=404)
+        raise TelegramLinkError("User not found", code="user_not_found", status_code=404)
     if user.email_verified_at is None:
-        raise TelegramLinkError("User email is not verified", status_code=403)
+        raise TelegramLinkError(
+            "User email is not verified", code="email_not_verified", status_code=403
+        )
 
     existing = db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
     if existing is not None and existing.id != user.id:
         raise TelegramLinkError(
             "This Telegram account is already linked to another user",
+            code="telegram_account_linked_other_user",
             status_code=409,
         )
     if user.telegram_linked and user.telegram_user_id != telegram_user_id:
         raise TelegramLinkError(
             "This GlowPath account is already linked to another Telegram user",
+            code="account_linked_other_telegram",
             status_code=409,
         )
 
@@ -131,7 +140,9 @@ def link_telegram_account(
 
 def unlink_telegram_account(db: Session, *, user: User) -> User:
     if not user.telegram_linked:
-        raise TelegramLinkError("Telegram is not linked", status_code=404)
+        raise TelegramLinkError(
+            "Telegram is not linked", code="telegram_not_linked", status_code=404
+        )
 
     user.telegram_user_id = None
     user.telegram_chat_id = None
@@ -146,7 +157,9 @@ def unlink_telegram_account(db: Session, *, user: User) -> User:
 def unlink_by_telegram_user_id(db: Session, *, telegram_user_id: int) -> User:
     user = db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
     if user is None:
-        raise TelegramLinkError("Telegram account is not linked", status_code=404)
+        raise TelegramLinkError(
+            "Telegram account is not linked", code="telegram_not_linked", status_code=404
+        )
     return unlink_telegram_account(db, user=user)
 
 

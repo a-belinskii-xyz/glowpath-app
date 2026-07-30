@@ -8,8 +8,8 @@ import {
   patchGoal,
   reorderGoals,
 } from '../api/goals'
-import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { DragHandle } from '../components/DragHandle'
 import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -23,7 +23,7 @@ import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { todayKey } from '../lib/datetime'
-import { ApiError } from '../lib/errors'
+import { ApiError, formatApiError } from '../lib/errors'
 import {
   dropEdgeFromClientY,
   dropIndexForEdge,
@@ -58,6 +58,8 @@ export function GoalsPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ id: string; edge: DropEdge } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<GoalPublic | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const reload = async () => {
     const response = await listGoals()
@@ -81,7 +83,7 @@ export function GoalsPage() {
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToViewGoals'))
         } else {
-          setError(err instanceof Error ? err.message : t('errors.failedLoadGoals'))
+          setError(formatApiError(err, t, 'errors.failedLoadGoals'))
         }
       } finally {
         setIsLoading(false)
@@ -180,22 +182,26 @@ export function GoalsPage() {
       await reload()
       closeEditor()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedSave'))
+      setError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleDelete = async (goal: GoalPublic) => {
-    setError(null)
+    setDeleteError(null)
+    setIsDeleting(true)
     try {
       await deleteGoal(goal.id)
       await reload()
+      setPendingDelete(null)
       if (editor?.kind === 'edit' && editor.goal.id === goal.id) {
         closeEditor()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedDeleteGoal'))
+      setDeleteError(formatApiError(err, t, 'errors.failedDeleteGoal'))
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -211,7 +217,7 @@ export function GoalsPage() {
       const updated = await patchGoal(goal.id, { show_on_entry: next })
       setGoals((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedUpdateVisibility'))
+      setError(formatApiError(err, t, 'errors.failedUpdateVisibility'))
     } finally {
       setTogglingGoalId(null)
     }
@@ -229,7 +235,7 @@ export function GoalsPage() {
       const updated = await patchGoal(goal.id, { show_in_stats: next })
       setGoals((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedUpdateVisibility'))
+      setError(formatApiError(err, t, 'errors.failedUpdateVisibility'))
     } finally {
       setTogglingGoalId(null)
     }
@@ -242,7 +248,7 @@ export function GoalsPage() {
       setGoals(response.items)
     } catch (err) {
       setGoals(previous)
-      setError(err instanceof Error ? err.message : t('errors.failedReorderGoals'))
+      setError(formatApiError(err, t, 'errors.failedReorderGoals'))
     }
   }
 
@@ -301,18 +307,22 @@ export function GoalsPage() {
         </span>
       </div>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={error} />
       {pendingDelete ? (
         <ConfirmDialog
           open
           title={t('confirm.deleteGoalTitle')}
           message={t('confirm.deleteGoal', { label: pendingDelete.label })}
           confirmLabel={t('common.delete')}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => {
-            const goal = pendingDelete
+          isBusy={isDeleting}
+          error={deleteError}
+          onCancel={() => {
+            if (isDeleting) return
             setPendingDelete(null)
-            void handleDelete(goal)
+            setDeleteError(null)
+          }}
+          onConfirm={() => {
+            void handleDelete(pendingDelete)
           }}
         />
       ) : null}
@@ -504,7 +514,10 @@ export function GoalsPage() {
                         label={t('common.delete')}
                         size="sm"
                         variant="danger"
-                        onClick={() => setPendingDelete(goal)}
+                        onClick={() => {
+                          setDeleteError(null)
+                          setPendingDelete(goal)
+                        }}
                       >
                         <DeleteIcon />
                       </IconButton>

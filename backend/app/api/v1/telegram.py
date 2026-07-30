@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
@@ -10,6 +10,7 @@ from app.api.deps import (
     require_telegram_bot_service,
 )
 from app.core.attachment_kind import AttachmentKind
+from app.core.errors import raise_http_error
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.mood_entry import AttachmentPublic, MoodEntryPublic
@@ -57,15 +58,15 @@ bot_router = APIRouter(
 
 
 def _handle_bot_error(exc: TelegramBotError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_mood_error(exc: MoodEntryError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _handle_storage_error(exc: StorageError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 @router.get("/link", response_model=TelegramLinkPublic)
@@ -83,7 +84,7 @@ def create_telegram_link_code(
     try:
         raw_code, row, deep_link = create_link_code(db, user=current_user)
     except TelegramLinkError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        raise_http_error(exc)
     return TelegramLinkCodeCreateResponse(
         code=raw_code,
         expires_at=row.expires_at,
@@ -99,7 +100,7 @@ def delete_telegram_link(
     try:
         user = unlink_telegram_account(db, user=current_user)
     except TelegramLinkError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        raise_http_error(exc)
     return TelegramLinkPublic.model_validate(serialize_link_status(user))
 
 
@@ -117,7 +118,7 @@ def bot_link_telegram(
             locale=body.locale,
         )
     except TelegramLinkError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        raise_http_error(exc)
     return TelegramBotMePublic(
         linked=True,
         user_id=str(user.id),
@@ -135,7 +136,7 @@ def bot_unlink_telegram(
     try:
         unlink_by_telegram_user_id(db, telegram_user_id=body.telegram_user_id)
     except TelegramLinkError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        raise_http_error(exc)
     return TelegramBotMePublic(linked=False)
 
 

@@ -9,7 +9,7 @@ import {
   patchGoal,
   uploadGoalIcon,
 } from '../api/goals'
-import { Alert } from './Alert'
+import { PageErrorAlert } from './PageErrorAlert'
 import { ColorPicker } from './ColorPicker'
 import { ConfirmDialog } from './ConfirmDialog'
 import { EmojiPicker } from './EmojiPicker'
@@ -17,7 +17,7 @@ import { GoalIcon } from './GoalIcon'
 import { ImageCropModal } from './ImageCropModal'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
-import { ApiError } from '../lib/errors'
+import { formatApiError } from '../lib/errors'
 import { GOAL_EMOJI_GROUPS } from '../lib/emojiPalette'
 import {
   blobToNamedFile,
@@ -153,7 +153,7 @@ export function GoalIconEditor({
       onGoalChange(updated)
       setSourceUi('upload')
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.failedSave'))
+      setError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
       setIconBusy(false)
     }
@@ -172,7 +172,7 @@ export function GoalIconEditor({
           })
           onGoalChange(updated)
         } catch (err) {
-          setError(err instanceof Error ? err.message : t('errors.failedSave'))
+          setError(formatApiError(err, t, 'errors.failedSave'))
         } finally {
           setIconBusy(false)
         }
@@ -233,7 +233,7 @@ export function GoalIconEditor({
         replaceIconId: icon.id,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('moodPreferences.uploadFailed'))
+      setError(formatApiError(err, t, 'moodPreferences.uploadFailed'))
     }
   }
 
@@ -279,7 +279,7 @@ export function GoalIconEditor({
       }
       closeCropEditor()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('moodPreferences.uploadFailed'))
+      setError(formatApiError(err, t, 'moodPreferences.uploadFailed'))
       setIsCropSaving(false)
     }
   }
@@ -306,8 +306,9 @@ export function GoalIconEditor({
           setSourceUi('emoji')
         }
       }
+      setPendingRemoveIconId(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('moodPreferences.uploadFailed'))
+      setError(formatApiError(err, t, 'moodPreferences.uploadFailed'))
     } finally {
       setIconBusy(false)
     }
@@ -328,7 +329,7 @@ export function GoalIconEditor({
           onSave={(file) => void handleCropSave(file)}
         />
       ) : null}
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <PageErrorAlert error={pendingRemoveIconId ? null : error} />
       {pendingRemoveIconId ? (
         <ConfirmDialog
           open
@@ -336,11 +337,16 @@ export function GoalIconEditor({
           message={t('confirm.removeGoalIcon')}
           confirmLabel={t('moodPreferences.removeIcon')}
           isBusy={iconBusy}
-          onCancel={() => setPendingRemoveIconId(null)}
-          onConfirm={() => {
-            const iconId = pendingRemoveIconId
+          error={error}
+          onCancel={() => {
+            if (iconBusy) return
             setPendingRemoveIconId(null)
-            void handleRemoveUpload(iconId)
+            setError(null)
+          }}
+          onConfirm={() => {
+            if (pendingRemoveIconId) {
+              void handleRemoveUpload(pendingRemoveIconId)
+            }
           }}
         />
       ) : null}

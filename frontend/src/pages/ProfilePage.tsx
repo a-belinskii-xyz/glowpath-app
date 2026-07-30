@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
@@ -10,6 +10,7 @@ import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
+import { formatApiError } from '../lib/errors'
 
 export function ProfilePage() {
   const { user, refreshUser, updateTimezone } = useAuth()
@@ -34,7 +35,7 @@ export function ProfilePage() {
     try {
       await updateTimezone(nextTimezone)
     } catch (err) {
-      setTimezoneError(err instanceof Error ? err.message : t('errors.failedSaveTimezone'))
+      setTimezoneError(formatApiError(err, t, 'errors.failedSaveTimezone'))
     } finally {
       setIsSavingTimezone(false)
     }
@@ -50,7 +51,7 @@ export function ProfilePage() {
         </button>
       </div>
 
-      {timezoneError ? <Alert variant="error">{timezoneError}</Alert> : null}
+      <PageErrorAlert error={timezoneError} />
 
       <div className="card profile-account">
         <div className="profile-account-row">
