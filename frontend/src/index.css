@@ -45,9 +45,9 @@
   --ambient-c2: rgb(252 165 165 / 52%);
   --ambient-c3: rgb(165 180 252 / 48%);
   --ambient-c4: rgb(103 232 249 / 42%);
-  --brand-ink-1: #1f2937;
-  --brand-ink-2: #1e3a5f;
-  --brand-ink-3: #3b2f45;
+  --brand-ink-1: #334155;
+  --brand-ink-2: #1d4ed8;
+  --brand-ink-3: #9f1239;
 
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.5;
@@ -111,19 +111,26 @@ input {
 @property --brand-ink-1 {
   syntax: '<color>';
   inherits: true;
-  initial-value: #1f2937;
+  initial-value: #334155;
 }
 
 @property --brand-ink-2 {
   syntax: '<color>';
   inherits: true;
-  initial-value: #1e3a5f;
+  initial-value: #1d4ed8;
 }
 
 @property --brand-ink-3 {
   syntax: '<color>';
   inherits: true;
-  initial-value: #3b2f45;
+  initial-value: #9f1239;
+}
+
+/* Mix factor for glowpath:\ shimmer — number animates; ink vars stay live. */
+@property --brand-cycle {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
 }
 
 .app-shell {
@@ -166,7 +173,22 @@ input {
 .brand {
   font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--brand-ink-1);
+  /*
+   * Color is always resolved from live --brand-ink-* (so page palette shifts
+   * show immediately). Only --brand-cycle is keyframed — animating `color`
+   * with var() can snapshot the first ink and look “stuck black”.
+   */
+  --brand-cycle: 0;
+  color: color-mix(
+    in oklab,
+    color-mix(
+      in oklab,
+      var(--brand-ink-1) calc((1 - min(var(--brand-cycle), 1)) * 100%),
+      var(--brand-ink-2) calc(min(var(--brand-cycle), 1) * 100%)
+    )
+    calc((2 - max(var(--brand-cycle), 1)) * 100%),
+    var(--brand-ink-3) calc((max(var(--brand-cycle), 1) - 1) * 100%)
+  );
   text-decoration: none;
   letter-spacing: -0.02em;
   animation: brand-ink-drift var(--motion-brand-duration) var(--motion-brand-easing) infinite;
@@ -179,13 +201,13 @@ input {
 @keyframes brand-ink-drift {
   0%,
   100% {
-    color: var(--brand-ink-1);
+    --brand-cycle: 0;
   }
   33% {
-    color: var(--brand-ink-2);
+    --brand-cycle: 1;
   }
   66% {
-    color: var(--brand-ink-3);
+    --brand-cycle: 2;
   }
 }
 
@@ -4563,6 +4585,7 @@ code {
 
   .brand {
     color: var(--brand-ink-1);
+    --brand-cycle: 0;
   }
 }
 
