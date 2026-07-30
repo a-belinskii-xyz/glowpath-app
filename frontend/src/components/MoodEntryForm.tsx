@@ -182,7 +182,12 @@ export function MoodEntryForm({
           setScore(draft.score)
           setMoodPicked(draft.moodPicked)
         }
-        setRecordedAtLocal(draft.recordedAtLocal)
+        // Today's drafts keep note/tags/etc., but refresh time to "now".
+        setRecordedAtLocal(
+          dateKey === todayKey(timeZone)
+            ? nowDatetimeLocal(timeZone)
+            : draft.recordedAtLocal,
+        )
         setNote(draft.note)
         setSelectedTagIds(draft.selectedTagIds)
         setSelectedGoalIds(draft.selectedGoalIds)
@@ -610,10 +615,51 @@ export function MoodEntryForm({
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <section className="entry-mood-hero" aria-labelledby="entry-mood-question">
+        <div className="entry-when" role="group" aria-label={t('entries.recordedAt')}>
+          <label className="entry-when-field">
+            <span className="visually-hidden">{t('entries.recordedDate')}</span>
+            <input
+              className="entry-when-input"
+              type="date"
+              value={entryDate}
+              onChange={(event) => {
+                const nextDate = event.target.value
+                if (!nextDate) {
+                  return
+                }
+                const timePart = recordedAtLocal.split('T')[1] ?? '20:00'
+                setRecordedAtLocal(`${nextDate}T${timePart}`)
+              }}
+              required
+            />
+          </label>
+          <span className="entry-when-sep" aria-hidden="true">
+            ·
+          </span>
+          <label className="entry-when-field entry-when-field-time">
+            <span className="visually-hidden">{t('entries.recordedTime')}</span>
+            <input
+              className="entry-when-input"
+              type="time"
+              value={recordedAtLocal.split('T')[1] ?? ''}
+              onChange={(event) => {
+                const nextTime = event.target.value
+                if (!nextTime) {
+                  return
+                }
+                const datePart = recordedAtLocal.split('T')[0] ?? entryDate
+                if (!datePart) {
+                  return
+                }
+                setRecordedAtLocal(`${datePart}T${nextTime}`)
+              }}
+              required
+            />
+          </label>
+        </div>
+
         <h2 id="entry-mood-question" className="entry-mood-question">
-          {isPastEntryDay
-            ? t('entries.howAreYouFeelingPast', { date: entryDateLabel })
-            : t('entries.howAreYouFeeling')}
+          {isPastEntryDay ? t('entries.howAreYouFeelingPast') : t('entries.howAreYouFeeling')}
         </h2>
 
         <div
@@ -774,17 +820,6 @@ export function MoodEntryForm({
             </button>
             {showMore ? (
               <div className="entry-disclosure-body entry-more-body">
-                <label className="form-field">
-                  <span className="form-label">{t('entries.recordedAt')}</span>
-                  <input
-                    className="form-input"
-                    type="datetime-local"
-                    value={recordedAtLocal}
-                    onChange={(event) => setRecordedAtLocal(event.target.value)}
-                    required
-                  />
-                </label>
-
                 <div className="attachments-section">
                   <h3 className="entry-subheading">{t('entries.attachments')}</h3>
                   <div className="attachment-inputs">
