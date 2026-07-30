@@ -1,13 +1,17 @@
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
+import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 
 export function ProfilePage() {
   const { user, refreshUser } = useAuth()
   const { locale, setLocale, t } = useLocale()
+  const { scores } = useMoodPreferences()
+  usePageAmbientGlow(Object.values(scores).map((style) => style.color))
 
   if (!user) {
     return null

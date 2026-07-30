@@ -35,6 +35,19 @@
   --motion-reveal-easing: ease;
   --motion-press-duration: 120ms;
   --motion-press-easing: ease;
+  --motion-ambient-duration: 1100ms;
+  --motion-ambient-easing: ease;
+  --motion-brand-duration: 72s;
+  --motion-brand-easing: ease-in-out;
+
+  /* Ambient shell glow (glowpath:\ — overridable per page / scroll) */
+  --ambient-c1: rgb(147 197 253 / 72%);
+  --ambient-c2: rgb(252 165 165 / 52%);
+  --ambient-c3: rgb(165 180 252 / 48%);
+  --ambient-c4: rgb(103 232 249 / 42%);
+  --brand-ink-1: #1f2937;
+  --brand-ink-2: #1e3a5f;
+  --brand-ink-3: #3b2f45;
 
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.5;
@@ -71,8 +84,66 @@ input {
   font: inherit;
 }
 
+@property --ambient-c1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgb(147 197 253 / 72%);
+}
+
+@property --ambient-c2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgb(252 165 165 / 52%);
+}
+
+@property --ambient-c3 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgb(165 180 252 / 48%);
+}
+
+@property --ambient-c4 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgb(103 232 249 / 42%);
+}
+
+@property --brand-ink-1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1f2937;
+}
+
+@property --brand-ink-2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1e3a5f;
+}
+
+@property --brand-ink-3 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3b2f45;
+}
+
 .app-shell {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
+  background:
+    radial-gradient(ellipse 95% 70% at 6% -4%, var(--ambient-c1) 0%, transparent 62%),
+    radial-gradient(ellipse 85% 62% at 96% 4%, var(--ambient-c2) 0%, transparent 58%),
+    radial-gradient(ellipse 80% 58% at 88% 96%, var(--ambient-c3) 0%, transparent 60%),
+    radial-gradient(ellipse 75% 54% at 10% 90%, var(--ambient-c4) 0%, transparent 56%),
+    var(--chrome-bg-app);
+  transition:
+    --ambient-c1 var(--motion-ambient-duration) var(--motion-ambient-easing),
+    --ambient-c2 var(--motion-ambient-duration) var(--motion-ambient-easing),
+    --ambient-c3 var(--motion-ambient-duration) var(--motion-ambient-easing),
+    --ambient-c4 var(--motion-ambient-duration) var(--motion-ambient-easing),
+    --brand-ink-1 1.6s var(--motion-ambient-easing),
+    --brand-ink-2 1.6s var(--motion-ambient-easing),
+    --brand-ink-3 1.6s var(--motion-ambient-easing);
 }
 
 .app-shell--sidebar {
@@ -80,10 +151,6 @@ input {
   flex-direction: column;
   gap: 0.75rem;
   padding: 0.75rem;
-  background:
-    radial-gradient(ellipse 80% 50% at 8% 0%, rgb(219 234 254 / 42%), transparent 55%),
-    radial-gradient(ellipse 70% 45% at 92% 8%, rgb(254 226 226 / 28%), transparent 50%),
-    var(--chrome-bg-app);
 }
 
 .app-header {
@@ -99,13 +166,27 @@ input {
 .brand {
   font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #111827;
+  color: var(--brand-ink-1);
   text-decoration: none;
   letter-spacing: -0.02em;
+  animation: brand-ink-drift var(--motion-brand-duration) var(--motion-brand-easing) infinite;
 }
 
 .brand:hover {
   text-decoration: none;
+}
+
+@keyframes brand-ink-drift {
+  0%,
+  100% {
+    color: var(--brand-ink-1);
+  }
+  33% {
+    color: var(--brand-ink-2);
+  }
+  66% {
+    color: var(--brand-ink-3);
+  }
 }
 
 .nav-links {
@@ -4472,10 +4553,16 @@ code {
   .entry-icon-button,
   .icon-button-add,
   .entry-favorite-mark,
-  .attachment-image-skeleton {
+  .attachment-image-skeleton,
+  .brand,
+  .app-shell {
     animation: none !important;
     transition: none !important;
     transform: none !important;
+  }
+
+  .brand {
+    color: var(--brand-ink-1);
   }
 }
 

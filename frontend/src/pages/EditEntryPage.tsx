@@ -5,20 +5,34 @@ import { getMoodEntry } from '../api/moodEntries'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { MoodEntryForm } from '../components/MoodEntryForm'
+import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { ApiError } from '../lib/errors'
 import { entriesListPathForInstant } from '../lib/datetime'
+import { getMoodScoreColor } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
 
 export function EditEntryPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const { locale, t } = useLocale()
+  const { scores } = useMoodPreferences()
   const timeZone = user?.timezone ?? 'UTC'
   const [entry, setEntry] = useState<MoodEntryPublic | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  usePageAmbientGlow(
+    entry
+      ? [
+          getMoodScoreColor(entry.score, scores),
+          ...entry.tags.map((tag) => tag.color),
+          ...entry.goals.map((goal) => goal.color),
+        ]
+      : Object.values(scores).map((style) => style.color),
+  )
 
   useEffect(() => {
     if (!id) {

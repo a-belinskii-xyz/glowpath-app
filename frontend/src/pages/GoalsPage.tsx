@@ -19,6 +19,7 @@ import { GoalIconEditor } from '../components/GoalIconEditor'
 import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { useAuth } from '../context/AuthContext'
+import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { todayKey } from '../lib/datetime'
@@ -278,6 +279,7 @@ export function GoalsPage() {
         : null
   const selectedGoalId = editor?.kind === 'edit' ? editor.goal.id : null
   const drawerColors = goals.map((goal) => goal.color)
+  usePageAmbientGlow(drawerColors)
 
   return (
     <section className="page">

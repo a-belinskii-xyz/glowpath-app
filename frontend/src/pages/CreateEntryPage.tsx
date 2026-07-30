@@ -2,17 +2,21 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { MoodEntryForm } from '../components/MoodEntryForm'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
+import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { datetimeLocalForDate } from '../lib/datetime'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export function CreateEntryPage() {
   const { t } = useLocale()
+  const { scores } = useMoodPreferences()
   const [searchParams] = useSearchParams()
   const dateParam = searchParams.get('date')
   const initialRecordedAtLocal =
     dateParam && DATE_RE.test(dateParam) ? datetimeLocalForDate(dateParam, 20) : undefined
+  usePageAmbientGlow(Object.values(scores).map((style) => style.color))
 
   return (
     <section className="page page-entry-create">

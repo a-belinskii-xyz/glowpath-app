@@ -16,6 +16,7 @@ import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { PopupMenu } from '../components/PopupMenu'
 import { TagIcon } from '../components/TagIcon'
 import { useAuth } from '../context/AuthContext'
+import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter, moodSubtleFill } from '../design'
@@ -40,6 +41,15 @@ export function EntryDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
+
+  const ambientColors = entry
+    ? [
+        getMoodScoreColor(entry.score, scores),
+        ...entry.tags.map((tag) => tag.color),
+        ...entry.goals.map((goal) => goal.color),
+      ]
+    : Object.values(scores).map((style) => style.color)
+  usePageAmbientGlow(ambientColors)
 
   useEffect(() => {
     if (!id) {

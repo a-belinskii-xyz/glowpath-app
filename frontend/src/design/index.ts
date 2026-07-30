@@ -32,6 +32,15 @@ export {
   type GradientWashStyle,
 } from './gradientEngine'
 export {
+  ambientGlowToCssVars,
+  ambientPaletteKey,
+  buildAmbientGlowColors,
+  buildAmbientGlowCssVars,
+  DEFAULT_AMBIENT_GLOW,
+  type AmbientGlowColors,
+  type AmbientGlowCssVars,
+} from './ambientGlow'
+export {
   earlyBiasWeights,
   equalWeights,
   hexToOklab,

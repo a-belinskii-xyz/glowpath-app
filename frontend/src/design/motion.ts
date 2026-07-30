@@ -27,6 +27,16 @@ export const motion = {
     durationMs: 120,
     easing: 'ease',
   },
+  /** Ambient shell glow color crossfade while scrolling moods. */
+  ambient: {
+    durationMs: 1100,
+    easing: 'ease',
+  },
+  /** Brand wordmark hue drift — intentionally glacial. */
+  brand: {
+    durationMs: 72000,
+    easing: 'ease-in-out',
+  },
 } as const
 
 export type MotionTokens = typeof motion
@@ -42,6 +52,10 @@ export const motionCssVars = {
   revealEasing: '--motion-reveal-easing',
   pressDuration: '--motion-press-duration',
   pressEasing: '--motion-press-easing',
+  ambientDuration: '--motion-ambient-duration',
+  ambientEasing: '--motion-ambient-easing',
+  brandDuration: '--motion-brand-duration',
+  brandEasing: '--motion-brand-easing',
 } as const
 
 export function motionCss(durationMs: number, easing: string): string {

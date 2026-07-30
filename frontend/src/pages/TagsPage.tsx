@@ -23,6 +23,7 @@ import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { TagIcon } from '../components/TagIcon'
 import { TagIconEditor, type PendingIconUpload } from '../components/TagIconEditor'
+import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { ApiError } from '../lib/errors'
@@ -364,6 +365,7 @@ export function TagsPage() {
         : null
   const selectedTagId = editor?.kind === 'edit-tag' ? editor.tag.id : null
   const drawerColors = groups.flatMap((group) => group.tags.map((tag) => tag.color))
+  usePageAmbientGlow(drawerColors)
 
   return (
     <section className="page">

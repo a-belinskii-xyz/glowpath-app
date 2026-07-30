@@ -1,6 +1,8 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
+import type { CSSProperties } from 'react'
 
 import { CaptureAttribution } from './CaptureAttribution'
+import { useAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 
@@ -8,13 +10,15 @@ function navClassName({ isActive }: { isActive: boolean }) {
   return `app-nav-link${isActive ? ' is-active' : ''}`
 }
 
-export function Layout() {
-  const { isAuthenticated, logout } = useAuth()
+function ShellChrome({ sidebar }: { sidebar: boolean }) {
   const { t } = useLocale()
+  const { logout } = useAuth()
+  const { cssVars } = useAmbientGlow()
+  const shellStyle = cssVars as CSSProperties
 
-  if (!isAuthenticated) {
+  if (!sidebar) {
     return (
-      <div className="app-shell">
+      <div className="app-shell" style={shellStyle}>
         <CaptureAttribution />
         <header className="app-header">
           <Link to="/" className="brand">
@@ -33,7 +37,7 @@ export function Layout() {
   }
 
   return (
-    <div className="app-shell app-shell--sidebar">
+    <div className="app-shell app-shell--sidebar" style={shellStyle}>
       <CaptureAttribution />
       <aside className="app-sidebar" aria-label={t('nav.menu')}>
         <Link to="/" className="brand app-sidebar-brand">
@@ -67,4 +71,9 @@ export function Layout() {
       </main>
     </div>
   )
+}
+
+export function Layout() {
+  const { isAuthenticated } = useAuth()
+  return <ShellChrome sidebar={isAuthenticated} />
 }

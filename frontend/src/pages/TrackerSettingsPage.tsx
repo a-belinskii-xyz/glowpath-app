@@ -2,7 +2,9 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { MoodPreferencesForm } from '../components/MoodPreferencesForm'
+import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
+import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { TemplatesPage } from './TemplatesPage'
 
 type TrackerTab = 'moods' | 'templates'
@@ -13,8 +15,10 @@ function resolveTab(value: string | null): TrackerTab {
 
 export function TrackerSettingsPage() {
   const { t } = useLocale()
+  const { scores } = useMoodPreferences()
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = resolveTab(searchParams.get('tab'))
+  usePageAmbientGlow(Object.values(scores).map((style) => style.color))
 
   const setTab = (next: TrackerTab) => {
     setSearchParams(next === 'moods' ? {} : { tab: next }, { replace: true })

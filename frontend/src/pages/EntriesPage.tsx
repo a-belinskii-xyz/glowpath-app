@@ -38,6 +38,7 @@ import {
   weekIntersectsMonth,
 } from '../lib/datetime'
 import { buildGradientWashFromScores, moodGlowFilter, motion } from '../design'
+import { useScrollAmbientGlow } from '../hooks/useScrollAmbientGlow'
 import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
@@ -622,6 +623,26 @@ export function EntriesPage() {
     return Array.from(groups.entries())
   }, [entries, timeZone])
 
+  const ambientSources = useMemo(
+    () =>
+      isSearchMode
+        ? entries.length > 0
+          ? [
+              {
+                id: 'search-results',
+                colors: entries.map((entry) => getMoodScoreColor(entry.score, scores)),
+              },
+            ]
+          : []
+        : groupedEntries.map(([key, dayEntries]) => ({
+            id: `day-${key}`,
+            colors: dayEntries.map((entry) => getMoodScoreColor(entry.score, scores)),
+          })),
+    [groupedEntries, entries, isSearchMode, scores],
+  )
+
+  useScrollAmbientGlow(ambientSources, ambientSources.length > 0)
+
   const goToPreviousMonth = () => {
     if (month === 0) {
       setMonthView(year - 1, 11)
@@ -857,7 +878,7 @@ export function EntriesPage() {
       {isSearchMode ? (
         <div className="entry-feed">
           {entries.length > 0 ? (
-            <section className="day-section">
+            <section className="day-section" id="search-results">
               <h2 className="day-heading">{t('entries.searchResults')}</h2>
               <ul className="entry-list">
                 {entries.map((entry) => (
