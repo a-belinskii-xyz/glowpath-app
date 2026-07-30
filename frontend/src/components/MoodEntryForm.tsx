@@ -787,44 +787,48 @@ export function MoodEntryForm({
               </div>
             ) : null}
           </section>
-
-          <div className="entry-form-footer">
-            <div className="button-row entry-save-row">
-              <button className="button" type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? t('common.saving')
-                  : mode === 'create'
-                    ? t('entries.createEntry')
-                    : t('entries.saveChanges')}
-              </button>
-              <button
-                className="button button-secondary"
-                type="button"
-                onClick={() =>
-                  navigate(
-                    initialEntry
-                      ? entriesListPathForInstant(
-                          initialEntry.recorded_at,
-                          timeZone,
-                          initialEntry.id,
-                        )
-                      : '/',
-                  )
-                }
-              >
-                {t('common.cancel')}
-              </button>
-            </div>
-            <nav className="entry-configure" aria-label={t('entries.configure')}>
-              <Link to="/tags">{t('common.tags')}</Link>
-              <span aria-hidden="true">·</span>
-              <Link to="/goals">{t('common.goals')}</Link>
-              <span aria-hidden="true">·</span>
-              <Link to="/tracker-settings?tab=templates">{t('entries.templatesLink')}</Link>
-            </nav>
-          </div>
         </div>
       ) : null}
+
+      <div className="entry-form-footer">
+        <div className="button-row entry-save-row">
+          <button
+            className="button"
+            type="submit"
+            disabled={isSubmitting || (!moodPicked && mode === 'create')}
+          >
+            {isSubmitting
+              ? t('common.saving')
+              : mode === 'create'
+                ? t('entries.createEntry')
+                : t('entries.saveChanges')}
+          </button>
+          <button
+            className="button button-secondary"
+            type="button"
+            onClick={() =>
+              navigate(
+                initialEntry
+                  ? entriesListPathForInstant(
+                      initialEntry.recorded_at,
+                      timeZone,
+                      initialEntry.id,
+                    )
+                  : '/',
+              )
+            }
+          >
+            {t('common.cancel')}
+          </button>
+        </div>
+        <nav className="entry-configure" aria-label={t('entries.configure')}>
+          <Link to="/tags">{t('common.tags')}</Link>
+          <span aria-hidden="true">·</span>
+          <Link to="/goals">{t('common.goals')}</Link>
+          <span aria-hidden="true">·</span>
+          <Link to="/tracker-settings?tab=templates">{t('entries.templatesLink')}</Link>
+        </nav>
+      </div>
 
       {showTemplateSheet
         ? createPortal(
