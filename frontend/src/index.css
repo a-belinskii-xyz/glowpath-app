@@ -697,6 +697,13 @@ input {
   font-weight: 500;
 }
 
+.profile-field-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--chrome-text-secondary);
+}
+
 .profile-account {
   display: grid;
   gap: 1.25rem;

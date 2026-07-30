@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from tests.conftest import FakeEmailService, extract_token_from_email
+from tests.conftest import FakeEmailService, extract_token_from_email, register_verify_and_login
 
 
 def _register_and_get_verify_token(
@@ -146,3 +146,38 @@ def test_resend_verification_unknown_email_returns_request_accepted(
     body = response.json()
     assert body["status"] == "request_accepted"
     assert "verification link" in body["message"]
+
+
+def test_patch_me_updates_timezone(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    access_token = register_verify_and_login(auth_client, mailer, "tz-update@example.com")
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    response = auth_client.patch(
+        "/v1/auth/me",
+        headers=headers,
+        json={"timezone": "Europe/London"},
+    )
+    assert response.status_code == 200
+    assert response.json()["timezone"] == "Europe/London"
+
+    me_response = auth_client.get("/v1/auth/me", headers=headers)
+    assert me_response.status_code == 200
+    assert me_response.json()["timezone"] == "Europe/London"
+
+
+def test_patch_me_rejects_unknown_timezone(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    access_token = register_verify_and_login(auth_client, mailer, "tz-bad@example.com")
+
+    response = auth_client.patch(
+        "/v1/auth/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={"timezone": "Not/A_Real_Zone"},
+    )
+    assert response.status_code == 400
+    assert "Unknown timezone" in response.json()["detail"]

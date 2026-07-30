@@ -22,6 +22,7 @@ from app.core.security import (
     hash_token,
     verify_password,
 )
+from app.core.timezones import normalize_timezone
 from app.models.auth_token import AuthToken
 from app.models.user import User
 from app.services.email_service import EmailService
@@ -91,6 +92,11 @@ def register_user(
     email_service: EmailService,
 ) -> User:
     normalized_email = normalize_email(email)
+    try:
+        timezone_name = normalize_timezone(timezone)
+    except ValueError as exc:
+        raise AuthError(str(exc), status_code=400) from exc
+
     existing = db.scalar(select(User).where(User.email == normalized_email))
     if existing is not None:
         raise AuthError("Email is already registered", status_code=409)
@@ -98,14 +104,14 @@ def register_user(
     user = User(
         email=normalized_email,
         password_hash=hash_password(password),
-        timezone=timezone,
+        timezone=timezone_name,
     )
     db.add(user)
     db.flush()
 
     provision_default_tags(db, user.id)
     provision_default_note_templates(db, user.id)
-    provision_default_goals(db, user.id, starts_on=_local_today(timezone))
+    provision_default_goals(db, user.id, starts_on=_local_today(timezone_name))
     provision_notification_settings(db, user.id)
     provision_mood_preferences(db, user.id)
     _create_auth_token(
@@ -298,6 +304,22 @@ def verify_google_id_token(id_token: str) -> GoogleProfile:
 
 def get_user_by_id(db: Session, user_id: uuid.UUID) -> User | None:
     return db.get(User, user_id)
+
+
+def update_user_timezone(db: Session, *, user_id: uuid.UUID, timezone: str) -> User:
+    try:
+        timezone_name = normalize_timezone(timezone)
+    except ValueError as exc:
+        raise AuthError(str(exc), status_code=400) from exc
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise AuthError("User not found", status_code=404)
+
+    user.timezone = timezone_name
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def _local_today(timezone_name: str) -> date:

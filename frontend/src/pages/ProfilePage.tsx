@@ -1,3 +1,6 @@
+import { useState } from 'react'
+
+import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
@@ -6,15 +9,35 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
+import { timezoneSelectOptions } from '../lib/timezones'
 
 export function ProfilePage() {
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, updateTimezone } = useAuth()
   const { locale, setLocale, t } = useLocale()
   const { scores } = useMoodPreferences()
   usePageAmbientGlow(Object.values(scores).map((style) => style.color))
+  const [timezoneError, setTimezoneError] = useState<string | null>(null)
+  const [isSavingTimezone, setIsSavingTimezone] = useState(false)
 
   if (!user) {
     return null
+  }
+
+  const timezoneOptions = timezoneSelectOptions(user.timezone)
+
+  const handleTimezoneChange = async (nextTimezone: string) => {
+    if (nextTimezone === user.timezone) {
+      return
+    }
+    setTimezoneError(null)
+    setIsSavingTimezone(true)
+    try {
+      await updateTimezone(nextTimezone)
+    } catch (err) {
+      setTimezoneError(err instanceof Error ? err.message : t('errors.failedSaveTimezone'))
+    } finally {
+      setIsSavingTimezone(false)
+    }
   }
 
   return (
@@ -26,6 +49,8 @@ export function ProfilePage() {
           {t('common.refresh')}
         </button>
       </div>
+
+      {timezoneError ? <Alert variant="error">{timezoneError}</Alert> : null}
 
       <div className="card profile-account">
         <div className="profile-account-row">
@@ -46,8 +71,23 @@ export function ProfilePage() {
 
         <div className="profile-account-grid">
           <div>
-            <span className="profile-account-label">{t('common.timezone')}</span>
-            <p className="profile-account-value--static">{user.timezone}</p>
+            <label className="profile-account-label" htmlFor="profile-timezone">
+              {t('common.timezone')}
+            </label>
+            <select
+              id="profile-timezone"
+              className="form-input profile-locale-select"
+              value={user.timezone}
+              disabled={isSavingTimezone}
+              onChange={(event) => void handleTimezoneChange(event.target.value)}
+            >
+              {timezoneOptions.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+            <p className="profile-field-hint">{t('profile.timezoneHint')}</p>
           </div>
           <div>
             <label className="profile-account-label" htmlFor="profile-locale">

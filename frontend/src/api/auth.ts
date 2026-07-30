@@ -54,6 +54,14 @@ export function getMe(): Promise<UserPublic> {
   return apiRequest<UserPublic>('/v1/auth/me', { auth: true })
 }
 
+export function updateMe(body: { timezone: string }): Promise<UserPublic> {
+  return apiRequest<UserPublic>('/v1/auth/me', {
+    method: 'PATCH',
+    body,
+    auth: true,
+  })
+}
+
 export function getGoogleLoginUrl(): string {
   return `${getApiBaseUrl()}/v1/auth/google/login`
 }

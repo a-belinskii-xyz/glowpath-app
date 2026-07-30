@@ -20,6 +20,7 @@ type AuthContextValue = {
   register: (body: RegisterRequest) => Promise<string>
   logout: () => void
   refreshUser: () => Promise<void>
+  updateTimezone: (timezone: string) => Promise<void>
   completeLogin: (accessToken: string, refreshToken: string) => Promise<void>
 }
 
@@ -63,6 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const updateTimezone = useCallback(async (timezone: string) => {
+    const profile = await authApi.updateMe({ timezone })
+    setUser(profile)
+  }, [])
+
   useEffect(() => {
     const bootstrap = async () => {
       try {
@@ -87,9 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       refreshUser,
+      updateTimezone,
       completeLogin,
     }),
-    [user, isLoading, login, register, logout, refreshUser, completeLogin],
+    [user, isLoading, login, register, logout, refreshUser, updateTimezone, completeLogin],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

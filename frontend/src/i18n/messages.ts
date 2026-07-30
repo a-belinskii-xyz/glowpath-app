@@ -351,6 +351,8 @@ export const en = {
     title: 'Profile',
     emailVerifiedShort: 'Verified',
     emailUnverifiedShort: 'Not verified',
+    timezoneHint:
+      'Used for calendars, charts, goals, and reminder times. Past entries keep the same moment; the local day may shift near midnight.',
     notificationsTitle: 'Notifications',
     notificationsLead:
       'Choose how and when GlowPath reminds you. Times use your profile timezone.',
@@ -532,6 +534,7 @@ export const en = {
     failedConnectTelegram: 'Failed to create Telegram link code',
     failedUnlinkTelegram: 'Failed to unlink Telegram',
     telegramBotNotConfigured: 'Telegram bot is not configured on the server.',
+    failedSaveTimezone: 'Failed to update timezone',
     failedSave: 'Failed to save',
     failedSaveEntry: 'Failed to save entry',
     failedDeleteGroup: 'Failed to delete group',
@@ -899,6 +902,8 @@ export const ru: DeepStringLeaves<typeof en> = {
     title: 'Профиль',
     emailVerifiedShort: 'Подтверждён',
     emailUnverifiedShort: 'Не подтверждён',
+    timezoneHint:
+      'Используется для календаря, графиков, целей и напоминаний. Прошлые записи сохраняют тот же момент; локальный день у полуночи может сдвинуться.',
     notificationsTitle: 'Уведомления',
     notificationsLead:
       'Выберите, как и когда GlowPath напоминает вам. Время — в часовом поясе профиля.',
@@ -1080,6 +1085,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     failedConnectTelegram: 'Не удалось создать код привязки Telegram',
     failedUnlinkTelegram: 'Не удалось отвязать Telegram',
     telegramBotNotConfigured: 'Бот Telegram на сервере не настроен.',
+    failedSaveTimezone: 'Не удалось обновить часовой пояс',
     failedSave: 'Не удалось сохранить',
     failedSaveEntry: 'Не удалось сохранить запись',
     failedDeleteGroup: 'Не удалось удалить группу',

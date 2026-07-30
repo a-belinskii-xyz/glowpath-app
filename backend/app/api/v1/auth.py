@@ -23,7 +23,7 @@ from app.schemas.auth import (
     VerificationResendResponse,
     VerificationResendStatus,
 )
-from app.schemas.user import UserPublic
+from app.schemas.user import UserPublic, UserUpdate
 from app.services.auth_service import (
     AuthError,
     GoogleProfile,
@@ -35,6 +35,7 @@ from app.services.auth_service import (
     register_user,
     resend_verification_email,
     reset_password,
+    update_user_timezone,
     verify_email,
     verify_google_id_token,
 )
@@ -215,3 +216,16 @@ def google_id_token_login(
 @router.get("/me", response_model=UserPublic)
 def me(current_user: User = Depends(get_current_user)) -> UserPublic:
     return _to_user_public(current_user)
+
+
+@router.patch("/me", response_model=UserPublic)
+def patch_me(
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserPublic:
+    try:
+        user = update_user_timezone(db, user_id=current_user.id, timezone=body.timezone)
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    return _to_user_public(user)

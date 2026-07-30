@@ -6,14 +6,7 @@ import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
-
-function detectTimezone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Minsk'
-  } catch {
-    return 'Europe/Minsk'
-  }
-}
+import { detectTimezone } from '../lib/timezones'
 
 export function RegisterPage() {
   const { register } = useAuth()
