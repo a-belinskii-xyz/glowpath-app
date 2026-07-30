@@ -812,7 +812,7 @@ export function EntriesPage() {
       {user?.email_verified && !isSearchMode ? (
         <>
           <div
-            className="segmented-control"
+            className="segmented-control calendar-mode-tabs"
             role="group"
             aria-label={t('calendar.modeGroup')}
           >
