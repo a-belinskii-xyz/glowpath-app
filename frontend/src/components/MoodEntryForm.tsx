@@ -36,6 +36,12 @@ import { getMoodScoreOptions } from '../lib/moodScale'
 import { emojiForGroupSlug } from '../lib/tagEmoji'
 import type { GoalPublic } from '../types/goal'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
+import {
+  clearMoodEntryDraft,
+  getMoodEntryDraft,
+  isMoodEntryDraftEmpty,
+  setMoodEntryDraft,
+} from '../lib/moodEntryDraft'
 import { getStoredMoodEntrySource } from '../lib/moodEntrySource'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic, TagPublic } from '../types/tag'
@@ -77,7 +83,9 @@ export function MoodEntryForm({
   const contextSearchId = useId()
   const noteSectionRef = useRef<HTMLElement>(null)
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set())
+  const draftHydratedRef = useRef(mode !== 'create')
   const [noteScrollToken, setNoteScrollToken] = useState(0)
+  const [draftHydrated, setDraftHydrated] = useState(mode !== 'create')
 
   const [score, setScore] = useState(initialEntry?.score ?? 4)
   const [moodPicked, setMoodPicked] = useState(mode === 'edit' || initialEntry != null)
@@ -148,6 +156,66 @@ export function MoodEntryForm({
     }
     void loadCatalog()
   }, [initialEntry, locale, t])
+
+  useEffect(() => {
+    if (mode !== 'create' || !user?.id || draftHydratedRef.current) {
+      return
+    }
+    draftHydratedRef.current = true
+    const dateKey =
+      (initialRecordedAtLocal ?? nowDatetimeLocal(timeZone)).split('T')[0] ?? ''
+    if (dateKey) {
+      const draft = getMoodEntryDraft(user.id, dateKey)
+      if (draft) {
+        setScore(draft.score)
+        setMoodPicked(draft.moodPicked)
+        setRecordedAtLocal(draft.recordedAtLocal)
+        setNote(draft.note)
+        setSelectedTagIds(draft.selectedTagIds)
+        setSelectedGoalIds(draft.selectedGoalIds)
+        setShowMore(draft.showMore)
+      }
+    }
+    setDraftHydrated(true)
+  }, [mode, user?.id, initialRecordedAtLocal, timeZone])
+
+  useEffect(() => {
+    if (mode !== 'create' || !user?.id || !draftHydrated) {
+      return
+    }
+    const dateKey = recordedAtLocal.split('T')[0] ?? ''
+    if (!dateKey) {
+      return
+    }
+    const draft = {
+      score,
+      moodPicked,
+      recordedAtLocal,
+      note,
+      selectedTagIds,
+      selectedGoalIds,
+      showMore,
+    }
+    const timer = window.setTimeout(() => {
+      if (isMoodEntryDraftEmpty(draft)) {
+        clearMoodEntryDraft(user.id, dateKey)
+      } else {
+        setMoodEntryDraft(user.id, dateKey, draft)
+      }
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [
+    mode,
+    user?.id,
+    draftHydrated,
+    score,
+    moodPicked,
+    recordedAtLocal,
+    note,
+    selectedTagIds,
+    selectedGoalIds,
+    showMore,
+  ])
 
   useEffect(() => {
     if (!showTemplateSheet) {
@@ -501,6 +569,10 @@ export function MoodEntryForm({
         const created = await createMoodEntry(payload)
         await syncAttachments(created.id)
         savedId = created.id
+        const draftDateKey = recordedAtLocal.split('T')[0]
+        if (user?.id && draftDateKey) {
+          clearMoodEntryDraft(user.id, draftDateKey)
+        }
       } else if (initialEntry) {
         await patchMoodEntry(initialEntry.id, payload)
         await syncAttachments(initialEntry.id)
