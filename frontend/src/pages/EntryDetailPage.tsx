@@ -10,10 +10,9 @@ import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
 import { GoalIcon } from '../components/GoalIcon'
 import { HeartIcon } from '../components/HeartIcon'
 import { IconButton, IconLinkButton } from '../components/IconButton'
-import { EditIcon } from '../components/icons'
+import { DeleteIcon, EditIcon } from '../components/icons'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
-import { PopupMenu } from '../components/PopupMenu'
 import { TagIcon } from '../components/TagIcon'
 import { useAuth } from '../context/AuthContext'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
@@ -154,17 +153,14 @@ export function EntryDetailPage() {
               >
                 <EditIcon />
               </IconLinkButton>
-              <PopupMenu
-                ariaLabel={t('entryActions.ariaLabel')}
-                items={[
-                  {
-                    id: 'delete',
-                    label: isDeleting ? t('common.deleting') : t('common.delete'),
-                    danger: true,
-                    onSelect: () => setConfirmDelete(true),
-                  },
-                ]}
-              />
+              <IconButton
+                label={isDeleting ? t('common.deleting') : t('common.delete')}
+                variant="danger"
+                disabled={isDeleting}
+                onClick={() => setConfirmDelete(true)}
+              >
+                <DeleteIcon />
+              </IconButton>
             </div>
           ) : null}
           <Link className="button button-secondary" to={backToEntries}>

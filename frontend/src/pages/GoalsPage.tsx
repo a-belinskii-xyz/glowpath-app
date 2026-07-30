@@ -554,11 +554,8 @@ export function GoalsPage() {
                         })
                       : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
                   </p>
-                  <p className="goal-week-progress">
-                    {t('goalsPage.weekProgress', {
-                      done: goal.completed_this_week,
-                      target: goal.times_per_week,
-                    })}
+                  <p className="goal-times-per-week">
+                    {t('goalsPage.timesPerWeekLabel', { count: goal.times_per_week })}
                   </p>
                 </div>
               </article>

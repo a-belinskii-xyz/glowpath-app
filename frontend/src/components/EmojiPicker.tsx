@@ -56,6 +56,7 @@ export function EmojiPicker({
   const { t } = useLocale()
   const [expanded, setExpanded] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
 
   const selected = value.trim()
@@ -79,6 +80,16 @@ export function EmojiPicker({
     if (!expanded) {
       return
     }
+    let innerFrame = 0
+    const outerFrame = requestAnimationFrame(() => {
+      innerFrame = requestAnimationFrame(() => {
+        sheetRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest',
+        })
+      })
+    })
     const onPointerDown = (event: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
         setExpanded(false)
@@ -92,6 +103,8 @@ export function EmojiPicker({
     document.addEventListener('mousedown', onPointerDown)
     document.addEventListener('keydown', onKey)
     return () => {
+      cancelAnimationFrame(outerFrame)
+      cancelAnimationFrame(innerFrame)
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKey)
     }
@@ -143,7 +156,13 @@ export function EmojiPicker({
       </div>
 
       {expanded ? (
-        <div id={panelId} className="emoji-picker-sheet" role="dialog" aria-label={label}>
+        <div
+          id={panelId}
+          ref={sheetRef}
+          className="emoji-picker-sheet"
+          role="dialog"
+          aria-label={label}
+        >
           <div className="emoji-picker-groups">
             {resolvedGroups.map((group) => (
               <div key={group.id} className="emoji-picker-group" role="group">

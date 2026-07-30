@@ -42,16 +42,6 @@ export function DeleteIcon(props: IconProps) {
   )
 }
 
-export function MoreIcon(props: IconProps) {
-  return (
-    <BaseIcon {...props}>
-      <circle cx="12" cy="5" r="1.8" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-      <circle cx="12" cy="19" r="1.8" fill="currentColor" />
-    </BaseIcon>
-  )
-}
-
 export function DragHandleIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>
