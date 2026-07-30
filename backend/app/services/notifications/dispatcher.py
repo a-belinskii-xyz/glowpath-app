@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from app.core.error_codes import ErrorCode
 from app.models.user import User
 from app.services.notifications.base import (
     BaseNotifier,
@@ -32,7 +33,7 @@ class NotificationDispatcher:
         if not channels:
             raise NotificationError(
                 "At least one notification channel is required",
-                code="notification_channel_required",
+                code=ErrorCode.NOTIFICATION_CHANNEL_REQUIRED,
                 status_code=400,
             )
 
@@ -42,7 +43,7 @@ class NotificationDispatcher:
             if notifier is None:
                 raise NotificationError(
                     f"Notification channel is not configured: {channel}",
-                    code="notification_channel_unavailable",
+                    code=ErrorCode.NOTIFICATION_CHANNEL_UNAVAILABLE,
                     status_code=501,
                     params={"channel": str(channel)},
                 )
@@ -57,13 +58,13 @@ class NotificationDispatcher:
             if user.telegram_chat_id is None:
                 raise NotificationError(
                     "Telegram is not linked for this user",
-                    code="telegram_not_linked",
+                    code=ErrorCode.TELEGRAM_NOT_LINKED,
                     status_code=400,
                 )
             return str(user.telegram_chat_id)
         raise NotificationError(
             f"No recipient mapping for channel: {channel}",
-            code="notification_channel_unavailable",
+            code=ErrorCode.NOTIFICATION_CHANNEL_UNAVAILABLE,
             status_code=501,
             params={"channel": str(channel)},
         )

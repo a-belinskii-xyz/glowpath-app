@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.models.user import User
 from app.models.user_notification_settings import UserNotificationSettings
@@ -86,14 +87,15 @@ def _serialize_channels(
 ) -> list[str]:
     if not channels:
         raise NotificationSettingsError(
-            "At least one notification channel is required", code="notification_channel_required"
+            "At least one notification channel is required",
+            code=ErrorCode.NOTIFICATION_CHANNEL_REQUIRED,
         )
     unique: list[str] = []
     for channel in channels:
         if channel not in _IMPLEMENTED_CHANNELS:
             raise NotificationSettingsError(
                 f"Notification channel is not available yet: {channel}",
-                code="notification_channel_unavailable",
+                code=ErrorCode.NOTIFICATION_CHANNEL_UNAVAILABLE,
                 status_code=400,
                 params={"channel": str(channel)},
             )
@@ -113,7 +115,8 @@ def _validate_prefs(
     channels = prefs.channels or []
     if not channels:
         raise NotificationSettingsError(
-            "At least one notification channel is required", code="notification_channel_required"
+            "At least one notification channel is required",
+            code=ErrorCode.NOTIFICATION_CHANNEL_REQUIRED,
         )
     for raw in channels:
         try:
@@ -121,13 +124,13 @@ def _validate_prefs(
         except ValueError as exc:
             raise NotificationSettingsError(
                 f"Unknown notification channel: {raw}",
-                code="unknown_notification_channel",
+                code=ErrorCode.UNKNOWN_NOTIFICATION_CHANNEL,
                 params={"channel": str(raw)},
             ) from exc
         if channel not in _IMPLEMENTED_CHANNELS:
             raise NotificationSettingsError(
                 f"Notification channel is not available yet: {channel}",
-                code="notification_channel_unavailable",
+                code=ErrorCode.NOTIFICATION_CHANNEL_UNAVAILABLE,
                 status_code=400,
                 params={"channel": str(channel)},
             )
@@ -138,7 +141,7 @@ def _validate_prefs(
     if prefs.enabled and needs_schedule and prefs.daily_mood_reminder_time is None:
         raise NotificationSettingsError(
             "daily_mood_reminder_time is required when mood or goal reminders are enabled",
-            code="reminder_time_required",
+            code=ErrorCode.REMINDER_TIME_REQUIRED,
         )
 
 
@@ -147,6 +150,6 @@ def _require_telegram_linked(db: Session, *, user_id: uuid.UUID) -> None:
     if user is None or not user.telegram_linked:
         raise NotificationSettingsError(
             "Link Telegram in your profile before enabling that channel",
-            code="telegram_link_required",
+            code=ErrorCode.TELEGRAM_LINK_REQUIRED,
             status_code=400,
         )

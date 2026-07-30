@@ -1,0 +1,139 @@
+"""Stable machine-readable API error codes.
+
+Wire values stay snake_case so frontend `apiErrors.<camelCase>` mapping remains stable.
+"""
+
+from __future__ import annotations
+
+from enum import StrEnum
+
+
+class ErrorCode(StrEnum):
+    # Auth / session
+    NOT_AUTHENTICATED = "not_authenticated"
+    INVALID_TOKEN = "invalid_token"
+    INVALID_CREDENTIALS = "invalid_credentials"
+    INVALID_REFRESH_TOKEN = "invalid_refresh_token"
+    INVALID_VERIFICATION_TOKEN = "invalid_verification_token"
+    INVALID_RESET_TOKEN = "invalid_reset_token"
+    INVALID_OR_EXPIRED_TOKEN = "invalid_or_expired_token"
+    EMAIL_ALREADY_REGISTERED = "email_already_registered"
+    EMAIL_NOT_VERIFIED = "email_not_verified"
+    EMAIL_LINKED_OTHER_GOOGLE = "email_linked_other_google"
+    INVALID_TIMEZONE = "invalid_timezone"
+    USER_NOT_FOUND = "user_not_found"
+
+    # Google OAuth
+    GOOGLE_OAUTH_NOT_CONFIGURED = "google_oauth_not_configured"
+    GOOGLE_AUTHORIZATION_FAILED = "google_authorization_failed"
+    GOOGLE_USER_INFO_MISSING = "google_user_info_missing"
+    GOOGLE_USER_INFO_INCOMPLETE = "google_user_info_incomplete"
+    GOOGLE_NO_EMAIL = "google_no_email"
+    INVALID_GOOGLE_ID_TOKEN = "invalid_google_id_token"
+
+    # Tags / tag groups
+    TAG_GROUP_NOT_FOUND = "tag_group_not_found"
+    TAG_GROUP_SLUG_EXISTS = "tag_group_slug_exists"
+    TAG_GROUP_IN_USE = "tag_group_in_use"
+    TAG_GROUP_REORDER_MISMATCH = "tag_group_reorder_mismatch"
+    TAG_GROUP_VISIBILITY_LIMIT = "tag_group_visibility_limit"
+    TAG_SLUG_EXISTS = "tag_slug_exists"
+    TAG_NOT_FOUND = "tag_not_found"
+    TAG_NOT_FOUND_IN_GROUP = "tag_not_found_in_group"
+    TAG_IN_USE = "tag_in_use"
+    TAG_REORDER_MISMATCH = "tag_reorder_mismatch"
+    TAGS_NOT_FOUND = "tags_not_found"
+
+    # Goals
+    GOAL_NOT_FOUND = "goal_not_found"
+    GOAL_SLUG_EXISTS = "goal_slug_exists"
+    GOAL_IN_USE = "goal_in_use"
+    GOAL_REORDER_MISMATCH = "goal_reorder_mismatch"
+    GOAL_VISIBILITY_LIMIT = "goal_visibility_limit"
+    GOAL_STATS_VISIBILITY_LIMIT = "goal_stats_visibility_limit"
+    GOALS_NOT_FOUND = "goals_not_found"
+    GOAL_NOT_AVAILABLE_BEFORE = "goal_not_available_before"
+    GOAL_NOT_AVAILABLE_ON_DATE = "goal_not_available_on_date"
+    GOAL_NOT_AVAILABLE_AFTER = "goal_not_available_after"
+    PERIOD_END_BEFORE_START = "period_end_before_start"
+    ENDS_ON_BEFORE_STARTS_ON = "ends_on_before_starts_on"
+
+    # Mood entries / attachments
+    MOOD_ENTRY_NOT_FOUND = "mood_entry_not_found"
+    RECORDED_AT_MISSING_TIMEZONE = "recorded_at_missing_timezone"
+    RECORDED_TO_BEFORE_FROM = "recorded_to_before_from"
+    SEARCH_QUERY_EMPTY = "search_query_empty"
+    UNKNOWN_TIMEZONE = "unknown_timezone"
+    PHOTO_LIMIT_REACHED = "photo_limit_reached"
+    PHOTO_TOO_LARGE = "photo_too_large"
+    PHOTO_REORDER_MISMATCH = "photo_reorder_mismatch"
+    TOO_MANY_PHOTOS = "too_many_photos"
+    UNSUPPORTED_PHOTO_MIME = "unsupported_photo_mime"
+    UNSUPPORTED_AUDIO_MIME = "unsupported_audio_mime"
+    AUDIO_TOO_LARGE = "audio_too_large"
+    AUDIO_ALREADY_EXISTS = "audio_already_exists"
+    INVALID_ATTACHMENT_KIND = "invalid_attachment_kind"
+    ATTACHMENT_NOT_FOUND = "attachment_not_found"
+    ORDERED_IDS_NOT_UNIQUE = "ordered_ids_not_unique"
+
+    # Shared style / icons
+    INVALID_COLOR = "invalid_color"
+    UNKNOWN_ICON_TYPE = "unknown_icon_type"
+    ICON_REQUIRED = "icon_required"
+    EMOJI_TOO_LONG = "emoji_too_long"
+    UNKNOWN_BUILTIN_ICON = "unknown_builtin_icon"
+    UPLOAD_ICON_BEFORE_CREATE = "upload_icon_before_create"
+    UPLOADED_ICON_NOT_FOUND = "uploaded_icon_not_found"
+    UNSUPPORTED_IMAGE_MIME = "unsupported_image_mime"
+    ICON_TOO_LARGE = "icon_too_large"
+
+    # Tag / goal / mood icons
+    TAG_ICON_NOT_FOUND = "tag_icon_not_found"
+    TAG_ICON_SOURCE_NOT_FOUND = "tag_icon_source_not_found"
+    TAG_ICON_LIMIT = "tag_icon_limit"
+    GOAL_ICON_NOT_FOUND = "goal_icon_not_found"
+    GOAL_ICON_SOURCE_NOT_FOUND = "goal_icon_source_not_found"
+    GOAL_ICON_LIMIT = "goal_icon_limit"
+    MOOD_ICON_NOT_FOUND = "mood_icon_not_found"
+    MOOD_ICON_SOURCE_NOT_FOUND = "mood_icon_source_not_found"
+    MOOD_ICON_LIMIT = "mood_icon_limit"
+    INVALID_MOOD_SCORE = "invalid_mood_score"
+    UNKNOWN_MOOD_SCORE = "unknown_mood_score"
+    INVALID_MOOD_COLOR = "invalid_mood_color"
+    MOOD_LABEL_MUST_BE_STRING = "mood_label_must_be_string"
+    MOOD_LABEL_TOO_LONG = "mood_label_too_long"
+
+    # Note templates
+    NOTE_TEMPLATE_NOT_FOUND = "note_template_not_found"
+    NOTE_TEMPLATE_SLUG_EXISTS = "note_template_slug_exists"
+    NOTE_TEMPLATE_REORDER_MISMATCH = "note_template_reorder_mismatch"
+
+    # Notifications
+    NOTIFICATION_CHANNEL_REQUIRED = "notification_channel_required"
+    NOTIFICATION_CHANNEL_UNAVAILABLE = "notification_channel_unavailable"
+    UNKNOWN_NOTIFICATION_CHANNEL = "unknown_notification_channel"
+    REMINDER_TIME_REQUIRED = "reminder_time_required"
+    TELEGRAM_LINK_REQUIRED = "telegram_link_required"
+    EMAIL_RECIPIENT_EMPTY = "email_recipient_empty"
+    EMAIL_SEND_FAILED = "email_send_failed"
+    TELEGRAM_RECIPIENT_EMPTY = "telegram_recipient_empty"
+    TELEGRAM_SEND_FAILED = "telegram_send_failed"
+    TELEGRAM_SEND_REJECTED = "telegram_send_rejected"
+
+    # Telegram linking / bot service
+    TELEGRAM_BOT_NOT_CONFIGURED = "telegram_bot_not_configured"
+    TELEGRAM_BOT_SERVICE_TOKEN_NOT_CONFIGURED = "telegram_bot_service_token_not_configured"
+    INVALID_TELEGRAM_BOT_SERVICE_TOKEN = "invalid_telegram_bot_service_token"
+    TELEGRAM_ALREADY_LINKED = "telegram_already_linked"
+    TELEGRAM_LINK_CODE_INVALID = "telegram_link_code_invalid"
+    TELEGRAM_LINK_CODE_EXPIRED = "telegram_link_code_expired"
+    TELEGRAM_ACCOUNT_LINKED_OTHER_USER = "telegram_account_linked_other_user"
+    ACCOUNT_LINKED_OTHER_TELEGRAM = "account_linked_other_telegram"
+    TELEGRAM_NOT_LINKED = "telegram_not_linked"
+
+    # Storage
+    STORAGE_BUCKET_FAILED = "storage_bucket_failed"
+    STORAGE_UPLOAD_FAILED = "storage_upload_failed"
+    STORAGE_OBJECT_NOT_FOUND = "storage_object_not_found"
+    STORAGE_DELETE_FAILED = "storage_delete_failed"
+    STORAGE_ERROR = "storage_error"

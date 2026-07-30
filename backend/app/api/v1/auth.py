@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_email_service
 from app.config import settings
+from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error, structured_detail
 from app.core.google_oauth import oauth
 from app.db.session import get_db
@@ -156,7 +157,7 @@ async def google_login(request: Request) -> Response:
         raise HTTPException(
             status_code=503,
             detail=structured_detail(
-                code="google_oauth_not_configured",
+                code=ErrorCode.GOOGLE_OAUTH_NOT_CONFIGURED,
                 message="Google OAuth is not configured",
             ),
         )
@@ -172,7 +173,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> Re
         raise HTTPException(
             status_code=503,
             detail=structured_detail(
-                code="google_oauth_not_configured",
+                code=ErrorCode.GOOGLE_OAUTH_NOT_CONFIGURED,
                 message="Google OAuth is not configured",
             ),
         )
@@ -183,7 +184,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> Re
         raise HTTPException(
             status_code=400,
             detail=structured_detail(
-                code="google_authorization_failed",
+                code=ErrorCode.GOOGLE_AUTHORIZATION_FAILED,
                 message="Google authorization failed",
             ),
         ) from exc
@@ -193,7 +194,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> Re
         raise HTTPException(
             status_code=400,
             detail=structured_detail(
-                code="google_user_info_missing",
+                code=ErrorCode.GOOGLE_USER_INFO_MISSING,
                 message="Google user info missing",
             ),
         )
@@ -204,7 +205,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> Re
         raise HTTPException(
             status_code=400,
             detail=structured_detail(
-                code="google_user_info_incomplete",
+                code=ErrorCode.GOOGLE_USER_INFO_INCOMPLETE,
                 message="Google user info incomplete",
             ),
         )

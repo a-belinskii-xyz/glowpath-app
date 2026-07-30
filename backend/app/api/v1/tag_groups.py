@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale, get_storage_service
 from app.config import settings
+from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error
 from app.db.session import get_db
 from app.models.tag import Tag
@@ -109,7 +110,7 @@ def _ensure_tag_in_group(
     tag = get_owned_tag(db, user_id=user_id, tag_id=tag_id)
     if tag.group_id != group_id:
         raise TagError(
-            "Tag not found in this group", code="tag_not_found_in_group", status_code=404
+            "Tag not found in this group", code=ErrorCode.TAG_NOT_FOUND_IN_GROUP, status_code=404
         )
     return tag
 

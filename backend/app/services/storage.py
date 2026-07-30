@@ -4,6 +4,7 @@ from minio import Minio
 from minio.error import S3Error
 
 from app.config import settings
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 
 
@@ -12,7 +13,7 @@ class StorageError(AppError):
         self,
         message: str,
         *,
-        code: str,
+        code: ErrorCode | str,
         status_code: int = 500,
         params: dict[str, str] | None = None,
     ) -> None:
@@ -62,7 +63,7 @@ class MinioStorage(ObjectStorage):
                 self._client.make_bucket(self._bucket)
         except S3Error as exc:
             raise StorageError(
-                f"Failed to ensure bucket: {exc}", code="storage_bucket_failed"
+                f"Failed to ensure bucket: {exc}", code=ErrorCode.STORAGE_BUCKET_FAILED
             ) from exc
         self._bucket_ready = True
 
@@ -80,7 +81,7 @@ class MinioStorage(ObjectStorage):
             )
         except S3Error as exc:
             raise StorageError(
-                f"Failed to upload object: {exc}", code="storage_upload_failed"
+                f"Failed to upload object: {exc}", code=ErrorCode.STORAGE_UPLOAD_FAILED
             ) from exc
 
     def get_object(self, *, key: str) -> bytes:
@@ -89,7 +90,7 @@ class MinioStorage(ObjectStorage):
             response = self._client.get_object(self._bucket, key)
         except S3Error as exc:
             raise StorageError(
-                "Object not found", code="storage_object_not_found", status_code=404
+                "Object not found", code=ErrorCode.STORAGE_OBJECT_NOT_FOUND, status_code=404
             ) from exc
         try:
             return response.read()
@@ -103,7 +104,7 @@ class MinioStorage(ObjectStorage):
             self._client.remove_object(self._bucket, key)
         except S3Error as exc:
             raise StorageError(
-                f"Failed to delete object: {exc}", code="storage_delete_failed"
+                f"Failed to delete object: {exc}", code=ErrorCode.STORAGE_DELETE_FAILED
             ) from exc
 
 
@@ -124,7 +125,7 @@ class FakeStorage(ObjectStorage):
             data, _content_type = self._objects[key]
         except KeyError as exc:
             raise StorageError(
-                "Object not found", code="storage_object_not_found", status_code=404
+                "Object not found", code=ErrorCode.STORAGE_OBJECT_NOT_FOUND, status_code=404
             ) from exc
         return data
 

@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.orm import Session
 
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.i18n import DEFAULT_LOCALE, normalize_locale
 from app.core.mood_scale import MoodScore, MoodScoreIconType, mood_score_emoji
@@ -28,7 +29,7 @@ def require_linked_user(db: Session, *, telegram_user_id: int) -> User:
     user = get_user_by_telegram_id(db, telegram_user_id=telegram_user_id)
     if user is None:
         raise TelegramBotError(
-            "Telegram account is not linked", code="telegram_not_linked", status_code=404
+            "Telegram account is not linked", code=ErrorCode.TELEGRAM_NOT_LINKED, status_code=404
         )
     return user
 

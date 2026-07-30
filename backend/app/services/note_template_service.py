@@ -9,6 +9,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
 from app.models.note_template import NoteTemplate
@@ -44,7 +45,7 @@ def get_note_template(
     )
     if template is None:
         raise NoteTemplateError(
-            "Note template not found", code="note_template_not_found", status_code=404
+            "Note template not found", code=ErrorCode.NOTE_TEMPLATE_NOT_FOUND, status_code=404
         )
     return template
 
@@ -80,7 +81,9 @@ def create_note_template(
     except IntegrityError as exc:
         db.rollback()
         raise NoteTemplateError(
-            "Note template slug already exists", code="note_template_slug_exists", status_code=409
+            "Note template slug already exists",
+            code=ErrorCode.NOTE_TEMPLATE_SLUG_EXISTS,
+            status_code=409,
         ) from exc
     return get_note_template(db, user_id=user_id, template_id=template.id)
 
@@ -109,7 +112,9 @@ def patch_note_template(
     except IntegrityError as exc:
         db.rollback()
         raise NoteTemplateError(
-            "Note template slug already exists", code="note_template_slug_exists", status_code=409
+            "Note template slug already exists",
+            code=ErrorCode.NOTE_TEMPLATE_SLUG_EXISTS,
+            status_code=409,
         ) from exc
     return get_note_template(db, user_id=user_id, template_id=template_id)
 
@@ -131,7 +136,7 @@ def reorder_note_templates(
     if set(ordered_ids) != set(by_id):
         raise NoteTemplateError(
             "ordered_ids must include every note template exactly once",
-            code="note_template_reorder_mismatch",
+            code=ErrorCode.NOTE_TEMPLATE_REORDER_MISMATCH,
             status_code=400,
         )
     for index, template_id in enumerate(ordered_ids):

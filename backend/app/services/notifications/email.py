@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.core.error_codes import ErrorCode
 from app.services.email_service import EmailService
 from app.services.notifications.base import (
     BaseNotifier,
@@ -24,7 +25,7 @@ class EmailNotifier(BaseNotifier):
         if not recipient.strip():
             raise NotificationError(
                 "Email recipient is empty",
-                code="email_recipient_empty",
+                code=ErrorCode.EMAIL_RECIPIENT_EMPTY,
                 status_code=400,
             )
         try:
@@ -37,7 +38,7 @@ class EmailNotifier(BaseNotifier):
         except OSError as exc:
             raise NotificationError(
                 f"Failed to send email notification: {exc}",
-                code="email_send_failed",
+                code=ErrorCode.EMAIL_SEND_FAILED,
                 status_code=502,
             ) from exc
         return SentNotification(

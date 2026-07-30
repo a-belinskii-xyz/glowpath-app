@@ -15,6 +15,7 @@ from app.core.default_tag_groups import (
     DEFAULT_TAG_ICON,
     DEFAULT_TAG_ICON_TYPE,
 )
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
 from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
@@ -50,7 +51,7 @@ def get_tag_group(db: Session, *, user_id: uuid.UUID, group_id: uuid.UUID) -> Ta
         .where(TagGroup.id == group_id, TagGroup.user_id == user_id)
     )
     if group is None:
-        raise TagError("Tag group not found", code="tag_group_not_found", status_code=404)
+        raise TagError("Tag group not found", code=ErrorCode.TAG_GROUP_NOT_FOUND, status_code=404)
     return group
 
 
@@ -87,7 +88,7 @@ def create_tag_group(
     except IntegrityError as exc:
         db.rollback()
         raise TagError(
-            "Tag group slug already exists", code="tag_group_slug_exists", status_code=409
+            "Tag group slug already exists", code=ErrorCode.TAG_GROUP_SLUG_EXISTS, status_code=409
         ) from exc
     return get_tag_group(db, user_id=user_id, group_id=group.id)
 
@@ -118,7 +119,7 @@ def patch_tag_group(
     except IntegrityError as exc:
         db.rollback()
         raise TagError(
-            "Tag group slug already exists", code="tag_group_slug_exists", status_code=409
+            "Tag group slug already exists", code=ErrorCode.TAG_GROUP_SLUG_EXISTS, status_code=409
         ) from exc
     return get_tag_group(db, user_id=user_id, group_id=group_id)
 
@@ -128,7 +129,7 @@ def delete_tag_group(db: Session, *, user_id: uuid.UUID, group_id: uuid.UUID) ->
     if _group_has_linked_tags(db, group_id=group.id):
         raise TagError(
             "Cannot delete tag group while its tags are used by mood entries",
-            code="tag_group_in_use",
+            code=ErrorCode.TAG_GROUP_IN_USE,
             status_code=409,
         )
     db.delete(group)
@@ -146,7 +147,7 @@ def reorder_tag_groups(
     if set(ordered_ids) != set(by_id):
         raise TagError(
             "ordered_ids must include every tag group exactly once",
-            code="tag_group_reorder_mismatch",
+            code=ErrorCode.TAG_GROUP_REORDER_MISMATCH,
             status_code=400,
         )
     for index, group_id in enumerate(ordered_ids):
@@ -201,7 +202,7 @@ def create_tag(
     except IntegrityError as exc:
         db.rollback()
         raise TagError(
-            "Tag slug already exists in this group", code="tag_slug_exists", status_code=409
+            "Tag slug already exists in this group", code=ErrorCode.TAG_SLUG_EXISTS, status_code=409
         ) from exc
     return get_owned_tag(db, user_id=user_id, tag_id=tag.id)
 
@@ -222,7 +223,7 @@ def patch_tag(
     tag = get_owned_tag(db, user_id=user_id, tag_id=tag_id)
     if tag.group_id != group_id:
         raise TagError(
-            "Tag not found in this group", code="tag_not_found_in_group", status_code=404
+            "Tag not found in this group", code=ErrorCode.TAG_NOT_FOUND_IN_GROUP, status_code=404
         )
     if slug is not None:
         tag.slug = slug
@@ -247,7 +248,7 @@ def patch_tag(
     except IntegrityError as exc:
         db.rollback()
         raise TagError(
-            "Tag slug already exists in this group", code="tag_slug_exists", status_code=409
+            "Tag slug already exists in this group", code=ErrorCode.TAG_SLUG_EXISTS, status_code=409
         ) from exc
     return get_owned_tag(db, user_id=user_id, tag_id=tag_id)
 
@@ -262,12 +263,12 @@ def delete_tag(
     tag = get_owned_tag(db, user_id=user_id, tag_id=tag_id)
     if tag.group_id != group_id:
         raise TagError(
-            "Tag not found in this group", code="tag_not_found_in_group", status_code=404
+            "Tag not found in this group", code=ErrorCode.TAG_NOT_FOUND_IN_GROUP, status_code=404
         )
     if _tag_is_linked(db, tag_id=tag.id):
         raise TagError(
             "Cannot delete tag while it is used by mood entries",
-            code="tag_in_use",
+            code=ErrorCode.TAG_IN_USE,
             status_code=409,
         )
     db.delete(tag)
@@ -277,7 +278,7 @@ def delete_tag(
         db.rollback()
         raise TagError(
             "Cannot delete tag while it is used by mood entries",
-            code="tag_in_use",
+            code=ErrorCode.TAG_IN_USE,
             status_code=409,
         ) from exc
 
@@ -294,7 +295,7 @@ def reorder_tags(
     if set(ordered_ids) != set(by_id):
         raise TagError(
             "ordered_ids must include every tag in the group exactly once",
-            code="tag_reorder_mismatch",
+            code=ErrorCode.TAG_REORDER_MISMATCH,
             status_code=400,
         )
     for index, tag_id in enumerate(ordered_ids):
@@ -351,7 +352,7 @@ def _ensure_visible_slot_available(db: Session, *, user_id: uuid.UUID) -> None:
     if _count_visible_groups(db, user_id=user_id) >= limit:
         raise TagError(
             f"You can show at most {limit} tag groups on the entry form",
-            code="tag_group_visibility_limit",
+            code=ErrorCode.TAG_GROUP_VISIBILITY_LIMIT,
             status_code=400,
             params={"limit": str(limit)},
         )
@@ -360,7 +361,7 @@ def _ensure_visible_slot_available(db: Session, *, user_id: uuid.UUID) -> None:
 def get_owned_tag(db: Session, *, user_id: uuid.UUID, tag_id: uuid.UUID) -> Tag:
     tag = db.scalar(select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id))
     if tag is None:
-        raise TagError("Tag not found", code="tag_not_found", status_code=404)
+        raise TagError("Tag not found", code=ErrorCode.TAG_NOT_FOUND, status_code=404)
     return tag
 
 
@@ -374,40 +375,42 @@ def _validate_tag_style(
     icon: str,
 ) -> dict[str, str]:
     if not is_valid_hex_color(color):
-        raise TagError(f"Invalid color: {color!r}", code="invalid_color", params={"color": color})
+        raise TagError(
+            f"Invalid color: {color!r}", code=ErrorCode.INVALID_COLOR, params={"color": color}
+        )
 
     try:
         resolved_type = MoodScoreIconType(icon_type)
     except ValueError as exc:
         raise TagError(
             f"Unknown icon type: {icon_type!r}",
-            code="unknown_icon_type",
+            code=ErrorCode.UNKNOWN_ICON_TYPE,
             params={"icon_type": icon_type},
         ) from exc
 
     if not isinstance(icon, str) or not icon.strip():
-        raise TagError("Icon must be a non-empty string", code="icon_required")
+        raise TagError("Icon must be a non-empty string", code=ErrorCode.ICON_REQUIRED)
     resolved_icon = icon.strip()
 
     if resolved_type is MoodScoreIconType.EMOJI:
         if len(resolved_icon) > _MAX_EMOJI_LENGTH:
             raise TagError(
                 f"Emoji must be at most {_MAX_EMOJI_LENGTH} characters",
-                code="emoji_too_long",
+                code=ErrorCode.EMOJI_TOO_LONG,
                 params={"max": str(_MAX_EMOJI_LENGTH)},
             )
     elif resolved_type is MoodScoreIconType.BUILTIN:
         if not is_valid_builtin_icon_slug(resolved_icon):
             raise TagError(
                 f"Unknown built-in icon: {resolved_icon!r}",
-                code="unknown_builtin_icon",
+                code=ErrorCode.UNKNOWN_BUILTIN_ICON,
                 params={"icon": resolved_icon},
             )
     elif resolved_type is MoodScoreIconType.UPLOAD:
         if tag_id is None:
             raise TagError(
                 "Uploaded icons can only be set after the tag is created",
-                code="upload_icon_before_create",
+                code=ErrorCode.UPLOAD_ICON_BEFORE_CREATE,
             )
         if not _icon_belongs_to_tag(
             db,
@@ -416,7 +419,7 @@ def _validate_tag_style(
             icon_id=resolved_icon,
         ):
             raise TagError(
-                "Uploaded icon was not found for this tag", code="uploaded_icon_not_found"
+                "Uploaded icon was not found for this tag", code=ErrorCode.UPLOADED_ICON_NOT_FOUND
             )
 
     return {

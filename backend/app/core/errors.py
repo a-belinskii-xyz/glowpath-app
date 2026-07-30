@@ -4,6 +4,16 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from app.core.error_codes import ErrorCode
+
+__all__ = [
+    "AppError",
+    "ErrorCode",
+    "error_detail",
+    "raise_http_error",
+    "structured_detail",
+]
+
 
 class AppError(Exception):
     """Domain error with a stable machine-readable code for API clients."""
@@ -12,20 +22,20 @@ class AppError(Exception):
         self,
         message: str,
         *,
-        code: str,
+        code: ErrorCode | str,
         status_code: int = 400,
         params: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
-        self.code = code
+        self.code = ErrorCode(code) if not isinstance(code, ErrorCode) else code
         self.status_code = status_code
         self.params = dict(params) if params else {}
 
 
 def error_detail(exc: AppError) -> dict[str, Any]:
     detail: dict[str, Any] = {
-        "code": exc.code,
+        "code": str(exc.code),
         "message": exc.message,
     }
     if exc.params:
@@ -35,11 +45,11 @@ def error_detail(exc: AppError) -> dict[str, Any]:
 
 def structured_detail(
     *,
-    code: str,
+    code: ErrorCode | str,
     message: str,
     params: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    detail: dict[str, Any] = {"code": code, "message": message}
+    detail: dict[str, Any] = {"code": str(code), "message": message}
     if params:
         detail["params"] = params
     return detail

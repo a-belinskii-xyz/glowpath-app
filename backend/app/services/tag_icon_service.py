@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.default_tag_groups import DEFAULT_TAG_ICON, DEFAULT_TAG_ICON_TYPE
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.models.tag import Tag
 from app.models.user_tag_icon import UserTagIcon
@@ -61,11 +62,11 @@ def _validate_image_payload(
 ) -> str:
     mime_type = content_type.split(";")[0].strip().lower()
     if mime_type not in ALLOWED_PHOTO_MIME_TYPES:
-        raise TagIconError("Unsupported image MIME type", code="unsupported_image_mime")
+        raise TagIconError("Unsupported image MIME type", code=ErrorCode.UNSUPPORTED_IMAGE_MIME)
     if len(data) > max_bytes:
         raise TagIconError(
             f"Icon exceeds {limit_label} limit",
-            code="icon_too_large",
+            code=ErrorCode.ICON_TOO_LARGE,
             params={"limit": limit_label},
         )
     return mime_type
@@ -79,7 +80,7 @@ def get_owned_icon(db: Session, *, user_id: uuid.UUID, icon_id: uuid.UUID) -> Us
         )
     )
     if icon is None:
-        raise TagIconError("Tag icon not found", code="tag_icon_not_found", status_code=404)
+        raise TagIconError("Tag icon not found", code=ErrorCode.TAG_ICON_NOT_FOUND, status_code=404)
     return icon
 
 
@@ -161,7 +162,7 @@ def upload_tag_icon(
     if count_icons_for_tag(db, user_id=user_id, tag_id=tag_id) >= MAX_ICONS_PER_TAG:
         raise TagIconError(
             f"At most {MAX_ICONS_PER_TAG} uploaded icons are allowed per tag",
-            code="tag_icon_limit",
+            code=ErrorCode.TAG_ICON_LIMIT,
             params={"max": str(MAX_ICONS_PER_TAG)},
         )
 
@@ -256,7 +257,7 @@ def download_tag_icon_source(
     icon = get_owned_icon(db, user_id=user_id, icon_id=icon_id)
     if not icon.source_storage_key or not icon.source_mime_type:
         raise TagIconError(
-            "Tag icon source not found", code="tag_icon_source_not_found", status_code=404
+            "Tag icon source not found", code=ErrorCode.TAG_ICON_SOURCE_NOT_FOUND, status_code=404
         )
     data = storage.get_object(key=icon.source_storage_key)
     return icon, data

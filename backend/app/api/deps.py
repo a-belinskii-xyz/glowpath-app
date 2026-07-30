@@ -4,6 +4,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.error_codes import ErrorCode
 from app.core.errors import structured_detail
 from app.core.i18n import normalize_locale, parse_accept_language
 from app.core.security import decode_access_token
@@ -40,7 +41,7 @@ def get_current_user(
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=structured_detail(code="not_authenticated", message="Not authenticated"),
+            detail=structured_detail(code=ErrorCode.NOT_AUTHENTICATED, message="Not authenticated"),
         )
 
     try:
@@ -48,14 +49,14 @@ def get_current_user(
     except jwt.PyJWTError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=structured_detail(code="invalid_token", message="Invalid token"),
+            detail=structured_detail(code=ErrorCode.INVALID_TOKEN, message="Invalid token"),
         ) from exc
 
     user = get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=structured_detail(code="user_not_found", message="User not found"),
+            detail=structured_detail(code=ErrorCode.USER_NOT_FOUND, message="User not found"),
         )
     return user
 
@@ -65,7 +66,7 @@ def get_current_verified_user(user: User = Depends(get_current_user)) -> User:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=structured_detail(
-                code="email_not_verified",
+                code=ErrorCode.EMAIL_NOT_VERIFIED,
                 message="Email address is not verified",
             ),
         )
@@ -80,7 +81,7 @@ def require_telegram_bot_service(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=structured_detail(
-                code="telegram_bot_service_token_not_configured",
+                code=ErrorCode.TELEGRAM_BOT_SERVICE_TOKEN_NOT_CONFIGURED,
                 message="Telegram bot service token is not configured",
             ),
         )
@@ -88,7 +89,7 @@ def require_telegram_bot_service(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=structured_detail(
-                code="invalid_telegram_bot_service_token",
+                code=ErrorCode.INVALID_TELEGRAM_BOT_SERVICE_TOKEN,
                 message="Invalid telegram bot service token",
             ),
         )

@@ -7,6 +7,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.mood_scale import MoodScore
 from app.models.user_mood_icon import UserMoodIcon
@@ -64,11 +65,11 @@ def _validate_image_payload(
 ) -> str:
     mime_type = content_type.split(";")[0].strip().lower()
     if mime_type not in ALLOWED_PHOTO_MIME_TYPES:
-        raise MoodIconError("Unsupported image MIME type", code="unsupported_image_mime")
+        raise MoodIconError("Unsupported image MIME type", code=ErrorCode.UNSUPPORTED_IMAGE_MIME)
     if len(data) > max_bytes:
         raise MoodIconError(
             f"Icon exceeds {limit_label} limit",
-            code="icon_too_large",
+            code=ErrorCode.ICON_TOO_LARGE,
             params={"limit": limit_label},
         )
     return mime_type
@@ -82,7 +83,9 @@ def get_owned_icon(db: Session, *, user_id: uuid.UUID, icon_id: uuid.UUID) -> Us
         )
     )
     if icon is None:
-        raise MoodIconError("Mood icon not found", code="mood_icon_not_found", status_code=404)
+        raise MoodIconError(
+            "Mood icon not found", code=ErrorCode.MOOD_ICON_NOT_FOUND, status_code=404
+        )
     return icon
 
 
@@ -111,7 +114,9 @@ def list_mood_icons(
         try:
             MoodScore(score)
         except ValueError as exc:
-            raise MoodIconError("Score must be between 1 and 5", code="invalid_mood_score") from exc
+            raise MoodIconError(
+                "Score must be between 1 and 5", code=ErrorCode.INVALID_MOOD_SCORE
+            ) from exc
         query = query.where(UserMoodIcon.score == score)
     query = query.order_by(UserMoodIcon.score.asc(), UserMoodIcon.created_at.asc())
     return list(db.scalars(query).all())
@@ -133,7 +138,9 @@ def upload_mood_icon(
     try:
         mood_score = MoodScore(score)
     except ValueError as exc:
-        raise MoodIconError("Score must be between 1 and 5", code="invalid_mood_score") from exc
+        raise MoodIconError(
+            "Score must be between 1 and 5", code=ErrorCode.INVALID_MOOD_SCORE
+        ) from exc
 
     mime_type = _validate_image_payload(
         data=data,
@@ -145,7 +152,7 @@ def upload_mood_icon(
     if count_icons_for_score(db, user_id=user_id, score=score) >= MAX_ICONS_PER_SCORE:
         raise MoodIconError(
             f"At most {MAX_ICONS_PER_SCORE} uploaded icons are allowed per mood score",
-            code="mood_icon_limit",
+            code=ErrorCode.MOOD_ICON_LIMIT,
             params={"max": str(MAX_ICONS_PER_SCORE)},
         )
 
@@ -239,7 +246,7 @@ def download_mood_icon_source(
     icon = get_owned_icon(db, user_id=user_id, icon_id=icon_id)
     if not icon.source_storage_key or not icon.source_mime_type:
         raise MoodIconError(
-            "Mood icon source not found", code="mood_icon_source_not_found", status_code=404
+            "Mood icon source not found", code=ErrorCode.MOOD_ICON_SOURCE_NOT_FOUND, status_code=404
         )
     data = storage.get_object(key=icon.source_storage_key)
     return icon, data

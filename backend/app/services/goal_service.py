@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
 from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
@@ -47,7 +48,7 @@ def list_goals(db: Session, *, user_id: uuid.UUID) -> list[Goal]:
 def get_goal(db: Session, *, user_id: uuid.UUID, goal_id: uuid.UUID) -> Goal:
     goal = db.scalar(select(Goal).where(Goal.id == goal_id, Goal.user_id == user_id))
     if goal is None:
-        raise GoalError("Goal not found", code="goal_not_found", status_code=404)
+        raise GoalError("Goal not found", code=ErrorCode.GOAL_NOT_FOUND, status_code=404)
     return goal
 
 
@@ -109,7 +110,7 @@ def create_goal(
     except IntegrityError as exc:
         db.rollback()
         raise GoalError(
-            "Goal slug already exists", code="goal_slug_exists", status_code=409
+            "Goal slug already exists", code=ErrorCode.GOAL_SLUG_EXISTS, status_code=409
         ) from exc
     return get_goal(db, user_id=user_id, goal_id=goal.id)
 
@@ -171,7 +172,7 @@ def patch_goal(
     except IntegrityError as exc:
         db.rollback()
         raise GoalError(
-            "Goal slug already exists", code="goal_slug_exists", status_code=409
+            "Goal slug already exists", code=ErrorCode.GOAL_SLUG_EXISTS, status_code=409
         ) from exc
     return get_goal(db, user_id=user_id, goal_id=goal_id)
 
@@ -181,7 +182,7 @@ def delete_goal(db: Session, *, user_id: uuid.UUID, goal_id: uuid.UUID) -> None:
     if _goal_is_linked(db, goal_id=goal.id):
         raise GoalError(
             "Cannot delete goal while it is used by mood entries",
-            code="goal_in_use",
+            code=ErrorCode.GOAL_IN_USE,
             status_code=409,
         )
     db.delete(goal)
@@ -199,7 +200,7 @@ def reorder_goals(
     if set(ordered_ids) != set(by_id):
         raise GoalError(
             "ordered_ids must include every goal exactly once",
-            code="goal_reorder_mismatch",
+            code=ErrorCode.GOAL_REORDER_MISMATCH,
             status_code=400,
         )
     for index, goal_id in enumerate(ordered_ids):
@@ -241,7 +242,9 @@ def period_completion_counts(
 ) -> dict[uuid.UUID, int]:
     """Count distinct local days each goal was completed in ``[period_start, period_end)``."""
     if period_end <= period_start:
-        raise GoalError("period_end must be after period_start", code="period_end_before_start")
+        raise GoalError(
+            "period_end must be after period_start", code=ErrorCode.PERIOD_END_BEFORE_START
+        )
     if goal_ids is not None and not goal_ids:
         return {}
 
@@ -325,12 +328,16 @@ def get_goal_stats(
     from_utc = _to_utc(recorded_from)
     to_utc = _to_utc(recorded_to)
     if to_utc <= from_utc:
-        raise GoalError("recorded_to must be after recorded_from", code="recorded_to_before_from")
+        raise GoalError(
+            "recorded_to must be after recorded_from", code=ErrorCode.RECORDED_TO_BEFORE_FROM
+        )
 
     period_start = _local_date(from_utc, tz)
     period_end = _local_date(to_utc, tz)
     if period_end <= period_start:
-        raise GoalError("recorded_to must be after recorded_from", code="recorded_to_before_from")
+        raise GoalError(
+            "recorded_to must be after recorded_from", code=ErrorCode.RECORDED_TO_BEFORE_FROM
+        )
     period_days = (period_end - period_start).days
 
     goals = [goal for goal in list_goals(db, user_id=user_id) if goal.show_in_stats]
@@ -398,7 +405,9 @@ def get_goal_calendar(
     from_utc = _to_utc(recorded_from)
     to_utc = _to_utc(recorded_to)
     if to_utc <= from_utc:
-        raise GoalError("recorded_to must be after recorded_from", code="recorded_to_before_from")
+        raise GoalError(
+            "recorded_to must be after recorded_from", code=ErrorCode.RECORDED_TO_BEFORE_FROM
+        )
 
     calendar_cap = settings.stats_visible_goal_limit
     rows = list(
@@ -481,7 +490,7 @@ def _resolve_user_tz(timezone_name: str) -> ZoneInfo:
     except ZoneInfoNotFoundError as exc:
         raise GoalError(
             f"Unknown timezone: {timezone_name}",
-            code="unknown_timezone",
+            code=ErrorCode.UNKNOWN_TIMEZONE,
             status_code=400,
             params={"timezone": timezone_name},
         ) from exc
@@ -508,40 +517,42 @@ def _validate_goal_style(
     icon: str,
 ) -> dict[str, str]:
     if not is_valid_hex_color(color):
-        raise GoalError(f"Invalid color: {color!r}", code="invalid_color", params={"color": color})
+        raise GoalError(
+            f"Invalid color: {color!r}", code=ErrorCode.INVALID_COLOR, params={"color": color}
+        )
 
     try:
         resolved_type = MoodScoreIconType(icon_type)
     except ValueError as exc:
         raise GoalError(
             f"Unknown icon type: {icon_type!r}",
-            code="unknown_icon_type",
+            code=ErrorCode.UNKNOWN_ICON_TYPE,
             params={"icon_type": icon_type},
         ) from exc
 
     if not isinstance(icon, str) or not icon.strip():
-        raise GoalError("Icon must be a non-empty string", code="icon_required")
+        raise GoalError("Icon must be a non-empty string", code=ErrorCode.ICON_REQUIRED)
     resolved_icon = icon.strip()
 
     if resolved_type is MoodScoreIconType.EMOJI:
         if len(resolved_icon) > _MAX_EMOJI_LENGTH:
             raise GoalError(
                 f"Emoji must be at most {_MAX_EMOJI_LENGTH} characters",
-                code="emoji_too_long",
+                code=ErrorCode.EMOJI_TOO_LONG,
                 params={"max": str(_MAX_EMOJI_LENGTH)},
             )
     elif resolved_type is MoodScoreIconType.BUILTIN:
         if not is_valid_builtin_icon_slug(resolved_icon):
             raise GoalError(
                 f"Unknown built-in icon: {resolved_icon!r}",
-                code="unknown_builtin_icon",
+                code=ErrorCode.UNKNOWN_BUILTIN_ICON,
                 params={"icon": resolved_icon},
             )
     elif resolved_type is MoodScoreIconType.UPLOAD:
         if goal_id is None:
             raise GoalError(
                 "Uploaded icons can only be set after the goal is created",
-                code="upload_icon_before_create",
+                code=ErrorCode.UPLOAD_ICON_BEFORE_CREATE,
             )
         if not _icon_belongs_to_goal(
             db,
@@ -550,7 +561,7 @@ def _validate_goal_style(
             icon_id=resolved_icon,
         ):
             raise GoalError(
-                "Uploaded icon was not found for this goal", code="uploaded_icon_not_found"
+                "Uploaded icon was not found for this goal", code=ErrorCode.UPLOADED_ICON_NOT_FOUND
             )
 
     return {
@@ -589,7 +600,9 @@ def _iso_week_bounds(day: date) -> tuple[date, date]:
 
 def _validate_goal_dates(*, starts_on: date, ends_on: date | None) -> None:
     if ends_on is not None and ends_on < starts_on:
-        raise GoalError("ends_on must be on or after starts_on", code="ends_on_before_starts_on")
+        raise GoalError(
+            "ends_on must be on or after starts_on", code=ErrorCode.ENDS_ON_BEFORE_STARTS_ON
+        )
 
 
 def _count_visible_goals(db: Session, *, user_id: uuid.UUID) -> int:
@@ -606,7 +619,7 @@ def _ensure_visible_slot_available(db: Session, *, user_id: uuid.UUID) -> None:
     if _count_visible_goals(db, user_id=user_id) >= limit:
         raise GoalError(
             f"You can show at most {limit} goals on the entry form",
-            code="goal_visibility_limit",
+            code=ErrorCode.GOAL_VISIBILITY_LIMIT,
             status_code=400,
             params={"limit": str(limit)},
         )
@@ -626,7 +639,7 @@ def _ensure_stats_slot_available(db: Session, *, user_id: uuid.UUID) -> None:
     if _count_stats_goals(db, user_id=user_id) >= limit:
         raise GoalError(
             f"You can show at most {limit} goals in stats and calendar",
-            code="goal_stats_visibility_limit",
+            code=ErrorCode.GOAL_STATS_VISIBILITY_LIMIT,
             status_code=400,
             params={"limit": str(limit)},
         )

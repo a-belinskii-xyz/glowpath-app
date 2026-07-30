@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 
 from app.config import settings
+from app.core.error_codes import ErrorCode
 from app.services.notifications.base import (
     BaseNotifier,
     NotificationChannel,
@@ -29,13 +30,13 @@ class TelegramNotifier(BaseNotifier):
         if not self._bot_token:
             raise NotificationError(
                 "Telegram bot token is not configured",
-                code="telegram_bot_not_configured",
+                code=ErrorCode.TELEGRAM_BOT_NOT_CONFIGURED,
                 status_code=503,
             )
         if not recipient.strip():
             raise NotificationError(
                 "Telegram recipient is empty",
-                code="telegram_recipient_empty",
+                code=ErrorCode.TELEGRAM_RECIPIENT_EMPTY,
                 status_code=400,
             )
 
@@ -52,14 +53,14 @@ class TelegramNotifier(BaseNotifier):
         except httpx.HTTPError as exc:
             raise NotificationError(
                 f"Failed to send Telegram notification: {exc}",
-                code="telegram_send_failed",
+                code=ErrorCode.TELEGRAM_SEND_FAILED,
                 status_code=502,
             ) from exc
 
         if not isinstance(payload, dict) or not payload.get("ok"):
             raise NotificationError(
                 f"Telegram API rejected sendMessage: {payload}",
-                code="telegram_send_rejected",
+                code=ErrorCode.TELEGRAM_SEND_REJECTED,
                 status_code=502,
             )
 

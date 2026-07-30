@@ -7,6 +7,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.models.goal import (
     DEFAULT_GOAL_ICON,
@@ -64,11 +65,11 @@ def _validate_image_payload(
 ) -> str:
     mime_type = content_type.split(";")[0].strip().lower()
     if mime_type not in ALLOWED_PHOTO_MIME_TYPES:
-        raise GoalIconError("Unsupported image MIME type", code="unsupported_image_mime")
+        raise GoalIconError("Unsupported image MIME type", code=ErrorCode.UNSUPPORTED_IMAGE_MIME)
     if len(data) > max_bytes:
         raise GoalIconError(
             f"Icon exceeds {limit_label} limit",
-            code="icon_too_large",
+            code=ErrorCode.ICON_TOO_LARGE,
             params={"limit": limit_label},
         )
     return mime_type
@@ -82,7 +83,9 @@ def get_owned_icon(db: Session, *, user_id: uuid.UUID, icon_id: uuid.UUID) -> Us
         )
     )
     if icon is None:
-        raise GoalIconError("Goal icon not found", code="goal_icon_not_found", status_code=404)
+        raise GoalIconError(
+            "Goal icon not found", code=ErrorCode.GOAL_ICON_NOT_FOUND, status_code=404
+        )
     return icon
 
 
@@ -164,7 +167,7 @@ def upload_goal_icon(
     if count_icons_for_goal(db, user_id=user_id, goal_id=goal_id) >= MAX_ICONS_PER_GOAL:
         raise GoalIconError(
             f"At most {MAX_ICONS_PER_GOAL} uploaded icons are allowed per goal",
-            code="goal_icon_limit",
+            code=ErrorCode.GOAL_ICON_LIMIT,
             params={"max": str(MAX_ICONS_PER_GOAL)},
         )
 
@@ -259,7 +262,7 @@ def download_goal_icon_source(
     icon = get_owned_icon(db, user_id=user_id, icon_id=icon_id)
     if not icon.source_storage_key or not icon.source_mime_type:
         raise GoalIconError(
-            "Goal icon source not found", code="goal_icon_source_not_found", status_code=404
+            "Goal icon source not found", code=ErrorCode.GOAL_ICON_SOURCE_NOT_FOUND, status_code=404
         )
     data = storage.get_object(key=icon.source_storage_key)
     return icon, data

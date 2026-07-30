@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
 from app.core.mood_scale import (
@@ -194,14 +195,14 @@ def _coerce_label(score: MoodScore, raw: Any, *, patch_includes_label: bool) -> 
     if not isinstance(raw, str):
         raise MoodPreferencesError(
             f"Label for score {score.value} must be a string",
-            code="mood_label_must_be_string",
+            code=ErrorCode.MOOD_LABEL_MUST_BE_STRING,
             params={"score": str(score.value)},
         )
     label = raw.strip()
     if len(label) > _MAX_LABEL_LENGTH:
         raise MoodPreferencesError(
             f"Label for score {score.value} must be at most {_MAX_LABEL_LENGTH} characters",
-            code="mood_label_too_long",
+            code=ErrorCode.MOOD_LABEL_TOO_LONG,
             params={"score": str(score.value), "max": str(_MAX_LABEL_LENGTH)},
         )
     return label
@@ -220,7 +221,7 @@ def _coerce_style(
     if not isinstance(color, str) or not is_valid_hex_color(color):
         raise MoodPreferencesError(
             f"Invalid color for score {score.value}: {color!r}",
-            code="invalid_mood_color",
+            code=ErrorCode.INVALID_MOOD_COLOR,
             params={"score": str(score.value), "color": str(color)},
         )
 
@@ -230,7 +231,7 @@ def _coerce_style(
     except ValueError as exc:
         raise MoodPreferencesError(
             f"Unknown icon type for score {score.value}: {icon_type_raw!r}",
-            code="unknown_icon_type",
+            code=ErrorCode.UNKNOWN_ICON_TYPE,
             params={"score": str(score.value), "icon_type": str(icon_type_raw)},
         ) from exc
 
@@ -238,7 +239,7 @@ def _coerce_style(
     if not isinstance(icon, str) or not icon.strip():
         raise MoodPreferencesError(
             f"Icon for score {score.value} must be a non-empty string",
-            code="icon_required",
+            code=ErrorCode.ICON_REQUIRED,
             params={"score": str(score.value)},
         )
     icon = icon.strip()
@@ -247,14 +248,14 @@ def _coerce_style(
         if len(icon) > _MAX_EMOJI_LENGTH:
             raise MoodPreferencesError(
                 f"Emoji for score {score.value} must be at most {_MAX_EMOJI_LENGTH} characters",
-                code="emoji_too_long",
+                code=ErrorCode.EMOJI_TOO_LONG,
                 params={"score": str(score.value), "max": str(_MAX_EMOJI_LENGTH)},
             )
     elif icon_type is MoodScoreIconType.BUILTIN:
         if not is_valid_builtin_icon_slug(icon):
             raise MoodPreferencesError(
                 f"Unknown built-in icon for score {score.value}: {icon!r}",
-                code="unknown_builtin_icon",
+                code=ErrorCode.UNKNOWN_BUILTIN_ICON,
                 params={"score": str(score.value), "icon": icon},
             )
     elif icon_type is MoodScoreIconType.UPLOAD:
@@ -262,7 +263,7 @@ def _coerce_style(
         if not belongs and strict_upload:
             raise MoodPreferencesError(
                 f"Uploaded icon for score {score.value} was not found",
-                code="uploaded_icon_not_found",
+                code=ErrorCode.UPLOADED_ICON_NOT_FOUND,
                 status_code=400,
                 params={"score": str(score.value)},
             )
@@ -279,7 +280,7 @@ def _parse_score_key(raw_score: str) -> MoodScore:
     except (TypeError, ValueError) as exc:
         raise MoodPreferencesError(
             f"Unknown mood score: {raw_score!r}",
-            code="unknown_mood_score",
+            code=ErrorCode.UNKNOWN_MOOD_SCORE,
             params={"score": str(raw_score)},
         ) from exc
 

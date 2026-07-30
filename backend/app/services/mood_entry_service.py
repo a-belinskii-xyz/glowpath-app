@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.attachment_kind import AttachmentKind
+from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.i18n import resolve_label
 from app.core.mood_analytics import (
@@ -73,7 +74,8 @@ class MoodEntryError(AppError):
 def _to_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         raise MoodEntryError(
-            "recorded_at must include a timezone offset", code="recorded_at_missing_timezone"
+            "recorded_at must include a timezone offset",
+            code=ErrorCode.RECORDED_AT_MISSING_TIMEZONE,
         )
     return value.astimezone(UTC)
 
@@ -93,7 +95,9 @@ def _get_owned_entry(db: Session, *, user_id: uuid.UUID, entry_id: uuid.UUID) ->
         .where(MoodEntry.id == entry_id, MoodEntry.user_id == user_id)
     )
     if entry is None:
-        raise MoodEntryError("Mood entry not found", code="mood_entry_not_found", status_code=404)
+        raise MoodEntryError(
+            "Mood entry not found", code=ErrorCode.MOOD_ENTRY_NOT_FOUND, status_code=404
+        )
     return entry
 
 
@@ -110,7 +114,7 @@ def _resolve_user_tags(
     tags = list(db.scalars(select(Tag).where(Tag.user_id == user_id, Tag.id.in_(unique_ids))).all())
     if len(tags) != len(unique_ids):
         raise MoodEntryError(
-            "One or more tags were not found", code="tags_not_found", status_code=400
+            "One or more tags were not found", code=ErrorCode.TAGS_NOT_FOUND, status_code=400
         )
     return tags
 
@@ -138,14 +142,14 @@ def _resolve_user_goals(
     )
     if len(goals) != len(unique_ids):
         raise MoodEntryError(
-            "One or more goals were not found", code="goals_not_found", status_code=400
+            "One or more goals were not found", code=ErrorCode.GOALS_NOT_FOUND, status_code=400
         )
     for goal in goals:
         if not goal_is_active_on(goal, entry_local_date):
             if entry_local_date < goal.starts_on:
                 raise MoodEntryError(
                     f"Goal “{goal.slug}” is not available before {goal.starts_on.isoformat()}",
-                    code="goal_not_available_before",
+                    code=ErrorCode.GOAL_NOT_AVAILABLE_BEFORE,
                     status_code=400,
                     params={"slug": goal.slug, "date": goal.starts_on.isoformat()},
                 )
@@ -153,13 +157,13 @@ def _resolve_user_goals(
             if ends_on is None:
                 raise MoodEntryError(
                     f"Goal “{goal.slug}” is not available on this date",
-                    code="goal_not_available_on_date",
+                    code=ErrorCode.GOAL_NOT_AVAILABLE_ON_DATE,
                     status_code=400,
                     params={"slug": goal.slug},
                 )
             raise MoodEntryError(
                 f"Goal “{goal.slug}” is not available after {ends_on.isoformat()}",
-                code="goal_not_available_after",
+                code=ErrorCode.GOAL_NOT_AVAILABLE_AFTER,
                 status_code=400,
                 params={"slug": goal.slug, "date": ends_on.isoformat()},
             )
@@ -176,7 +180,7 @@ def _replace_entry_goals(db: Session, entry: MoodEntry, goals: list[Goal]) -> No
 def _user_timezone(db: Session, *, user_id: uuid.UUID) -> str:
     timezone_name = db.scalar(select(User.timezone).where(User.id == user_id))
     if timezone_name is None:
-        raise MoodEntryError("User not found", code="user_not_found", status_code=404)
+        raise MoodEntryError("User not found", code=ErrorCode.USER_NOT_FOUND, status_code=404)
     return timezone_name
 
 
@@ -203,7 +207,7 @@ def _next_photo_position(attachments: list[MoodEntryAttachment]) -> int:
         if position not in used:
             return position
     raise MoodEntryError(
-        "Photo limit reached for this entry", code="photo_limit_reached", status_code=409
+        "Photo limit reached for this entry", code=ErrorCode.PHOTO_LIMIT_REACHED, status_code=409
     )
 
 
@@ -282,7 +286,7 @@ def search_mood_entries(
     cleaned = query.strip()
     if not cleaned:
         raise MoodEntryError(
-            "Search query must not be empty", code="search_query_empty", status_code=400
+            "Search query must not be empty", code=ErrorCode.SEARCH_QUERY_EMPTY, status_code=400
         )
 
     query_vector = embed_texts([cleaned])[0]
@@ -306,7 +310,7 @@ def _resolve_user_tz(timezone_name: str) -> ZoneInfo:
     except ZoneInfoNotFoundError as exc:
         raise MoodEntryError(
             f"Unknown timezone: {timezone_name}",
-            code="unknown_timezone",
+            code=ErrorCode.UNKNOWN_TIMEZONE,
             status_code=400,
             params={"timezone": timezone_name},
         ) from exc
@@ -335,7 +339,7 @@ def get_mood_entry_calendar(
     to_utc = _to_utc(recorded_to)
     if to_utc <= from_utc:
         raise MoodEntryError(
-            "recorded_to must be after recorded_from", code="recorded_to_before_from"
+            "recorded_to must be after recorded_from", code=ErrorCode.RECORDED_TO_BEFORE_FROM
         )
 
     rows = list(
@@ -393,7 +397,7 @@ def get_mood_entry_stats(
     to_utc = _to_utc(recorded_to)
     if to_utc <= from_utc:
         raise MoodEntryError(
-            "recorded_to must be after recorded_from", code="recorded_to_before_from"
+            "recorded_to must be after recorded_from", code=ErrorCode.RECORDED_TO_BEFORE_FROM
         )
 
     current_month_start = from_utc.astimezone(tz).date().replace(day=1)
@@ -555,28 +559,36 @@ def upload_attachment(
 
     if kind == AttachmentKind.PHOTO:
         if mime_type not in ALLOWED_PHOTO_MIME_TYPES:
-            raise MoodEntryError("Unsupported photo MIME type", code="unsupported_photo_mime")
+            raise MoodEntryError(
+                "Unsupported photo MIME type", code=ErrorCode.UNSUPPORTED_PHOTO_MIME
+            )
         if size_bytes > MAX_PHOTO_BYTES:
-            raise MoodEntryError("Photo exceeds 5 MB limit", code="photo_too_large")
+            raise MoodEntryError("Photo exceeds 5 MB limit", code=ErrorCode.PHOTO_TOO_LARGE)
         if sum(1 for item in entry.attachments if item.kind == AttachmentKind.PHOTO) >= (
             MAX_PHOTOS_PER_ENTRY
         ):
             raise MoodEntryError(
-                "Photo limit reached for this entry", code="photo_limit_reached", status_code=409
+                "Photo limit reached for this entry",
+                code=ErrorCode.PHOTO_LIMIT_REACHED,
+                status_code=409,
             )
         position = _next_photo_position(entry.attachments)
     elif kind == AttachmentKind.AUDIO:
         if mime_type not in ALLOWED_AUDIO_MIME_TYPES:
-            raise MoodEntryError("Unsupported audio MIME type", code="unsupported_audio_mime")
+            raise MoodEntryError(
+                "Unsupported audio MIME type", code=ErrorCode.UNSUPPORTED_AUDIO_MIME
+            )
         if size_bytes > MAX_AUDIO_BYTES:
-            raise MoodEntryError("Audio exceeds 10 MB limit", code="audio_too_large")
+            raise MoodEntryError("Audio exceeds 10 MB limit", code=ErrorCode.AUDIO_TOO_LARGE)
         if any(item.kind == AttachmentKind.AUDIO for item in entry.attachments):
             raise MoodEntryError(
-                "Audio already exists for this entry", code="audio_already_exists", status_code=409
+                "Audio already exists for this entry",
+                code=ErrorCode.AUDIO_ALREADY_EXISTS,
+                status_code=409,
             )
         position = None
     else:
-        raise MoodEntryError("Invalid attachment kind", code="invalid_attachment_kind")
+        raise MoodEntryError("Invalid attachment kind", code=ErrorCode.INVALID_ATTACHMENT_KIND)
 
     attachment_id = uuid.uuid4()
     storage_key = _build_storage_key(
@@ -619,7 +631,9 @@ def get_attachment(
     for attachment in entry.attachments:
         if attachment.id == attachment_id:
             return attachment
-    raise MoodEntryError("Attachment not found", code="attachment_not_found", status_code=404)
+    raise MoodEntryError(
+        "Attachment not found", code=ErrorCode.ATTACHMENT_NOT_FOUND, status_code=404
+    )
 
 
 def download_attachment(
@@ -641,7 +655,7 @@ def download_attachment(
     except StorageError as exc:
         raise MoodEntryError(
             exc.message,
-            code=getattr(exc, "code", "storage_error"),
+            code=getattr(exc, "code", ErrorCode.STORAGE_ERROR),
             status_code=exc.status_code,
             params=getattr(exc, "params", None),
         ) from exc
@@ -681,16 +695,16 @@ def reorder_photo_attachments(
     by_id = {item.id: item for item in photos}
     if len(ordered_ids) != len(set(ordered_ids)):
         raise MoodEntryError(
-            "ordered_ids must be unique", code="ordered_ids_not_unique", status_code=400
+            "ordered_ids must be unique", code=ErrorCode.ORDERED_IDS_NOT_UNIQUE, status_code=400
         )
     if set(ordered_ids) != set(by_id):
         raise MoodEntryError(
             "ordered_ids must include every photo attachment exactly once",
-            code="photo_reorder_mismatch",
+            code=ErrorCode.PHOTO_REORDER_MISMATCH,
             status_code=400,
         )
     if len(ordered_ids) > MAX_PHOTOS_PER_ENTRY:
-        raise MoodEntryError("Too many photos", code="too_many_photos", status_code=400)
+        raise MoodEntryError("Too many photos", code=ErrorCode.TOO_MANY_PHOTOS, status_code=400)
 
     # Temporary positions avoid unique (entry, position) collisions mid-update.
     for index, photo in enumerate(photos):
