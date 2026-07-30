@@ -5,16 +5,21 @@ import { PhotoLightbox } from './PhotoLightbox'
 import { useLocale } from '../context/LocaleContext'
 import type { AttachmentPublic } from '../types/mood'
 
+const COLLAGE_VISIBLE_MAX = 5
+
 type EntryAttachmentThumbsProps = {
   entryId: string
   attachments: AttachmentPublic[]
   showAudioCount?: boolean
+  /** Compact thumbs for lists; collage for entry detail. */
+  variant?: 'thumbs' | 'collage'
 }
 
 export function EntryAttachmentThumbs({
   entryId,
   attachments,
   showAudioCount = true,
+  variant = 'thumbs',
 }: EntryAttachmentThumbsProps) {
   const { t } = useLocale()
   const photos = attachments
@@ -29,47 +34,92 @@ export function EntryAttachmentThumbs({
     return null
   }
 
+  const openPhoto = (index: number) => {
+    setLightboxIndex(index)
+  }
+
+  const collageCount = Math.min(photos.length, COLLAGE_VISIBLE_MAX)
+  const collagePhotos = photos.slice(0, collageCount)
+  const hiddenCount = photos.length - collageCount
+
   return (
     <>
-      <span className="entry-attachments">
+      <div className="entry-attachments">
         {photos.length > 0 ? (
-          <span className="entry-photo-thumbs">
-            {photos.map((photo, index) => (
-              <span
-                key={photo.id}
-                role="button"
-                tabIndex={0}
-                className="entry-photo-thumb-button"
-                aria-label={t('media.viewPhoto', { name: photo.original_name })}
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  setLightboxIndex(index)
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
+          variant === 'collage' ? (
+            <div
+              className="entry-photo-collage"
+              data-count={collageCount}
+            >
+              {collagePhotos.map((photo, index) => {
+                const isLastVisible = index === collageCount - 1
+                const overflowLabel =
+                  isLastVisible && hiddenCount > 0 ? `+${hiddenCount}` : null
+
+                return (
+                  <button
+                    key={photo.id}
+                    type="button"
+                    className="entry-photo-collage-item"
+                    aria-label={
+                      overflowLabel
+                        ? t('media.viewPhoto', {
+                            name: `${photo.original_name} (+${hiddenCount})`,
+                          })
+                        : t('media.viewPhoto', { name: photo.original_name })
+                    }
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      openPhoto(index)
+                    }}
+                  >
+                    <AttachmentImage
+                      className="entry-photo-collage-image"
+                      entryId={entryId}
+                      attachmentId={photo.id}
+                      alt={photo.original_name}
+                    />
+                    {overflowLabel ? (
+                      <span className="entry-photo-collage-more" aria-hidden>
+                        {overflowLabel}
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="entry-photo-thumbs">
+              {photos.map((photo, index) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  className="entry-photo-thumb-button"
+                  aria-label={t('media.viewPhoto', { name: photo.original_name })}
+                  onClick={(event) => {
                     event.preventDefault()
                     event.stopPropagation()
-                    setLightboxIndex(index)
-                  }
-                }}
-              >
-                <AttachmentImage
-                  className="entry-photo-thumb"
-                  entryId={entryId}
-                  attachmentId={photo.id}
-                  alt={photo.original_name}
-                />
-              </span>
-            ))}
-          </span>
+                    openPhoto(index)
+                  }}
+                >
+                  <AttachmentImage
+                    className="entry-photo-thumb"
+                    entryId={entryId}
+                    attachmentId={photo.id}
+                    alt={photo.original_name}
+                  />
+                </button>
+              ))}
+            </div>
+          )
         ) : null}
         {audioCount > 0 ? (
           <span className="entry-audio-count muted">
             {t('media.audioCount', { count: audioCount })}
           </span>
         ) : null}
-      </span>
+      </div>
 
       {lightboxIndex !== null ? (
         <PhotoLightbox

@@ -144,6 +144,18 @@ export function deleteMoodEntry(entryId: string): Promise<void> {
   })
 }
 
+export function reorderMoodEntryAttachments(
+  entryId: string,
+  orderedIds: string[],
+): Promise<AttachmentPublic[]> {
+  return apiRequest<AttachmentPublic[]>(`/v1/mood-entries/${entryId}/attachments/reorder`, {
+    method: 'PUT',
+    auth: true,
+    headers: moodHeaders(),
+    body: { ordered_ids: orderedIds },
+  })
+}
+
 export function uploadMoodEntryAttachment(
   entryId: string,
   kind: AttachmentKind,

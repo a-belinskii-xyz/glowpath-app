@@ -285,6 +285,50 @@ def test_attachments_upload_limits_download_delete(
     assert all(attachment_id not in key for key in storage._objects)
 
 
+def test_reorder_photo_attachments(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    storage: FakeStorage,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-reorder-photos@example.com")
+    entry_id = _create_entry(auth_client, token).json()["id"]
+    headers = _auth_headers(token)
+
+    photo_ids: list[str] = []
+    for index in range(3):
+        response = auth_client.post(
+            f"/v1/mood-entries/{entry_id}/attachments",
+            headers=headers,
+            data={"kind": "photo"},
+            files={
+                "file": (
+                    f"shot-{index}.jpg",
+                    io.BytesIO(f"photo-{index}".encode()),
+                    "image/jpeg",
+                )
+            },
+        )
+        assert response.status_code == 201
+        photo_ids.append(response.json()["id"])
+
+    reordered_ids = list(reversed(photo_ids))
+    reorder = auth_client.put(
+        f"/v1/mood-entries/{entry_id}/attachments/reorder",
+        headers=headers,
+        json={"ordered_ids": reordered_ids},
+    )
+    assert reorder.status_code == 200
+    body = reorder.json()
+    assert [item["id"] for item in body] == reordered_ids
+    assert [item["position"] for item in body] == [1, 2, 3]
+
+    entry = auth_client.get(f"/v1/mood-entries/{entry_id}", headers=headers)
+    assert entry.status_code == 200
+    photos = [item for item in entry.json()["attachments"] if item["kind"] == "photo"]
+    assert [item["id"] for item in photos] == reordered_ids
+    assert [item["position"] for item in photos] == [1, 2, 3]
+
+
 def test_russian_labels_via_accept_language(
     auth_client: TestClient,
     mailer: FakeEmailService,

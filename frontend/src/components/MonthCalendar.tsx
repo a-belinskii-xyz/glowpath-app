@@ -271,27 +271,21 @@ export function MonthCalendar({
                         {marks}
                       </button>
                     ) : canInteract && cell.date ? (
-                      onSelectWeekDay ? (
-                        <button
-                          type="button"
-                          className="month-calendar-day-button"
-                          onClick={selectWeek}
-                          aria-label={t('calendar.selectWeekDay', { date: cell.date })}
-                        >
-                          <span className="month-calendar-day">{cell.day}</span>
-                        </button>
-                      ) : (
-                        <Link
-                          className="month-calendar-day-button month-calendar-day-link"
-                          to={`/entries/new?date=${cell.date}`}
-                          aria-label={t('calendar.addEntryOn', { date: cell.date })}
-                        >
-                          <span className="month-calendar-day">{cell.day}</span>
-                          <span className="month-calendar-add" aria-hidden="true">
-                            +
-                          </span>
-                        </Link>
-                      )
+                      <Link
+                        className="month-calendar-day-button month-calendar-day-link"
+                        to={`/entries/new?date=${cell.date}`}
+                        aria-label={t('calendar.addEntryOn', { date: cell.date })}
+                        onClick={() => {
+                          if (onSelectWeekDay) {
+                            selectWeek()
+                          }
+                        }}
+                      >
+                        <span className="month-calendar-day">{cell.day}</span>
+                        <span className="month-calendar-add" aria-hidden="true">
+                          +
+                        </span>
+                      </Link>
                     ) : (
                       <>
                         <span className="month-calendar-day">{cell.day}</span>

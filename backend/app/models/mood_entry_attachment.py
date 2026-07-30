@@ -30,7 +30,7 @@ class MoodEntryAttachment(TimestampMixin, Base):
     __tablename__ = table_name("mood_entry_attachments")
     __table_args__ = (
         CheckConstraint(
-            "(kind = 'photo' AND position BETWEEN 1 AND 5) OR "
+            "(kind = 'photo' AND position BETWEEN 1 AND 10) OR "
             "(kind = 'audio' AND position IS NULL)",
             name="kind_position",
         ),

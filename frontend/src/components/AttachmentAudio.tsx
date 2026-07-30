@@ -158,9 +158,8 @@ export function AttachmentAudio({
     <div
       className={`entry-audio-player ${className ?? ''}`.trim()}
       style={theme as CSSProperties}
+      title={attachment.original_name}
     >
-      <p className="entry-audio-name">{attachment.original_name}</p>
-
       {src ? (
         <>
           <audio
@@ -189,7 +188,11 @@ export function AttachmentAudio({
               type="button"
               className="entry-audio-play"
               onClick={togglePlayback}
-              aria-label={isPlaying ? t('media.pauseAudio') : t('media.playAudio')}
+              aria-label={
+                isPlaying
+                  ? t('media.pauseAudio')
+                  : t('media.playAudio')
+              }
             >
               {isPlaying ? <PauseIcon /> : <PlayIcon />}
             </button>
@@ -211,12 +214,13 @@ export function AttachmentAudio({
                   seekTo(Number(event.currentTarget.value) / 100)
                 }}
               />
-              <p className="entry-audio-time" aria-live="off">
-                <span>{formatAudioTime(currentTime)}</span>
-                <span aria-hidden="true"> / </span>
-                <span>{formatAudioTime(duration)}</span>
-              </p>
             </div>
+
+            <p className="entry-audio-time" aria-live="off">
+              <span>{formatAudioTime(currentTime)}</span>
+              <span aria-hidden="true">/</span>
+              <span>{formatAudioTime(duration)}</span>
+            </p>
           </div>
         </>
       ) : (

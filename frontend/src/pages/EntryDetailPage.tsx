@@ -190,7 +190,7 @@ export function EntryDetailPage() {
       {entry ? (
         <article className="entry-detail">
           <div className="entry-detail-main">
-            <div className="entry-detail-hero">
+            <div className="entry-detail-block entry-detail-hero">
               <span
                 style={{
                   filter: moodGlowFilter(getMoodScoreColor(entry.score, scores)),
@@ -202,85 +202,94 @@ export function EntryDetailPage() {
                   fallbackScore={entry.score}
                 />
               </span>
-              <div>
-                <p className="entry-detail-score">{entry.score_label}</p>
-                <p className="muted">
-                  {formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ·{' '}
+              <p className="entry-detail-heading">
+                <span className="entry-detail-score">{entry.score_label}</span>
+                <span className="muted entry-detail-recorded">
+                  {' '}
+                  — {formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ·{' '}
                   {formatTime(entry.recorded_at, timeZone, dateLocale)}
-                </p>
-                <p className="muted entry-detail-meta">
-                  {t('entries.createdAt', {
-                    date: `${formatDayHeading(entry.created_at, timeZone, dateLocale)} ${formatTime(entry.created_at, timeZone, dateLocale)}`,
-                  })}
-                  {entry.updated_at !== entry.created_at
-                    ? ` · ${t('entries.updatedAt', {
-                        date: `${formatDayHeading(entry.updated_at, timeZone, dateLocale)} ${formatTime(entry.updated_at, timeZone, dateLocale)}`,
-                      })}`
-                    : null}
-                </p>
-              </div>
+                </span>
+              </p>
             </div>
 
-            {entry.note ? (
-              <MarkdownNote content={entry.note} className="entry-detail-note" />
+            {entry.note || audioAttachment || entry.attachments.some((a) => a.kind === 'photo') ? (
+              <div className="entry-detail-block entry-detail-body">
+                {entry.note ? (
+                  <MarkdownNote content={entry.note} className="entry-detail-note" />
+                ) : null}
+
+                <EntryAttachmentThumbs
+                  entryId={entry.id}
+                  attachments={entry.attachments}
+                  showAudioCount={false}
+                  variant="collage"
+                />
+
+                {audioAttachment ? (
+                  <AttachmentAudio
+                    entryId={entry.id}
+                    attachment={audioAttachment}
+                    accentColor={getMoodScoreColor(entry.score, scores)}
+                  />
+                ) : null}
+              </div>
             ) : null}
 
-            {entry.tags.length > 0 ? (
-              <div className="entry-tags">
-                {entry.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="entry-tag"
-                    style={{
-                      background: moodSubtleFill(tag.color),
-                      color: tag.color,
-                    }}
-                  >
-                    <TagIcon
+            <div className="entry-detail-block entry-detail-footer">
+              {entry.tags.length > 0 ? (
+                <div className="entry-tags">
+                  {entry.tags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="entry-tag"
                       style={{
+                        background: moodSubtleFill(tag.color),
                         color: tag.color,
-                        icon_type: tag.icon_type,
-                        icon: tag.icon,
                       }}
-                      className="entry-tag-icon"
-                    />
-                    {tag.label}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+                    >
+                      <TagIcon
+                        style={{
+                          color: tag.color,
+                          icon_type: tag.icon_type,
+                          icon: tag.icon,
+                        }}
+                        className="entry-tag-icon"
+                      />
+                      {tag.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
 
-            {entry.goals.length > 0 ? (
-              <div className="entry-tags entry-goals">
-                {entry.goals.map((goal) => (
-                  <span key={goal.id} className="entry-tag entry-goal">
-                    <GoalIcon
-                      style={{
-                        color: goal.color,
-                        icon_type: goal.icon_type,
-                        icon: goal.icon,
-                      }}
-                      className="entry-goal-icon"
-                    />
-                    {goal.label}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+              {entry.goals.length > 0 ? (
+                <div className="entry-tags entry-goals">
+                  {entry.goals.map((goal) => (
+                    <span key={goal.id} className="entry-tag entry-goal">
+                      <GoalIcon
+                        style={{
+                          color: goal.color,
+                          icon_type: goal.icon_type,
+                          icon: goal.icon,
+                        }}
+                        className="entry-goal-icon"
+                      />
+                      {goal.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
 
-            {audioAttachment ? (
-              <AttachmentAudio
-                entryId={entry.id}
-                attachment={audioAttachment}
-                accentColor={getMoodScoreColor(entry.score, scores)}
-              />
-            ) : null}
-
-            <EntryAttachmentThumbs
-              entryId={entry.id}
-              attachments={entry.attachments}
-              showAudioCount={false}
-            />
+              <p className="muted entry-detail-meta">
+                {t('entries.createdAt', {
+                  date: `${formatDayHeading(entry.created_at, timeZone, dateLocale)} ${formatTime(entry.created_at, timeZone, dateLocale)}`,
+                })}
+                {entry.updated_at !== entry.created_at
+                  ? ` · ${t('entries.updatedAt', {
+                      date: `${formatDayHeading(entry.updated_at, timeZone, dateLocale)} ${formatTime(entry.updated_at, timeZone, dateLocale)}`,
+                    })}`
+                  : null}
+              </p>
+            </div>
           </div>
         </article>
       ) : null}

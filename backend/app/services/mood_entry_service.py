@@ -637,6 +637,41 @@ def delete_attachment(
         storage.delete_object(key=storage_key)
 
 
+def reorder_photo_attachments(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    ordered_ids: list[uuid.UUID],
+) -> list[MoodEntryAttachment]:
+    entry = _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
+    photos = [item for item in entry.attachments if item.kind == AttachmentKind.PHOTO]
+    by_id = {item.id: item for item in photos}
+    if len(ordered_ids) != len(set(ordered_ids)):
+        raise MoodEntryError("ordered_ids must be unique", status_code=400)
+    if set(ordered_ids) != set(by_id):
+        raise MoodEntryError(
+            "ordered_ids must include every photo attachment exactly once",
+            status_code=400,
+        )
+    if len(ordered_ids) > MAX_PHOTOS_PER_ENTRY:
+        raise MoodEntryError("Too many photos", status_code=400)
+
+    # Temporary positions avoid unique (entry, position) collisions mid-update.
+    for index, photo in enumerate(photos):
+        photo.position = MAX_PHOTOS_PER_ENTRY + 1 + index
+    db.flush()
+    for index, photo_id in enumerate(ordered_ids):
+        by_id[photo_id].position = index + 1
+    db.commit()
+
+    entry = _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
+    return sorted(
+        [item for item in entry.attachments if item.kind == AttachmentKind.PHOTO],
+        key=lambda item: item.position or 0,
+    )
+
+
 def serialize_mood_entry(
     entry: MoodEntry,
     *,

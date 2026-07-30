@@ -7,6 +7,7 @@ import {
   createMoodEntry,
   deleteMoodEntryAttachment,
   patchMoodEntry,
+  reorderMoodEntryAttachments,
   uploadMoodEntryAttachment,
 } from '../api/moodEntries'
 import { listNoteTemplates } from '../api/noteTemplates'
@@ -15,6 +16,7 @@ import { Alert } from './Alert'
 import { GoalIcon } from './GoalIcon'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { MoodScoreIcon } from './MoodScoreIcon'
+import { PhotoCollageEditor, type CollagePhotoDraft } from './PhotoCollageEditor'
 import { TagIcon } from './TagIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -24,9 +26,12 @@ import { ApiError } from '../lib/errors'
 import {
   datetimeLocalToIso,
   entriesListPathForInstant,
+  formatCalendarDate,
   isoToDatetimeLocal,
   nowDatetimeLocal,
+  todayKey,
 } from '../lib/datetime'
+import { intlLocale } from '../i18n/t'
 import { getMoodScoreOptions } from '../lib/moodScale'
 import { emojiForGroupSlug } from '../lib/tagEmoji'
 import type { GoalPublic } from '../types/goal'
@@ -35,10 +40,20 @@ import { getStoredMoodEntrySource } from '../lib/moodEntrySource'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic, TagPublic } from '../types/tag'
 
-type PendingFile = {
-  kind: 'photo' | 'audio'
-  file: File
-}
+type PendingAudio = File
+
+type PhotoDraftItem =
+  | {
+      key: string
+      source: 'existing'
+      attachment: AttachmentPublic
+    }
+  | {
+      key: string
+      source: 'pending'
+      file: File
+      previewUrl: string
+    }
 
 type MoodEntryFormProps = {
   mode: 'create' | 'edit'
@@ -61,6 +76,7 @@ export function MoodEntryForm({
   const templateSheetTitleId = useId()
   const contextSearchId = useId()
   const noteSectionRef = useRef<HTMLElement>(null)
+  const photoPreviewUrlsRef = useRef<Set<string>>(new Set())
   const [noteScrollToken, setNoteScrollToken] = useState(0)
 
   const [score, setScore] = useState(initialEntry?.score ?? 4)
@@ -83,11 +99,20 @@ export function MoodEntryForm({
   const [contextQuery, setContextQuery] = useState('')
   const [showMore, setShowMore] = useState((initialEntry?.attachments.length ?? 0) > 0)
   const [showTemplateSheet, setShowTemplateSheet] = useState(false)
-  const [existingAttachments, setExistingAttachments] = useState<AttachmentPublic[]>(
-    initialEntry?.attachments ?? [],
+  const [photoDrafts, setPhotoDrafts] = useState<PhotoDraftItem[]>(() =>
+    (initialEntry?.attachments ?? [])
+      .filter((item) => item.kind === 'photo')
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      .map((attachment) => ({
+        key: attachment.id,
+        source: 'existing' as const,
+        attachment,
+      })),
   )
-  const [pendingPhotos, setPendingPhotos] = useState<PendingFile[]>([])
-  const [pendingAudio, setPendingAudio] = useState<File | null>(null)
+  const [existingAudio, setExistingAudio] = useState<AttachmentPublic | null>(
+    () => initialEntry?.attachments.find((item) => item.kind === 'audio') ?? null,
+  )
+  const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingTags, setIsLoadingTags] = useState(true)
@@ -154,7 +179,22 @@ export function MoodEntryForm({
     return () => window.clearTimeout(timer)
   }, [noteScrollToken])
 
+  useEffect(() => {
+    const urls = photoPreviewUrlsRef.current
+    return () => {
+      for (const url of urls) {
+        URL.revokeObjectURL(url)
+      }
+      urls.clear()
+    }
+  }, [])
+
   const entryDate = recordedAtLocal.split('T')[0] ?? ''
+  const isPastEntryDay = Boolean(entryDate) && entryDate < todayKey(timeZone)
+  const entryDateLabel = useMemo(
+    () => (entryDate ? formatCalendarDate(entryDate, intlLocale(locale)) : ''),
+    [entryDate, locale],
+  )
   const activeGoals = useMemo(
     () =>
       goals.filter(
@@ -236,7 +276,8 @@ export function MoodEntryForm({
     setNoteScrollToken((token) => token + 1)
   }
 
-  const moodPhrase = (scoreValue: number) => t(`entries.moodPhrase.${scoreValue}`)
+  const moodPhrase = (scoreValue: number) =>
+    t(`entries.${isPastEntryDay ? 'moodPhrasePast' : 'moodPhrase'}.${scoreValue}`)
 
   const renderTagChip = (tag: TagPublic) => {
     const selected = selectedTagIds.includes(tag.id)
@@ -318,10 +359,8 @@ export function MoodEntryForm({
     )
   }
 
-  const photoCount =
-    existingAttachments.filter((item) => item.kind === 'photo').length + pendingPhotos.length
-  const hasAudio =
-    existingAttachments.some((item) => item.kind === 'audio') || pendingAudio !== null
+  const photoCount = photoDrafts.length
+  const hasAudio = existingAudio !== null || pendingAudio !== null
   const moreSummaryParts: string[] = []
   if (photoCount > 0) {
     moreSummaryParts.push(t('entries.photos', { count: photoCount }))
@@ -330,15 +369,43 @@ export function MoodEntryForm({
     moreSummaryParts.push(t('entries.audio', { count: 1 }))
   }
 
+  const collagePhotos: CollagePhotoDraft[] = photoDrafts.map((draft) => {
+    if (draft.source === 'existing') {
+      return {
+        key: draft.key,
+        name: draft.attachment.original_name,
+        preview: {
+          type: 'attachment',
+          entryId: initialEntry?.id ?? '',
+          attachmentId: draft.attachment.id,
+        },
+      }
+    }
+    return {
+      key: draft.key,
+      name: draft.file.name,
+      preview: { type: 'url', url: draft.previewUrl },
+    }
+  })
+
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
     if (photoCount + files.length > 5) {
       setError(t('errors.photosLimit'))
       return
     }
-    setPendingPhotos((current) => [
+    setPhotoDrafts((current) => [
       ...current,
-      ...files.map((file) => ({ kind: 'photo' as const, file })),
+      ...files.map((file) => {
+        const previewUrl = URL.createObjectURL(file)
+        photoPreviewUrlsRef.current.add(previewUrl)
+        return {
+          key: crypto.randomUUID(),
+          source: 'pending' as const,
+          file,
+          previewUrl,
+        }
+      }),
     ])
     event.target.value = ''
   }
@@ -356,25 +423,52 @@ export function MoodEntryForm({
     event.target.value = ''
   }
 
-  const removePendingPhoto = (index: number) => {
-    setPendingPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))
-  }
-
-  const removeExistingAttachment = async (attachmentId: string) => {
+  const removePhotoDraft = async (key: string) => {
+    const draft = photoDrafts.find((item) => item.key === key)
+    if (!draft) {
+      return
+    }
+    if (draft.source === 'pending') {
+      URL.revokeObjectURL(draft.previewUrl)
+      photoPreviewUrlsRef.current.delete(draft.previewUrl)
+      setPhotoDrafts((current) => current.filter((item) => item.key !== key))
+      return
+    }
     if (!initialEntry) {
       return
     }
     try {
-      await deleteMoodEntryAttachment(initialEntry.id, attachmentId)
-      setExistingAttachments((current) => current.filter((item) => item.id !== attachmentId))
+      await deleteMoodEntryAttachment(initialEntry.id, draft.attachment.id)
+      setPhotoDrafts((current) => current.filter((item) => item.key !== key))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.failedRemoveAttachment'))
     }
   }
 
-  const uploadPendingFiles = async (entryId: string) => {
-    for (const pending of pendingPhotos) {
-      await uploadMoodEntryAttachment(entryId, 'photo', pending.file)
+  const removeExistingAudio = async () => {
+    if (!initialEntry || !existingAudio) {
+      return
+    }
+    try {
+      await deleteMoodEntryAttachment(initialEntry.id, existingAudio.id)
+      setExistingAudio(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errors.failedRemoveAttachment'))
+    }
+  }
+
+  const syncAttachments = async (entryId: string) => {
+    const orderedIds: string[] = []
+    for (const draft of photoDrafts) {
+      if (draft.source === 'existing') {
+        orderedIds.push(draft.attachment.id)
+      } else {
+        const uploaded = await uploadMoodEntryAttachment(entryId, 'photo', draft.file)
+        orderedIds.push(uploaded.id)
+      }
+    }
+    if (mode === 'edit' && orderedIds.length > 0) {
+      await reorderMoodEntryAttachments(entryId, orderedIds)
     }
     if (pendingAudio) {
       await uploadMoodEntryAttachment(entryId, 'audio', pendingAudio)
@@ -405,11 +499,11 @@ export function MoodEntryForm({
       let savedId = initialEntry?.id
       if (mode === 'create') {
         const created = await createMoodEntry(payload)
-        await uploadPendingFiles(created.id)
+        await syncAttachments(created.id)
         savedId = created.id
       } else if (initialEntry) {
         await patchMoodEntry(initialEntry.id, payload)
-        await uploadPendingFiles(initialEntry.id)
+        await syncAttachments(initialEntry.id)
       }
       navigate(entriesListPathForInstant(payload.recorded_at, timeZone, savedId))
     } catch (err) {
@@ -432,7 +526,9 @@ export function MoodEntryForm({
 
       <section className="entry-mood-hero" aria-labelledby="entry-mood-question">
         <h2 id="entry-mood-question" className="entry-mood-question">
-          {t('entries.howAreYouFeeling')}
+          {isPastEntryDay
+            ? t('entries.howAreYouFeelingPast', { date: entryDateLabel })
+            : t('entries.howAreYouFeeling')}
         </h2>
 
         <div
@@ -504,9 +600,13 @@ export function MoodEntryForm({
 
           <section className="entry-chapter" aria-labelledby="entry-context-title">
             <h2 id="entry-context-title" className="entry-chapter-title">
-              {t('entries.whatHappenedToday')}
+              {isPastEntryDay
+                ? t('entries.whatHappenedPast', { date: entryDateLabel })
+                : t('entries.whatHappenedToday')}
             </h2>
-            <p className="entry-chapter-lead muted">{t('entries.contextLead')}</p>
+            <p className="entry-chapter-lead muted">
+              {t(isPastEntryDay ? 'entries.contextLeadPast' : 'entries.contextLead')}
+            </p>
 
             {isLoadingTags ? (
               <p className="muted">{t('common.loadingTags')}</p>
@@ -547,7 +647,9 @@ export function MoodEntryForm({
 
           <section className="entry-chapter" aria-labelledby="entry-goals-title">
             <h2 id="entry-goals-title" className="entry-chapter-title">
-              {t('entries.goalsToday')}
+              {isPastEntryDay
+                ? t('entries.goalsPast', { date: entryDateLabel })
+                : t('entries.goalsToday')}
             </h2>
             <p className="entry-chapter-lead muted">{t('entries.goalsLead')}</p>
             {isLoadingGoals ? (
@@ -627,61 +729,60 @@ export function MoodEntryForm({
                       />
                     </label>
                   </div>
-                  <ul className="attachment-list">
-                    {existingAttachments.map((attachment) => (
-                      <li key={attachment.id}>
-                        <span>
-                          {t('entries.attachmentItem', {
-                            kind: kindLabel(attachment.kind),
-                            name: attachment.original_name,
-                          })}
-                        </span>
-                        {mode === 'edit' ? (
+
+                  <PhotoCollageEditor
+                    photos={collagePhotos}
+                    onChange={(next) => {
+                      const byKey = new Map(photoDrafts.map((draft) => [draft.key, draft]))
+                      setPhotoDrafts(
+                        next
+                          .map((item) => byKey.get(item.key))
+                          .filter((draft): draft is PhotoDraftItem => draft != null),
+                      )
+                    }}
+                    onRemove={(key) => void removePhotoDraft(key)}
+                  />
+
+                  {existingAudio || pendingAudio ? (
+                    <ul className="attachment-list">
+                      {existingAudio ? (
+                        <li>
+                          <span>
+                            {t('entries.attachmentItem', {
+                              kind: kindLabel(existingAudio.kind),
+                              name: existingAudio.original_name,
+                            })}
+                          </span>
+                          {mode === 'edit' ? (
+                            <button
+                              type="button"
+                              className="link-button"
+                              onClick={() => void removeExistingAudio()}
+                            >
+                              {t('common.remove')}
+                            </button>
+                          ) : null}
+                        </li>
+                      ) : null}
+                      {pendingAudio ? (
+                        <li>
+                          <span>
+                            {t('entries.attachmentItem', {
+                              kind: t('entries.kindAudio'),
+                              name: pendingAudio.name,
+                            })}
+                          </span>
                           <button
                             type="button"
                             className="link-button"
-                            onClick={() => void removeExistingAttachment(attachment.id)}
+                            onClick={() => setPendingAudio(null)}
                           >
                             {t('common.remove')}
                           </button>
-                        ) : null}
-                      </li>
-                    ))}
-                    {pendingPhotos.map((pending, index) => (
-                      <li key={`photo-${pending.file.name}-${index}`}>
-                        <span>
-                          {t('entries.attachmentItem', {
-                            kind: t('entries.kindPhoto'),
-                            name: pending.file.name,
-                          })}
-                        </span>
-                        <button
-                          type="button"
-                          className="link-button"
-                          onClick={() => removePendingPhoto(index)}
-                        >
-                          {t('common.remove')}
-                        </button>
-                      </li>
-                    ))}
-                    {pendingAudio ? (
-                      <li>
-                        <span>
-                          {t('entries.attachmentItem', {
-                            kind: t('entries.kindAudio'),
-                            name: pendingAudio.name,
-                          })}
-                        </span>
-                        <button
-                          type="button"
-                          className="link-button"
-                          onClick={() => setPendingAudio(null)}
-                        >
-                          {t('common.remove')}
-                        </button>
-                      </li>
-                    ) : null}
-                  </ul>
+                        </li>
+                      ) : null}
+                    </ul>
+                  ) : null}
                 </div>
               </div>
             ) : null}

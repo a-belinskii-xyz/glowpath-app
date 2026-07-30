@@ -24,6 +24,7 @@ from app.models.mood_entry import MoodEntry
 from app.models.user import User
 from app.schemas.mood_entry import (
     AttachmentPublic,
+    AttachmentReorderRequest,
     MoodEntryCalendarResponse,
     MoodEntryCreate,
     MoodEntryListResponse,
@@ -42,6 +43,7 @@ from app.services.mood_entry_service import (
     get_mood_entry_stats,
     list_mood_entries,
     patch_mood_entry,
+    reorder_photo_attachments,
     search_mood_entries,
     serialize_mood_entry,
     upload_attachment,
@@ -294,6 +296,40 @@ async def create_attachment(
         position=attachment.position,
         transcription=attachment.transcription,
     )
+
+
+@router.put(
+    "/{entry_id}/attachments/reorder",
+    response_model=list[AttachmentPublic],
+)
+def reorder_entry_photo_attachments(
+    entry_id: uuid.UUID,
+    body: AttachmentReorderRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> list[AttachmentPublic]:
+    try:
+        photos = reorder_photo_attachments(
+            db,
+            user_id=current_user.id,
+            entry_id=entry_id,
+            ordered_ids=body.ordered_ids,
+        )
+    except MoodEntryError as exc:
+        _handle_mood_error(exc)
+        raise
+    return [
+        AttachmentPublic(
+            id=attachment.id,
+            kind=attachment.kind,
+            mime_type=attachment.mime_type,
+            size_bytes=attachment.size_bytes,
+            original_name=attachment.original_name,
+            position=attachment.position,
+            transcription=attachment.transcription,
+        )
+        for attachment in photos
+    ]
 
 
 @router.get("/{entry_id}/attachments/{attachment_id}")

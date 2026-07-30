@@ -78,6 +78,10 @@ class AttachmentPublic(BaseModel):
     transcription: str | None = None
 
 
+class AttachmentReorderRequest(BaseModel):
+    ordered_ids: list[uuid.UUID] = Field(min_length=1)
+
+
 class MoodEntryPublic(BaseModel):
     id: uuid.UUID
     recorded_at: datetime
