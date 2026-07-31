@@ -1,8 +1,9 @@
-"""Default tag groups copied to each user on registration (stage 2)."""
+"""Default tag groups copied to each user on registration (BASE pack)."""
 
 from dataclasses import dataclass
 
 from app.core.i18n import LocaleLabels
+from app.core.onboarding_packs import get_base_pack
 
 DEFAULT_TAG_COLOR = "#94a3b8"
 DEFAULT_TAG_ICON_TYPE = "emoji"
@@ -24,57 +25,27 @@ class DefaultTagGroup:
     tags: tuple[DefaultTag, ...]
 
 
-DEFAULT_TAG_GROUPS: tuple[DefaultTagGroup, ...] = (
-    DefaultTagGroup(
-        slug="weather",
-        labels={"en": "Weather", "ru": "Погода"},
-        tags=(
-            DefaultTag("sunny", {"en": "Sunny", "ru": "Солнечно"}, "#f59e0b", "☀️"),
-            DefaultTag("cloudy", {"en": "Cloudy", "ru": "Облачно"}, "#94a3b8", "☁️"),
-            DefaultTag("rain", {"en": "Rain", "ru": "Дождь"}, "#60a5fa", "🌧"),
-            DefaultTag("thunderstorm", {"en": "Thunderstorm", "ru": "Гроза"}, "#6366f1", "⛈"),
-        ),
-    ),
-    DefaultTagGroup(
-        slug="sleep_quality",
-        labels={"en": "Sleep quality", "ru": "Качество сна"},
-        tags=(
-            DefaultTag("slept_well", {"en": "Slept well", "ru": "Хорошо поспал"}, "#34d399", "😴"),
-            DefaultTag(
-                "average_sleep",
-                {"en": "Average sleep", "ru": "Средний сон"},
-                "#94a3b8",
-                "😑",
+def _load_default_tag_groups() -> tuple[DefaultTagGroup, ...]:
+    base = get_base_pack()
+    return tuple(
+        DefaultTagGroup(
+            slug=group.slug,
+            labels=dict(group.labels),
+            tags=tuple(
+                DefaultTag(
+                    slug=tag.slug,
+                    labels=dict(tag.labels),
+                    color=tag.color,
+                    icon=tag.icon,
+                )
+                for tag in group.tags
             ),
-            DefaultTag(
-                "slept_poorly",
-                {"en": "Slept poorly", "ru": "Плохо спал"},
-                "#f87171",
-                "😩",
-            ),
-        ),
-    ),
-    DefaultTagGroup(
-        slug="mood",
-        labels={"en": "Mood", "ru": "Настроение"},
-        tags=(
-            DefaultTag("joy", {"en": "Joy", "ru": "Радость"}, "#f59e0b", "😊"),
-            DefaultTag("anxiety", {"en": "Anxiety", "ru": "Тревога"}, "#a78bfa", "😰"),
-            DefaultTag("fatigue", {"en": "Fatigue", "ru": "Усталость"}, "#94a3b8", "😮‍💨"),
-            DefaultTag("calm", {"en": "Calm", "ru": "Спокойствие"}, "#34d399", "😌"),
-        ),
-    ),
-    DefaultTagGroup(
-        slug="activity",
-        labels={"en": "Activity", "ru": "Активность"},
-        tags=(
-            DefaultTag("work", {"en": "Work", "ru": "Работа"}, "#60a5fa", "💼"),
-            DefaultTag("sport", {"en": "Sport", "ru": "Спорт"}, "#34d399", "🏃"),
-            DefaultTag("social", {"en": "Socializing", "ru": "Общение"}, "#f472b6", "💬"),
-            DefaultTag("rest", {"en": "Rest", "ru": "Отдых"}, "#a78bfa", "🛋"),
-        ),
-    ),
-)
+        )
+        for group in sorted(base.tag_groups, key=lambda item: (item.sort_order, item.slug))
+    )
+
+
+DEFAULT_TAG_GROUPS: tuple[DefaultTagGroup, ...] = _load_default_tag_groups()
 
 # Known seed / persona slugs → style (used by migration backfill).
 KNOWN_TAG_STYLES: dict[str, tuple[str, str]] = {

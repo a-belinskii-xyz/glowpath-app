@@ -19,6 +19,7 @@ import { IconButton } from './IconButton'
 import { EditIcon } from './icons'
 import { ImageCropModal } from './ImageCropModal'
 import { MoodScoreIcon } from './MoodScoreIcon'
+import { StableButtonLabel } from './StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
@@ -888,11 +889,20 @@ export function MoodPreferencesForm() {
           className={`button${justSaved ? ' is-saved' : ''}`}
           disabled={isSaving}
         >
-          {isSaving
-            ? t('common.saving')
-            : justSaved
-              ? t('moodPreferences.saveDone')
-              : t('moodPreferences.save')}
+          <StableButtonLabel
+            active={
+              isSaving
+                ? t('common.saving')
+                : justSaved
+                  ? t('moodPreferences.saveDone')
+                  : t('moodPreferences.save')
+            }
+            labels={[
+              t('moodPreferences.save'),
+              t('moodPreferences.saveDone'),
+              t('common.saving'),
+            ]}
+          />
         </button>
       </div>
     </form>

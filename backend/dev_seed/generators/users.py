@@ -21,6 +21,7 @@ def create_user(db: Session, *, persona: Persona, rng: SeededRNG) -> User:
         google_sub=None,
         timezone=persona.timezone,
         email_verified_at=datetime.now(UTC),
+        onboarding_completed_at=datetime.now(UTC),
     )
     db.add(user)
     db.flush()

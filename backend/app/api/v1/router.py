@@ -8,6 +8,7 @@ from app.api.v1 import (
     mood_preferences,
     note_templates,
     notification_settings,
+    onboarding,
     tag_groups,
     telegram,
 )
@@ -16,6 +17,7 @@ from app.config import settings
 api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
 api_v1_router.include_router(auth.router, prefix="/auth")
+api_v1_router.include_router(onboarding.router, prefix="/onboarding")
 api_v1_router.include_router(mood_entries.router, prefix="/mood-entries")
 api_v1_router.include_router(note_templates.router, prefix="/note-templates")
 api_v1_router.include_router(tag_groups.router, prefix="/tag-groups")

@@ -23,7 +23,7 @@ def test_default_note_templates_provisioned_on_register(
         "gratitude",
         "mood_check_in",
     ]
-    assert items[0]["label"] == "Daily reflection"
+    assert items[0]["label"] == "Daily Reflection"
     assert "What I did" in items[0]["body"]
 
 

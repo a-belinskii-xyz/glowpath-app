@@ -18,6 +18,7 @@ import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MarkdownNoteEditor } from '../components/MarkdownNoteEditor'
+import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError, formatApiError } from '../lib/errors'
 import {
@@ -245,7 +246,10 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
           />
           <div className="button-row">
             <button type="submit" className="button" disabled={isSaving}>
-              {isSaving ? t('common.saving') : t('common.save')}
+              <StableButtonLabel
+                active={isSaving ? t('common.saving') : t('common.save')}
+                labels={[t('common.save'), t('common.saving')]}
+              />
             </button>
             <button
               type="button"

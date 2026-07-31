@@ -14,9 +14,11 @@ import { listNoteTemplates } from '../api/noteTemplates'
 import { listTagGroups } from '../api/tagGroups'
 import { PageErrorAlert } from './PageErrorAlert'
 import { GoalIcon } from './GoalIcon'
+import { AudioIcon, PhotoIcon } from './icons'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { PhotoCollageEditor, type CollagePhotoDraft } from './PhotoCollageEditor'
+import { StableButtonLabel } from './StableButtonLabel'
 import { TagIcon } from './TagIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -115,7 +117,6 @@ export function MoodEntryForm({
   const [goals, setGoals] = useState<GoalPublic[]>([])
   const [noteTemplates, setNoteTemplates] = useState<NoteTemplatePublic[]>([])
   const [contextQuery, setContextQuery] = useState('')
-  const [showMore, setShowMore] = useState((initialEntry?.attachments.length ?? 0) > 0)
   const [showTemplateSheet, setShowTemplateSheet] = useState(false)
   const [photoDrafts, setPhotoDrafts] = useState<PhotoDraftItem[]>(() =>
     (initialEntry?.attachments ?? [])
@@ -149,10 +150,6 @@ export function MoodEntryForm({
         setTagGroups(tagsResponse.items)
         setNoteTemplates(templatesResponse.items)
         setGoals(goalsResponse.items)
-
-        if ((initialEntry?.attachments.length ?? 0) > 0) {
-          setShowMore(true)
-        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToManageEntries'))
@@ -191,7 +188,6 @@ export function MoodEntryForm({
         setNote(draft.note)
         setSelectedTagIds(draft.selectedTagIds)
         setSelectedGoalIds(draft.selectedGoalIds)
-        setShowMore(draft.showMore)
       }
     }
     setDraftHydrated(true)
@@ -212,7 +208,6 @@ export function MoodEntryForm({
       note,
       selectedTagIds,
       selectedGoalIds,
-      showMore,
     }
     const timer = window.setTimeout(() => {
       if (isMoodEntryDraftEmpty(draft)) {
@@ -232,7 +227,6 @@ export function MoodEntryForm({
     note,
     selectedTagIds,
     selectedGoalIds,
-    showMore,
   ])
 
   useEffect(() => {
@@ -447,13 +441,6 @@ export function MoodEntryForm({
 
   const photoCount = photoDrafts.length
   const hasAudio = existingAudio !== null || pendingAudio !== null
-  const moreSummaryParts: string[] = []
-  if (photoCount > 0) {
-    moreSummaryParts.push(t('entries.photos', { count: photoCount }))
-  }
-  if (hasAudio) {
-    moreSummaryParts.push(t('entries.audio', { count: 1 }))
-  }
 
   const collagePhotos: CollagePhotoDraft[] = photoDrafts.map((draft) => {
     if (draft.source === 'existing') {
@@ -799,113 +786,123 @@ export function MoodEntryForm({
             )}
           </section>
 
-          <div className="entry-journey-connector entry-journey-connector-soft" aria-hidden="true" />
+          <div className="entry-journey-connector" aria-hidden="true" />
 
-          <section className="entry-chapter entry-chapter-soft">
-            <button
-              type="button"
-              className={`entry-disclosure-toggle${showMore ? ' is-open' : ''}`}
-              onClick={() => setShowMore((open) => !open)}
-              aria-expanded={showMore}
-            >
-              <span>
-                {showMore ? t('entries.hideMore') : t('entries.addMore')}
-                {!showMore && moreSummaryParts.length > 0 ? (
-                  <span className="entry-disclosure-summary">
-                    {' · '}
-                    {moreSummaryParts.join(' · ')}
+          <section className="entry-chapter" aria-labelledby="entry-attachments-title">
+            <h2 id="entry-attachments-title" className="entry-chapter-title">
+              {t('entries.attachments')}
+            </h2>
+            <div className="attachments-section">
+              <div className="attachment-inputs">
+                <label
+                  className={`attachment-upload${photoCount >= 5 ? ' is-disabled' : ''}`}
+                >
+                  <span className="attachment-upload-icon" aria-hidden="true">
+                    <PhotoIcon />
                   </span>
-                ) : null}
-              </span>
-            </button>
-            {showMore ? (
-              <div className="entry-disclosure-body entry-more-body">
-                <div className="attachments-section">
-                  <h3 className="entry-subheading">{t('entries.attachments')}</h3>
-                  <div className="attachment-inputs">
-                    <label className="form-field">
-                      <span className="form-label">
-                        {t('entries.photos', { count: photoCount })}
-                      </span>
-                      <input
-                        className="form-input"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        multiple
-                        onChange={handlePhotoChange}
-                        disabled={photoCount >= 5}
-                      />
-                    </label>
-                    <label className="form-field">
-                      <span className="form-label">
-                        {t('entries.audio', { count: hasAudio ? 1 : 0 })}
-                      </span>
-                      <input
-                        className="form-input"
-                        type="file"
-                        accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
-                        onChange={handleAudioChange}
-                        disabled={hasAudio}
-                      />
-                    </label>
-                  </div>
-
-                  <PhotoCollageEditor
-                    photos={collagePhotos}
-                    onChange={(next) => {
-                      const byKey = new Map(photoDrafts.map((draft) => [draft.key, draft]))
-                      setPhotoDrafts(
-                        next
-                          .map((item) => byKey.get(item.key))
-                          .filter((draft): draft is PhotoDraftItem => draft != null),
-                      )
-                    }}
-                    onRemove={(key) => void removePhotoDraft(key)}
+                  <span className="attachment-upload-body">
+                    <span className="attachment-upload-title">
+                      {t('entries.photos', { count: photoCount })}
+                    </span>
+                    <span className="attachment-upload-action">
+                      {photoCount >= 5
+                        ? t('entries.photosFull')
+                        : t('entries.addPhotos')}
+                    </span>
+                    <span className="attachment-upload-hint">
+                      {t('entries.photosHint')}
+                    </span>
+                  </span>
+                  <input
+                    className="attachment-upload-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    onChange={handlePhotoChange}
+                    disabled={photoCount >= 5}
                   />
-
-                  {existingAudio || pendingAudio ? (
-                    <ul className="attachment-list">
-                      {existingAudio ? (
-                        <li>
-                          <span>
-                            {t('entries.attachmentItem', {
-                              kind: kindLabel(existingAudio.kind),
-                              name: existingAudio.original_name,
-                            })}
-                          </span>
-                          {mode === 'edit' ? (
-                            <button
-                              type="button"
-                              className="link-button"
-                              onClick={() => void removeExistingAudio()}
-                            >
-                              {t('common.remove')}
-                            </button>
-                          ) : null}
-                        </li>
-                      ) : null}
-                      {pendingAudio ? (
-                        <li>
-                          <span>
-                            {t('entries.attachmentItem', {
-                              kind: t('entries.kindAudio'),
-                              name: pendingAudio.name,
-                            })}
-                          </span>
-                          <button
-                            type="button"
-                            className="link-button"
-                            onClick={() => setPendingAudio(null)}
-                          >
-                            {t('common.remove')}
-                          </button>
-                        </li>
-                      ) : null}
-                    </ul>
-                  ) : null}
-                </div>
+                </label>
+                <label
+                  className={`attachment-upload${hasAudio ? ' is-disabled' : ''}`}
+                >
+                  <span className="attachment-upload-icon" aria-hidden="true">
+                    <AudioIcon />
+                  </span>
+                  <span className="attachment-upload-body">
+                    <span className="attachment-upload-title">
+                      {t('entries.audio', { count: hasAudio ? 1 : 0 })}
+                    </span>
+                    <span className="attachment-upload-action">
+                      {hasAudio ? t('entries.audioFull') : t('entries.addAudio')}
+                    </span>
+                    <span className="attachment-upload-hint">
+                      {t('entries.audioHint')}
+                    </span>
+                  </span>
+                  <input
+                    className="attachment-upload-input"
+                    type="file"
+                    accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
+                    onChange={handleAudioChange}
+                    disabled={hasAudio}
+                  />
+                </label>
               </div>
-            ) : null}
+
+              <PhotoCollageEditor
+                photos={collagePhotos}
+                onChange={(next) => {
+                  const byKey = new Map(photoDrafts.map((draft) => [draft.key, draft]))
+                  setPhotoDrafts(
+                    next
+                      .map((item) => byKey.get(item.key))
+                      .filter((draft): draft is PhotoDraftItem => draft != null),
+                  )
+                }}
+                onRemove={(key) => void removePhotoDraft(key)}
+              />
+
+              {existingAudio || pendingAudio ? (
+                <ul className="attachment-list">
+                  {existingAudio ? (
+                    <li>
+                      <span>
+                        {t('entries.attachmentItem', {
+                          kind: kindLabel(existingAudio.kind),
+                          name: existingAudio.original_name,
+                        })}
+                      </span>
+                      {mode === 'edit' ? (
+                        <button
+                          type="button"
+                          className="link-button"
+                          onClick={() => void removeExistingAudio()}
+                        >
+                          {t('common.remove')}
+                        </button>
+                      ) : null}
+                    </li>
+                  ) : null}
+                  {pendingAudio ? (
+                    <li>
+                      <span>
+                        {t('entries.attachmentItem', {
+                          kind: t('entries.kindAudio'),
+                          name: pendingAudio.name,
+                        })}
+                      </span>
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => setPendingAudio(null)}
+                      >
+                        {t('common.remove')}
+                      </button>
+                    </li>
+                  ) : null}
+                </ul>
+              ) : null}
+            </div>
           </section>
         </div>
       ) : null}
@@ -917,11 +914,20 @@ export function MoodEntryForm({
             type="submit"
             disabled={isSubmitting || (!moodPicked && mode === 'create')}
           >
-            {isSubmitting
-              ? t('common.saving')
-              : mode === 'create'
-                ? t('entries.createEntry')
-                : t('entries.saveChanges')}
+            <StableButtonLabel
+              active={
+                isSubmitting
+                  ? t('common.saving')
+                  : mode === 'create'
+                    ? t('entries.createEntry')
+                    : t('entries.saveChanges')
+              }
+              labels={
+                mode === 'create'
+                  ? [t('entries.createEntry'), t('common.saving')]
+                  : [t('entries.saveChanges'), t('common.saving')]
+              }
+            />
           </button>
           <button
             className="button button-secondary"

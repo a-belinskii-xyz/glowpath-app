@@ -15,6 +15,7 @@ import { GoalsPage } from './pages/GoalsPage'
 import { GoogleCallbackPage } from './pages/GoogleCallbackPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
+import { OnboardingPage } from './pages/OnboardingPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResendVerificationPage } from './pages/ResendVerificationPage'
@@ -45,6 +46,7 @@ function App() {
                   </Route>
 
                   <Route element={<ProtectedRoute />}>
+                    <Route path="onboarding" element={<OnboardingPage />} />
                     <Route path="entries/new" element={<CreateEntryPage />} />
                     <Route path="entries/:id/edit" element={<EditEntryPage />} />
                     <Route path="entries/:id" element={<EntryDetailPage />} />

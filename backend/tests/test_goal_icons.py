@@ -127,7 +127,7 @@ def test_goal_style_patch_and_defaults(
     goal = listed.json()["items"][0]
     assert goal["color"] == "#60a5fa"
     assert goal["icon_type"] == "emoji"
-    assert goal["icon"] == "🎯"
+    assert goal["icon"] == "🌅"
 
     patched = auth_client.patch(
         f"/v1/goals/{goal['id']}",

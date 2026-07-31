@@ -41,7 +41,7 @@ def test_default_goals_provisioned_on_register(
     assert items[0]["show_on_entry"] is True
     assert items[0]["show_in_stats"] is True
     assert items[0]["completed_this_week"] == 0
-    assert items[0]["label"] == "Early rise"
+    assert items[0]["label"] == "Early Rise"
 
 
 def test_goal_crud_and_visibility_limit(

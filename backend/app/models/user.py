@@ -54,6 +54,7 @@ class User(TimestampMixin, Base):
     google_sub: Mapped[str | None] = mapped_column(String(255), unique=True)
     timezone: Mapped[str] = mapped_column(String(64), server_default="Europe/Minsk")
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)

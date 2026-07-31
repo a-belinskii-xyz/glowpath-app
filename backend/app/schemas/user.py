@@ -10,6 +10,8 @@ class UserPublic(BaseModel):
     timezone: str
     email_verified: bool
     email_verified_at: datetime | None
+    onboarding_completed: bool
+    onboarding_completed_at: datetime | None
 
     model_config = {"from_attributes": True}
 

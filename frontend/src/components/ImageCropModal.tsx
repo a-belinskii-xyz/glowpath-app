@@ -23,6 +23,7 @@ import {
   type CropTransform,
   zoomCropTransform,
 } from '../lib/imageCrop'
+import { StableButtonLabel } from './StableButtonLabel'
 
 const DEFAULT_CROP_SIZE = 280
 const PREVIEW_SIZE = 96
@@ -447,7 +448,10 @@ export function ImageCropModal({
             disabled={busy}
             aria-label={t('common.save')}
           >
-            {busy ? t('common.saving') : t('common.save')}
+            <StableButtonLabel
+              active={busy ? t('common.saving') : t('common.save')}
+              labels={[t('common.save'), t('common.saving')]}
+            />
           </button>
         </div>
       </form>

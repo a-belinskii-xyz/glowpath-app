@@ -6,6 +6,7 @@ import { Alert } from '../components/Alert'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
+import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { formatApiError } from '../lib/errors'
 
@@ -93,7 +94,10 @@ export function ResetPasswordPage() {
           onChange={(event) => setPasswordConfirm(event.target.value)}
         />
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? t('common.saving') : t('auth.resetPassword')}
+          <StableButtonLabel
+            active={isSubmitting ? t('common.saving') : t('auth.resetPassword')}
+            labels={[t('auth.resetPassword'), t('common.saving')]}
+          />
         </button>
       </form>
 

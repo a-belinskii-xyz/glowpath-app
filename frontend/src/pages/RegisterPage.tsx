@@ -5,6 +5,7 @@ import { Alert } from '../components/Alert'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
+import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { detectTimezone } from '../lib/timezones'
@@ -90,7 +91,10 @@ export function RegisterPage() {
           hint={t('auth.timezoneHint')}
         />
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? t('auth.creatingAccount') : t('nav.register')}
+          <StableButtonLabel
+            active={isSubmitting ? t('auth.creatingAccount') : t('nav.register')}
+            labels={[t('nav.register'), t('auth.creatingAccount')]}
+          />
         </button>
       </form>
 

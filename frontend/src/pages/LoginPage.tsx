@@ -5,6 +5,7 @@ import { getGoogleLoginUrl } from '../api/auth'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
+import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError, formatApiError } from '../lib/errors'
@@ -79,7 +80,10 @@ export function LoginPage() {
           onChange={(event) => setPassword(event.target.value)}
         />
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
+          <StableButtonLabel
+            active={isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
+            labels={[t('auth.signIn'), t('auth.signingIn')]}
+          />
         </button>
       </form>
 

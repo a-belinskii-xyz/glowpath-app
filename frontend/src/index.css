@@ -621,6 +621,23 @@ input {
   width: 100%;
 }
 
+/* Reserve width for the longest label so swap states do not shift layout. */
+.button-stable-label {
+  display: inline-grid;
+  justify-items: center;
+  align-items: center;
+}
+
+.button-stable-label-item {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.button-stable-label-item.is-active {
+  visibility: visible;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -4059,7 +4076,118 @@ code {
 
 .attachment-inputs {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
+}
+
+@media (min-width: 36rem) {
+  .attachment-inputs {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.attachment-upload {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.85rem 0.9rem;
+  border: 1px dashed var(--chrome-border-strong);
+  border-radius: var(--chrome-radius-control);
+  background: color-mix(in oklab, var(--chrome-surface) 70%, transparent);
+  color: var(--chrome-text-secondary);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color var(--motion-hover-duration) var(--motion-hover-easing),
+    color var(--motion-hover-duration) var(--motion-hover-easing),
+    background var(--motion-hover-duration) var(--motion-hover-easing),
+    box-shadow var(--motion-hover-duration) var(--motion-hover-easing);
+}
+
+.attachment-upload:hover,
+.attachment-upload:focus-within {
+  border-color: var(--chrome-action-primary);
+  color: var(--chrome-action-primary);
+  background: color-mix(in oklab, var(--chrome-action-primary) 8%, var(--chrome-surface));
+  box-shadow: 0 0 0 3px var(--chrome-focus-ring-soft);
+}
+
+.attachment-upload.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.attachment-upload-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.7rem;
+  background: color-mix(in oklab, var(--chrome-surface-inset) 85%, var(--chrome-action-primary));
+  color: inherit;
+}
+
+.attachment-upload:hover .attachment-upload-icon,
+.attachment-upload:focus-within .attachment-upload-icon {
+  background: color-mix(in oklab, var(--chrome-action-primary) 14%, var(--chrome-surface));
+}
+
+.attachment-upload-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.attachment-upload-body {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+  padding-top: 0.05rem;
+}
+
+.attachment-upload-title {
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--chrome-text-primary);
+  line-height: 1.3;
+}
+
+.attachment-upload:hover .attachment-upload-title,
+.attachment-upload:focus-within .attachment-upload-title {
+  color: var(--chrome-action-primary);
+}
+
+.attachment-upload-action {
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: inherit;
+}
+
+.attachment-upload-hint {
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--chrome-text-secondary);
+}
+
+.attachment-upload:hover .attachment-upload-hint,
+.attachment-upload:focus-within .attachment-upload-hint {
+  color: color-mix(in oklab, var(--chrome-action-primary) 55%, var(--chrome-text-secondary));
+}
+
+.attachment-upload-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.attachment-upload.is-disabled .attachment-upload-input {
+  cursor: not-allowed;
 }
 
 .attachment-list {
@@ -4067,7 +4195,7 @@ code {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .attachment-list li {
@@ -4075,6 +4203,11 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--chrome-border-default);
+  border-radius: var(--chrome-radius-control);
+  background: var(--chrome-surface);
+  font-size: 0.9rem;
 }
 
 .photo-collage-editor {
@@ -5625,4 +5758,255 @@ code {
   .editor-drawer {
     animation: none !important;
   }
+}
+
+.onboarding-page {
+  display: grid;
+  gap: 0.75rem;
+  padding-bottom: 11rem;
+}
+
+.onboarding-page-body {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.onboarding-page-body > h1,
+.onboarding-page-body > p {
+  margin: 0;
+}
+
+.onboarding-sticky-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem max(1rem, env(safe-area-inset-right))
+    max(1.5rem, calc(env(safe-area-inset-bottom) + 0.75rem))
+    max(1rem, env(safe-area-inset-left));
+  background:
+    linear-gradient(
+      to top,
+      var(--chrome-bg-app) 0%,
+      color-mix(in oklab, var(--chrome-bg-app) 92%, transparent) 78%,
+      color-mix(in oklab, var(--chrome-bg-app) 40%, transparent) 100%
+    );
+  border-top: 1px solid color-mix(in oklab, var(--chrome-border-default) 70%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.onboarding-sticky-bar > * {
+  width: min(42rem, 100%);
+  margin-inline: auto;
+}
+
+.onboarding-sticky-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.onboarding-sticky-bar .onboarding-actions {
+  margin-top: 0;
+}
+
+.onboarding-sticky-bar .onboarding-actions .button {
+  flex: 1;
+}
+
+.onboarding-step {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.onboarding-step-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.onboarding-step-meta > p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.onboarding-progress {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--chrome-text-secondary);
+}
+
+.onboarding-question {
+  margin: 0.15rem 0 0;
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+.onboarding-required-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  min-height: 1.35em;
+  color: #b45309;
+}
+
+.onboarding-required-hint.is-satisfied {
+  visibility: hidden;
+}
+
+.onboarding-options {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.onboarding-option {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  min-height: 2.75rem;
+}
+
+.onboarding-actions {
+  margin-top: 0.25rem;
+}
+
+.onboarding-skip {
+  margin-top: 0;
+}
+
+@media (min-width: 640px) {
+  .onboarding-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.onboarding-suggestions-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.onboarding-suggestions-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.onboarding-suggestions-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.onboarding-suggestions-header .button {
+  min-height: 2.25rem;
+  padding-inline: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.onboarding-suggestion-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.onboarding-suggestion-card {
+  display: grid;
+  gap: 0.55rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--chrome-border-strong);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-primary);
+  cursor: pointer;
+}
+
+.onboarding-suggestion-card:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--chrome-action-primary) 45%, white);
+}
+
+.onboarding-suggestion-card.is-active {
+  border-color: color-mix(in oklab, var(--chrome-action-primary) 55%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
+}
+
+.onboarding-suggestion-title {
+  font-weight: 600;
+}
+
+.onboarding-suggestion-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.onboarding-suggestion-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: color-mix(in oklab, var(--chrome-text-primary) 6%, white);
+  color: var(--chrome-text-secondary);
+}
+
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.language-switcher-label {
+  font-size: 0.85rem;
+  color: var(--chrome-text-secondary);
+}
+
+.language-switcher-select {
+  width: auto;
+  min-width: 7.5rem;
+  font-weight: 500;
+}
+
+.language-switcher--compact .language-switcher-select {
+  min-width: 6.5rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.875rem;
+}
+
+.onboarding-template-preview {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--chrome-text-primary) 5%, white);
+  color: var(--chrome-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  text-align: left;
+  max-height: 8rem;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.onboarding-footer-actions {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.onboarding-skip-hint {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 0.85rem;
 }

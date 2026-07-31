@@ -53,6 +53,8 @@ def _to_user_public(user: User) -> UserPublic:
         timezone=user.timezone,
         email_verified=user.email_verified_at is not None,
         email_verified_at=user.email_verified_at,
+        onboarding_completed=user.onboarding_completed_at is not None,
+        onboarding_completed_at=user.onboarding_completed_at,
     )
 
 

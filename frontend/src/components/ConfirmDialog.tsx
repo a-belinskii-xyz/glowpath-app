@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useLocale } from '../context/LocaleContext'
 import { Alert } from './Alert'
+import { StableButtonLabel } from './StableButtonLabel'
 
 export type ConfirmDialogProps = {
   open: boolean
@@ -104,7 +105,10 @@ export function ConfirmDialog({
             disabled={isBusy}
             onClick={onConfirm}
           >
-            {isBusy ? t('common.saving') : confirmLabel}
+            <StableButtonLabel
+              active={isBusy ? t('common.saving') : confirmLabel}
+              labels={[confirmLabel, t('common.saving')]}
+            />
           </button>
         </div>
       </div>

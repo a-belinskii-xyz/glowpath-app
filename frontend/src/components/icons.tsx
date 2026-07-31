@@ -115,6 +115,36 @@ export function ArrowDownIcon(props: IconProps) {
   )
 }
 
+export function PhotoIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M4.5 6.5h15a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18V8a1.5 1.5 0 0 1 1.5-1.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="9"
+        cy="11"
+        r="1.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M3.8 17.2 8.4 13l2.8 2.4 3.2-3.6 5.8 5.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </BaseIcon>
+  )
+}
+
 export function AudioIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>

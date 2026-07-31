@@ -1,7 +1,8 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import type { CSSProperties } from 'react'
 
 import { CaptureAttribution } from './CaptureAttribution'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import { useAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -10,11 +11,37 @@ function navClassName({ isActive }: { isActive: boolean }) {
   return `app-nav-link${isActive ? ' is-active' : ''}`
 }
 
-function ShellChrome({ sidebar }: { sidebar: boolean }) {
+function ShellChrome({
+  sidebar,
+  onboarding,
+}: {
+  sidebar: boolean
+  onboarding: boolean
+}) {
   const { t } = useLocale()
   const { logout } = useAuth()
   const { cssVars } = useAmbientGlow()
   const shellStyle = cssVars as CSSProperties
+
+  if (onboarding) {
+    return (
+      <div className="app-shell" style={shellStyle}>
+        <CaptureAttribution />
+        <header className="app-header">
+          <span className="brand">{t('brand')}</span>
+          <nav className="nav-links">
+            <LanguageSwitcher id="onboarding-language" compact />
+            <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
+              {t('nav.logOut')}
+            </button>
+          </nav>
+        </header>
+        <main className="app-main">
+          <Outlet />
+        </main>
+      </div>
+    )
+  }
 
   if (!sidebar) {
     return (
@@ -25,6 +52,7 @@ function ShellChrome({ sidebar }: { sidebar: boolean }) {
             {t('brand')}
           </Link>
           <nav className="nav-links">
+            <LanguageSwitcher id="guest-language" compact />
             <Link to="/login">{t('nav.logIn')}</Link>
             <Link to="/register">{t('nav.register')}</Link>
           </nav>
@@ -74,6 +102,15 @@ function ShellChrome({ sidebar }: { sidebar: boolean }) {
 }
 
 export function Layout() {
-  const { isAuthenticated } = useAuth()
-  return <ShellChrome sidebar={isAuthenticated} />
+  const { isAuthenticated, isLoading, user } = useAuth()
+  const location = useLocation()
+  const needsOnboarding = Boolean(isAuthenticated && user && !user.onboarding_completed)
+
+  if (!isLoading && needsOnboarding && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />
+  }
+
+  return (
+    <ShellChrome sidebar={isAuthenticated && !needsOnboarding} onboarding={needsOnboarding} />
+  )
 }

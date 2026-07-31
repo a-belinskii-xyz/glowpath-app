@@ -18,6 +18,7 @@ import { GoalIcon } from '../components/GoalIcon'
 import { GoalIconEditor } from '../components/GoalIconEditor'
 import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
+import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useAuth } from '../context/AuthContext'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
@@ -341,7 +342,10 @@ export function GoalsPage() {
               className="button"
               disabled={isSaving}
             >
-              {isSaving ? t('common.saving') : t('common.save')}
+              <StableButtonLabel
+                active={isSaving ? t('common.saving') : t('common.save')}
+                labels={[t('common.save'), t('common.saving')]}
+              />
             </button>
             <button
               type="button"

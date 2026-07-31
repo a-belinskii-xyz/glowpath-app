@@ -23,6 +23,7 @@ import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { TagIcon } from '../components/TagIcon'
 import { TagIconEditor, type PendingIconUpload } from '../components/TagIconEditor'
+import { StableButtonLabel } from '../components/StableButtonLabel'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
@@ -487,7 +488,10 @@ export function TagsPage() {
           ) : null}
           <div className="button-row">
             <button type="submit" className="button" disabled={isSaving}>
-              {isSaving ? t('common.saving') : t('common.save')}
+              <StableButtonLabel
+                active={isSaving ? t('common.saving') : t('common.save')}
+                labels={[t('common.save'), t('common.saving')]}
+              />
             </button>
             <button
               type="button"

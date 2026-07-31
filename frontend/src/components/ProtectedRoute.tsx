@@ -5,7 +5,7 @@ import { useLocale } from '../context/LocaleContext'
 import { parseMoodEntrySource, setStoredMoodEntrySource } from '../lib/moodEntrySource'
 
 export function ProtectedRoute() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
   const { t } = useLocale()
   const location = useLocation()
 
@@ -19,6 +19,11 @@ export function ProtectedRoute() {
       setStoredMoodEntrySource(source)
     }
     return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  const onOnboarding = location.pathname === '/onboarding'
+  if (!user?.onboarding_completed && !onOnboarding) {
+    return <Navigate to="/onboarding" replace />
   }
 
   return <Outlet />

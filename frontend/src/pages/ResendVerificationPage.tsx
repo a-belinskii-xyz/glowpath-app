@@ -5,6 +5,7 @@ import { Alert } from '../components/Alert'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
+import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { formatApiError } from '../lib/errors'
 
@@ -50,7 +51,10 @@ export function ResendVerificationPage() {
           onChange={(event) => setEmail(event.target.value)}
         />
         <button className="button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? t('auth.sending') : t('auth.resendEmail')}
+          <StableButtonLabel
+            active={isSubmitting ? t('auth.sending') : t('auth.resendEmail')}
+            labels={[t('auth.resendEmail'), t('auth.sending')]}
+          />
         </button>
       </form>
 

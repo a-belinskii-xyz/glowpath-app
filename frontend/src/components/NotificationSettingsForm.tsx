@@ -8,6 +8,7 @@ import { getTelegramLink } from '../api/telegram'
 import { Alert } from './Alert'
 import { PageErrorAlert } from './PageErrorAlert'
 import { FormField } from './FormField'
+import { StableButtonLabel } from './StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError, formatApiError } from '../lib/errors'
 import type { NotificationChannel, NotificationSettingsPublic } from '../types/notificationSettings'
@@ -217,7 +218,10 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
 
       <div className="button-row">
         <button type="submit" className="button" disabled={isSaving}>
-          {isSaving ? t('common.saving') : t('profile.saveNotifications')}
+          <StableButtonLabel
+            active={isSaving ? t('common.saving') : t('profile.saveNotifications')}
+            labels={[t('profile.saveNotifications'), t('common.saving')]}
+          />
         </button>
       </div>
     </form>

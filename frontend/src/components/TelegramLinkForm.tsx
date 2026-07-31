@@ -8,6 +8,7 @@ import {
 import { Alert } from './Alert'
 import { PageErrorAlert } from './PageErrorAlert'
 import { ConfirmDialog } from './ConfirmDialog'
+import { StableButtonLabel } from './StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError, formatApiError } from '../lib/errors'
 import type { TelegramLinkPublic } from '../types/telegram'
@@ -145,7 +146,10 @@ export function TelegramLinkForm() {
               disabled={isBusy}
               onClick={() => setConfirmUnlink(true)}
             >
-              {isBusy ? t('common.saving') : t('profile.telegramUnlink')}
+              <StableButtonLabel
+                active={isBusy ? t('common.saving') : t('profile.telegramUnlink')}
+                labels={[t('profile.telegramUnlink'), t('common.saving')]}
+              />
             </button>
         </div>
       ) : (
@@ -172,7 +176,10 @@ export function TelegramLinkForm() {
               disabled={isBusy || !status?.bot_configured}
               onClick={() => void handleConnect()}
             >
-              {isBusy ? t('common.saving') : t('profile.telegramConnect')}
+              <StableButtonLabel
+                active={isBusy ? t('common.saving') : t('profile.telegramConnect')}
+                labels={[t('profile.telegramConnect'), t('common.saving')]}
+              />
             </button>
             <button
               type="button"

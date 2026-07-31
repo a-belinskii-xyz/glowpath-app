@@ -22,6 +22,8 @@ class ErrorCode(StrEnum):
     EMAIL_LINKED_OTHER_GOOGLE = "email_linked_other_google"
     INVALID_TIMEZONE = "invalid_timezone"
     USER_NOT_FOUND = "user_not_found"
+    ONBOARDING_ALREADY_COMPLETED = "onboarding_already_completed"
+    INVALID_ONBOARDING_OPTIONS = "invalid_onboarding_options"
 
     # Google OAuth
     GOOGLE_OAUTH_NOT_CONFIGURED = "google_oauth_not_configured"
