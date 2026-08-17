@@ -38,6 +38,15 @@ class Goal(TimestampMixin, Base):
             "ends_on IS NULL OR ends_on >= starts_on",
             name="goal_ends_on_after_starts_on",
         ),
+        CheckConstraint(
+            "tracking_kind IN ('binary', 'quantity')",
+            name="goal_tracking_kind_values",
+        ),
+        CheckConstraint(
+            "(tracking_kind = 'binary' AND target_amount IS NULL AND unit IS NULL) "
+            "OR (tracking_kind = 'quantity' AND target_amount >= 1)",
+            name="goal_quantity_fields",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -53,6 +62,14 @@ class Goal(TimestampMixin, Base):
     slug: Mapped[str] = mapped_column(String(64))
     labels: Mapped[dict[str, str]] = mapped_column(JSONB)
     times_per_week: Mapped[int] = mapped_column(Integer)
+    tracking_kind: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="binary",
+        server_default="binary",
+    )
+    target_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
     starts_on: Mapped[date] = mapped_column(Date)
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")

@@ -5,6 +5,7 @@ from typing import Annotated
 from pydantic import AfterValidator, BaseModel, Field
 
 from app.core.attachment_kind import AttachmentKind
+from app.core.goal_tracking import MAX_GOAL_AMOUNT, GoalTrackingKind
 from app.core.markdown_plain_text import (
     NOTE_CONTENT_MAX_LENGTH,
     NOTE_RAW_MAX_LENGTH,
@@ -30,12 +31,18 @@ def _validate_note(value: str | None) -> str | None:
 NoteField = Annotated[str | None, AfterValidator(_validate_note)]
 
 
+class MoodEntryGoalProgress(BaseModel):
+    goal_id: uuid.UUID
+    amount: int = Field(ge=1, le=MAX_GOAL_AMOUNT)
+
+
 class MoodEntryCreate(BaseModel):
     score: int = Field(ge=MIN_MOOD_SCORE, le=MAX_MOOD_SCORE)
     recorded_at: datetime
     note: NoteField = None
     tag_ids: list[uuid.UUID] = Field(default_factory=list)
     goal_ids: list[uuid.UUID] = Field(default_factory=list)
+    goal_progress: list[MoodEntryGoalProgress] = Field(default_factory=list)
     # Analytics attribution from notification deep links; not returned in public responses.
     source: MoodEntrySource | None = None
 
@@ -46,6 +53,7 @@ class MoodEntryPatch(BaseModel):
     note: NoteField = None
     tag_ids: list[uuid.UUID] | None = None
     goal_ids: list[uuid.UUID] | None = None
+    goal_progress: list[MoodEntryGoalProgress] | None = None
     is_favorite: bool | None = None
 
 
@@ -66,6 +74,10 @@ class MoodEntryGoalPublic(BaseModel):
     color: str
     icon_type: str
     icon: str
+    tracking_kind: GoalTrackingKind = GoalTrackingKind.BINARY
+    target_amount: int | None = None
+    unit: str | None = None
+    amount: int | None = None
 
 
 class AttachmentPublic(BaseModel):

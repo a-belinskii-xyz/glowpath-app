@@ -3975,6 +3975,30 @@ code {
   text-align: left;
 }
 
+.goal-chip-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.goal-chip-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.goal-chip-amount-input {
+  width: 5rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.45rem;
+}
+
+.goal-chip-amount-unit {
+  font-size: 0.8rem;
+  color: var(--chrome-text-secondary);
+}
+
 .goal-chip-progress {
   font-size: 0.7rem;
   opacity: 0.75;

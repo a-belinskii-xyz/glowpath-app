@@ -113,6 +113,15 @@ export function MoodEntryForm({
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>(
     initialEntry?.goals.map((goal) => goal.id) ?? [],
   )
+  const [selectedGoalAmounts, setSelectedGoalAmounts] = useState<Record<string, number>>(() => {
+    const amounts: Record<string, number> = {}
+    for (const goal of initialEntry?.goals ?? []) {
+      if (goal.amount != null) {
+        amounts[goal.id] = goal.amount
+      }
+    }
+    return amounts
+  })
   const [tagGroups, setTagGroups] = useState<TagGroupPublic[]>([])
   const [goals, setGoals] = useState<GoalPublic[]>([])
   const [noteTemplates, setNoteTemplates] = useState<NoteTemplatePublic[]>([])
@@ -140,16 +149,13 @@ export function MoodEntryForm({
   useEffect(() => {
     const loadCatalog = async () => {
       setIsLoadingTags(true)
-      setIsLoadingGoals(true)
       try {
-        const [tagsResponse, templatesResponse, goalsResponse] = await Promise.all([
+        const [tagsResponse, templatesResponse] = await Promise.all([
           listTagGroups(),
           listNoteTemplates(),
-          listGoals(),
         ])
         setTagGroups(tagsResponse.items)
         setNoteTemplates(templatesResponse.items)
-        setGoals(goalsResponse.items)
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToManageEntries'))
@@ -158,11 +164,33 @@ export function MoodEntryForm({
         }
       } finally {
         setIsLoadingTags(false)
-        setIsLoadingGoals(false)
       }
     }
     void loadCatalog()
   }, [initialEntry, locale, t])
+
+  useEffect(() => {
+    const loadGoals = async () => {
+      const dateKey = recordedAtLocal.split('T')[0]
+      if (!dateKey) {
+        return
+      }
+      setIsLoadingGoals(true)
+      try {
+        const goalsResponse = await listGoals({ progressOn: dateKey })
+        setGoals(goalsResponse.items)
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 403) {
+          setError(t('errors.verifyToManageEntries'))
+        } else {
+          setError(formatApiError(err, t, 'errors.failedLoadGoals'))
+        }
+      } finally {
+        setIsLoadingGoals(false)
+      }
+    }
+    void loadGoals()
+  }, [recordedAtLocal, locale, t])
 
   useEffect(() => {
     if (mode !== 'create' || !user?.id || draftHydratedRef.current) {
@@ -188,6 +216,7 @@ export function MoodEntryForm({
         setNote(draft.note)
         setSelectedTagIds(draft.selectedTagIds)
         setSelectedGoalIds(draft.selectedGoalIds)
+        setSelectedGoalAmounts(draft.selectedGoalAmounts)
       }
     }
     setDraftHydrated(true)
@@ -208,6 +237,7 @@ export function MoodEntryForm({
       note,
       selectedTagIds,
       selectedGoalIds,
+      selectedGoalAmounts,
     }
     const timer = window.setTimeout(() => {
       if (isMoodEntryDraftEmpty(draft)) {
@@ -227,6 +257,7 @@ export function MoodEntryForm({
     note,
     selectedTagIds,
     selectedGoalIds,
+    selectedGoalAmounts,
   ])
 
   useEffect(() => {
@@ -335,10 +366,38 @@ export function MoodEntryForm({
     )
   }
 
-  const toggleGoal = (goalId: string) => {
-    setSelectedGoalIds((current) =>
-      current.includes(goalId) ? current.filter((id) => id !== goalId) : [...current, goalId],
-    )
+  const toggleGoal = (goal: GoalPublic) => {
+    setSelectedGoalIds((current) => {
+      if (current.includes(goal.id)) {
+        setSelectedGoalAmounts((amounts) => {
+          const next = { ...amounts }
+          delete next[goal.id]
+          return next
+        })
+        return current.filter((id) => id !== goal.id)
+      }
+      if (goal.tracking_kind === 'quantity') {
+        const other = otherDayAmountFor(goal)
+        const remaining = Math.max(0, (goal.target_amount ?? 0) - other)
+        if (remaining > 0) {
+          setSelectedGoalAmounts((amounts) => ({ ...amounts, [goal.id]: remaining }))
+        }
+      }
+      return [...current, goal.id]
+    })
+  }
+
+  const otherDayAmountFor = (goal: GoalPublic) => {
+    if (!initialEntry) {
+      return goal.day_amount
+    }
+    const initialDate = isoToDatetimeLocal(initialEntry.recorded_at, timeZone).split('T')[0]
+    if (initialDate !== entryDate) {
+      return goal.day_amount
+    }
+    const linked = initialEntry.goals.find((item) => item.id === goal.id)
+    const initialAmount = linked?.amount ?? (linked ? 1 : 0)
+    return Math.max(0, goal.day_amount - initialAmount)
   }
 
   const insertTemplate = (template: NoteTemplatePublic) => {
@@ -410,32 +469,68 @@ export function MoodEntryForm({
 
   const renderGoalChip = (goal: GoalPublic) => {
     const selected = selectedGoalIds.includes(goal.id)
+    const isQuantity = goal.tracking_kind === 'quantity'
+    const otherAmount = otherDayAmountFor(goal)
+    const draftAmount = selected && isQuantity ? (selectedGoalAmounts[goal.id] ?? 0) : 0
+    const dayDone = otherAmount + draftAmount
+    const dayTarget = goal.target_amount ?? 0
     return (
-      <button
-        key={goal.id}
-        type="button"
-        className={`tag-chip goal-chip${selected ? ' tag-chip-selected' : ''}`}
-        onClick={() => toggleGoal(goal.id)}
-        aria-pressed={selected}
-      >
-        <span className="goal-chip-label">
-          <GoalIcon
-            style={{
-              color: goal.color,
-              icon_type: goal.icon_type,
-              icon: goal.icon,
-            }}
-            className="goal-chip-icon"
-          />
-          {goal.label}
-        </span>
-        <span className="goal-chip-progress">
-          {t('goalsPage.weekProgress', {
-            done: goal.completed_this_week,
-            target: goal.times_per_week,
-          })}
-        </span>
-      </button>
+      <div key={goal.id} className={`goal-chip-wrap${selected ? ' is-selected' : ''}`}>
+        <button
+          type="button"
+          className={`tag-chip goal-chip${selected ? ' tag-chip-selected' : ''}`}
+          onClick={() => toggleGoal(goal)}
+          aria-pressed={selected}
+        >
+          <span className="goal-chip-label">
+            <GoalIcon
+              style={{
+                color: goal.color,
+                icon_type: goal.icon_type,
+                icon: goal.icon,
+              }}
+              className="goal-chip-icon"
+            />
+            {goal.label}
+          </span>
+          <span className="goal-chip-progress">
+            {isQuantity
+              ? t('goalsPage.dayProgress', {
+                  done: dayDone,
+                  target: dayTarget,
+                })
+              : t('goalsPage.weekProgress', {
+                  done: goal.completed_this_week,
+                  target: goal.times_per_week,
+                })}
+          </span>
+        </button>
+        {selected && isQuantity ? (
+          <label className="goal-chip-amount">
+            <span className="visually-hidden">{t('goalsPage.targetAmount')}</span>
+            <input
+              className="form-input goal-chip-amount-input"
+              type="number"
+              min={1}
+              max={1000000}
+              value={selectedGoalAmounts[goal.id] ?? ''}
+              onChange={(event) => {
+                const raw = event.target.value
+                setSelectedGoalAmounts((current) => {
+                  const next = { ...current }
+                  if (raw === '') {
+                    delete next[goal.id]
+                  } else {
+                    next[goal.id] = Number(raw)
+                  }
+                  return next
+                })
+              }}
+            />
+            {goal.unit ? <span className="goal-chip-amount-unit">{goal.unit}</span> : null}
+          </label>
+        ) : null}
+      </div>
     )
   }
 
@@ -558,13 +653,35 @@ export function MoodEntryForm({
     setIsSubmitting(true)
 
     const activeGoalIdSet = new Set(activeGoals.map((goal) => goal.id))
+    const selectedActiveIds = selectedGoalIds.filter((id) => activeGoalIdSet.has(id))
+    const goalProgress = selectedActiveIds.flatMap((id) => {
+      const goal = activeGoals.find((item) => item.id === id)
+      if (!goal || goal.tracking_kind !== 'quantity') {
+        return []
+      }
+      const amount = selectedGoalAmounts[id]
+      if (!amount || amount < 1) {
+        return []
+      }
+      return [{ goal_id: id, amount }]
+    })
+    const missingAmount = selectedActiveIds.some((id) => {
+      const goal = activeGoals.find((item) => item.id === id)
+      return goal?.tracking_kind === 'quantity' && !(selectedGoalAmounts[id] >= 1)
+    })
+    if (missingAmount) {
+      setError(t('goalsPage.amountRequired'))
+      setIsSubmitting(false)
+      return
+    }
     const sessionSource = mode === 'create' ? getStoredMoodEntrySource() : undefined
     const payload = {
       score,
       recorded_at: datetimeLocalToIso(recordedAtLocal, timeZone),
       note: note.trim() ? note.trim() : null,
       tag_ids: selectedTagIds,
-      goal_ids: selectedGoalIds.filter((id) => activeGoalIdSet.has(id)),
+      goal_ids: selectedActiveIds,
+      goal_progress: goalProgress,
       ...(sessionSource ? { source: sessionSource } : {}),
     }
 

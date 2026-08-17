@@ -38,6 +38,9 @@ def test_default_goals_provisioned_on_register(
     items = body["items"]
     assert [item["slug"] for item in items] == ["early_rise", "min_screen_time", "exercise"]
     assert items[0]["times_per_week"] == 7
+    assert items[0]["tracking_kind"] == "binary"
+    assert items[0]["target_amount"] is None
+    assert items[0]["day_amount"] == 0
     assert items[0]["show_on_entry"] is True
     assert items[0]["show_in_stats"] is True
     assert items[0]["completed_this_week"] == 0
@@ -500,3 +503,161 @@ def test_show_in_stats_toggle_and_limit(
     assert stats.status_code == 200
     assert all(item["id"] != hidden_id for item in stats.json()["items"])
     assert all(item["show_in_stats"] for item in stats.json()["items"])
+
+
+def test_quantity_goal_sums_amounts_across_entries(
+    auth_client: TestClient,
+    mailer,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "goals-quantity@example.com")
+    headers = _auth_headers(token)
+
+    created = auth_client.post(
+        "/v1/goals",
+        json={
+            "labels": {"en": "Read pages"},
+            "times_per_week": 7,
+            "tracking_kind": "quantity",
+            "target_amount": 100,
+            "unit": "pages",
+            "starts_on": "2026-08-17",
+            "show_on_entry": False,
+            "show_in_stats": False,
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+    goal = created.json()
+    assert goal["tracking_kind"] == "quantity"
+    assert goal["target_amount"] == 100
+    assert goal["unit"] == "pages"
+    assert goal["day_amount"] == 0
+    goal_id = goal["id"]
+
+    rejected = auth_client.post(
+        "/v1/mood-entries",
+        json={
+            "score": 4,
+            "recorded_at": "2026-08-17T08:00:00+03:00",
+            "tag_ids": [],
+            "goal_ids": [goal_id],
+        },
+        headers=headers,
+    )
+    assert rejected.status_code == 400
+    assert rejected.json()["detail"]["code"] == "goal_amount_required"
+
+    morning = auth_client.post(
+        "/v1/mood-entries",
+        json={
+            "score": 4,
+            "recorded_at": "2026-08-17T08:00:00+03:00",
+            "tag_ids": [],
+            "goal_ids": [goal_id],
+            "goal_progress": [{"goal_id": goal_id, "amount": 30}],
+        },
+        headers=headers,
+    )
+    assert morning.status_code == 201
+    assert morning.json()["goals"][0]["amount"] == 30
+
+    evening = auth_client.post(
+        "/v1/mood-entries",
+        json={
+            "score": 4,
+            "recorded_at": "2026-08-17T18:00:00+03:00",
+            "tag_ids": [],
+            "goal_ids": [goal_id],
+            "goal_progress": [{"goal_id": goal_id, "amount": 20}],
+        },
+        headers=headers,
+    )
+    assert evening.status_code == 201
+    assert evening.json()["goals"][0]["amount"] == 20
+
+    listed = auth_client.get(
+        "/v1/goals",
+        params={"progress_on": "2026-08-17"},
+        headers=headers,
+    )
+    assert listed.status_code == 200
+    item = next(goal_item for goal_item in listed.json()["items"] if goal_item["id"] == goal_id)
+    assert item["day_amount"] == 50
+    assert item["completed_this_week"] == 0
+
+    later = auth_client.post(
+        "/v1/mood-entries",
+        json={
+            "score": 5,
+            "recorded_at": "2026-08-17T21:00:00+03:00",
+            "tag_ids": [],
+            "goal_ids": [goal_id],
+            "goal_progress": [{"goal_id": goal_id, "amount": 50}],
+        },
+        headers=headers,
+    )
+    assert later.status_code == 201
+
+    listed = auth_client.get(
+        "/v1/goals",
+        params={"progress_on": "2026-08-17"},
+        headers=headers,
+    )
+    item = next(goal_item for goal_item in listed.json()["items"] if goal_item["id"] == goal_id)
+    assert item["day_amount"] == 100
+    assert item["completed_this_week"] == 1
+
+    stats = auth_client.get(
+        "/v1/goals/stats",
+        params={
+            "recorded_from": "2026-08-17T00:00:00+03:00",
+            "recorded_to": "2026-08-24T00:00:00+03:00",
+        },
+        headers=headers,
+    )
+    assert stats.status_code == 200
+    # Hidden from stats until pinned.
+    assert all(row["id"] != goal_id for row in stats.json()["items"])
+
+    pin = auth_client.patch(
+        f"/v1/goals/{goal_id}",
+        json={"show_in_stats": True},
+        headers=headers,
+    )
+    assert pin.status_code == 200
+
+    stats = auth_client.get(
+        "/v1/goals/stats",
+        params={
+            "recorded_from": "2026-08-17T00:00:00+03:00",
+            "recorded_to": "2026-08-24T00:00:00+03:00",
+        },
+        headers=headers,
+    )
+    assert stats.status_code == 200
+    stat = next(row for row in stats.json()["items"] if row["id"] == goal_id)
+    assert stat["completed_in_period"] == 1
+    assert stat["amount_in_period"] == 100
+    assert stat["target_amount"] == 100
+    assert stat["unit"] == "pages"
+
+
+def test_quantity_goal_requires_target_amount(
+    auth_client: TestClient,
+    mailer,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "goals-quantity-target@example.com")
+    headers = _auth_headers(token)
+    created = auth_client.post(
+        "/v1/goals",
+        json={
+            "labels": {"en": "Water"},
+            "times_per_week": 7,
+            "tracking_kind": "quantity",
+            "starts_on": "2026-08-17",
+            "show_on_entry": False,
+        },
+        headers=headers,
+    )
+    assert created.status_code == 400
+    assert created.json()["detail"]["code"] == "goal_target_amount_required"

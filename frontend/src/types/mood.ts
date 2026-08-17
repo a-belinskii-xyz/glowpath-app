@@ -18,6 +18,10 @@ export type MoodEntryGoal = {
   color: string
   icon_type: MoodScoreIconType
   icon: string
+  tracking_kind?: 'binary' | 'quantity'
+  target_amount?: number | null
+  unit?: string | null
+  amount?: number | null
 }
 
 export type AttachmentKind = 'photo' | 'audio'
@@ -104,12 +108,18 @@ export type MoodEntryStatsResponse = {
   comparison: MoodMonthComparisonPublic
 }
 
+export type MoodEntryGoalProgress = {
+  goal_id: string
+  amount: number
+}
+
 export type MoodEntryCreate = {
   score: number
   recorded_at: string
   note?: string | null
   tag_ids: string[]
   goal_ids: string[]
+  goal_progress?: MoodEntryGoalProgress[]
   /** Analytics only — from notification deep links; not shown in UI. */
   source?: MoodEntrySource
 }
@@ -120,6 +130,7 @@ export type MoodEntryPatch = {
   note?: string | null
   tag_ids?: string[]
   goal_ids?: string[]
+  goal_progress?: MoodEntryGoalProgress[]
   is_favorite?: boolean
 }
 

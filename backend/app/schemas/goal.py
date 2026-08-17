@@ -5,6 +5,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.goal_tracking import MAX_GOAL_AMOUNT, MAX_GOAL_UNIT_LENGTH, GoalTrackingKind
 from app.core.mood_scale import MoodScoreIconType
 
 _SLUG_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -33,11 +34,24 @@ def _validate_labels(value: dict[str, str]) -> dict[str, str]:
     return cleaned
 
 
+def _validate_unit(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if len(cleaned) > MAX_GOAL_UNIT_LENGTH:
+        raise ValueError(f"unit must be at most {MAX_GOAL_UNIT_LENGTH} characters")
+    return cleaned
+
+
 Slug = Annotated[str, Field(min_length=1, max_length=64)]
 Labels = Annotated[dict[str, str], Field(min_length=1)]
 TimesPerWeek = Annotated[int, Field(ge=1, le=7)]
+TargetAmount = Annotated[int, Field(ge=1, le=MAX_GOAL_AMOUNT)]
 Color = Annotated[str, Field(min_length=7, max_length=7)]
 IconValue = Annotated[str, Field(min_length=1, max_length=64)]
+UnitValue = Annotated[str, Field(max_length=MAX_GOAL_UNIT_LENGTH)]
 
 
 class GoalPublic(BaseModel):
@@ -46,6 +60,9 @@ class GoalPublic(BaseModel):
     label: str
     labels: dict[str, str]
     times_per_week: int
+    tracking_kind: GoalTrackingKind
+    target_amount: int | None = None
+    unit: str | None = None
     starts_on: date
     ends_on: date | None = None
     sort_order: int
@@ -55,6 +72,7 @@ class GoalPublic(BaseModel):
     icon_type: MoodScoreIconType
     icon: str
     completed_this_week: int
+    day_amount: int = 0
 
 
 class GoalListResponse(BaseModel):
@@ -66,6 +84,9 @@ class GoalListResponse(BaseModel):
 class GoalCreate(BaseModel):
     labels: Labels
     times_per_week: TimesPerWeek
+    tracking_kind: GoalTrackingKind = GoalTrackingKind.BINARY
+    target_amount: TargetAmount | None = None
+    unit: UnitValue | None = None
     starts_on: date
     ends_on: date | None = None
     slug: Slug | None = None
@@ -88,11 +109,19 @@ class GoalCreate(BaseModel):
     def labels_format(cls, value: dict[str, str]) -> dict[str, str]:
         return _validate_labels(value)
 
+    @field_validator("unit")
+    @classmethod
+    def unit_format(cls, value: str | None) -> str | None:
+        return _validate_unit(value)
+
 
 class GoalPatch(BaseModel):
     slug: Slug | None = None
     labels: Labels | None = None
     times_per_week: TimesPerWeek | None = None
+    tracking_kind: GoalTrackingKind | None = None
+    target_amount: TargetAmount | None = None
+    unit: UnitValue | None = None
     starts_on: date | None = None
     ends_on: date | None = None
     sort_order: int | None = None
@@ -116,6 +145,11 @@ class GoalPatch(BaseModel):
             return None
         return _validate_labels(value)
 
+    @field_validator("unit")
+    @classmethod
+    def unit_format(cls, value: str | None) -> str | None:
+        return _validate_unit(value)
+
 
 class GoalPeriodStatPublic(BaseModel):
     id: uuid.UUID
@@ -123,6 +157,9 @@ class GoalPeriodStatPublic(BaseModel):
     label: str
     labels: dict[str, str]
     times_per_week: int
+    tracking_kind: GoalTrackingKind
+    target_amount: int | None = None
+    unit: str | None = None
     starts_on: date
     ends_on: date | None = None
     sort_order: int
@@ -133,6 +170,7 @@ class GoalPeriodStatPublic(BaseModel):
     icon: str
     completed_in_period: int
     period_target: int
+    amount_in_period: int = 0
 
 
 class GoalStatsResponse(BaseModel):

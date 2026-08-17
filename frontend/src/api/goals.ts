@@ -48,8 +48,13 @@ async function refreshTokensOnce(): Promise<boolean> {
   return refreshPromise
 }
 
-export function listGoals(): Promise<GoalListResponse> {
-  return apiRequest<GoalListResponse>('/v1/goals', {
+export function listGoals(params?: { progressOn?: string }): Promise<GoalListResponse> {
+  const query = new URLSearchParams()
+  if (params?.progressOn) {
+    query.set('progress_on', params.progressOn)
+  }
+  const suffix = query.size > 0 ? `?${query}` : ''
+  return apiRequest<GoalListResponse>(`/v1/goals${suffix}`, {
     auth: true,
     headers: apiLocaleHeaders(),
   })

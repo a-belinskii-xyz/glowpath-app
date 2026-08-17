@@ -34,7 +34,7 @@ import {
   type DropEdge,
 } from '../lib/listReorder'
 import { isValidHexColor } from '../lib/moodScale'
-import { DEFAULT_GOAL_STYLE, type GoalPublic } from '../types/goal'
+import { DEFAULT_GOAL_STYLE, type GoalPublic, type GoalTrackingKind } from '../types/goal'
 
 type EditorMode = { kind: 'create' } | { kind: 'edit'; goal: GoalPublic }
 
@@ -51,6 +51,9 @@ export function GoalsPage() {
   const [editor, setEditor] = useState<EditorMode | null>(null)
   const [name, setName] = useState('')
   const [timesPerWeek, setTimesPerWeek] = useState(7)
+  const [trackingKind, setTrackingKind] = useState<GoalTrackingKind>('binary')
+  const [targetAmount, setTargetAmount] = useState(100)
+  const [unit, setUnit] = useState('')
   const [startsOn, setStartsOn] = useState(todayKey(timeZone))
   const [endsOn, setEndsOn] = useState('')
   const [draftColor, setDraftColor] = useState(DEFAULT_GOAL_STYLE.color)
@@ -101,6 +104,9 @@ export function GoalsPage() {
     if (mode.kind === 'create') {
       setName('')
       setTimesPerWeek(7)
+      setTrackingKind('binary')
+      setTargetAmount(100)
+      setUnit('')
       setStartsOn(todayKey(timeZone))
       setEndsOn('')
       setDraftColor(DEFAULT_GOAL_STYLE.color)
@@ -109,6 +115,9 @@ export function GoalsPage() {
     } else {
       setName(mode.goal.label)
       setTimesPerWeek(mode.goal.times_per_week)
+      setTrackingKind(mode.goal.tracking_kind)
+      setTargetAmount(mode.goal.target_amount ?? 100)
+      setUnit(mode.goal.unit ?? '')
       setStartsOn(mode.goal.starts_on)
       setEndsOn(mode.goal.ends_on ?? '')
       setDraftColor(mode.goal.color)
@@ -138,6 +147,10 @@ export function GoalsPage() {
       setError(t('goalsPage.timesPerWeekRequired'))
       return
     }
+    if (trackingKind === 'quantity' && (!Number.isInteger(targetAmount) || targetAmount < 1)) {
+      setError(t('goalsPage.targetAmountRequired'))
+      return
+    }
     if (!startsOn) {
       setError(t('goalsPage.startsOnRequired'))
       return
@@ -161,6 +174,18 @@ export function GoalsPage() {
 
     const existingLabels = editor.kind === 'edit' ? editor.goal.labels : {}
     const labels = { ...existingLabels, [locale]: trimmed }
+    const trackingFields =
+      trackingKind === 'quantity'
+        ? {
+            tracking_kind: 'quantity' as const,
+            target_amount: targetAmount,
+            unit: unit.trim() || null,
+          }
+        : {
+            tracking_kind: 'binary' as const,
+            target_amount: null,
+            unit: null,
+          }
 
     setIsSaving(true)
     setError(null)
@@ -169,6 +194,7 @@ export function GoalsPage() {
         const created = await createGoal({
           labels,
           times_per_week: timesPerWeek,
+          ...trackingFields,
           starts_on: startsOn,
           ends_on: endsOn || null,
           show_on_entry: !atVisibleLimit,
@@ -184,6 +210,7 @@ export function GoalsPage() {
         await patchGoal(editor.goal.id, {
           labels,
           times_per_week: timesPerWeek,
+          ...trackingFields,
           starts_on: startsOn,
           ends_on: endsOn || null,
           color: draftColor,
@@ -382,6 +409,55 @@ export function GoalsPage() {
             autoFocus
             maxLength={64}
           />
+          <div className="form-field">
+            <span className="form-label">{t('goalsPage.trackingKind')}</span>
+            <div className="segmented-control" role="group" aria-label={t('goalsPage.trackingKind')}>
+              <button
+                type="button"
+                className={`segmented-control-option${trackingKind === 'binary' ? ' is-active' : ''}`}
+                aria-pressed={trackingKind === 'binary'}
+                onClick={() => setTrackingKind('binary')}
+              >
+                {t('goalsPage.trackingBinary')}
+              </button>
+              <button
+                type="button"
+                className={`segmented-control-option${trackingKind === 'quantity' ? ' is-active' : ''}`}
+                aria-pressed={trackingKind === 'quantity'}
+                onClick={() => setTrackingKind('quantity')}
+              >
+                {t('goalsPage.trackingQuantity')}
+              </button>
+            </div>
+            <span className="form-hint">
+              {trackingKind === 'quantity'
+                ? t('goalsPage.trackingQuantityHint')
+                : t('goalsPage.trackingBinaryHint')}
+            </span>
+          </div>
+          {trackingKind === 'quantity' ? (
+            <div className="form-field-row">
+              <FormField
+                id="goal-target-amount"
+                label={t('goalsPage.targetAmount')}
+                type="number"
+                min={1}
+                max={1000000}
+                value={targetAmount}
+                onChange={(event) => setTargetAmount(Number(event.target.value))}
+                required
+              />
+              <FormField
+                id="goal-unit"
+                label={t('goalsPage.unit')}
+                value={unit}
+                onChange={(event) => setUnit(event.target.value)}
+                maxLength={32}
+                placeholder={t('goalsPage.unitPlaceholder')}
+                hint={t('goalsPage.unitHint')}
+              />
+            </div>
+          ) : null}
           <label className="form-field">
             <span className="form-label">{t('goalsPage.timesPerWeek')}</span>
             <input
@@ -393,6 +469,7 @@ export function GoalsPage() {
               onChange={(event) => setTimesPerWeek(Number(event.target.value))}
               required
             />
+            <span className="form-hint">{t('goalsPage.timesPerWeekHint')}</span>
           </label>
           <div className="form-field-row">
             <label className="form-field">
@@ -593,7 +670,18 @@ export function GoalsPage() {
                       : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
                   </p>
                   <p className="goal-times-per-week">
-                    {t('goalsPage.timesPerWeekLabel', { count: goal.times_per_week })}
+                    {goal.tracking_kind === 'quantity'
+                      ? goal.unit
+                        ? t('goalsPage.quantityLabel', {
+                            target: goal.target_amount ?? 0,
+                            unit: goal.unit,
+                            count: goal.times_per_week,
+                          })
+                        : t('goalsPage.quantityLabelNoUnit', {
+                            target: goal.target_amount ?? 0,
+                            count: goal.times_per_week,
+                          })
+                      : t('goalsPage.timesPerWeekLabel', { count: goal.times_per_week })}
                   </p>
                 </div>
               </article>

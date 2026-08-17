@@ -111,6 +111,7 @@ def create_entry(
             note=body.note,
             tag_ids=body.tag_ids,
             goal_ids=body.goal_ids,
+            goal_progress=body.goal_progress,
             source=body.source,
         )
     except MoodEntryError as exc:

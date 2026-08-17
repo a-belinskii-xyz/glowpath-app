@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.attachment_kind import AttachmentKind
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
+from app.core.goal_tracking import MAX_GOAL_AMOUNT, GoalTrackingKind
 from app.core.i18n import resolve_label
 from app.core.mood_analytics import (
     compare_month_indices,
@@ -195,14 +196,73 @@ def _resolve_user_goals(
     return goals
 
 
-def _replace_entry_goals(db: Session, entry: MoodEntry, goals: list[Goal]) -> None:
+def _replace_entry_goals(
+    db: Session,
+    entry: MoodEntry,
+    goals: list[Goal],
+    amounts: dict[uuid.UUID, int | None],
+) -> None:
     existing_colors = {link.goal_id: link.color for link in entry.goal_links}
     entry.goal_links.clear()
     db.flush()
     for goal in goals:
         entry.goal_links.append(
-            MoodEntryGoal(goal_id=goal.id, color=existing_colors.get(goal.id, goal.color))
+            MoodEntryGoal(
+                goal_id=goal.id,
+                color=existing_colors.get(goal.id, goal.color),
+                amount=amounts.get(goal.id),
+            )
         )
+
+
+def _progress_amounts(
+    *,
+    goal_ids: list[uuid.UUID],
+    goal_progress: list[Any] | None,
+) -> dict[uuid.UUID, int]:
+    amounts: dict[uuid.UUID, int] = {}
+    if not goal_progress:
+        return amounts
+    selected = set(goal_ids)
+    for item in goal_progress:
+        goal_id = item["goal_id"] if isinstance(item, dict) else item.goal_id
+        amount = item["amount"] if isinstance(item, dict) else item.amount
+        if goal_id not in selected:
+            continue
+        amounts[goal_id] = int(amount)
+    return amounts
+
+
+def _amounts_for_goals(
+    goals: list[Goal],
+    amounts: dict[uuid.UUID, int],
+    *,
+    fill_quantity_from_target: bool = False,
+) -> dict[uuid.UUID, int | None]:
+    resolved: dict[uuid.UUID, int | None] = {}
+    for goal in goals:
+        if goal.tracking_kind != GoalTrackingKind.QUANTITY:
+            resolved[goal.id] = None
+            continue
+        amount = amounts.get(goal.id)
+        if amount is None and fill_quantity_from_target:
+            amount = goal.target_amount
+        if amount is None:
+            raise MoodEntryError(
+                f"Goal “{goal.slug}” needs an amount for this entry",
+                code=ErrorCode.GOAL_AMOUNT_REQUIRED,
+                status_code=400,
+                params={"slug": goal.slug},
+            )
+        if amount < 1 or amount > MAX_GOAL_AMOUNT:
+            raise MoodEntryError(
+                f"Amount for goal “{goal.slug}” must be between 1 and {MAX_GOAL_AMOUNT}",
+                code=ErrorCode.INVALID_GOAL_AMOUNT,
+                status_code=400,
+                params={"slug": goal.slug, "max": str(MAX_GOAL_AMOUNT)},
+            )
+        resolved[goal.id] = amount
+    return resolved
 
 
 def _user_timezone(db: Session, *, user_id: uuid.UUID) -> str:
@@ -249,6 +309,8 @@ def create_mood_entry(
     tag_ids: list[uuid.UUID],
     goal_ids: list[uuid.UUID],
     source: str | None = None,
+    goal_progress: list[Any] | None = None,
+    fill_quantity_from_target: bool = False,
 ) -> MoodEntry:
     recorded_at_utc = _to_utc(recorded_at)
     tz = _resolve_user_tz(_user_timezone(db, user_id=user_id))
@@ -259,6 +321,11 @@ def create_mood_entry(
         user_id=user_id,
         goal_ids=goal_ids,
         entry_local_date=entry_local_date,
+    )
+    amounts = _amounts_for_goals(
+        goals,
+        _progress_amounts(goal_ids=goal_ids, goal_progress=goal_progress),
+        fill_quantity_from_target=fill_quantity_from_target,
     )
     entry = MoodEntry(
         user_id=user_id,
@@ -271,7 +338,7 @@ def create_mood_entry(
     db.add(entry)
     db.flush()
     _replace_entry_tags(db, entry, tags)
-    _replace_entry_goals(db, entry, goals)
+    _replace_entry_goals(db, entry, goals, amounts)
     upsert_entry_embedding(db, entry)
     db.commit()
     return _get_owned_entry(db, user_id=user_id, entry_id=entry.id)
@@ -548,13 +615,18 @@ def patch_mood_entry(
     if "goal_ids" in fields:
         tz = _resolve_user_tz(_user_timezone(db, user_id=user_id))
         entry_local_date = _local_date(entry.recorded_at, tz)
+        goal_ids = fields["goal_ids"] or []
         goals = _resolve_user_goals(
             db,
             user_id=user_id,
-            goal_ids=fields["goal_ids"] or [],
+            goal_ids=goal_ids,
             entry_local_date=entry_local_date,
         )
-        _replace_entry_goals(db, entry, goals)
+        amounts = _amounts_for_goals(
+            goals,
+            _progress_amounts(goal_ids=goal_ids, goal_progress=fields.get("goal_progress")),
+        )
+        _replace_entry_goals(db, entry, goals, amounts)
     if "is_favorite" in fields and fields["is_favorite"] is not None:
         entry.is_favorite = fields["is_favorite"]
 
@@ -790,6 +862,10 @@ def serialize_mood_entry(
             "color": link.color if use_historical else link.goal.color,
             "icon_type": link.goal.icon_type,
             "icon": link.goal.icon,
+            "tracking_kind": link.goal.tracking_kind,
+            "target_amount": link.goal.target_amount,
+            "unit": link.goal.unit,
+            "amount": link.amount,
         }
         for link in sorted(entry.goal_links, key=lambda item: item.goal.sort_order)
         if link.goal is not None

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, date, datetime
 from typing import Annotated
 from urllib.parse import quote
 
@@ -37,6 +37,7 @@ from app.services.goal_icon_service import (
 )
 from app.services.goal_service import (
     GoalError,
+    GoalPeriodProgress,
     create_goal,
     delete_goal,
     get_goal_calendar,
@@ -65,9 +66,20 @@ def _handle_storage_error(exc: StorageError) -> None:
     raise_http_error(exc)
 
 
-def _to_public(goal: Goal, *, locale: str, completed_this_week: int = 0) -> GoalPublic:
+def _to_public(
+    goal: Goal,
+    *,
+    locale: str,
+    completed_this_week: int = 0,
+    day_amount: int = 0,
+) -> GoalPublic:
     return GoalPublic.model_validate(
-        serialize_goal(goal, locale=locale, completed_this_week=completed_this_week)
+        serialize_goal(
+            goal,
+            locale=locale,
+            completed_this_week=completed_this_week,
+            day_amount=day_amount,
+        )
     )
 
 
@@ -77,17 +89,53 @@ def _to_list_response(
     user: User,
     goals: list[Goal],
     locale: str,
+    progress_on: date | None = None,
 ) -> GoalListResponse:
-    counts = load_goals_week_stats(db, user=user, goals=goals)
+    progress = load_goals_week_stats(db, user=user, goals=goals, reference_date=progress_on)
     items = [
         GoalPublic.model_validate(item)
-        for item in serialize_goals(goals, locale=locale, completed_by_goal=counts)
+        for item in serialize_goals(
+            goals,
+            locale=locale,
+            completed_by_goal={goal_id: item.completed_days for goal_id, item in progress.items()},
+            day_amount_by_goal={
+                goal_id: item.amount_on(progress_on or _user_today(user))
+                for goal_id, item in progress.items()
+            },
+        )
     ]
     return GoalListResponse(
         items=items,
         entry_visible_goal_limit=settings.entry_visible_goal_limit,
         stats_visible_goal_limit=settings.stats_visible_goal_limit,
     )
+
+
+def _snapshot(
+    progress: dict[uuid.UUID, GoalPeriodProgress],
+    goal_id: uuid.UUID,
+    *,
+    day: date,
+) -> tuple[int, int]:
+    item = progress.get(goal_id)
+    if item is None:
+        return 0, 0
+    return item.completed_days, item.amount_on(day)
+
+
+def _public_with_week_stats(db: Session, user: User, goal: Goal, locale: str) -> GoalPublic:
+    progress = load_goals_week_stats(db, user=user, goals=[goal])
+    completed, day_amount = _snapshot(progress, goal.id, day=_user_today(user))
+    return _to_public(goal, locale=locale, completed_this_week=completed, day_amount=day_amount)
+
+
+def _user_today(user: User) -> date:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    try:
+        return datetime.now(ZoneInfo(user.timezone)).date()
+    except ZoneInfoNotFoundError:
+        return datetime.now(UTC).date()
 
 
 def _icon_meta(icon: UserGoalIcon) -> GoalIconMetaPublic:
@@ -106,9 +154,12 @@ def get_goals(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
     locale: str = Depends(get_locale),
+    progress_on: Annotated[date | None, Query()] = None,
 ) -> GoalListResponse:
     goals = list_goals(db, user_id=current_user.id)
-    return _to_list_response(db, user=current_user, goals=goals, locale=locale)
+    return _to_list_response(
+        db, user=current_user, goals=goals, locale=locale, progress_on=progress_on
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=GoalPublic)
@@ -124,6 +175,9 @@ def create_goal_endpoint(
             user_id=current_user.id,
             labels=body.labels,
             times_per_week=body.times_per_week,
+            tracking_kind=body.tracking_kind,
+            target_amount=body.target_amount,
+            unit=body.unit,
             starts_on=body.starts_on,
             ends_on=body.ends_on,
             slug=body.slug,
@@ -137,8 +191,7 @@ def create_goal_endpoint(
     except GoalError as exc:
         _handle_error(exc)
         raise
-    counts = load_goals_week_stats(db, user=current_user, goals=[goal])
-    return _to_public(goal, locale=locale, completed_this_week=counts.get(goal.id, 0))
+    return _public_with_week_stats(db, current_user, goal, locale)
 
 
 @router.get("/calendar", response_model=GoalCalendarResponse)
@@ -361,6 +414,9 @@ async def upload_goal_icon_endpoint(
         raise
 
     counts = load_goals_week_stats(db, user=current_user, goals=[goal])
+    completed, day_amount = _snapshot(
+        progress=counts, goal_id=goal.id, day=_user_today(current_user)
+    )
     return GoalIconPublic(
         id=icon.id,
         goal_id=icon.goal_id,
@@ -368,7 +424,12 @@ async def upload_goal_icon_endpoint(
         size_bytes=icon.size_bytes,
         original_name=icon.original_name,
         has_source=bool(icon.source_storage_key),
-        goal=_to_public(goal, locale=locale, completed_this_week=counts.get(goal.id, 0)),
+        goal=_to_public(
+            goal,
+            locale=locale,
+            completed_this_week=completed,
+            day_amount=day_amount,
+        ),
     )
 
 
@@ -388,6 +449,11 @@ def update_goal(
             slug=body.slug,
             labels=body.labels,
             times_per_week=body.times_per_week,
+            tracking_kind=body.tracking_kind,
+            target_amount=body.target_amount,
+            target_amount_set="target_amount" in body.model_fields_set,
+            unit=body.unit,
+            unit_set="unit" in body.model_fields_set,
             starts_on=body.starts_on,
             ends_on=body.ends_on,
             ends_on_set="ends_on" in body.model_fields_set,
@@ -401,8 +467,7 @@ def update_goal(
     except GoalError as exc:
         _handle_error(exc)
         raise
-    counts = load_goals_week_stats(db, user=current_user, goals=[goal])
-    return _to_public(goal, locale=locale, completed_this_week=counts.get(goal.id, 0))
+    return _public_with_week_stats(db, current_user, goal, locale)
 
 
 @router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)

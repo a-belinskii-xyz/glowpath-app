@@ -112,6 +112,7 @@ def create_entry_for_telegram_user(
         tag_ids=tag_ids,
         goal_ids=goal_ids,
         source=source,
+        fill_quantity_from_target=True,
     )
 
 

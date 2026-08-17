@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
+from app.core.goal_tracking import MAX_GOAL_AMOUNT, MAX_GOAL_UNIT_LENGTH, GoalTrackingKind
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
 from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
 from app.core.mood_scale import MoodScoreIconType, is_valid_hex_color
@@ -67,12 +68,20 @@ def create_goal(
     color: str | None = None,
     icon_type: str | None = None,
     icon: str | None = None,
+    tracking_kind: str | GoalTrackingKind = GoalTrackingKind.BINARY,
+    target_amount: int | None = None,
+    unit: str | None = None,
 ) -> Goal:
     if show_on_entry:
         _ensure_visible_slot_available(db, user_id=user_id)
     if show_in_stats:
         _ensure_stats_slot_available(db, user_id=user_id)
     _validate_goal_dates(starts_on=starts_on, ends_on=ends_on)
+    kind, resolved_target, resolved_unit = _validate_tracking(
+        tracking_kind=tracking_kind,
+        target_amount=target_amount,
+        unit=unit,
+    )
     resolved_slug = slug or _unique_goal_slug(db, user_id=user_id, base=_slugify(labels))
     resolved_order = (
         sort_order
@@ -95,6 +104,9 @@ def create_goal(
         slug=resolved_slug,
         labels=labels,
         times_per_week=times_per_week,
+        tracking_kind=kind.value,
+        target_amount=resolved_target,
+        unit=resolved_unit,
         starts_on=starts_on,
         ends_on=ends_on,
         sort_order=resolved_order,
@@ -132,6 +144,11 @@ def patch_goal(
     color: str | None = None,
     icon_type: str | None = None,
     icon: str | None = None,
+    tracking_kind: str | GoalTrackingKind | None = None,
+    target_amount: int | None = None,
+    target_amount_set: bool = False,
+    unit: str | None = None,
+    unit_set: bool = False,
 ) -> Goal:
     goal = get_goal(db, user_id=user_id, goal_id=goal_id)
     if slug is not None:
@@ -140,6 +157,18 @@ def patch_goal(
         goal.labels = labels
     if times_per_week is not None:
         goal.times_per_week = times_per_week
+    next_kind = tracking_kind if tracking_kind is not None else goal.tracking_kind
+    next_target = target_amount if target_amount_set else goal.target_amount
+    next_unit = unit if unit_set else goal.unit
+    if tracking_kind is not None or target_amount_set or unit_set:
+        kind, resolved_target, resolved_unit = _validate_tracking(
+            tracking_kind=next_kind,
+            target_amount=next_target,
+            unit=next_unit,
+        )
+        goal.tracking_kind = kind.value
+        goal.target_amount = resolved_target
+        goal.unit = resolved_unit
     if starts_on is not None:
         goal.starts_on = starts_on
     if ends_on_set:
@@ -221,7 +250,7 @@ def week_completion_counts(
     tz = _resolve_user_tz(timezone_name)
     today = reference_date if reference_date is not None else datetime.now(tz).date()
     week_start, week_end = _iso_week_bounds(today)
-    return period_completion_counts(
+    progress = period_goal_progress(
         db,
         user_id=user_id,
         timezone_name=timezone_name,
@@ -229,6 +258,7 @@ def week_completion_counts(
         period_end=week_end,
         goal_ids=goal_ids,
     )
+    return {goal_id: item.completed_days for goal_id, item in progress.items()}
 
 
 def period_completion_counts(
@@ -241,6 +271,51 @@ def period_completion_counts(
     goal_ids: list[uuid.UUID] | None = None,
 ) -> dict[uuid.UUID, int]:
     """Count distinct local days each goal was completed in ``[period_start, period_end)``."""
+    progress = period_goal_progress(
+        db,
+        user_id=user_id,
+        timezone_name=timezone_name,
+        period_start=period_start,
+        period_end=period_end,
+        goal_ids=goal_ids,
+    )
+    return {goal_id: item.completed_days for goal_id, item in progress.items()}
+
+
+class GoalPeriodProgress:
+    __slots__ = ("completed_days", "daily_amounts", "tracking_kind", "target_amount")
+
+    def __init__(
+        self,
+        *,
+        completed_days: int,
+        daily_amounts: dict[date, int],
+        tracking_kind: str,
+        target_amount: int | None,
+    ) -> None:
+        self.completed_days = completed_days
+        self.daily_amounts = daily_amounts
+        self.tracking_kind = tracking_kind
+        self.target_amount = target_amount
+
+    @property
+    def amount_in_period(self) -> int:
+        return sum(self.daily_amounts.values())
+
+    def amount_on(self, day: date) -> int:
+        return self.daily_amounts.get(day, 0)
+
+
+def period_goal_progress(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    timezone_name: str,
+    period_start: date,
+    period_end: date,
+    goal_ids: list[uuid.UUID] | None = None,
+) -> dict[uuid.UUID, GoalPeriodProgress]:
+    """Per-goal daily amounts and completed-day counts in ``[period_start, period_end)``."""
     if period_end <= period_start:
         raise GoalError(
             "period_end must be after period_start", code=ErrorCode.PERIOD_END_BEFORE_START
@@ -257,8 +332,15 @@ def period_completion_counts(
     ).astimezone(UTC)
 
     stmt = (
-        select(MoodEntryGoal.goal_id, MoodEntry.recorded_at)
+        select(
+            MoodEntryGoal.goal_id,
+            MoodEntry.recorded_at,
+            MoodEntryGoal.amount,
+            Goal.tracking_kind,
+            Goal.target_amount,
+        )
         .join(MoodEntry, MoodEntry.id == MoodEntryGoal.mood_entry_id)
+        .join(Goal, Goal.id == MoodEntryGoal.goal_id)
         .where(
             MoodEntry.user_id == user_id,
             MoodEntry.recorded_at >= range_start_utc,
@@ -268,14 +350,35 @@ def period_completion_counts(
     if goal_ids is not None:
         stmt = stmt.where(MoodEntryGoal.goal_id.in_(goal_ids))
 
-    days_by_goal: dict[uuid.UUID, set[date]] = defaultdict(set)
-    for goal_id, recorded_at in db.execute(stmt).all():
+    daily: dict[uuid.UUID, dict[date, int]] = defaultdict(lambda: defaultdict(int))
+    meta: dict[uuid.UUID, tuple[str, int | None]] = {}
+    for goal_id, recorded_at, amount, tracking_kind, target_amount in db.execute(stmt).all():
         local_day = recorded_at.astimezone(tz).date()
-        if period_start <= local_day < period_end:
-            days_by_goal[goal_id].add(local_day)
+        if not (period_start <= local_day < period_end):
+            continue
+        meta[goal_id] = (tracking_kind, target_amount)
+        if tracking_kind == GoalTrackingKind.QUANTITY:
+            daily[goal_id][local_day] += int(amount or 0)
+        else:
+            daily[goal_id][local_day] = 1
 
-    ids = goal_ids if goal_ids is not None else list(days_by_goal)
-    return {goal_id: len(days_by_goal.get(goal_id, set())) for goal_id in ids}
+    ids = goal_ids if goal_ids is not None else list({*daily, *meta})
+    result: dict[uuid.UUID, GoalPeriodProgress] = {}
+    for goal_id in ids:
+        kind, target = meta.get(goal_id, (GoalTrackingKind.BINARY.value, None))
+        amounts = dict(daily.get(goal_id, {}))
+        if kind == GoalTrackingKind.QUANTITY:
+            threshold = int(target or 0)
+            completed = sum(1 for value in amounts.values() if value >= threshold)
+        else:
+            completed = len(amounts)
+        result[goal_id] = GoalPeriodProgress(
+            completed_days=completed,
+            daily_amounts=amounts,
+            tracking_kind=kind,
+            target_amount=target,
+        )
+    return result
 
 
 def period_target(*, times_per_week: int, period_days: int) -> int:
@@ -295,6 +398,7 @@ def serialize_goal(
     *,
     locale: str,
     completed_this_week: int = 0,
+    day_amount: int = 0,
 ) -> dict[str, Any]:
     return {
         "id": goal.id,
@@ -302,6 +406,9 @@ def serialize_goal(
         "label": resolve_label(goal.labels, locale),
         "labels": goal.labels,
         "times_per_week": goal.times_per_week,
+        "tracking_kind": goal.tracking_kind,
+        "target_amount": goal.target_amount,
+        "unit": goal.unit,
         "starts_on": goal.starts_on,
         "ends_on": goal.ends_on,
         "sort_order": goal.sort_order,
@@ -311,6 +418,7 @@ def serialize_goal(
         "icon_type": goal.icon_type,
         "icon": goal.icon,
         "completed_this_week": completed_this_week,
+        "day_amount": day_amount,
     }
 
 
@@ -346,7 +454,7 @@ def get_goal_stats(
         for goal in goals
         if goal.starts_on < period_end and (goal.ends_on is None or goal.ends_on >= period_start)
     ]
-    counts = period_completion_counts(
+    progress = period_goal_progress(
         db,
         user_id=user_id,
         timezone_name=timezone_name,
@@ -361,6 +469,9 @@ def get_goal_stats(
             "label": resolve_label(goal.labels, locale),
             "labels": goal.labels,
             "times_per_week": goal.times_per_week,
+            "tracking_kind": goal.tracking_kind,
+            "target_amount": goal.target_amount,
+            "unit": goal.unit,
             "starts_on": goal.starts_on,
             "ends_on": goal.ends_on,
             "sort_order": goal.sort_order,
@@ -369,11 +480,12 @@ def get_goal_stats(
             "color": goal.color,
             "icon_type": goal.icon_type,
             "icon": goal.icon,
-            "completed_in_period": counts.get(goal.id, 0),
+            "completed_in_period": progress[goal.id].completed_days,
             "period_target": period_target(
                 times_per_week=goal.times_per_week,
                 period_days=period_days,
             ),
+            "amount_in_period": progress[goal.id].amount_in_period,
         }
         for goal in overlapping
     ]
@@ -462,10 +574,17 @@ def serialize_goals(
     *,
     locale: str,
     completed_by_goal: dict[uuid.UUID, int] | None = None,
+    day_amount_by_goal: dict[uuid.UUID, int] | None = None,
 ) -> list[dict[str, Any]]:
     counts = completed_by_goal or {}
+    day_amounts = day_amount_by_goal or {}
     return [
-        serialize_goal(goal, locale=locale, completed_this_week=counts.get(goal.id, 0))
+        serialize_goal(
+            goal,
+            locale=locale,
+            completed_this_week=counts.get(goal.id, 0),
+            day_amount=day_amounts.get(goal.id, 0),
+        )
         for goal in goals
     ]
 
@@ -475,13 +594,28 @@ def load_goals_week_stats(
     *,
     user: User,
     goals: list[Goal],
-) -> dict[uuid.UUID, int]:
-    return week_completion_counts(
+    reference_date: date | None = None,
+) -> dict[uuid.UUID, GoalPeriodProgress]:
+    tz = _resolve_user_tz(user.timezone)
+    today = reference_date if reference_date is not None else datetime.now(tz).date()
+    week_start, week_end = _iso_week_bounds(today)
+    progress = period_goal_progress(
         db,
         user_id=user.id,
         timezone_name=user.timezone,
+        period_start=week_start,
+        period_end=week_end,
         goal_ids=[goal.id for goal in goals],
     )
+    for goal in goals:
+        if goal.id not in progress:
+            progress[goal.id] = GoalPeriodProgress(
+                completed_days=0,
+                daily_amounts={},
+                tracking_kind=goal.tracking_kind,
+                target_amount=goal.target_amount,
+            )
+    return progress
 
 
 def _resolve_user_tz(timezone_name: str) -> ZoneInfo:
@@ -603,6 +737,48 @@ def _validate_goal_dates(*, starts_on: date, ends_on: date | None) -> None:
         raise GoalError(
             "ends_on must be on or after starts_on", code=ErrorCode.ENDS_ON_BEFORE_STARTS_ON
         )
+
+
+def _validate_tracking(
+    *,
+    tracking_kind: str | GoalTrackingKind,
+    target_amount: int | None,
+    unit: str | None,
+) -> tuple[GoalTrackingKind, int | None, str | None]:
+    try:
+        kind = GoalTrackingKind(tracking_kind)
+    except ValueError as exc:
+        raise GoalError(
+            f"Unknown tracking kind: {tracking_kind!r}",
+            code=ErrorCode.INVALID_GOAL_TRACKING_KIND,
+            params={"tracking_kind": str(tracking_kind)},
+        ) from exc
+
+    resolved_unit = unit.strip() if isinstance(unit, str) else unit
+    if resolved_unit == "":
+        resolved_unit = None
+    if resolved_unit is not None and len(resolved_unit) > MAX_GOAL_UNIT_LENGTH:
+        raise GoalError(
+            f"Unit must be at most {MAX_GOAL_UNIT_LENGTH} characters",
+            code=ErrorCode.INVALID_GOAL_UNIT,
+            params={"max": str(MAX_GOAL_UNIT_LENGTH)},
+        )
+
+    if kind is GoalTrackingKind.BINARY:
+        return kind, None, None
+
+    if target_amount is None:
+        raise GoalError(
+            "Quantity goals need a daily target amount",
+            code=ErrorCode.GOAL_TARGET_AMOUNT_REQUIRED,
+        )
+    if target_amount < 1 or target_amount > MAX_GOAL_AMOUNT:
+        raise GoalError(
+            f"Target amount must be between 1 and {MAX_GOAL_AMOUNT}",
+            code=ErrorCode.INVALID_GOAL_AMOUNT,
+            params={"max": str(MAX_GOAL_AMOUNT)},
+        )
+    return kind, target_amount, resolved_unit
 
 
 def _count_visible_goals(db: Session, *, user_id: uuid.UUID) -> int:

@@ -39,7 +39,12 @@ function CompactChips({
               className="entry-goal-icon"
             />
           )}
-          <span className="entry-tag-compact-label">{item.label}</span>
+          <span className="entry-tag-compact-label">
+            {item.label}
+            {kind === 'goal' && 'amount' in item && item.amount != null
+              ? ` · ${item.amount}${item.unit ? ` ${item.unit}` : ''}`
+              : ''}
+          </span>
         </span>
       ))}
     </>

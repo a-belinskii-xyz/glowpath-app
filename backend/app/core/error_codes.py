@@ -57,6 +57,11 @@ class ErrorCode(StrEnum):
     GOAL_NOT_AVAILABLE_BEFORE = "goal_not_available_before"
     GOAL_NOT_AVAILABLE_ON_DATE = "goal_not_available_on_date"
     GOAL_NOT_AVAILABLE_AFTER = "goal_not_available_after"
+    INVALID_GOAL_TRACKING_KIND = "invalid_goal_tracking_kind"
+    GOAL_TARGET_AMOUNT_REQUIRED = "goal_target_amount_required"
+    GOAL_AMOUNT_REQUIRED = "goal_amount_required"
+    INVALID_GOAL_AMOUNT = "invalid_goal_amount"
+    INVALID_GOAL_UNIT = "invalid_goal_unit"
     PERIOD_END_BEFORE_START = "period_end_before_start"
     ENDS_ON_BEFORE_STARTS_ON = "ends_on_before_starts_on"
 

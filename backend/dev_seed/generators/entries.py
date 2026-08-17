@@ -192,7 +192,15 @@ def create_entries_for_user(
                 goals_by_id = {goal.id: goal for goal in active_goals}
                 for goal_id in completed_goal_ids:
                     goal = goals_by_id[goal_id]
-                    entry.goal_links.append(MoodEntryGoal(goal_id=goal_id, color=goal.color))
+                    entry.goal_links.append(
+                        MoodEntryGoal(
+                            goal_id=goal_id,
+                            color=goal.color,
+                            amount=goal.target_amount
+                            if goal.tracking_kind == "quantity"
+                            else None,
+                        )
+                    )
 
             if rng.chance(style.photo_chance):
                 n_photos = rng.randint(1, MAX_PHOTOS_PER_ENTRY)

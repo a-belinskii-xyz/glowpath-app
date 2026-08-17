@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 
 class MoodEntryGoal(Base):
     __tablename__ = table_name("mood_entry_goals")
+    __table_args__ = (
+        CheckConstraint("amount IS NULL OR amount >= 1", name="mood_entry_goal_amount_positive"),
+    )
 
     mood_entry_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -27,6 +30,7 @@ class MoodEntryGoal(Base):
         primary_key=True,
     )
     color: Mapped[str] = mapped_column(String(7))
+    amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     mood_entry: Mapped["MoodEntry"] = relationship(back_populates="goal_links")
     goal: Mapped["Goal"] = relationship(back_populates="entry_links")

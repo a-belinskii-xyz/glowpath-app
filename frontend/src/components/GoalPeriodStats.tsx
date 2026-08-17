@@ -232,6 +232,13 @@ export function GoalPeriodStats({
                   </span>
                   <span className="goal-week-stats-progress-text">
                     {t('goalsPage.weekProgress', { done, target })}
+                    {item.tracking_kind === 'quantity' && item.target_amount
+                      ? ` · ${t('goalWeekStats.amountProgress', {
+                          done: item.amount_in_period,
+                          target: item.target_amount * item.period_target,
+                          unit: item.unit ?? '',
+                        })}`
+                      : ''}
                   </span>
                 </div>
                 <div

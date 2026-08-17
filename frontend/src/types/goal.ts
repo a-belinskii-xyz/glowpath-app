@@ -1,11 +1,16 @@
 import type { MoodScoreIconType } from './moodPreferences'
 
+export type GoalTrackingKind = 'binary' | 'quantity'
+
 export type GoalPublic = {
   id: string
   slug: string
   label: string
   labels: Record<string, string>
   times_per_week: number
+  tracking_kind: GoalTrackingKind
+  target_amount: number | null
+  unit: string | null
   starts_on: string
   ends_on: string | null
   sort_order: number
@@ -15,6 +20,7 @@ export type GoalPublic = {
   icon_type: MoodScoreIconType
   icon: string
   completed_this_week: number
+  day_amount: number
 }
 
 export type GoalListResponse = {
@@ -26,6 +32,9 @@ export type GoalListResponse = {
 export type GoalWrite = {
   labels: Record<string, string>
   times_per_week: number
+  tracking_kind?: GoalTrackingKind
+  target_amount?: number | null
+  unit?: string | null
   starts_on: string
   ends_on?: string | null
   slug?: string
@@ -41,6 +50,9 @@ export type GoalPatch = {
   slug?: string
   labels?: Record<string, string>
   times_per_week?: number
+  tracking_kind?: GoalTrackingKind
+  target_amount?: number | null
+  unit?: string | null
   starts_on?: string
   ends_on?: string | null
   sort_order?: number
@@ -75,6 +87,9 @@ export type GoalPeriodStatPublic = {
   label: string
   labels: Record<string, string>
   times_per_week: number
+  tracking_kind: GoalTrackingKind
+  target_amount: number | null
+  unit: string | null
   starts_on: string
   ends_on: string | null
   sort_order: number
@@ -85,6 +100,7 @@ export type GoalPeriodStatPublic = {
   icon: string
   completed_in_period: number
   period_target: number
+  amount_in_period: number
 }
 
 export type GoalStatsResponse = {
