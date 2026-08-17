@@ -27,6 +27,7 @@ export const chrome = {
   action: {
     primary: '#2563eb',
     primaryHover: '#1d4ed8',
+    quiet: '#5c5878',
     danger: '#dc2626',
     success: '#047857',
     warning: '#b45309',
@@ -63,6 +64,7 @@ export const chromeCssVars = {
   borderStrong: '--chrome-border-strong',
   actionPrimary: '--chrome-action-primary',
   actionPrimaryHover: '--chrome-action-primary-hover',
+  actionQuiet: '--chrome-action-quiet',
   actionDanger: '--chrome-action-danger',
   actionSuccess: '--chrome-action-success',
   actionWarning: '--chrome-action-warning',

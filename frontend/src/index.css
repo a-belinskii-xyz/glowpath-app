@@ -13,6 +13,7 @@
   --chrome-border-strong: #d1d5db;
   --chrome-action-primary: #2563eb;
   --chrome-action-primary-hover: #1d4ed8;
+  --chrome-action-quiet: #5c5878;
   --chrome-action-danger: #dc2626;
   --chrome-action-success: #047857;
   --chrome-action-warning: #b45309;
@@ -532,16 +533,13 @@ input {
   align-items: center;
   justify-content: center;
   padding: 0.65rem 1rem;
-  /* Transparent border keeps primary/secondary the same box height */
-  border: 1px solid transparent;
+  border: 1px solid var(--chrome-border-strong);
   border-radius: var(--chrome-radius-control);
-  background: var(--chrome-action-primary);
-  color: var(--chrome-text-inverse);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-primary);
   cursor: pointer;
   text-decoration: none;
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--chrome-action-primary) 32%, transparent),
-    0 0 0.4rem color-mix(in oklab, var(--chrome-action-primary) 42%, transparent);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
   transition:
     background-color var(--motion-hover-duration) var(--motion-hover-easing),
     box-shadow var(--motion-hover-duration) var(--motion-hover-easing),
@@ -552,12 +550,12 @@ input {
 }
 
 .button:hover:not(:disabled) {
-  background: var(--chrome-action-primary-hover);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
+  color: var(--chrome-text-primary);
   text-decoration: none;
-  transform: translateY(-1px);
-  box-shadow:
-    0 2px 6px color-mix(in oklab, var(--chrome-action-primary) 36%, transparent),
-    0 0 0.7rem color-mix(in oklab, var(--chrome-action-primary) 52%, transparent);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+  transform: none;
 }
 
 .button:disabled {
@@ -568,18 +566,18 @@ input {
 }
 
 .button.is-saved {
-  background: #15803d;
-  box-shadow:
-    0 1px 2px color-mix(in oklab, #15803d 32%, transparent),
-    0 0 0.45rem color-mix(in oklab, #15803d 40%, transparent);
+  background: color-mix(in oklab, var(--chrome-action-success) 6%, white);
+  color: var(--chrome-action-success);
+  border-color: color-mix(in oklab, var(--chrome-action-success) 28%, white);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
   animation: button-saved-pulse 0.45s var(--motion-hover-easing);
 }
 
 .button.is-saved:hover:not(:disabled) {
-  background: #166534;
-  box-shadow:
-    0 2px 6px color-mix(in oklab, #15803d 36%, transparent),
-    0 0 0.7rem color-mix(in oklab, #15803d 48%, transparent);
+  background: color-mix(in oklab, var(--chrome-action-success) 9%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-success) 38%, white);
+  color: var(--chrome-action-success);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
 
 @keyframes button-saved-pulse {
@@ -598,23 +596,21 @@ input {
   background: var(--chrome-surface);
   color: var(--chrome-text-primary);
   border-color: var(--chrome-border-strong);
-  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
 }
 
 .button-secondary:hover:not(:disabled) {
-  background: #f9fafb;
-  box-shadow:
-    0 1px 3px rgb(15 23 42 / 8%),
-    0 0 0.35rem color-mix(in oklab, var(--chrome-action-primary) 18%, transparent);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
+  color: var(--chrome-text-primary);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
 
 .button-secondary.is-active {
-  background: color-mix(in oklab, var(--chrome-action-primary) 10%, white);
-  border-color: color-mix(in oklab, var(--chrome-action-primary) 45%, white);
-  color: var(--chrome-action-primary-hover);
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--chrome-action-primary) 18%, transparent),
-    0 0 0.4rem color-mix(in oklab, var(--chrome-action-primary) 28%, transparent);
+  background: var(--chrome-surface);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
+  color: var(--chrome-text-primary);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
 }
 
 .button-block {
@@ -913,6 +909,8 @@ code {
 
 .button-danger {
   background: var(--chrome-action-danger);
+  color: var(--chrome-text-inverse);
+  border-color: transparent;
   box-shadow:
     0 1px 2px color-mix(in oklab, var(--chrome-action-danger) 30%, transparent),
     0 0 0.4rem color-mix(in oklab, var(--chrome-action-danger) 40%, transparent);
@@ -920,23 +918,25 @@ code {
 
 .button-danger:hover:not(:disabled) {
   background: #b91c1c;
+  color: var(--chrome-text-inverse);
+  border-color: transparent;
   box-shadow:
     0 2px 6px color-mix(in oklab, var(--chrome-action-danger) 34%, transparent),
     0 0 0.7rem color-mix(in oklab, var(--chrome-action-danger) 50%, transparent);
 }
 
 .button-danger-ghost {
-  background: transparent;
+  background: var(--chrome-surface);
   color: var(--chrome-action-danger);
-  border: 1px solid color-mix(in oklab, var(--chrome-action-danger) 35%, white);
-  box-shadow: none;
+  border: 1px solid color-mix(in oklab, var(--chrome-action-danger) 22%, white);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
 }
 
 .button-danger-ghost:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--chrome-action-danger) 8%, white);
-  border-color: color-mix(in oklab, var(--chrome-action-danger) 55%, white);
+  background: color-mix(in oklab, var(--chrome-action-danger) 6%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-danger) 38%, white);
   color: var(--chrome-action-danger);
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
   transform: none;
 }
 
@@ -1208,9 +1208,9 @@ code {
 
 .month-calendar-day-link:hover .month-calendar-add,
 .month-calendar-day-link:focus-visible .month-calendar-add {
-  border-color: var(--chrome-action-primary);
-  color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
+  color: var(--chrome-text-primary);
+  background: var(--chrome-surface);
 }
 
 .emotion-stats {
@@ -1931,13 +1931,10 @@ code {
 }
 
 .entry-icon-button:hover:not(:disabled) {
-  background: #f9fafb;
+  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
   color: #111827;
-  border-color: var(--chrome-border-strong);
-  box-shadow:
-    0 1px 3px rgb(15 23 42 / 8%),
-    0 0 0.35rem color-mix(in oklab, var(--chrome-action-primary) 16%, transparent);
-  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
 
 .entry-icon-button.is-favorite {
@@ -3104,9 +3101,9 @@ code {
 .emoji-picker-more.is-open,
 .emoji-picker-more:hover:not(:disabled) {
   border-style: solid;
-  border-color: var(--chrome-action-primary);
-  color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
+  color: var(--chrome-text-primary);
+  background: var(--chrome-surface);
 }
 
 .emoji-picker-more:disabled {
@@ -3705,9 +3702,9 @@ code {
 }
 
 .markdown-toolbar-btn-active {
-  border-color: var(--chrome-focus-ring);
-  background: #eff6ff;
-  color: var(--chrome-action-primary-hover);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
+  background: color-mix(in oklab, var(--chrome-surface-inset) 35%, white);
+  color: var(--chrome-text-primary);
 }
 
 .markdown-wysiwyg {
@@ -4689,12 +4686,9 @@ code {
 }
 
 .icon-button-add:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 3px rgb(15 23 42 / 8%),
-    0 0 0.4rem color-mix(in oklab, var(--chrome-action-primary) 22%, transparent);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
 
 .mood-entry-form {
@@ -5250,8 +5244,8 @@ code {
 }
 
 .entry-sheet-item:hover {
-  border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 6%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
+  background: color-mix(in oklab, var(--chrome-surface-inset) 28%, white);
 }
 
 .entry-sheet-manage {
@@ -5436,9 +5430,9 @@ code {
 }
 
 .icon-button:hover:not(:disabled) {
-  background: #f9fafb;
+  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
   color: #111827;
-  border-color: var(--chrome-border-strong);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
 }
 
 .icon-button:focus-visible {
@@ -6021,12 +6015,13 @@ code {
 }
 
 .onboarding-suggestion-card:hover:not(:disabled) {
-  border-color: color-mix(in oklab, var(--chrome-action-primary) 45%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
+  background: color-mix(in oklab, var(--chrome-surface-inset) 28%, white);
 }
 
 .onboarding-suggestion-card.is-active {
-  border-color: color-mix(in oklab, var(--chrome-action-primary) 55%, white);
-  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-quiet) 28%, var(--chrome-border-strong));
+  background: var(--chrome-surface);
 }
 
 .onboarding-suggestion-title {

@@ -773,7 +773,10 @@ export function MoodEntryForm({
             {isLoadingGoals ? (
               <p className="muted">{t('common.loadingGoals')}</p>
             ) : activeGoals.length === 0 ? (
-              <p className="muted">{t('entries.noGoalsForDate')}</p>
+              <p className="muted">
+                {t('entries.noGoalsForDate')}{' '}
+                <Link to="/goals">{t('entries.addGoal')}</Link>
+              </p>
             ) : (
               <>
                 <div className="tag-chips">{primaryGoals.map(renderGoalChip)}</div>
