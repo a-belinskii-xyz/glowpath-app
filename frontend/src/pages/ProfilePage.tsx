@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
+import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
@@ -109,6 +110,12 @@ export function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <section className="profile-section" aria-labelledby="profile-appearance-heading">
+        <h2 id="profile-appearance-heading">{t('profile.appearanceTitle')}</h2>
+        <p className="profile-section-lead">{t('profile.appearanceLead')}</p>
+        <HistoricalColorsSetting />
+      </section>
 
       <section className="profile-section" aria-labelledby="profile-telegram-heading">
         <h2 id="profile-telegram-heading">{t('profile.telegramTitle')}</h2>

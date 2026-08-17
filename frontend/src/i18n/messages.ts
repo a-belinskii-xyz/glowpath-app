@@ -361,6 +361,11 @@ export const en = {
     emailUnverifiedShort: 'Not verified',
     timezoneHint:
       'Used for calendars, charts, goals, and reminder times. Past entries keep the same moment; the local day may shift near midnight.',
+    appearanceTitle: 'Appearance',
+    appearanceLead: 'Choose whether past entries keep the colors they had when you logged them.',
+    keepHistoricalColors: 'Keep colors from when you logged',
+    keepHistoricalColorsHint:
+      'Past entries keep the mood, tag, and goal colors they had at the time. Turn off to always show your current palette.',
     notificationsTitle: 'Notifications',
     notificationsLead:
       'Choose how and when GlowPath reminds you. Times use your profile timezone.',
@@ -402,9 +407,6 @@ export const en = {
   moodPreferences: {
     lead: 'Emoji and uploads save immediately. Names and colors are saved with the button below. Up to 3 uploaded images per mood (512 KB each).',
     listLead: 'Choose a mood level to edit its name, color, and icon.',
-    keepHistoricalColors: 'Keep colors from when you logged',
-    keepHistoricalColorsHint:
-      'Past entries keep the mood, tag, and goal colors they had at the time. Turn off to always show your current palette.',
     editScore: 'Edit mood “{label}”',
     save: 'Save mood appearance',
     saveDone: 'Saved',
@@ -1052,6 +1054,12 @@ export const ru: DeepStringLeaves<typeof en> = {
     emailUnverifiedShort: 'Не подтверждён',
     timezoneHint:
       'Используется для календаря, графиков, целей и напоминаний. Прошлые записи сохраняют тот же момент; локальный день у полуночи может сдвинуться.',
+    appearanceTitle: 'Оформление',
+    appearanceLead:
+      'Выберите, оставлять ли у прошлых записей цвета, которые были в момент создания.',
+    keepHistoricalColors: 'Сохранять цвета на момент записи',
+    keepHistoricalColorsHint:
+      'Прошлые записи остаются в тех цветах настроения, тегов и целей, что были тогда. Выключите, чтобы везде показывать текущую палитру.',
     notificationsTitle: 'Уведомления',
     notificationsLead:
       'Выберите, как и когда GlowPath напоминает вам. Время — в часовом поясе профиля.',
@@ -1093,9 +1101,6 @@ export const ru: DeepStringLeaves<typeof en> = {
   moodPreferences: {
     lead: 'Эмодзи и загрузки сохраняются сразу. Названия и цвета — кнопкой ниже. До 3 загруженных изображений на настроение (до 512 КБ каждое).',
     listLead: 'Выберите уровень настроения, чтобы изменить название, цвет и иконку.',
-    keepHistoricalColors: 'Сохранять цвета на момент записи',
-    keepHistoricalColorsHint:
-      'Прошлые записи остаются в тех цветах настроения, тегов и целей, что были тогда. Выключите, чтобы везде показывать текущую палитру.',
     editScore: 'Изменить настроение «{label}»',
     save: 'Сохранить оформление',
     saveDone: 'Сохранено',
