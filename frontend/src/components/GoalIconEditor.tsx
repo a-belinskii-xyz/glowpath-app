@@ -28,6 +28,11 @@ import {
 import { revokeGoalIconObjectUrl } from '../lib/goalIconBlobUrl'
 import type { GoalIconMeta, GoalPublic, GoalStyle } from '../types/goal'
 
+export type PendingIconUpload = {
+  cropped: File
+  source: File
+}
+
 type PendingCrop = {
   image: HTMLImageElement
   objectUrl: string
@@ -50,11 +55,23 @@ type GoalIconEditorProps = {
   /** When set, upload management is available (edit mode). */
   goal?: GoalPublic
   onGoalChange?: (goal: GoalPublic) => void
+  /**
+   * Create mode: cropped + source files staged until the goal is saved.
+   * Parent uploads them after createGoal succeeds.
+   */
+  pendingUpload?: PendingIconUpload | null
+  onPendingUploadChange?: (upload: PendingIconUpload | null) => void
   disabled?: boolean
 }
 
-function resolveIconSourceUi(goal: GoalPublic | undefined): IconSourceUi {
-  return goal?.icon_type === 'upload' ? 'upload' : 'emoji'
+function resolveIconSourceUi(
+  goal: GoalPublic | undefined,
+  pendingUpload: PendingIconUpload | null | undefined,
+): IconSourceUi {
+  if (goal?.icon_type === 'upload' || pendingUpload) {
+    return 'upload'
+  }
+  return 'emoji'
 }
 
 export function GoalIconEditor({
@@ -64,26 +81,30 @@ export function GoalIconEditor({
   onEmojiChange,
   goal,
   onGoalChange,
+  pendingUpload = null,
+  onPendingUploadChange,
   disabled = false,
 }: GoalIconEditorProps) {
   const { t } = useLocale()
   const [uploadedIcons, setUploadedIcons] = useState<GoalIconMeta[]>([])
   const [maxUploads, setMaxUploads] = useState(MAX_UPLOADS_PER_GOAL)
   const [iconBusy, setIconBusy] = useState(false)
-  const [sourceUi, setSourceUi] = useState<IconSourceUi>(() => resolveIconSourceUi(goal))
+  const [sourceUi, setSourceUi] = useState<IconSourceUi>(() =>
+    resolveIconSourceUi(goal, pendingUpload),
+  )
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null)
   const [pendingRemoveIconId, setPendingRemoveIconId] = useState<string | null>(null)
   const [isCropSaving, setIsCropSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null)
 
   const uploadFull = uploadedIcons.length >= maxUploads
+  const isCreateUpload = !goal && Boolean(onPendingUploadChange)
   const previewStyle: GoalStyle = {
     color,
     icon_type: sourceUi === 'upload' && goal?.icon_type === 'upload' ? 'upload' : 'emoji',
     icon:
-      sourceUi === 'upload' && goal?.icon_type === 'upload'
-        ? goal.icon
-        : emoji || '🎯',
+      sourceUi === 'upload' && goal?.icon_type === 'upload' ? goal.icon : emoji || '🎯',
   }
 
   const cropValidationMessage = (reason: CropValidationError): string => {
@@ -115,8 +136,20 @@ export function GoalIconEditor({
   }, [pendingCrop])
 
   useEffect(() => {
-    setSourceUi(resolveIconSourceUi(goal))
-  }, [goal?.id, goal?.icon_type])
+    if (!pendingUpload) {
+      setPendingPreviewUrl(null)
+      return
+    }
+    const objectUrl = URL.createObjectURL(pendingUpload.cropped)
+    setPendingPreviewUrl(objectUrl)
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [pendingUpload])
+
+  useEffect(() => {
+    setSourceUi(resolveIconSourceUi(goal, pendingUpload))
+  }, [goal?.id, goal?.icon_type, pendingUpload])
 
   useEffect(() => {
     if (!goal) {
@@ -162,6 +195,7 @@ export function GoalIconEditor({
   const handleSourceChange = async (next: IconSourceUi) => {
     if (next === 'emoji') {
       setSourceUi('emoji')
+      onPendingUploadChange?.(null)
       if (goal && onGoalChange && goal.icon_type !== 'emoji') {
         setIconBusy(true)
         setError(null)
@@ -179,6 +213,10 @@ export function GoalIconEditor({
       }
       return
     }
+    if (!goal) {
+      setSourceUi('upload')
+      return
+    }
     if (uploadedIcons.length === 0) {
       setSourceUi('upload')
       return
@@ -188,13 +226,14 @@ export function GoalIconEditor({
 
   const handleEmojiSelect = (next: string) => {
     onEmojiChange(next)
+    onPendingUploadChange?.(null)
     setSourceUi('emoji')
   }
 
   const handleUploadSelectFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file || !goal) {
+    if (!file) {
       return
     }
     setError(null)
@@ -237,8 +276,46 @@ export function GoalIconEditor({
     }
   }
 
+  const handleRecropPendingUpload = async () => {
+    if (!pendingUpload) {
+      return
+    }
+    setError(null)
+    const loaded = await readMoodIconBlobForCrop(pendingUpload.source)
+    if ('error' in loaded) {
+      setError(cropValidationMessage(loaded.error))
+      return
+    }
+    setPendingCrop({
+      image: loaded.image,
+      objectUrl: loaded.objectUrl,
+      fileName: pendingUpload.source.name || 'icon.png',
+      sourceFile: pendingUpload.source,
+    })
+  }
+
   const handleCropSave = async (croppedFile: File) => {
-    if (!pendingCrop || !goal || !onGoalChange) {
+    if (!pendingCrop) {
+      return
+    }
+
+    // Create mode: stage the file until the parent saves the goal.
+    if (!goal) {
+      if (!onPendingUploadChange) {
+        return
+      }
+      setIsCropSaving(true)
+      setError(null)
+      onPendingUploadChange({
+        cropped: croppedFile,
+        source: pendingCrop.sourceFile,
+      })
+      setSourceUi('upload')
+      closeCropEditor()
+      return
+    }
+
+    if (!onGoalChange) {
       return
     }
     setIsCropSaving(true)
@@ -358,7 +435,13 @@ export function GoalIconEditor({
           aria-hidden
         />
         <span className="mood-preferences-icon-slot" style={{ filter: moodGlowFilter(color) }}>
-          <GoalIcon style={previewStyle} className="mood-preferences-emoji" />
+          {sourceUi === 'upload' && pendingPreviewUrl ? (
+            <span className="mood-preferences-emoji mood-score-icon-upload" aria-hidden>
+              <img src={pendingPreviewUrl} alt="" />
+            </span>
+          ) : (
+            <GoalIcon style={previewStyle} className="mood-preferences-emoji" />
+          )}
         </span>
       </div>
 
@@ -390,8 +473,6 @@ export function GoalIconEditor({
             type="button"
             className={`segmented-control-option${sourceUi === 'upload' ? ' is-active' : ''}`}
             aria-pressed={sourceUi === 'upload'}
-            disabled={!goal}
-            title={!goal ? t('goalsPage.uploadAfterCreate') : undefined}
             onClick={() => void handleSourceChange('upload')}
           >
             {t('moodPreferences.iconTypeUpload')}
@@ -502,6 +583,94 @@ export function GoalIconEditor({
                     : t('goalsPage.uploadCount', {
                         remaining: String(maxUploads - uploadedIcons.length),
                         max: String(maxUploads),
+                      })}
+                </p>
+              </div>
+            </div>
+          ) : isCreateUpload ? (
+            <div className="mood-preferences-upload-section">
+              <div className="mood-preferences-upload-row">
+                <div className="mood-preferences-upload-grid" role="list">
+                  {pendingUpload && pendingPreviewUrl ? (
+                    <div className="mood-preferences-upload-item" role="listitem">
+                      <button
+                        type="button"
+                        className="mood-preferences-upload-tile mood-preferences-upload-tile-selected"
+                        aria-pressed
+                        aria-label={pendingUpload.cropped.name || t('goalsPage.uploadPendingHint')}
+                        disabled={busy}
+                      >
+                        <span style={{ filter: moodGlowFilter(color) }}>
+                          <span className="mood-preferences-upload-thumb mood-score-icon-upload">
+                            <img src={pendingPreviewUrl} alt="" />
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="mood-preferences-upload-action mood-preferences-upload-edit"
+                        aria-label={t('moodPreferences.editIcon')}
+                        disabled={busy}
+                        onClick={() => void handleRecropPendingUpload()}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="14"
+                          height="14"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path
+                            fill="currentColor"
+                            d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="mood-preferences-upload-action mood-preferences-upload-remove"
+                        aria-label={t('moodPreferences.removeIcon')}
+                        disabled={busy}
+                        onClick={() => onPendingUploadChange?.(null)}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="14"
+                          height="14"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path
+                            fill="currentColor"
+                            d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mood-preferences-upload-item" role="listitem">
+                      <label
+                        className={`mood-preferences-upload-add${busy ? ' is-disabled' : ''}`}
+                        aria-label={t('goalsPage.uploadIcon')}
+                      >
+                        <span aria-hidden="true">+</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="mood-preferences-upload-input"
+                          disabled={busy}
+                          onChange={(event) => void handleUploadSelectFile(event)}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+                <p className="form-hint mood-preferences-upload-count">
+                  {pendingUpload
+                    ? t('goalsPage.uploadPendingHint')
+                    : t('goalsPage.uploadCount', {
+                        remaining: '1',
+                        max: '1',
                       })}
                 </p>
               </div>

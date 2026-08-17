@@ -7,6 +7,7 @@ import {
   listGoals,
   patchGoal,
   reorderGoals,
+  uploadGoalIcon,
 } from '../api/goals'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageErrorAlert } from '../components/PageErrorAlert'
@@ -15,7 +16,7 @@ import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { GoalIcon } from '../components/GoalIcon'
-import { GoalIconEditor } from '../components/GoalIconEditor'
+import { GoalIconEditor, type PendingIconUpload } from '../components/GoalIconEditor'
 import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -54,6 +55,7 @@ export function GoalsPage() {
   const [endsOn, setEndsOn] = useState('')
   const [draftColor, setDraftColor] = useState(DEFAULT_GOAL_STYLE.color)
   const [draftEmoji, setDraftEmoji] = useState(DEFAULT_GOAL_STYLE.icon)
+  const [pendingUpload, setPendingUpload] = useState<PendingIconUpload | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGoalId, setTogglingGoalId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -103,6 +105,7 @@ export function GoalsPage() {
       setEndsOn('')
       setDraftColor(DEFAULT_GOAL_STYLE.color)
       setDraftEmoji(DEFAULT_GOAL_STYLE.icon)
+      setPendingUpload(null)
     } else {
       setName(mode.goal.label)
       setTimesPerWeek(mode.goal.times_per_week)
@@ -110,6 +113,7 @@ export function GoalsPage() {
       setEndsOn(mode.goal.ends_on ?? '')
       setDraftColor(mode.goal.color)
       setDraftEmoji(mode.goal.icon_type === 'emoji' ? mode.goal.icon : DEFAULT_GOAL_STYLE.icon)
+      setPendingUpload(null)
     }
   }
 
@@ -118,6 +122,7 @@ export function GoalsPage() {
     setName('')
     setDraftColor(DEFAULT_GOAL_STYLE.color)
     setDraftEmoji(DEFAULT_GOAL_STYLE.icon)
+    setPendingUpload(null)
   }, [])
 
   const handleSubmit = async (event: FormEvent) => {
@@ -146,7 +151,9 @@ export function GoalsPage() {
       return
     }
     const emoji = draftEmoji.trim()
-    const usingUpload = editor.kind === 'edit' && editor.goal.icon_type === 'upload'
+    const usingUpload =
+      (editor.kind === 'edit' && editor.goal.icon_type === 'upload') ||
+      (editor.kind === 'create' && pendingUpload !== null)
     if (!usingUpload && !emoji) {
       setError(t('goalsPage.emojiRequired'))
       return
@@ -159,7 +166,7 @@ export function GoalsPage() {
     setError(null)
     try {
       if (editor.kind === 'create') {
-        await createGoal({
+        const created = await createGoal({
           labels,
           times_per_week: timesPerWeek,
           starts_on: startsOn,
@@ -168,8 +175,11 @@ export function GoalsPage() {
           show_in_stats: !atStatsLimit,
           color: draftColor,
           icon_type: 'emoji',
-          icon: emoji,
+          icon: emoji || DEFAULT_GOAL_STYLE.icon,
         })
+        if (pendingUpload) {
+          await uploadGoalIcon(created.id, pendingUpload.cropped, pendingUpload.source)
+        }
       } else {
         await patchGoal(editor.goal.id, {
           labels,
@@ -413,6 +423,10 @@ export function GoalsPage() {
             emoji={draftEmoji}
             onEmojiChange={setDraftEmoji}
             goal={editor?.kind === 'edit' ? editor.goal : undefined}
+            pendingUpload={editor?.kind === 'create' ? pendingUpload : null}
+            onPendingUploadChange={
+              editor?.kind === 'create' ? setPendingUpload : undefined
+            }
             onGoalChange={
               editor?.kind === 'edit'
                 ? (updated) => {

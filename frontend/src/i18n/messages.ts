@@ -333,6 +333,7 @@ export const en = {
     uploadLimitReached: 'You already have {max} uploaded icons for this goal.',
     uploadSlotsFull: 'No slots left — delete one to add another.',
     uploadAfterCreate: 'You can upload custom icons after saving the goal.',
+    uploadPendingHint: 'This icon will upload when you save the goal.',
   },
   templatesPage: {
     title: 'Note templates',
@@ -1026,6 +1027,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     uploadLimitReached: 'У этой цели уже {max} загруженных иконок.',
     uploadSlotsFull: 'Слоты заняты — удалите одну, чтобы добавить новую.',
     uploadAfterCreate: 'Загрузить свои иконки можно после сохранения цели.',
+    uploadPendingHint: 'Иконка загрузится при сохранении цели.',
   },
   templatesPage: {
     title: 'Шаблоны заметок',
