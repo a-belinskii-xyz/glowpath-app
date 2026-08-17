@@ -5,7 +5,7 @@ import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
 import { buildMonthCalendarCells, isFutureDate, todayKey, type CalendarCell } from '../lib/datetime'
-import { getMoodScoreStyle } from '../lib/moodScale'
+import { entryMoodStyle, getMoodScoreStyle } from '../lib/moodScale'
 import { GoalIcon } from './GoalIcon'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import type { GoalCalendarDayPublic, GoalPublic, GoalStyle } from '../types/goal'
@@ -141,7 +141,7 @@ export function MonthCalendar({
                 ) : (
                   <DayMarks overflow={markOverflow}>
                     {dayScores.slice(0, MAX_VISIBLE_MARKS).map((item, index) => {
-                      const style = getMoodScoreStyle(item.score, scoreStyles)
+                      const style = entryMoodStyle(item, scoreStyles)
                       return (
                         <span
                           key={`${cell.date}-${index}-${item.score}`}

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
-import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
+import { entryMoodColor, entryMoodStyle } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
 import { EntryActionMenu } from './EntryActionMenu'
 import { EntryAttachmentThumbs } from './EntryAttachmentThumbs'
@@ -33,7 +33,8 @@ export function EntryRow({ entry, timeLabel, onDelete, onToggleFavorite }: Entry
   const { t } = useLocale()
   const { scores } = useMoodPreferences()
   const compact = isCompactEntry(entry)
-  const moodColor = getMoodScoreColor(entry.score, scores)
+  const moodColor = entryMoodColor(entry, scores)
+  const moodStyle = entryMoodStyle(entry, scores)
 
   return (
     <article
@@ -46,7 +47,7 @@ export function EntryRow({ entry, timeLabel, onDelete, onToggleFavorite }: Entry
             <span className="entry-score-badge">
               <span style={{ filter: moodGlowFilter(moodColor) }}>
                 <MoodScoreIcon
-                  style={getMoodScoreStyle(entry.score, scores)}
+                  style={moodStyle}
                   className="entry-score-icon"
                   fallbackScore={entry.score}
                 />

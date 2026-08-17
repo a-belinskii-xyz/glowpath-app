@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +26,7 @@ class MoodEntryTag(Base):
         ForeignKey(fk_column("tags"), ondelete="RESTRICT"),
         primary_key=True,
     )
+    color: Mapped[str] = mapped_column(String(7))
 
     mood_entry: Mapped["MoodEntry"] = relationship(back_populates="tag_links")
     tag: Mapped["Tag"] = relationship(back_populates="entry_links")

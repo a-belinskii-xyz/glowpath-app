@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, TypedDict
 from urllib.parse import quote
 
 from fastapi import (
@@ -48,7 +48,11 @@ from app.services.mood_entry_service import (
     serialize_mood_entry,
     upload_attachment,
 )
-from app.services.mood_preferences_service import get_score_label_overrides
+from app.services.mood_preferences_service import (
+    ColorDisplaySettings,
+    get_color_display_settings,
+    get_score_label_overrides,
+)
 from app.services.storage import ObjectStorage, StorageError
 
 router = APIRouter(tags=["mood-entries"])
@@ -67,10 +71,28 @@ def _to_public(
     *,
     locale: str,
     label_overrides: dict[str, str] | None = None,
+    color_settings: ColorDisplaySettings | None = None,
 ) -> MoodEntryPublic:
     return MoodEntryPublic.model_validate(
-        serialize_mood_entry(entry, locale=locale, label_overrides=label_overrides)
+        serialize_mood_entry(
+            entry,
+            locale=locale,
+            label_overrides=label_overrides,
+            color_settings=color_settings,
+        )
     )
+
+
+class _EntryView(TypedDict):
+    label_overrides: dict[str, str]
+    color_settings: ColorDisplaySettings
+
+
+def _entry_view_kwargs(db: Session, user_id: uuid.UUID) -> _EntryView:
+    return {
+        "label_overrides": get_score_label_overrides(db, user_id=user_id),
+        "color_settings": get_color_display_settings(db, user_id=user_id),
+    }
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=MoodEntryPublic)
@@ -94,8 +116,7 @@ def create_entry(
     except MoodEntryError as exc:
         _handle_mood_error(exc)
         raise
-    label_overrides = get_score_label_overrides(db, user_id=current_user.id)
-    return _to_public(entry, locale=locale, label_overrides=label_overrides)
+    return _to_public(entry, locale=locale, **_entry_view_kwargs(db, current_user.id))
 
 
 @router.get("", response_model=MoodEntryListResponse)
@@ -118,11 +139,9 @@ def list_entries(
         recorded_to=recorded_to,
         is_favorite=is_favorite,
     )
-    label_overrides = get_score_label_overrides(db, user_id=current_user.id)
+    view = _entry_view_kwargs(db, current_user.id)
     return MoodEntryListResponse(
-        items=[
-            _to_public(entry, locale=locale, label_overrides=label_overrides) for entry in entries
-        ],
+        items=[_to_public(entry, locale=locale, **view) for entry in entries],
         limit=limit,
         offset=offset,
     )
@@ -190,11 +209,9 @@ def search_entries(
     except MoodEntryError as exc:
         _handle_mood_error(exc)
         raise
-    label_overrides = get_score_label_overrides(db, user_id=current_user.id)
+    view = _entry_view_kwargs(db, current_user.id)
     return MoodEntryListResponse(
-        items=[
-            _to_public(entry, locale=locale, label_overrides=label_overrides) for entry in entries
-        ],
+        items=[_to_public(entry, locale=locale, **view) for entry in entries],
         limit=limit,
         offset=0,
     )
@@ -212,8 +229,7 @@ def get_entry(
     except MoodEntryError as exc:
         _handle_mood_error(exc)
         raise
-    label_overrides = get_score_label_overrides(db, user_id=current_user.id)
-    return _to_public(entry, locale=locale, label_overrides=label_overrides)
+    return _to_public(entry, locale=locale, **_entry_view_kwargs(db, current_user.id))
 
 
 @router.patch("/{entry_id}", response_model=MoodEntryPublic)
@@ -235,8 +251,7 @@ def patch_entry(
     except MoodEntryError as exc:
         _handle_mood_error(exc)
         raise
-    label_overrides = get_score_label_overrides(db, user_id=current_user.id)
-    return _to_public(entry, locale=locale, label_overrides=label_overrides)
+    return _to_public(entry, locale=locale, **_entry_view_kwargs(db, current_user.id))
 
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)

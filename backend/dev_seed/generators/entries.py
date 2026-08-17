@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from app.core.attachment_kind import AttachmentKind
+from app.core.mood_scale import DEFAULT_MOOD_SCORE_COLORS, MoodScore
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MoodEntryAttachment
@@ -176,6 +177,7 @@ def create_entries_for_user(
                 user_id=user_id,
                 recorded_at=recorded_at,
                 score=score,
+                score_color=DEFAULT_MOOD_SCORE_COLORS[MoodScore(score)],
                 note=note,
             )
             db.add(entry)
@@ -183,12 +185,14 @@ def create_entries_for_user(
 
             tag_pick_count = rng.randint(0, min(4, len(tags_sorted)))
             for tag in rng.sample(tags_sorted, tag_pick_count):
-                entry.tag_links.append(MoodEntryTag(tag_id=tag.id))
+                entry.tag_links.append(MoodEntryTag(tag_id=tag.id, color=tag.color))
 
             # Mark day's completed goals on the first entry only (week stats count unique days).
             if entry_index == 0:
+                goals_by_id = {goal.id: goal for goal in active_goals}
                 for goal_id in completed_goal_ids:
-                    entry.goal_links.append(MoodEntryGoal(goal_id=goal_id))
+                    goal = goals_by_id[goal_id]
+                    entry.goal_links.append(MoodEntryGoal(goal_id=goal_id, color=goal.color))
 
             if rng.chance(style.photo_chance):
                 n_photos = rng.randint(1, MAX_PHOTOS_PER_ENTRY)

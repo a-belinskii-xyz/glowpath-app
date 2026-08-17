@@ -26,7 +26,10 @@ from app.schemas.telegram import (
     TelegramLinkPublic,
 )
 from app.services.mood_entry_service import MoodEntryError, serialize_mood_entry, upload_attachment
-from app.services.mood_preferences_service import get_score_label_overrides
+from app.services.mood_preferences_service import (
+    get_color_display_settings,
+    get_score_label_overrides,
+)
 from app.services.storage import ObjectStorage, StorageError
 from app.services.telegram_bot_service import (
     TelegramBotError,
@@ -202,7 +205,12 @@ def bot_create_entry(
     locale = resolve_bot_locale(user)
     label_overrides = get_score_label_overrides(db, user_id=user.id)
     return MoodEntryPublic.model_validate(
-        serialize_mood_entry(entry, locale=locale, label_overrides=label_overrides)
+        serialize_mood_entry(
+            entry,
+            locale=locale,
+            label_overrides=label_overrides,
+            color_settings=get_color_display_settings(db, user_id=user.id),
+        )
     )
 
 

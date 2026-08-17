@@ -34,7 +34,7 @@ import {
 } from '../lib/datetime'
 import { buildGradientWashFromScores, motion } from '../design'
 import { useScrollAmbientGlow } from '../hooks/useScrollAmbientGlow'
-import { getMoodScoreColor } from '../lib/moodScale'
+import { entryMoodColor } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
 
@@ -650,13 +650,13 @@ export function EntriesPage() {
           ? [
               {
                 id: 'search-results',
-                colors: entries.map((entry) => getMoodScoreColor(entry.score, scores)),
+                colors: entries.map((entry) => entryMoodColor(entry, scores)),
               },
             ]
           : []
         : groupedEntries.map(([key, dayEntries]) => ({
             id: `day-${key}`,
-            colors: dayEntries.map((entry) => getMoodScoreColor(entry.score, scores)),
+            colors: dayEntries.map((entry) => entryMoodColor(entry, scores)),
           })),
     [groupedEntries, entries, isSearchMode, scores],
   )
@@ -918,8 +918,8 @@ export function EntriesPage() {
       ) : (
       <div className="entry-feed">
         {groupedEntries.map(([key, dayEntries]) => {
-          const dayWash = buildGradientWashFromScores(dayEntries, (score) =>
-            getMoodScoreColor(score, scores),
+          const dayWash = buildGradientWashFromScores(dayEntries, (_score, entry) =>
+            entryMoodColor(entry, scores),
           )
           return (
             <section

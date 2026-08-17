@@ -83,7 +83,12 @@ def patch_mood_preferences(
 ) -> MoodPreferencesPublic:
     updates = {score: patch.model_dump(exclude_unset=True) for score, patch in body.scores.items()}
     try:
-        prefs = update_preferences(db, user_id=current_user.id, score_updates=updates)
+        prefs = update_preferences(
+            db,
+            user_id=current_user.id,
+            score_updates=updates or None,
+            use_historical_colors=body.use_historical_colors,
+        )
     except MoodPreferencesError as exc:
         _handle_preferences_error(exc)
         raise

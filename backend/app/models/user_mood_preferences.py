@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import Boolean, ForeignKey, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,5 +22,10 @@ class UserMoodPreferences(TimestampMixin, Base):
         primary_key=True,
     )
     score_styles: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    use_historical_colors: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
 
     user: Mapped["User"] = relationship(back_populates="mood_preferences")

@@ -11,7 +11,7 @@ import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { ApiError, formatApiError } from '../lib/errors'
 import { entriesListPathForInstant } from '../lib/datetime'
-import { getMoodScoreColor } from '../lib/moodScale'
+import { entryMoodColor } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
 
 export function EditEntryPage() {
@@ -27,7 +27,7 @@ export function EditEntryPage() {
   usePageAmbientGlow(
     entry
       ? [
-          getMoodScoreColor(entry.score, scores),
+          entryMoodColor(entry, scores),
           ...entry.tags.map((tag) => tag.color),
           ...entry.goals.map((goal) => goal.color),
         ]

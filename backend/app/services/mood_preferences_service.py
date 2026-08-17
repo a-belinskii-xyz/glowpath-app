@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
@@ -31,6 +32,12 @@ class MoodPreferencesError(AppError):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class ColorDisplaySettings:
+    use_historical_colors: bool
+    score_colors: dict[int, str]
+
+
 def get_or_create_preferences(db: Session, *, user_id: uuid.UUID) -> UserMoodPreferences:
     prefs = db.scalar(select(UserMoodPreferences).where(UserMoodPreferences.user_id == user_id))
     if prefs is not None:
@@ -46,11 +53,15 @@ def update_preferences(
     db: Session,
     *,
     user_id: uuid.UUID,
-    score_updates: dict[str, dict[str, Any]],
+    score_updates: dict[str, dict[str, Any]] | None = None,
+    use_historical_colors: bool | None = None,
 ) -> UserMoodPreferences:
     prefs = get_or_create_preferences(db, user_id=user_id)
-    merged = _merge_score_styles(db, user_id, prefs.score_styles, score_updates)
-    prefs.score_styles = merged or None
+    if score_updates:
+        merged = _merge_score_styles(db, user_id, prefs.score_styles, score_updates)
+        prefs.score_styles = merged or None
+    if use_historical_colors is not None:
+        prefs.use_historical_colors = use_historical_colors
     db.commit()
     db.refresh(prefs)
     return prefs
@@ -62,7 +73,36 @@ def serialize_preferences(
     *,
     locale: str,
 ) -> dict[str, Any]:
-    return {"scores": _resolved_score_styles(db, prefs.user_id, prefs.score_styles, locale=locale)}
+    return {
+        "scores": _resolved_score_styles(db, prefs.user_id, prefs.score_styles, locale=locale),
+        "use_historical_colors": bool(prefs.use_historical_colors),
+    }
+
+
+def get_score_colors(db: Session, *, user_id: uuid.UUID) -> dict[int, str]:
+    prefs = db.scalar(select(UserMoodPreferences).where(UserMoodPreferences.user_id == user_id))
+    return _score_colors_from_styles(prefs.score_styles if prefs is not None else None)
+
+
+def get_color_display_settings(db: Session, *, user_id: uuid.UUID) -> ColorDisplaySettings:
+    prefs = db.scalar(select(UserMoodPreferences).where(UserMoodPreferences.user_id == user_id))
+    return ColorDisplaySettings(
+        use_historical_colors=True if prefs is None else bool(prefs.use_historical_colors),
+        score_colors=_score_colors_from_styles(prefs.score_styles if prefs is not None else None),
+    )
+
+
+def _score_colors_from_styles(overrides: dict[str, Any] | None) -> dict[int, str]:
+    defaults = default_mood_score_styles()
+    result: dict[int, str] = {}
+    for score in MoodScore:
+        key = str(score.value)
+        raw = (overrides or {}).get(key, {})
+        color = raw.get("color") if isinstance(raw, dict) else None
+        if not isinstance(color, str) or not is_valid_hex_color(color):
+            color = defaults[key].color
+        result[score.value] = color
+    return result
 
 
 def get_score_label_overrides(db: Session, *, user_id: uuid.UUID) -> dict[str, str]:

@@ -88,6 +88,7 @@ class MoodEntryPublic(BaseModel):
     score: int
     score_label: str
     score_emoji: str
+    score_color: str
     note: str | None
     is_favorite: bool
     tags: list[MoodEntryTagPublic]
@@ -106,6 +107,7 @@ class MoodEntryListResponse(BaseModel):
 class CalendarDayScore(BaseModel):
     score: int
     score_emoji: str
+    score_color: str
 
 
 class CalendarDayPublic(BaseModel):

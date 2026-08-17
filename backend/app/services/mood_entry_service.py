@@ -25,6 +25,7 @@ from app.core.mood_scale import (
     MAX_MOOD_SCORE,
     MIN_MOOD_SCORE,
     MoodScore,
+    default_mood_score_style,
     mood_score_emoji,
     resolve_mood_score_label,
 )
@@ -37,6 +38,11 @@ from app.models.tag import Tag
 from app.models.user import User
 from app.services.embedding_service import upsert_entry_embedding
 from app.services.goal_service import goal_is_active_on
+from app.services.mood_preferences_service import (
+    ColorDisplaySettings,
+    get_color_display_settings,
+    get_score_colors,
+)
 from app.services.storage import ObjectStorage, StorageError
 
 CALENDAR_SCORES_PER_DAY = 3
@@ -101,6 +107,22 @@ def _get_owned_entry(db: Session, *, user_id: uuid.UUID, entry_id: uuid.UUID) ->
     return entry
 
 
+def _score_color_for_user(db: Session, *, user_id: uuid.UUID, score: int) -> str:
+    colors = get_score_colors(db, user_id=user_id)
+    if score in colors:
+        return colors[score]
+    return default_mood_score_style(MoodScore(score)).color
+
+
+def _display_score_color(
+    entry: MoodEntry,
+    color_settings: ColorDisplaySettings | None,
+) -> str:
+    if color_settings is None or color_settings.use_historical_colors:
+        return entry.score_color
+    return color_settings.score_colors.get(entry.score, entry.score_color)
+
+
 def _resolve_user_tags(
     db: Session,
     *,
@@ -120,10 +142,13 @@ def _resolve_user_tags(
 
 
 def _replace_entry_tags(db: Session, entry: MoodEntry, tags: list[Tag]) -> None:
+    existing_colors = {link.tag_id: link.color for link in entry.tag_links}
     entry.tag_links.clear()
     db.flush()
     for tag in tags:
-        entry.tag_links.append(MoodEntryTag(tag_id=tag.id))
+        entry.tag_links.append(
+            MoodEntryTag(tag_id=tag.id, color=existing_colors.get(tag.id, tag.color))
+        )
 
 
 def _resolve_user_goals(
@@ -171,10 +196,13 @@ def _resolve_user_goals(
 
 
 def _replace_entry_goals(db: Session, entry: MoodEntry, goals: list[Goal]) -> None:
+    existing_colors = {link.goal_id: link.color for link in entry.goal_links}
     entry.goal_links.clear()
     db.flush()
     for goal in goals:
-        entry.goal_links.append(MoodEntryGoal(goal_id=goal.id))
+        entry.goal_links.append(
+            MoodEntryGoal(goal_id=goal.id, color=existing_colors.get(goal.id, goal.color))
+        )
 
 
 def _user_timezone(db: Session, *, user_id: uuid.UUID) -> str:
@@ -235,6 +263,7 @@ def create_mood_entry(
     entry = MoodEntry(
         user_id=user_id,
         score=score,
+        score_color=_score_color_for_user(db, user_id=user_id, score=score),
         recorded_at=recorded_at_utc,
         note=note,
         source=source,
@@ -342,9 +371,10 @@ def get_mood_entry_calendar(
             "recorded_to must be after recorded_from", code=ErrorCode.RECORDED_TO_BEFORE_FROM
         )
 
+    color_settings = get_color_display_settings(db, user_id=user_id)
     rows = list(
         db.execute(
-            select(MoodEntry.recorded_at, MoodEntry.score)
+            select(MoodEntry.recorded_at, MoodEntry.score, MoodEntry.score_color)
             .where(
                 MoodEntry.user_id == user_id,
                 MoodEntry.recorded_at >= from_utc,
@@ -354,9 +384,14 @@ def get_mood_entry_calendar(
         ).all()
     )
 
-    by_day: dict[date, list[int]] = defaultdict(list)
-    for recorded_at, score in rows:
-        by_day[_local_date(recorded_at, tz)].append(int(score))
+    by_day: dict[date, list[tuple[int, str]]] = defaultdict(list)
+    for recorded_at, score, score_color in rows:
+        display_color = (
+            score_color
+            if color_settings.use_historical_colors
+            else color_settings.score_colors.get(int(score), score_color)
+        )
+        by_day[_local_date(recorded_at, tz)].append((int(score), display_color))
 
     days: list[dict[str, Any]] = []
     for day in sorted(by_day.keys()):
@@ -369,8 +404,9 @@ def get_mood_entry_calendar(
                     {
                         "score": score,
                         "score_emoji": mood_score_emoji(MoodScore(score)),
+                        "score_color": score_color,
                     }
-                    for score in scores[:CALENDAR_SCORES_PER_DAY]
+                    for score, score_color in scores[:CALENDAR_SCORES_PER_DAY]
                 ],
             }
         )
@@ -498,7 +534,10 @@ def patch_mood_entry(
     note_changed = "note" in fields
 
     if "score" in fields and fields["score"] is not None:
-        entry.score = fields["score"]
+        next_score = int(fields["score"])
+        if next_score != entry.score:
+            entry.score = next_score
+            entry.score_color = _score_color_for_user(db, user_id=user_id, score=next_score)
     if "recorded_at" in fields and fields["recorded_at"] is not None:
         entry.recorded_at = _to_utc(fields["recorded_at"])
     if "note" in fields:
@@ -726,15 +765,17 @@ def serialize_mood_entry(
     *,
     locale: str,
     label_overrides: dict[str, str] | None = None,
+    color_settings: ColorDisplaySettings | None = None,
 ) -> dict[str, Any]:
     score = MoodScore(entry.score)
+    use_historical = color_settings is None or color_settings.use_historical_colors
     tags = [
         {
             "id": link.tag.id,
             "slug": link.tag.slug,
             "label": resolve_label(link.tag.labels, locale),
             "group_id": link.tag.group_id,
-            "color": link.tag.color,
+            "color": link.color if use_historical else link.tag.color,
             "icon_type": link.tag.icon_type,
             "icon": link.tag.icon,
         }
@@ -746,7 +787,7 @@ def serialize_mood_entry(
             "id": link.goal.id,
             "slug": link.goal.slug,
             "label": resolve_label(link.goal.labels, locale),
-            "color": link.goal.color,
+            "color": link.color if use_historical else link.goal.color,
             "icon_type": link.goal.icon_type,
             "icon": link.goal.icon,
         }
@@ -774,6 +815,7 @@ def serialize_mood_entry(
         "score": entry.score,
         "score_label": resolve_mood_score_label(score, locale, label_overrides),
         "score_emoji": mood_score_emoji(score),
+        "score_color": _display_score_color(entry, color_settings),
         "note": entry.note,
         "is_favorite": entry.is_favorite,
         "tags": tags,

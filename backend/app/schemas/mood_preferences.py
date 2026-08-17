@@ -16,6 +16,7 @@ class MoodScoreStylePublic(BaseModel):
 
 class MoodPreferencesPublic(BaseModel):
     scores: dict[str, MoodScoreStylePublic]
+    use_historical_colors: bool = True
 
 
 class MoodScoreStyleUpdate(BaseModel):
@@ -34,11 +35,12 @@ class MoodScoreStyleUpdate(BaseModel):
 
 class MoodPreferencesUpdate(BaseModel):
     scores: dict[str, MoodScoreStyleUpdate] = Field(default_factory=dict)
+    use_historical_colors: bool | None = None
 
     @model_validator(mode="after")
-    def at_least_one_score(self) -> MoodPreferencesUpdate:
-        if not self.scores:
-            raise ValueError("At least one score style must be provided")
+    def at_least_one_field(self) -> MoodPreferencesUpdate:
+        if not self.scores and self.use_historical_colors is None:
+            raise ValueError("At least one field must be provided")
         return self
 
 

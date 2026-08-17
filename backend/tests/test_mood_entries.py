@@ -63,6 +63,7 @@ def test_create_mood_entry_score_only(
     assert body["score"] == 4
     assert body["score_label"] == "good"
     assert body["score_emoji"] == "🙂"
+    assert body["score_color"] == "#34d399"
     assert body["note"] is None
     assert body["tags"] == []
     assert body["goals"] == []
@@ -529,7 +530,7 @@ def test_calendar_groups_by_day_and_caps_scores(
 
     july_15 = days["2026-07-15"]
     assert july_15["entry_count"] == 1
-    assert july_15["scores"] == [{"score": 4, "score_emoji": "🙂"}]
+    assert july_15["scores"] == [{"score": 4, "score_emoji": "🙂", "score_color": "#34d399"}]
 
 
 def test_calendar_rejects_inverted_range(
@@ -637,3 +638,125 @@ def test_stats_rejects_inverted_range(
         headers=_auth_headers(token),
     )
     assert response.status_code == 400
+
+
+def test_create_entry_snapshots_mood_color_and_keeps_it_after_palette_change(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-color-history@example.com")
+    headers = _auth_headers(token)
+
+    created = _create_entry(auth_client, token, score=4)
+    assert created.status_code == 201
+    entry_id = created.json()["id"]
+    assert created.json()["score_color"] == "#34d399"
+
+    patch_prefs = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"scores": {"4": {"color": "#ff00aa"}}},
+    )
+    assert patch_prefs.status_code == 200
+    assert patch_prefs.json()["scores"]["4"]["color"] == "#ff00aa"
+
+    stored = auth_client.get(f"/v1/mood-entries/{entry_id}", headers=headers)
+    assert stored.status_code == 200
+    assert stored.json()["score_color"] == "#34d399"
+
+    live = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"use_historical_colors": False},
+    )
+    assert live.status_code == 200
+    assert live.json()["use_historical_colors"] is False
+
+    current = auth_client.get(f"/v1/mood-entries/{entry_id}", headers=headers)
+    assert current.status_code == 200
+    assert current.json()["score_color"] == "#ff00aa"
+
+    calendar = auth_client.get(
+        "/v1/mood-entries/calendar",
+        params={
+            "recorded_from": "2026-07-01T00:00:00+03:00",
+            "recorded_to": "2026-08-01T00:00:00+03:00",
+        },
+        headers=headers,
+    )
+    assert calendar.status_code == 200
+    day = calendar.json()["days"][0]
+    assert day["scores"][0]["score_color"] == "#ff00aa"
+
+
+def test_patch_score_snapshots_current_color_for_new_score(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-color-score-patch@example.com")
+    headers = _auth_headers(token)
+
+    created = _create_entry(auth_client, token, score=4)
+    entry_id = created.json()["id"]
+    assert created.json()["score_color"] == "#34d399"
+
+    assert (
+        auth_client.patch(
+            "/v1/mood-preferences",
+            headers=headers,
+            json={"scores": {"5": {"color": "#abcdef"}}},
+        ).status_code
+        == 200
+    )
+
+    patched = auth_client.patch(
+        f"/v1/mood-entries/{entry_id}",
+        json={"score": 5},
+        headers=headers,
+    )
+    assert patched.status_code == 200
+    assert patched.json()["score"] == 5
+    assert patched.json()["score_color"] == "#abcdef"
+
+
+def test_entry_keeps_tag_color_snapshot_when_tag_color_changes(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    db: Session,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-tag-color-history@example.com")
+    headers = _auth_headers(token)
+    tag_ids = _user_tag_ids(db, "mood-tag-color-history@example.com")
+    tag_id = tag_ids[0]
+
+    tags = list(db.scalars(select(Tag).where(Tag.id == tag_id)).all())
+    assert tags
+    original_color = tags[0].color
+    group_id = tags[0].group_id
+
+    created = _create_entry(auth_client, token, tag_ids=[tag_id])
+    assert created.status_code == 201
+    assert created.json()["tags"][0]["color"] == original_color
+    entry_id = created.json()["id"]
+
+    patched_tag = auth_client.patch(
+        f"/v1/tag-groups/{group_id}/tags/{tag_id}",
+        headers=headers,
+        json={"color": "#112233"},
+    )
+    assert patched_tag.status_code == 200
+    assert patched_tag.json()["color"] == "#112233"
+
+    stored = auth_client.get(f"/v1/mood-entries/{entry_id}", headers=headers)
+    assert stored.json()["tags"][0]["color"] == original_color
+
+    assert (
+        auth_client.patch(
+            "/v1/mood-preferences",
+            headers=headers,
+            json={"use_historical_colors": False},
+        ).status_code
+        == 200
+    )
+    live = auth_client.get(f"/v1/mood-entries/{entry_id}", headers=headers)
+    assert live.json()["tags"][0]["color"] == "#112233"

@@ -22,7 +22,7 @@ import { moodGlowFilter, moodSubtleFill } from '../design'
 import { intlLocale } from '../i18n/t'
 import { ApiError, formatApiError } from '../lib/errors'
 import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/datetime'
-import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
+import { entryMoodColor, entryMoodStyle } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
 
 export function EntryDetailPage() {
@@ -43,7 +43,7 @@ export function EntryDetailPage() {
 
   const ambientColors = entry
     ? [
-        getMoodScoreColor(entry.score, scores),
+        entryMoodColor(entry, scores),
         ...entry.tags.map((tag) => tag.color),
         ...entry.goals.map((goal) => goal.color),
       ]
@@ -138,7 +138,7 @@ export function EntryDetailPage() {
                 style={
                   entry.is_favorite
                     ? ({
-                        '--entry-favorite-color': getMoodScoreColor(entry.score, scores),
+                        '--entry-favorite-color': entryMoodColor(entry, scores),
                       } as CSSProperties)
                     : undefined
                 }
@@ -195,11 +195,11 @@ export function EntryDetailPage() {
             <div className="entry-detail-block entry-detail-hero">
               <span
                 style={{
-                  filter: moodGlowFilter(getMoodScoreColor(entry.score, scores)),
+                  filter: moodGlowFilter(entryMoodColor(entry, scores)),
                 }}
               >
                 <MoodScoreIcon
-                  style={getMoodScoreStyle(entry.score, scores)}
+                  style={entryMoodStyle(entry, scores)}
                   className="entry-detail-emoji"
                   fallbackScore={entry.score}
                 />
@@ -231,7 +231,7 @@ export function EntryDetailPage() {
                   <AttachmentAudio
                     entryId={entry.id}
                     attachment={audioAttachment}
-                    accentColor={getMoodScoreColor(entry.score, scores)}
+                    accentColor={entryMoodColor(entry, scores)}
                   />
                 ) : null}
               </div>

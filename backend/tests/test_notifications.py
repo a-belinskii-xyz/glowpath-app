@@ -259,6 +259,7 @@ def test_process_due_reminders_skips_when_mood_already_logged(
             user_id=user.id,
             recorded_at=local_now.astimezone(UTC) - timedelta(hours=1),
             score=3,
+            score_color="#60a5fa",
             note=None,
         )
     )

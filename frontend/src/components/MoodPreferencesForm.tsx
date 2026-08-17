@@ -78,7 +78,8 @@ function resolveIconSourceUi(iconType: MoodScoreIconType): IconSourceUi {
 
 export function MoodPreferencesForm() {
   const { locale, t } = useLocale()
-  const { scores, isLoading, refreshPreferences, setPreferences } = useMoodPreferences()
+  const { scores, useHistoricalColors, isLoading, refreshPreferences, setPreferences } =
+    useMoodPreferences()
   const moodScoreOptions = getMoodScoreOptions(locale, scores)
 
   const [draftColors, setDraftColors] = useState<Record<number, string>>({})
@@ -88,6 +89,7 @@ export function MoodPreferencesForm() {
   const [maxUploadsPerScore, setMaxUploadsPerScore] = useState(MAX_UPLOADS_PER_SCORE)
   const [sourceUiByScore, setSourceUiByScore] = useState<Record<number, IconSourceUi>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingHistory, setIsSavingHistory] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
   const [iconBusyScore, setIconBusyScore] = useState<number | null>(null)
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null)
@@ -192,6 +194,24 @@ export function MoodPreferencesForm() {
 
   const handleColorChange = (score: number, value: string) => {
     setDraftColors((current) => ({ ...current, [score]: value }))
+  }
+
+  const handleHistoricalColorsChange = async (checked: boolean) => {
+    setError(null)
+    setSuccess(null)
+    setIsSavingHistory(true)
+    try {
+      const saved = await patchMoodPreferences({ use_historical_colors: checked })
+      setPreferences(saved)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError(t('errors.verifyToManageMoodPreferences'))
+      } else {
+        setError(formatApiError(err, t, 'errors.failedSave'))
+      }
+    } finally {
+      setIsSavingHistory(false)
+    }
   }
 
   const handleLabelChange = (score: number, value: string) => {
@@ -819,6 +839,23 @@ export function MoodPreferencesForm() {
       {success ? <Alert variant="success">{success}</Alert> : null}
 
       <p className="form-hint">{t('moodPreferences.listLead')}</p>
+
+      <label className="notification-master">
+        <input
+          type="checkbox"
+          checked={useHistoricalColors}
+          disabled={isSavingHistory}
+          onChange={(event) => void handleHistoricalColorsChange(event.target.checked)}
+        />
+        <span>
+          <span className="notification-master-title">
+            {t('moodPreferences.keepHistoricalColors')}
+          </span>
+          <span className="notification-master-hint">
+            {t('moodPreferences.keepHistoricalColorsHint')}
+          </span>
+        </span>
+      </label>
 
       <div className="mood-score-list">
         {moodScoreOptions.map((option) => {

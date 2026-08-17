@@ -23,6 +23,7 @@ def test_get_mood_preferences_returns_defaults(auth_client: TestClient, mailer) 
     assert payload["scores"]["5"]["icon"] == "😄"
     assert payload["scores"]["5"]["label"] == "great"
     assert payload["scores"]["1"]["label"] == "awful"
+    assert payload["use_historical_colors"] is True
 
 
 def test_patch_mood_preferences_updates_label(auth_client: TestClient, mailer) -> None:
@@ -210,3 +211,21 @@ def test_provision_mood_preferences(db: Session) -> None:
     db.flush()
 
     assert count_user_mood_preferences(db, user.id) == 1
+
+
+def test_patch_mood_preferences_toggles_historical_colors(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-history-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"use_historical_colors": False},
+    )
+    assert response.status_code == 200
+    assert response.json()["use_historical_colors"] is False
+    assert response.json()["scores"]["4"]["color"] == DEFAULT_MOOD_SCORE_COLORS[MoodScore.GOOD]
+
+    get_response = auth_client.get("/v1/mood-preferences", headers=headers)
+    assert get_response.json()["use_historical_colors"] is False

@@ -92,16 +92,16 @@ export function buildGradientWash(
 /**
  * Resolve wash style from mood scores + a color lookup, sorting by recorded time.
  */
-export function buildGradientWashFromScores(
-  entries: { score: number; recorded_at: string }[],
-  getColor: (score: number) => string,
+export function buildGradientWashFromScores<T extends { score: number; recorded_at: string }>(
+  entries: T[],
+  getColor: (score: number, entry: T) => string,
   recipe: GradientRecipe | GradientRecipeName = 'day',
 ): GradientWashStyle | null {
   const chronological = [...entries].sort(
     (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
   )
   return buildGradientWash(
-    chronological.map((entry) => getColor(entry.score)),
+    chronological.map((entry) => getColor(entry.score, entry)),
     recipe,
   )
 }

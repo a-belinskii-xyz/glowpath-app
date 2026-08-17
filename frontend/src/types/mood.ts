@@ -39,6 +39,7 @@ export type MoodEntryPublic = {
   score: number
   score_label: string
   score_emoji: string
+  score_color: string
   note: string | null
   is_favorite: boolean
   tags: MoodEntryTag[]
@@ -57,6 +58,7 @@ export type MoodEntryListResponse = {
 export type CalendarDayScore = {
   score: number
   score_emoji: string
+  score_color: string
 }
 
 export type CalendarDayPublic = {

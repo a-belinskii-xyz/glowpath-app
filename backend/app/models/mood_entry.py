@@ -69,6 +69,8 @@ class MoodEntry(TimestampMixin, Base):
     )
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     score: Mapped[int] = mapped_column(SmallInteger)
+    # Mood palette color at create / score-change time (not live preferences).
+    score_color: Mapped[str] = mapped_column(String(7))
     note: Mapped[str | None] = mapped_column(Text)
     is_favorite: Mapped[bool] = mapped_column(
         Boolean,
