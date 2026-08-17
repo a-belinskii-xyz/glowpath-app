@@ -285,6 +285,9 @@ export const en = {
   goalsPage: {
     title: 'Goals',
     addGoal: 'Add goal',
+    emptyTitle: 'No goals yet',
+    emptyHint:
+      'Add a goal to mark it in entries and follow progress in stats and the calendar.',
     editGoal: 'Edit goal “{label}”',
     hint: 'Choose up to {limit} goals to show when creating an entry ({count}/{limit} selected). Other goals stay available under “Other”.',
     statsHint:
@@ -969,6 +972,9 @@ export const ru: DeepStringLeaves<typeof en> = {
   goalsPage: {
     title: 'Цели',
     addGoal: 'Добавить цель',
+    emptyTitle: 'Целей пока нет',
+    emptyHint:
+      'Добавьте цель, чтобы отмечать её в записях и следить за прогрессом в статистике и календаре.',
     editGoal: 'Изменить цель «{label}»',
     hint: 'Выберите до {limit} целей для формы записи ({count}/{limit} выбрано). Остальные доступны в блоке «Остальные».',
     statsHint:

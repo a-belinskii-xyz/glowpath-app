@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
@@ -7,14 +7,9 @@ import { PageErrorAlert } from '../components/PageErrorAlert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
 import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodStats'
-import { EntryActionMenu } from '../components/EntryActionMenu'
-import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
-import { EntryTagsCompact } from '../components/EntryTagsCompact'
-import { HeartIcon } from '../components/HeartIcon'
-import { MarkdownNote } from '../components/MarkdownNote'
+import { EntryRow } from '../components/EntryRow'
 import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MonthControl } from '../components/MonthControl'
-import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
@@ -37,9 +32,9 @@ import {
   todayKey,
   weekIntersectsMonth,
 } from '../lib/datetime'
-import { buildGradientWashFromScores, moodGlowFilter, motion } from '../design'
+import { buildGradientWashFromScores, motion } from '../design'
 import { useScrollAmbientGlow } from '../hooks/useScrollAmbientGlow'
-import { getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
+import { getMoodScoreColor } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
 
@@ -908,78 +903,12 @@ export function EntriesPage() {
               <ul className="entry-list">
                 {entries.map((entry) => (
                   <li key={entry.id} id={`entry-${entry.id}`}>
-                    <article className="entry-row">
-                      <Link className="entry-row-link" to={`/entries/${entry.id}`}>
-                        <div className="entry-row-main">
-                          <span className="entry-score">
-                            <span
-                              style={{
-                                filter: moodGlowFilter(getMoodScoreColor(entry.score, scores)),
-                              }}
-                            >
-                              <MoodScoreIcon
-                                style={getMoodScoreStyle(entry.score, scores)}
-                                className="entry-score-icon"
-                                fallbackScore={entry.score}
-                              />
-                            </span>{' '}
-                            {entry.score_label}
-                          </span>
-                          <div className="entry-row-meta">
-                            <span className="entry-time">
-                              {formatDayHeading(entry.recorded_at, timeZone, dateLocale)}{' '}
-                              {formatTime(entry.recorded_at, timeZone, dateLocale)}
-                            </span>
-                            <button
-                              type="button"
-                              className={`entry-favorite-mark${entry.is_favorite ? ' is-favorite' : ''}`}
-                              style={
-                                entry.is_favorite
-                                  ? ({
-                                      '--entry-favorite-color': getMoodScoreColor(
-                                        entry.score,
-                                        scores,
-                                      ),
-                                    } as CSSProperties)
-                                  : undefined
-                              }
-                              aria-pressed={entry.is_favorite}
-                              aria-label={
-                                entry.is_favorite
-                                  ? t('entries.removeFavorite')
-                                  : t('entries.addFavorite')
-                              }
-                              title={
-                                entry.is_favorite
-                                  ? t('entries.removeFavorite')
-                                  : t('entries.addFavorite')
-                              }
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                void handleToggleFavorite(entry.id, !entry.is_favorite)
-                              }}
-                            >
-                              <HeartIcon filled={entry.is_favorite} />
-                            </button>
-                          </div>
-                        </div>
-                        {entry.note ? (
-                          <MarkdownNote content={entry.note} compact className="entry-note" />
-                        ) : null}
-                        <EntryTagsCompact tags={entry.tags} goals={entry.goals} />
-                      </Link>
-                      <div className="entry-row-media">
-                        <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
-                      </div>
-                      <div className="entry-row-actions">
-                        <EntryActionMenu
-                          entry={entry}
-                          onDelete={handleDelete}
-                          onToggleFavorite={handleToggleFavorite}
-                        />
-                      </div>
-                    </article>
+                    <EntryRow
+                      entry={entry}
+                      timeLabel={`${formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ${formatTime(entry.recorded_at, timeZone, dateLocale)}`}
+                      onDelete={handleDelete}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
                   </li>
                 ))}
               </ul>
@@ -1005,77 +934,12 @@ export function EntriesPage() {
               <ul className="entry-list">
                 {dayEntries.map((entry) => (
                   <li key={entry.id} id={`entry-${entry.id}`}>
-                    <article className="entry-row">
-                      <Link className="entry-row-link" to={`/entries/${entry.id}`}>
-                        <div className="entry-row-main">
-                          <span className="entry-score">
-                            <span
-                              style={{
-                                filter: moodGlowFilter(getMoodScoreColor(entry.score, scores)),
-                              }}
-                            >
-                              <MoodScoreIcon
-                                style={getMoodScoreStyle(entry.score, scores)}
-                                className="entry-score-icon"
-                                fallbackScore={entry.score}
-                              />
-                            </span>{' '}
-                            {entry.score_label}
-                          </span>
-                          <div className="entry-row-meta">
-                            <span className="entry-time">
-                              {formatTime(entry.recorded_at, timeZone, dateLocale)}
-                            </span>
-                            <button
-                              type="button"
-                              className={`entry-favorite-mark${entry.is_favorite ? ' is-favorite' : ''}`}
-                              style={
-                                entry.is_favorite
-                                  ? ({
-                                      '--entry-favorite-color': getMoodScoreColor(
-                                        entry.score,
-                                        scores,
-                                      ),
-                                    } as CSSProperties)
-                                  : undefined
-                              }
-                              aria-pressed={entry.is_favorite}
-                              aria-label={
-                                entry.is_favorite
-                                  ? t('entries.removeFavorite')
-                                  : t('entries.addFavorite')
-                              }
-                              title={
-                                entry.is_favorite
-                                  ? t('entries.removeFavorite')
-                                  : t('entries.addFavorite')
-                              }
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                void handleToggleFavorite(entry.id, !entry.is_favorite)
-                              }}
-                            >
-                              <HeartIcon filled={entry.is_favorite} />
-                            </button>
-                          </div>
-                        </div>
-                        {entry.note ? (
-                          <MarkdownNote content={entry.note} compact className="entry-note" />
-                        ) : null}
-                        <EntryTagsCompact tags={entry.tags} goals={entry.goals} />
-                      </Link>
-                      <div className="entry-row-media">
-                        <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
-                      </div>
-                      <div className="entry-row-actions">
-                        <EntryActionMenu
-                          entry={entry}
-                          onDelete={handleDelete}
-                          onToggleFavorite={handleToggleFavorite}
-                        />
-                      </div>
-                    </article>
+                    <EntryRow
+                      entry={entry}
+                      timeLabel={formatTime(entry.recorded_at, timeZone, dateLocale)}
+                      onDelete={handleDelete}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
                   </li>
                 ))}
               </ul>

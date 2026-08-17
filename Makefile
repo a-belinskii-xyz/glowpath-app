@@ -6,7 +6,7 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed reindex-embeddings
+.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed reindex-embeddings
 
 FRONTEND := frontend
 
@@ -62,6 +62,15 @@ up-no-cache:
 
 down:
 	docker compose down
+
+# Prod-shaped stack (nginx UI + API, no Vite / --reload). Uses .env.prod.
+# `--profile mail` starts MailHog for local email smoke; omit on a real VPS.
+up-prod:
+	@test -f .env.prod || cp .env.prod.example .env.prod
+	docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail up --build
+
+down-prod:
+	docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail down
 
 migrate: $(MARKER)
 	cd $(BACKEND) && $(BIN)/alembic upgrade head

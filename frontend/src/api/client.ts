@@ -3,7 +3,9 @@ import { apiLocaleHeaders } from '../lib/locale'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/storage'
 import type { TokenResponse } from '../types/auth'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+// Dev: hit API on :8000. Prod / nginx image: same-origin (empty) so /v1 is proxied.
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')
 
 type RequestOptions = {
   method?: string

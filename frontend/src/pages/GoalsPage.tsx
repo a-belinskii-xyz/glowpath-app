@@ -432,6 +432,13 @@ export function GoalsPage() {
         </form>
       </EditorDrawer>
 
+      {!isLoading && goals.length === 0 && !error ? (
+        <div className="card goals-empty">
+          <h2 className="goals-empty-title">{t('goalsPage.emptyTitle')}</h2>
+          <p className="muted goals-empty-hint">{t('goalsPage.emptyHint')}</p>
+        </div>
+      ) : null}
+
       {goals.length > 0 ? (
         <div className="card goals-panel">
           <div className="goals-list">
