@@ -25,6 +25,30 @@ type GoalPeriodStatsProps = {
 
 type GoalPeriodStatus = 'met' | 'on_track' | 'at_risk' | 'ended'
 
+function quantityPeriodAmountTarget(item: GoalPeriodStatPublic): number | null {
+  if (item.tracking_kind !== 'quantity' || !item.target_amount) {
+    return null
+  }
+  return item.target_amount * item.period_target
+}
+
+function barProgress(
+  item: GoalPeriodStatPublic,
+  amountTarget: number | null,
+): {
+  value: number
+  max: number
+  percent: number
+} {
+  const value = amountTarget != null ? item.amount_in_period : item.completed_in_period
+  const max = amountTarget ?? item.period_target
+  return {
+    value,
+    max,
+    percent: Math.min(100, (value / Math.max(1, max)) * 100),
+  }
+}
+
 function daysLeftInPeriod(
   period: GoalStatsPeriod,
   _periodDays: number,
@@ -195,10 +219,11 @@ export function GoalPeriodStats({
           {sortedItems.map((item) => {
             const done = item.completed_in_period
             const target = item.period_target
+            const amountTarget = quantityPeriodAmountTarget(item)
             const status = goalStatus(item, daysLeft, isCurrentPeriod)
-            const widthPercent = Math.min(100, (done / Math.max(1, target)) * 100)
+            const bar = barProgress(item, amountTarget)
             // Progress toward own target + share of period completions.
-            const progressImpact = Math.min(1, done / Math.max(1, target))
+            const progressImpact = Math.min(1, bar.percent / 100)
             const shareImpact = doneTotal > 0 ? Math.min(done, target) / doneTotal : 0
             const impact = Math.max(progressImpact * 0.65, shareImpact)
             const glow = moodGlowForImpact(item.color, impact)
@@ -232,10 +257,10 @@ export function GoalPeriodStats({
                   </span>
                   <span className="goal-week-stats-progress-text">
                     {t('goalsPage.weekProgress', { done, target })}
-                    {item.tracking_kind === 'quantity' && item.target_amount
+                    {amountTarget != null
                       ? ` · ${t('goalWeekStats.amountProgress', {
                           done: item.amount_in_period,
-                          target: item.target_amount * item.period_target,
+                          target: amountTarget,
                           unit: item.unit ?? '',
                         })}`
                       : ''}
@@ -244,15 +269,15 @@ export function GoalPeriodStats({
                 <div
                   className="goal-week-stats-track"
                   role="progressbar"
-                  aria-valuenow={Math.min(done, target)}
+                  aria-valuenow={Math.min(bar.value, bar.max)}
                   aria-valuemin={0}
-                  aria-valuemax={target}
-                  aria-label={`${item.label}: ${done} / ${target}`}
+                  aria-valuemax={bar.max}
+                  aria-label={`${item.label}: ${bar.value} / ${bar.max}`}
                 >
                   <div
                     className={`goal-week-stats-fill${glow ? ' has-glow' : ''}`}
                     style={{
-                      width: `${widthPercent}%`,
+                      width: `${bar.percent}%`,
                       backgroundColor: item.color,
                       boxShadow: glow?.boxShadow,
                     }}
