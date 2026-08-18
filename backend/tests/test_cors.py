@@ -1,4 +1,5 @@
-from app.config import Settings
+from types import SimpleNamespace
+
 from app.core.cors import (
     cors_allow_origin_regex,
     cors_allow_origins,
@@ -6,6 +7,16 @@ from app.core.cors import (
 )
 from app.main import app
 from fastapi.testclient import TestClient
+
+
+def _settings(**kwargs: object) -> SimpleNamespace:
+    values: dict[str, object] = {
+        "cors_origins": "http://localhost:5173",
+        "frontend_url": "http://localhost:5173",
+        "debug": False,
+    }
+    values.update(kwargs)
+    return SimpleNamespace(**values)
 
 
 def test_localhost_origin_aliases_include_loopback() -> None:
@@ -20,26 +31,17 @@ def test_non_local_origin_is_not_aliased() -> None:
 
 
 def test_cors_allow_origins_includes_frontend_url_and_loopback() -> None:
-    settings = Settings(
-        cors_origins="https://app.example.com",
-        frontend_url="http://localhost:5173",
-        debug=False,
+    origins = cors_allow_origins(
+        _settings(cors_origins="https://app.example.com", frontend_url="http://localhost:5173")
     )
-    origins = cors_allow_origins(settings)
     assert "https://app.example.com" in origins
     assert "http://localhost:5173" in origins
     assert "http://127.0.0.1:5173" in origins
 
 
 def test_cors_allow_origin_regex_only_in_debug() -> None:
-    assert (
-        cors_allow_origin_regex(Settings(debug=False, cors_origins="https://app.example.com"))
-        is None
-    )
-    assert (
-        cors_allow_origin_regex(Settings(debug=True, cors_origins="https://app.example.com"))
-        is not None
-    )
+    assert cors_allow_origin_regex(_settings(debug=False)) is None
+    assert cors_allow_origin_regex(_settings(debug=True)) is not None
 
 
 def test_preflight_register_allows_localhost_and_loopback() -> None:

@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+from typing import Protocol
 from urllib.parse import urlsplit, urlunsplit
-
-from app.config import Settings
 
 _LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 # Vite/WSL/Firefox often open 127.0.0.1 (or another local port) instead of localhost.
 LOCAL_ORIGIN_REGEX = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?"
+
+
+class CorsSettings(Protocol):
+    cors_origins: str
+    frontend_url: str
+    debug: bool
 
 
 def parse_origin_list(value: str) -> list[str]:
@@ -36,7 +41,7 @@ def localhost_origin_aliases(origin: str) -> list[str]:
     return unique
 
 
-def cors_allow_origins(settings: Settings) -> list[str]:
+def cors_allow_origins(settings: CorsSettings) -> list[str]:
     origins: list[str] = []
     seen: set[str] = set()
     for raw in (settings.cors_origins, settings.frontend_url):
@@ -48,7 +53,7 @@ def cors_allow_origins(settings: Settings) -> list[str]:
     return origins
 
 
-def cors_allow_origin_regex(settings: Settings) -> str | None:
+def cors_allow_origin_regex(settings: CorsSettings) -> str | None:
     if settings.debug:
         return LOCAL_ORIGIN_REGEX
     return None
