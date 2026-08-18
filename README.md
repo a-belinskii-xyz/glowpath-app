@@ -140,6 +140,8 @@ Copy to `frontend/.env`. Tokens are stored in `localStorage`; the client refresh
 3. ~~**Mood CRUD**~~ — entries, tags, attachments, templates, calendar, month stats
 4. **Deploy** — prod Compose locally → VPS + HTTPS (see below)
 
+**VPS cheat sheet** (SSH, rsync, env, updates): [`docs/vps-cheatsheet.md`](docs/vps-cheatsheet.md).
+
 ### Prod-shaped Compose (UI in nginx)
 
 One command serves the built frontend and proxies `/v1` to the API (no Vite, no `--reload`):
@@ -152,7 +154,7 @@ make up-prod       # docker compose -f docker-compose.prod.yml … --profile mai
 
 Open http://localhost:8080. MailHog UI stays on http://localhost:8025 when using `--profile mail`.
 
-`make down-prod` stops this stack. On a VPS, drop `--profile mail`, set real `SMTP_*` / `PUBLIC_URL`, and put TLS in front (stage C).
+`make down-prod` stops this stack. On a VPS, drop `--profile mail`, set real `SMTP_*` / `PUBLIC_URL`, and put TLS in front (stage C). Full remote steps: [`docs/vps-cheatsheet.md`](docs/vps-cheatsheet.md).
 
 ## Backend quick start (Docker only)
 
