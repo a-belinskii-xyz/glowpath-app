@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { resetPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
@@ -7,12 +7,14 @@ import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { StableButtonLabel } from '../components/StableButtonLabel'
+import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { formatApiError } from '../lib/errors'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
   const { t } = useLocale()
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
 
@@ -21,6 +23,8 @@ export function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const afterResetPath = isAuthenticated ? '/profile' : '/login'
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -46,7 +50,7 @@ export function ResetPasswordPage() {
         password_confirm: passwordConfirm,
       })
       setSuccess(response.message)
-      setTimeout(() => navigate('/login'), 1500)
+      setTimeout(() => navigate(afterResetPath), 1500)
     } catch (err) {
       setError(formatApiError(err, t, 'errors.passwordResetFailed'))
     } finally {
@@ -55,6 +59,12 @@ export function ResetPasswordPage() {
   }
 
   if (!token) {
+    if (isAuthLoading) {
+      return <p className="muted">{t('common.loading')}</p>
+    }
+    if (isAuthenticated) {
+      return <Navigate to="/profile" replace />
+    }
     return (
       <>
         <h1>{t('auth.resetTitle')}</h1>
@@ -101,7 +111,11 @@ export function ResetPasswordPage() {
         </button>
       </form>
 
-      <AuthFooterLink to="/login">{t('common.backToLogin')}</AuthFooterLink>
+      {isAuthLoading ? null : isAuthenticated ? (
+        <AuthFooterLink to="/profile">{t('common.backToProfile')}</AuthFooterLink>
+      ) : (
+        <AuthFooterLink to="/login">{t('common.backToLogin')}</AuthFooterLink>
+      )}
     </>
   )
 }

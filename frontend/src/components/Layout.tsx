@@ -14,9 +14,11 @@ function navClassName({ isActive }: { isActive: boolean }) {
 function ShellChrome({
   sidebar,
   onboarding,
+  guestNav,
 }: {
   sidebar: boolean
   onboarding: boolean
+  guestNav: boolean
 }) {
   const { t } = useLocale()
   const { logout } = useAuth()
@@ -53,8 +55,12 @@ function ShellChrome({
           </Link>
           <nav className="nav-links">
             <LanguageSwitcher id="guest-language" compact />
-            <Link to="/login">{t('nav.logIn')}</Link>
-            <Link to="/register">{t('nav.register')}</Link>
+            {guestNav ? (
+              <>
+                <Link to="/login">{t('nav.logIn')}</Link>
+                <Link to="/register">{t('nav.register')}</Link>
+              </>
+            ) : null}
           </nav>
         </header>
         <main className="app-main">
@@ -105,12 +111,20 @@ export function Layout() {
   const { isAuthenticated, isLoading, user } = useAuth()
   const location = useLocation()
   const needsOnboarding = Boolean(isAuthenticated && user && !user.onboarding_completed)
+  const onboardingExempt =
+    location.pathname === '/onboarding' ||
+    location.pathname === '/reset-password' ||
+    location.pathname === '/verify-email'
 
-  if (!isLoading && needsOnboarding && location.pathname !== '/onboarding') {
+  if (!isLoading && needsOnboarding && !onboardingExempt) {
     return <Navigate to="/onboarding" replace />
   }
 
   return (
-    <ShellChrome sidebar={isAuthenticated && !needsOnboarding} onboarding={needsOnboarding} />
+    <ShellChrome
+      sidebar={isAuthenticated && !needsOnboarding}
+      onboarding={needsOnboarding}
+      guestNav={!isLoading && !isAuthenticated}
+    />
   )
 }

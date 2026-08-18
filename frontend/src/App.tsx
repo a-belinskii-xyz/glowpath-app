@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AuthCardLayout } from './components/AuthCardLayout'
+import { GuestRoute } from './components/GuestRoute'
 import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AmbientGlowProvider } from './context/AmbientGlowContext'
@@ -37,12 +38,17 @@ function App() {
                   <Route path="verify-email" element={<VerifyEmailPage />} />
                   <Route path="auth/google/callback" element={<GoogleCallbackPage />} />
 
+                  <Route element={<GuestRoute />}>
+                    <Route element={<AuthCardLayout />}>
+                      <Route path="login" element={<LoginPage />} />
+                      <Route path="register" element={<RegisterPage />} />
+                      <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="resend-verification" element={<ResendVerificationPage />} />
+                    </Route>
+                  </Route>
+
                   <Route element={<AuthCardLayout />}>
-                    <Route path="login" element={<LoginPage />} />
-                    <Route path="register" element={<RegisterPage />} />
-                    <Route path="forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="reset-password" element={<ResetPasswordPage />} />
-                    <Route path="resend-verification" element={<ResendVerificationPage />} />
                   </Route>
 
                   <Route element={<ProtectedRoute />}>

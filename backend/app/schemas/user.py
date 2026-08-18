@@ -12,6 +12,7 @@ class UserPublic(BaseModel):
     email_verified_at: datetime | None
     onboarding_completed: bool
     onboarding_completed_at: datetime | None
+    has_password: bool
 
     model_config = {"from_attributes": True}
 

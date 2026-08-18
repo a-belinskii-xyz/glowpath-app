@@ -56,6 +56,7 @@ def test_verify_then_login_and_me(
     body = me_response.json()
     assert body["email"] == email
     assert body["email_verified"] is True
+    assert body["has_password"] is True
 
 
 def test_refresh_token_returns_new_access_token(

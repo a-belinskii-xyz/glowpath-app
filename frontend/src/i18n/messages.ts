@@ -64,6 +64,7 @@ export const en = {
     note: 'Note',
     backToEntries: 'Back to entries',
     backToLogin: 'Back to login',
+    backToProfile: 'Back to profile',
     emptyDate: '—',
   },
   home: {
@@ -73,6 +74,8 @@ export const en = {
   verifyBanner: {
     message: 'Verify your email to create and view mood entries.',
     resend: 'Resend verification email',
+    sending: 'Sending…',
+    sent: 'Verification email sent. Check your inbox.',
   },
   entries: {
     newEntry: 'New entry',
@@ -376,6 +379,10 @@ export const en = {
     title: 'Profile',
     emailVerifiedShort: 'Verified',
     emailUnverifiedShort: 'Not verified',
+    resetPassword: 'Reset password',
+    resetPasswordSending: 'Sending…',
+    resetPasswordHint: 'We will email you a link to choose a new password.',
+    resetPasswordSent: 'Check your inbox for a password reset link.',
     timezoneHint:
       'Used for calendars, charts, goals, and reminder times. Past entries keep the same moment; the local day may shift near midnight.',
     appearanceTitle: 'Appearance',
@@ -520,6 +527,7 @@ export const en = {
     verifyTitle: 'Verify email',
     verifying: 'Verifying your email…',
     goToLogin: 'Go to login',
+    goToApp: 'Continue',
     resendTitle: 'Resend verification',
     resendSubtitle: 'Send a new verification email to your inbox.',
     resendEmail: 'Resend email',
@@ -775,6 +783,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     note: 'Заметка',
     backToEntries: 'К записям',
     backToLogin: 'Ко входу',
+    backToProfile: 'К профилю',
     emptyDate: '—',
   },
   home: {
@@ -784,6 +793,8 @@ export const ru: DeepStringLeaves<typeof en> = {
   verifyBanner: {
     message: 'Подтвердите email, чтобы создавать и просматривать записи.',
     resend: 'Отправить письмо ещё раз',
+    sending: 'Отправка…',
+    sent: 'Письмо для подтверждения отправлено. Проверьте почту.',
   },
   entries: {
     newEntry: 'Новая запись',
@@ -1091,6 +1102,10 @@ export const ru: DeepStringLeaves<typeof en> = {
     title: 'Профиль',
     emailVerifiedShort: 'Подтверждён',
     emailUnverifiedShort: 'Не подтверждён',
+    resetPassword: 'Сбросить пароль',
+    resetPasswordSending: 'Отправка…',
+    resetPasswordHint: 'Отправим ссылку на email, чтобы задать новый пароль.',
+    resetPasswordSent: 'Проверьте почту — там ссылка для сброса пароля.',
     timezoneHint:
       'Используется для календаря, графиков, целей и напоминаний. Прошлые записи сохраняют тот же момент; локальный день у полуночи может сдвинуться.',
     appearanceTitle: 'Оформление',
@@ -1236,6 +1251,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     verifyTitle: 'Подтверждение email',
     verifying: 'Подтверждаем email…',
     goToLogin: 'Перейти ко входу',
+    goToApp: 'Продолжить',
     resendTitle: 'Повторная отправка',
     resendSubtitle: 'Отправим новое письмо для подтверждения.',
     resendEmail: 'Отправить письмо',

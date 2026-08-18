@@ -675,6 +675,12 @@ input {
   border: 1px solid #bfdbfe;
 }
 
+.alert .link-button {
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+}
+
 .auth-footer {
   margin-top: 1rem;
   text-align: center;
@@ -721,6 +727,20 @@ input {
   display: grid;
   gap: 1.25rem;
   padding: 1.25rem 1.35rem;
+}
+
+.profile-account-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+}
+
+.profile-account-password {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: start;
 }
 
 .profile-account-label {

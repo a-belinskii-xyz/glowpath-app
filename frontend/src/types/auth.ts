@@ -6,6 +6,7 @@ export type UserPublic = {
   email_verified_at: string | null
   onboarding_completed: boolean
   onboarding_completed_at: string | null
+  has_password: boolean
 }
 
 export type TokenResponse = {

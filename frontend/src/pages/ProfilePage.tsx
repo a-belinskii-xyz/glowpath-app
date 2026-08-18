@@ -1,9 +1,12 @@
 import { useState } from 'react'
 
-import { PageErrorAlert } from '../components/PageErrorAlert'
+import { forgotPassword } from '../api/auth'
+import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
+import { PageErrorAlert } from '../components/PageErrorAlert'
+import { StableButtonLabel } from '../components/StableButtonLabel'
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
@@ -20,6 +23,9 @@ export function ProfilePage() {
   usePageAmbientGlow(Object.values(scores).map((style) => style.color))
   const [timezoneError, setTimezoneError] = useState<string | null>(null)
   const [isSavingTimezone, setIsSavingTimezone] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetMessage, setResetMessage] = useState<string | null>(null)
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
 
   if (!user) {
     return null
@@ -42,6 +48,20 @@ export function ProfilePage() {
     }
   }
 
+  const handleResetPassword = async () => {
+    setResetError(null)
+    setResetMessage(null)
+    setIsResettingPassword(true)
+    try {
+      await forgotPassword(user.email)
+      setResetMessage(t('profile.resetPasswordSent'))
+    } catch (err) {
+      setResetError(formatApiError(err, t, 'errors.requestFailed'))
+    } finally {
+      setIsResettingPassword(false)
+    }
+  }
+
   return (
     <section className="page">
       <EmailVerificationBanner />
@@ -53,6 +73,8 @@ export function ProfilePage() {
       </div>
 
       <PageErrorAlert error={timezoneError} />
+      <PageErrorAlert error={resetError} />
+      {resetMessage ? <Alert variant="success">{resetMessage}</Alert> : null}
 
       <div className="card profile-account">
         <div className="profile-account-row">
@@ -69,6 +91,26 @@ export function ProfilePage() {
               </span>
             </div>
           </div>
+          {user.has_password ? (
+            <div className="profile-account-password">
+              <button
+                type="button"
+                className="button button-secondary"
+                disabled={isResettingPassword}
+                onClick={() => void handleResetPassword()}
+              >
+                <StableButtonLabel
+                  active={
+                    isResettingPassword
+                      ? t('profile.resetPasswordSending')
+                      : t('profile.resetPassword')
+                  }
+                  labels={[t('profile.resetPassword'), t('profile.resetPasswordSending')]}
+                />
+              </button>
+              <p className="profile-field-hint">{t('profile.resetPasswordHint')}</p>
+            </div>
+          ) : null}
         </div>
 
         <div className="profile-account-grid">
