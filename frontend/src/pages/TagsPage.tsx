@@ -21,6 +21,7 @@ import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
+import { OverflowMenu } from '../components/OverflowMenu'
 import { TagIcon } from '../components/TagIcon'
 import { TagIconEditor, type PendingIconUpload } from '../components/TagIconEditor'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -553,42 +554,67 @@ export function TagsPage() {
                   >
                     <EditIcon />
                   </IconButton>
-                  <IconButton
-                    label={t('tagsPage.moveUp')}
-                    size="sm"
-                    disabled={groupIndex === 0}
-                    onClick={() => void handleMoveGroup(group.id, 'up')}
-                  >
-                    <ArrowUpIcon />
-                  </IconButton>
-                  <IconButton
-                    label={t('tagsPage.moveDown')}
-                    size="sm"
-                    disabled={groupIndex === groups.length - 1}
-                    onClick={() => void handleMoveGroup(group.id, 'down')}
-                  >
-                    <ArrowDownIcon />
-                  </IconButton>
-                  <IconButton
-                    label={t('common.delete')}
-                    size="sm"
-                    variant="danger"
-                    onClick={() => {
-                      setDeleteError(null)
-                      setPendingDelete({ kind: 'group', group })
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                  <DragHandle
-                    label={t('tagsPage.dragGroup', { label: group.label })}
-                    onDragStart={() => {
-                      setDraggingGroupId(group.id)
-                      setGroupDropTarget(null)
-                    }}
-                    onDragEnd={clearGroupDrag}
-                    onMoveUp={() => void handleMoveGroup(group.id, 'up')}
-                    onMoveDown={() => void handleMoveGroup(group.id, 'down')}
+                  <div className="list-row-actions-extra">
+                    <IconButton
+                      label={t('tagsPage.moveUp')}
+                      size="sm"
+                      disabled={groupIndex === 0}
+                      onClick={() => void handleMoveGroup(group.id, 'up')}
+                    >
+                      <ArrowUpIcon />
+                    </IconButton>
+                    <IconButton
+                      label={t('tagsPage.moveDown')}
+                      size="sm"
+                      disabled={groupIndex === groups.length - 1}
+                      onClick={() => void handleMoveGroup(group.id, 'down')}
+                    >
+                      <ArrowDownIcon />
+                    </IconButton>
+                    <IconButton
+                      label={t('common.delete')}
+                      size="sm"
+                      variant="danger"
+                      onClick={() => {
+                        setDeleteError(null)
+                        setPendingDelete({ kind: 'group', group })
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                    <DragHandle
+                      label={t('tagsPage.dragGroup', { label: group.label })}
+                      onDragStart={() => {
+                        setDraggingGroupId(group.id)
+                        setGroupDropTarget(null)
+                      }}
+                      onDragEnd={clearGroupDrag}
+                      onMoveUp={() => void handleMoveGroup(group.id, 'up')}
+                      onMoveDown={() => void handleMoveGroup(group.id, 'down')}
+                    />
+                  </div>
+                  <OverflowMenu
+                    className="list-row-actions-menu"
+                    items={[
+                      {
+                        label: t('tagsPage.moveUp'),
+                        disabled: groupIndex === 0,
+                        onClick: () => void handleMoveGroup(group.id, 'up'),
+                      },
+                      {
+                        label: t('tagsPage.moveDown'),
+                        disabled: groupIndex === groups.length - 1,
+                        onClick: () => void handleMoveGroup(group.id, 'down'),
+                      },
+                      {
+                        label: t('common.delete'),
+                        danger: true,
+                        onClick: () => {
+                          setDeleteError(null)
+                          setPendingDelete({ kind: 'group', group })
+                        },
+                      },
+                    ]}
                   />
                 </div>
               </div>
@@ -688,42 +714,67 @@ export function TagsPage() {
                       >
                         <EditIcon />
                       </IconButton>
-                      <IconButton
-                        label={t('tagsPage.moveUp')}
-                        size="sm"
-                        disabled={tagIndex === 0}
-                        onClick={() => void handleMoveTag(group, tag.id, 'up')}
-                      >
-                        <ArrowUpIcon />
-                      </IconButton>
-                      <IconButton
-                        label={t('tagsPage.moveDown')}
-                        size="sm"
-                        disabled={tagIndex === group.tags.length - 1}
-                        onClick={() => void handleMoveTag(group, tag.id, 'down')}
-                      >
-                        <ArrowDownIcon />
-                      </IconButton>
-                      <IconButton
-                        label={t('common.delete')}
-                        size="sm"
-                        variant="danger"
-                        onClick={() => {
-                          setDeleteError(null)
-                          setPendingDelete({ kind: 'tag', group, tag })
-                        }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                      <DragHandle
-                        label={t('tagsPage.dragTag', { label: tag.label })}
-                        onDragStart={() => {
-                          setDraggingTag({ groupId: group.id, tagId: tag.id })
-                          setTagDropTarget(null)
-                        }}
-                        onDragEnd={clearTagDrag}
-                        onMoveUp={() => void handleMoveTag(group, tag.id, 'up')}
-                        onMoveDown={() => void handleMoveTag(group, tag.id, 'down')}
+                      <div className="list-row-actions-extra">
+                        <IconButton
+                          label={t('tagsPage.moveUp')}
+                          size="sm"
+                          disabled={tagIndex === 0}
+                          onClick={() => void handleMoveTag(group, tag.id, 'up')}
+                        >
+                          <ArrowUpIcon />
+                        </IconButton>
+                        <IconButton
+                          label={t('tagsPage.moveDown')}
+                          size="sm"
+                          disabled={tagIndex === group.tags.length - 1}
+                          onClick={() => void handleMoveTag(group, tag.id, 'down')}
+                        >
+                          <ArrowDownIcon />
+                        </IconButton>
+                        <IconButton
+                          label={t('common.delete')}
+                          size="sm"
+                          variant="danger"
+                          onClick={() => {
+                            setDeleteError(null)
+                            setPendingDelete({ kind: 'tag', group, tag })
+                          }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                        <DragHandle
+                          label={t('tagsPage.dragTag', { label: tag.label })}
+                          onDragStart={() => {
+                            setDraggingTag({ groupId: group.id, tagId: tag.id })
+                            setTagDropTarget(null)
+                          }}
+                          onDragEnd={clearTagDrag}
+                          onMoveUp={() => void handleMoveTag(group, tag.id, 'up')}
+                          onMoveDown={() => void handleMoveTag(group, tag.id, 'down')}
+                        />
+                      </div>
+                      <OverflowMenu
+                        className="list-row-actions-menu"
+                        items={[
+                          {
+                            label: t('tagsPage.moveUp'),
+                            disabled: tagIndex === 0,
+                            onClick: () => void handleMoveTag(group, tag.id, 'up'),
+                          },
+                          {
+                            label: t('tagsPage.moveDown'),
+                            disabled: tagIndex === group.tags.length - 1,
+                            onClick: () => void handleMoveTag(group, tag.id, 'down'),
+                          },
+                          {
+                            label: t('common.delete'),
+                            danger: true,
+                            onClick: () => {
+                              setDeleteError(null)
+                              setPendingDelete({ kind: 'tag', group, tag })
+                            },
+                          },
+                        ]}
                       />
                     </div>
                   </li>
@@ -744,7 +795,7 @@ export function TagsPage() {
         ))}
       </div>
 
-      <p className="muted">
+      <p className="muted page-back-link">
         <Link to="/">{t('common.backToEntries')}</Link>
       </p>
     </section>

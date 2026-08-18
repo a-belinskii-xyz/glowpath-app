@@ -16,6 +16,7 @@ import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
+import { OverflowMenu } from '../components/OverflowMenu'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MarkdownNoteEditor } from '../components/MarkdownNoteEditor'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -197,8 +198,8 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
     <section className={embedded ? undefined : 'page'}>
       {embedded ? null : <EmailVerificationBanner />}
 
-      <header className="page-header">
-        <h1>{t('templatesPage.title')}</h1>
+      <header className={`page-header${embedded ? ' page-header-embedded' : ''}`}>
+        {embedded ? null : <h1>{t('templatesPage.title')}</h1>}
         <button type="button" className="button" onClick={() => openEditor({ kind: 'create' })}>
           {t('templatesPage.addTemplate')}
         </button>
@@ -311,42 +312,67 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
                   >
                     <EditIcon />
                   </IconButton>
-                  <IconButton
-                    label={t('templatesPage.moveUp')}
-                    size="sm"
-                    disabled={index === 0}
-                    onClick={() => void handleMove(template.id, 'up')}
-                  >
-                    <ArrowUpIcon />
-                  </IconButton>
-                  <IconButton
-                    label={t('templatesPage.moveDown')}
-                    size="sm"
-                    disabled={index === templates.length - 1}
-                    onClick={() => void handleMove(template.id, 'down')}
-                  >
-                    <ArrowDownIcon />
-                  </IconButton>
-                  <IconButton
-                    label={t('common.delete')}
-                    size="sm"
-                    variant="danger"
-                    onClick={() => {
-                      setDeleteError(null)
-                      setPendingDelete(template)
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                  <DragHandle
-                    label={t('templatesPage.dragTemplate', { label: template.label })}
-                    onDragStart={() => {
-                      setDraggingId(template.id)
-                      setDropTarget(null)
-                    }}
-                    onDragEnd={clearDrag}
-                    onMoveUp={() => void handleMove(template.id, 'up')}
-                    onMoveDown={() => void handleMove(template.id, 'down')}
+                  <div className="list-row-actions-extra">
+                    <IconButton
+                      label={t('templatesPage.moveUp')}
+                      size="sm"
+                      disabled={index === 0}
+                      onClick={() => void handleMove(template.id, 'up')}
+                    >
+                      <ArrowUpIcon />
+                    </IconButton>
+                    <IconButton
+                      label={t('templatesPage.moveDown')}
+                      size="sm"
+                      disabled={index === templates.length - 1}
+                      onClick={() => void handleMove(template.id, 'down')}
+                    >
+                      <ArrowDownIcon />
+                    </IconButton>
+                    <IconButton
+                      label={t('common.delete')}
+                      size="sm"
+                      variant="danger"
+                      onClick={() => {
+                        setDeleteError(null)
+                        setPendingDelete(template)
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                    <DragHandle
+                      label={t('templatesPage.dragTemplate', { label: template.label })}
+                      onDragStart={() => {
+                        setDraggingId(template.id)
+                        setDropTarget(null)
+                      }}
+                      onDragEnd={clearDrag}
+                      onMoveUp={() => void handleMove(template.id, 'up')}
+                      onMoveDown={() => void handleMove(template.id, 'down')}
+                    />
+                  </div>
+                  <OverflowMenu
+                    className="list-row-actions-menu"
+                    items={[
+                      {
+                        label: t('templatesPage.moveUp'),
+                        disabled: index === 0,
+                        onClick: () => void handleMove(template.id, 'up'),
+                      },
+                      {
+                        label: t('templatesPage.moveDown'),
+                        disabled: index === templates.length - 1,
+                        onClick: () => void handleMove(template.id, 'down'),
+                      },
+                      {
+                        label: t('common.delete'),
+                        danger: true,
+                        onClick: () => {
+                          setDeleteError(null)
+                          setPendingDelete(template)
+                        },
+                      },
+                    ]}
                   />
                 </div>
               </div>
@@ -363,7 +389,7 @@ export function TemplatesPage({ embedded = false }: TemplatesPageProps) {
       </div>
 
       {embedded ? null : (
-        <p className="muted">
+        <p className="muted page-back-link">
           <Link to="/">{t('common.backToEntries')}</Link>
         </p>
       )}

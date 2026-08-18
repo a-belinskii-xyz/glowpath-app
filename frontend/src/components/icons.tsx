@@ -158,3 +158,76 @@ export function AudioIcon(props: IconProps) {
     </BaseIcon>
   )
 }
+
+export function NavEntriesIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <rect
+        x="4.5"
+        y="4.5"
+        width="15"
+        height="15"
+        rx="3.25"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M8 9.25h8M8 12.5h8M8 15.75h5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
+export function NavGoalsIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <circle
+        cx="12"
+        cy="12"
+        r="7.25"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="3.25"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <circle cx="12" cy="12" r="1.05" fill="currentColor" />
+    </BaseIcon>
+  )
+}
+
+export function NavTagsIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M4.75 12.4 12.35 4.8A1.7 1.7 0 0 1 13.55 4.3h4.7A1.45 1.45 0 0 1 19.7 5.75v4.7a1.7 1.7 0 0 1-.5 1.2L11.6 19.25a1.55 1.55 0 0 1-2.2 0L4.75 14.6a1.55 1.55 0 0 1 0-2.2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <circle cx="16.05" cy="7.95" r="1.05" fill="currentColor" />
+    </BaseIcon>
+  )
+}
+
+export function NavMoreIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="6.5" cy="12" r="1.45" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.45" fill="currentColor" />
+      <circle cx="17.5" cy="12" r="1.45" fill="currentColor" />
+    </BaseIcon>
+  )
+}

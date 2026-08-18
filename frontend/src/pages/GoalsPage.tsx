@@ -19,6 +19,7 @@ import { GoalIcon } from '../components/GoalIcon'
 import { GoalIconEditor, type PendingIconUpload } from '../components/GoalIconEditor'
 import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
+import { OverflowMenu } from '../components/OverflowMenu'
 import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useAuth } from '../context/AuthContext'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
@@ -596,42 +597,67 @@ export function GoalsPage() {
                       >
                         <EditIcon />
                       </IconButton>
-                      <IconButton
-                        label={t('goalsPage.moveUp')}
-                        size="sm"
-                        disabled={index === 0}
-                        onClick={() => void handleMove(goal.id, 'up')}
-                      >
-                        <ArrowUpIcon />
-                      </IconButton>
-                      <IconButton
-                        label={t('goalsPage.moveDown')}
-                        size="sm"
-                        disabled={index === goals.length - 1}
-                        onClick={() => void handleMove(goal.id, 'down')}
-                      >
-                        <ArrowDownIcon />
-                      </IconButton>
-                      <IconButton
-                        label={t('common.delete')}
-                        size="sm"
-                        variant="danger"
-                        onClick={() => {
-                          setDeleteError(null)
-                          setPendingDelete(goal)
-                        }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                      <DragHandle
-                        label={t('goalsPage.dragGoal', { label: goal.label })}
-                        onDragStart={() => {
-                          setDraggingId(goal.id)
-                          setDropTarget(null)
-                        }}
-                        onDragEnd={clearDrag}
-                        onMoveUp={() => void handleMove(goal.id, 'up')}
-                        onMoveDown={() => void handleMove(goal.id, 'down')}
+                      <div className="list-row-actions-extra">
+                        <IconButton
+                          label={t('goalsPage.moveUp')}
+                          size="sm"
+                          disabled={index === 0}
+                          onClick={() => void handleMove(goal.id, 'up')}
+                        >
+                          <ArrowUpIcon />
+                        </IconButton>
+                        <IconButton
+                          label={t('goalsPage.moveDown')}
+                          size="sm"
+                          disabled={index === goals.length - 1}
+                          onClick={() => void handleMove(goal.id, 'down')}
+                        >
+                          <ArrowDownIcon />
+                        </IconButton>
+                        <IconButton
+                          label={t('common.delete')}
+                          size="sm"
+                          variant="danger"
+                          onClick={() => {
+                            setDeleteError(null)
+                            setPendingDelete(goal)
+                          }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                        <DragHandle
+                          label={t('goalsPage.dragGoal', { label: goal.label })}
+                          onDragStart={() => {
+                            setDraggingId(goal.id)
+                            setDropTarget(null)
+                          }}
+                          onDragEnd={clearDrag}
+                          onMoveUp={() => void handleMove(goal.id, 'up')}
+                          onMoveDown={() => void handleMove(goal.id, 'down')}
+                        />
+                      </div>
+                      <OverflowMenu
+                        className="list-row-actions-menu"
+                        items={[
+                          {
+                            label: t('goalsPage.moveUp'),
+                            disabled: index === 0,
+                            onClick: () => void handleMove(goal.id, 'up'),
+                          },
+                          {
+                            label: t('goalsPage.moveDown'),
+                            disabled: index === goals.length - 1,
+                            onClick: () => void handleMove(goal.id, 'down'),
+                          },
+                          {
+                            label: t('common.delete'),
+                            danger: true,
+                            onClick: () => {
+                              setDeleteError(null)
+                              setPendingDelete(goal)
+                            },
+                          },
+                        ]}
                       />
                     </div>
                     <div className="goal-card-toggles">
@@ -690,7 +716,7 @@ export function GoalsPage() {
         </div>
       ) : null}
 
-      <p className="muted">
+      <p className="muted page-back-link">
         <Link to="/">{t('common.backToEntries')}</Link>
       </p>
     </section>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { moodGlowFilter } from '../design'
 import { buildMonthCalendarCells, isFutureDate, todayKey, type CalendarCell } from '../lib/datetime'
 import { entryMoodStyle, getMoodScoreStyle } from '../lib/moodScale'
@@ -13,8 +14,9 @@ import type { CalendarDayPublic } from '../types/mood'
 
 export type CalendarMode = 'moods' | 'goals'
 
-/** Keep day cells calm: show a few marks, then +N. */
-const MAX_VISIBLE_MARKS = 3
+/** Keep day cells calm: show a few marks, then +N. Phone cells only fit two. */
+const MAX_VISIBLE_MARKS_DESKTOP = 3
+const MAX_VISIBLE_MARKS_MOBILE = 2
 
 type MonthCalendarProps = {
   year: number
@@ -89,6 +91,8 @@ export function MonthCalendar({
   }, [goalDays])
   const today = todayKey(timeZone)
   const ariaLabel = mode === 'goals' ? t('calendar.ariaLabelGoals') : t('calendar.ariaLabel')
+  const isNarrow = useMediaQuery('(max-width: 899px)')
+  const maxVisibleMarks = isNarrow ? MAX_VISIBLE_MARKS_MOBILE : MAX_VISIBLE_MARKS_DESKTOP
 
   return (
     <div className="month-calendar" role="grid" aria-label={ariaLabel}>
@@ -116,12 +120,12 @@ export function MonthCalendar({
               const hasEntries = entryCount > 0
 
               // Backend may already cap marks; overflow uses total entry_count.
-              const markOverflow = Math.max(0, entryCount - MAX_VISIBLE_MARKS)
+              const markOverflow = Math.max(0, entryCount - maxVisibleMarks)
 
               const marks =
                 mode === 'goals' ? (
                   <DayMarks overflow={markOverflow}>
-                    {dayGoals.slice(0, MAX_VISIBLE_MARKS).map((item, index) => {
+                    {dayGoals.slice(0, maxVisibleMarks).map((item, index) => {
                       const goal = goalsById.get(item.goal_id)
                       const style = goalStyleFrom(goal)
                       return (
@@ -129,7 +133,7 @@ export function MonthCalendar({
                           key={`${cell.date}-${index}-${item.goal_id}`}
                           className="month-calendar-emoji"
                           style={{
-                            zIndex: MAX_VISIBLE_MARKS - index,
+                            zIndex: maxVisibleMarks - index,
                             filter: moodGlowFilter(style.color),
                           }}
                         >
@@ -140,14 +144,14 @@ export function MonthCalendar({
                   </DayMarks>
                 ) : (
                   <DayMarks overflow={markOverflow}>
-                    {dayScores.slice(0, MAX_VISIBLE_MARKS).map((item, index) => {
+                    {dayScores.slice(0, maxVisibleMarks).map((item, index) => {
                       const style = entryMoodStyle(item, scoreStyles)
                       return (
                         <span
                           key={`${cell.date}-${index}-${item.score}`}
                           className="month-calendar-emoji"
                           style={{
-                            zIndex: MAX_VISIBLE_MARKS - index,
+                            zIndex: maxVisibleMarks - index,
                             filter: moodGlowFilter(style.color),
                           }}
                         >
@@ -167,11 +171,11 @@ export function MonthCalendar({
               const marksSummary =
                 mode === 'goals'
                   ? dayGoals
-                      .slice(0, MAX_VISIBLE_MARKS)
+                      .slice(0, maxVisibleMarks)
                       .map((item) => goalsById.get(item.goal_id)?.label ?? '🎯')
                       .join(', ')
                   : dayScores
-                      .slice(0, MAX_VISIBLE_MARKS)
+                      .slice(0, maxVisibleMarks)
                       .map((item) => getMoodScoreStyle(item.score, scoreStyles).label)
                       .join(', ')
               const dayTitle =

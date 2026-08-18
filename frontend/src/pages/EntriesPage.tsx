@@ -783,18 +783,20 @@ export function EntriesPage() {
               </button>
             ) : null}
           </div>
-          <button
-            type="button"
-            className={`button button-secondary button-small${favoritesOnly ? ' is-active' : ''}`}
-            aria-pressed={favoritesOnly}
-            disabled={isSearchMode}
-            onClick={() => setFavoritesOnly((value) => !value)}
-          >
-            {t('entries.favoritesOnly')}
-          </button>
-          <Link className="button" to="/entries/new">
-            {t('entries.newEntry')}
-          </Link>
+          <div className="page-header-actions-row">
+            <button
+              type="button"
+              className={`button button-secondary button-small${favoritesOnly ? ' is-active' : ''}`}
+              aria-pressed={favoritesOnly}
+              disabled={isSearchMode}
+              onClick={() => setFavoritesOnly((value) => !value)}
+            >
+              {t('entries.favoritesOnly')}
+            </button>
+            <Link className="button" to="/entries/new">
+              {t('entries.newEntry')}
+            </Link>
+          </div>
         </div>
       </header>
 
