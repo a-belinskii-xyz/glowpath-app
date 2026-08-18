@@ -815,8 +815,8 @@ export function MoodPreferencesForm() {
           onConfirm={() => void runPendingConfirm()}
         />
       ) : null}
-      <PageErrorAlert error={error} />
-      {success ? <Alert variant="success">{success}</Alert> : null}
+      <PageErrorAlert error={editingOption ? null : error} />
+      {!editingOption && success ? <Alert variant="success">{success}</Alert> : null}
 
       <p className="form-hint">{t('moodPreferences.listLead')}</p>
 
@@ -851,7 +851,11 @@ export function MoodPreferencesForm() {
               <IconButton
                 label={t('moodPreferences.editScore', { label })}
                 size="sm"
-                onClick={() => setEditingScore(option.score)}
+                onClick={() => {
+                  setError(null)
+                  setSuccess(null)
+                  setEditingScore(option.score)
+                }}
               >
                 <EditIcon />
               </IconButton>
@@ -869,9 +873,15 @@ export function MoodPreferencesForm() {
               })
             : ''
         }
-        onClose={() => setEditingScore(null)}
+        onClose={() => {
+          setEditingScore(null)
+          setError(null)
+          setSuccess(null)
+        }}
         accentColors={drawerColors}
       >
+        <PageErrorAlert error={error} />
+        {success ? <Alert variant="success">{success}</Alert> : null}
         {editingOption ? renderScoreEditor(editingOption) : null}
         <p className="form-hint">{t('moodPreferences.lead')}</p>
       </EditorDrawer>
