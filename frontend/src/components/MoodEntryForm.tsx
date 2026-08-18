@@ -25,6 +25,7 @@ import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
 import { ApiError, formatApiError } from '../lib/errors'
+import { randomId } from '../lib/randomId'
 import {
   datetimeLocalToIso,
   entriesListPathForInstant,
@@ -568,7 +569,7 @@ export function MoodEntryForm({
         const previewUrl = URL.createObjectURL(file)
         photoPreviewUrlsRef.current.add(previewUrl)
         return {
-          key: crypto.randomUUID(),
+          key: randomId(),
           source: 'pending' as const,
           file,
           previewUrl,
