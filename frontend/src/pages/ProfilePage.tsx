@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
+import { ChevronRightIcon, SettingsIcon } from '../components/icons'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -17,7 +19,7 @@ import { timezoneSelectOptions } from '../lib/timezones'
 import { formatApiError } from '../lib/errors'
 
 export function ProfilePage() {
-  const { user, refreshUser, updateTimezone } = useAuth()
+  const { user, logout, refreshUser, updateTimezone } = useAuth()
   const { locale, setLocale, t } = useLocale()
   const { scores } = useMoodPreferences()
   usePageAmbientGlow(Object.values(scores).map((style) => style.color))
@@ -75,6 +77,19 @@ export function ProfilePage() {
       <PageErrorAlert error={timezoneError} />
       <PageErrorAlert error={resetError} />
       {resetMessage ? <Alert variant="success">{resetMessage}</Alert> : null}
+
+      <nav className="profile-shortcuts" aria-label={t('nav.sectionTrack')}>
+        <Link to="/tracker-settings" className="profile-shortcut">
+          <span className="profile-shortcut-icon" aria-hidden="true">
+            <SettingsIcon />
+          </span>
+          <span className="profile-shortcut-copy">
+            <span className="profile-shortcut-title">{t('nav.trackerSettings')}</span>
+            <span className="profile-shortcut-lead">{t('profile.trackerSettingsLink')}</span>
+          </span>
+          <ChevronRightIcon className="profile-shortcut-chevron" />
+        </Link>
+      </nav>
 
       <div className="card profile-account">
         <div className="profile-account-row">
@@ -170,6 +185,13 @@ export function ProfilePage() {
         <p className="profile-section-lead">{t('profile.notificationsLead')}</p>
         <NotificationSettingsForm timezone={user.timezone} />
       </section>
+
+      <div className="profile-logout">
+        <button type="button" className="button button-secondary profile-logout-button" onClick={logout}>
+          {t('nav.logOut')}
+        </button>
+        <p className="profile-field-hint">{t('profile.logOutHint')}</p>
+      </div>
     </section>
   )
 }

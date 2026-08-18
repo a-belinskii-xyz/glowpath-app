@@ -8,6 +8,9 @@ import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
 import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodStats'
 import { EntryRow } from '../components/EntryRow'
+import { HeartIcon } from '../components/HeartIcon'
+import { IconButton, IconLinkButton } from '../components/IconButton'
+import { PlusIcon, SearchIcon } from '../components/icons'
 import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MonthControl } from '../components/MonthControl'
 import { useAuth } from '../context/AuthContext'
@@ -103,6 +106,7 @@ export function EntriesPage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const [pendingScrollDay, setPendingScrollDay] = useState<string | null>(
     () => searchParams.get('day'),
@@ -114,9 +118,11 @@ export function EntriesPage() {
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const loadingRef = useRef(false)
   const dayLoadRef = useRef<string | null>(null)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   const monthBounds = useMemo(() => getMonthBounds(year, month, timeZone), [year, month, timeZone])
   const isSearchMode = searchQuery.trim().length > 0
+  const showSearchField = searchOpen || searchInput.length > 0
   const weekBounds = useMemo(
     () => getIsoWeekBounds(weekAnchorDate, timeZone),
     [timeZone, weekAnchorDate],
@@ -458,6 +464,13 @@ export function EntriesPage() {
   }, [searchInput])
 
   useEffect(() => {
+    if (!searchOpen) {
+      return
+    }
+    searchInputRef.current?.focus()
+  }, [searchOpen])
+
+  useEffect(() => {
     void loadCalendar()
   }, [loadCalendar])
 
@@ -752,7 +765,7 @@ export function EntriesPage() {
     <section className="page">
       <EmailVerificationBanner />
 
-      <header className="page-header">
+      <header className="page-header entries-toolbar">
         <MonthControl
           label={formatMonthHeading(year, month, dateLocale)}
           sizeLabels={monthTitleSizeLabels}
@@ -762,48 +775,81 @@ export function EntriesPage() {
           onNext={goToNextMonth}
           canGoNext={canGoNextMonth}
         />
-        <div className="page-header-actions">
-          <div className={`entries-search${searchInput ? ' has-clear' : ''}`}>
-            <input
-              type="search"
-              className="form-input entries-search-input"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder={t('entries.searchPlaceholder')}
-              aria-label={t('entries.searchPlaceholder')}
-            />
-            {searchInput ? (
-              <button
-                type="button"
-                className="entries-search-clear"
-                onClick={() => setSearchInput('')}
-                aria-label={t('entries.searchClear')}
-              >
-                ×
-              </button>
-            ) : null}
-          </div>
-          <div className="page-header-actions-row">
+        <div className="entries-toolbar-actions">
+          <IconButton
+            className="entries-search-toggle"
+            label={showSearchField ? t('entries.searchClose') : t('entries.searchPlaceholder')}
+            size="sm"
+            variant="ghost"
+            isActive={showSearchField}
+            aria-expanded={showSearchField}
+            onClick={() => {
+              if (showSearchField) {
+                setSearchInput('')
+                setSearchOpen(false)
+                return
+              }
+              setSearchOpen(true)
+            }}
+          >
+            <SearchIcon />
+          </IconButton>
+          <IconButton
+            label={t('entries.favoritesOnly')}
+            size="sm"
+            variant="ghost"
+            isActive={favoritesOnly}
+            className={favoritesOnly ? 'is-favorite' : ''}
+            aria-pressed={favoritesOnly}
+            disabled={isSearchMode}
+            onClick={() => setFavoritesOnly((value) => !value)}
+          >
+            <HeartIcon filled={favoritesOnly} />
+          </IconButton>
+          <IconLinkButton
+            className="entries-new-icon"
+            label={t('entries.newEntry')}
+            to="/entries/new"
+            size="sm"
+          >
+            <PlusIcon />
+          </IconLinkButton>
+          <Link className="button entries-new-text" to="/entries/new">
+            {t('entries.newEntry')}
+          </Link>
+        </div>
+        <div
+          className={`entries-search${showSearchField ? ' is-open' : ''}${searchInput ? ' has-clear' : ''}`}
+        >
+          <input
+            ref={searchInputRef}
+            type="search"
+            className="form-input entries-search-input"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder={t('entries.searchPlaceholder')}
+            aria-label={t('entries.searchPlaceholder')}
+          />
+          {searchInput ? (
             <button
               type="button"
-              className={`button button-secondary button-small${favoritesOnly ? ' is-active' : ''}`}
-              aria-pressed={favoritesOnly}
-              disabled={isSearchMode}
-              onClick={() => setFavoritesOnly((value) => !value)}
+              className="entries-search-clear"
+              onClick={() => {
+                setSearchInput('')
+                setSearchOpen(false)
+              }}
+              aria-label={t('entries.searchClear')}
             >
-              {t('entries.favoritesOnly')}
+              ×
             </button>
-            <Link className="button" to="/entries/new">
-              {t('entries.newEntry')}
-            </Link>
-          </div>
+          ) : null}
         </div>
       </header>
 
       <PageErrorAlert error={error} />
 
       {user?.email_verified && !isSearchMode ? (
-        <>
+        <div className={isCalendarLoading ? 'calendar-panel is-refreshing' : 'calendar-panel'}>
           <div
             className="segmented-control calendar-mode-tabs"
             role="group"
@@ -827,27 +873,25 @@ export function EntriesPage() {
             </button>
           </div>
           {isCalendarLoading && calendarDays.length === 0 && goalCalendarDays.length === 0 ? (
-            <p className="muted">{t('common.loadingCalendar')}</p>
+            <p className="muted calendar-panel-status">{t('common.loadingCalendar')}</p>
           ) : (
-            <div className={isCalendarLoading ? 'calendar-panel is-refreshing' : 'calendar-panel'}>
-              <MonthCalendar
-                year={year}
-                month={month}
-                timeZone={timeZone}
-                mode={calendarMode}
-                moodDays={calendarDays}
-                goalDays={goalCalendarDays}
-                goalsById={goalsById}
-                onDayWithEntries={handleDayWithEntries}
-                onSelectWeekDay={
-                  calendarMode === 'goals' && goalStatsPeriod === 'week'
-                    ? handleSelectWeekDay
-                    : undefined
-                }
-              />
-            </div>
+            <MonthCalendar
+              year={year}
+              month={month}
+              timeZone={timeZone}
+              mode={calendarMode}
+              moodDays={calendarDays}
+              goalDays={goalCalendarDays}
+              goalsById={goalsById}
+              onDayWithEntries={handleDayWithEntries}
+              onSelectWeekDay={
+                calendarMode === 'goals' && goalStatsPeriod === 'week'
+                  ? handleSelectWeekDay
+                  : undefined
+              }
+            />
           )}
-        </>
+        </div>
       ) : null}
 
       {user?.email_verified && !isSearchMode ? (

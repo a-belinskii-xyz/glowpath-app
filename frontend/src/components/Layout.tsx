@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import type { CSSProperties } from 'react'
 
 import { CaptureAttribution } from './CaptureAttribution'
 import { LanguageSwitcher } from './LanguageSwitcher'
-import { NavEntriesIcon, NavGoalsIcon, NavMoreIcon, NavTagsIcon } from './icons'
+import { NavEntriesIcon, NavGoalsIcon, NavProfileIcon, NavTagsIcon } from './icons'
 import { useAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -17,7 +16,7 @@ function bottomNavClassName({ isActive }: { isActive: boolean }) {
   return `app-bottom-nav-link${isActive ? ' is-active' : ''}`
 }
 
-function isMoreSection(pathname: string) {
+function isAccountSection(pathname: string) {
   return pathname.startsWith('/profile') || pathname.startsWith('/tracker-settings')
 }
 
@@ -27,81 +26,31 @@ function isFocusedEntryFlow(pathname: string) {
 
 function BottomNav() {
   const { t } = useLocale()
-  const { logout } = useAuth()
   const location = useLocation()
-  const [moreOpen, setMoreOpen] = useState(false)
-  const moreActive = isMoreSection(location.pathname)
-
-  useEffect(() => {
-    setMoreOpen(false)
-  }, [location.pathname])
-
-  useEffect(() => {
-    if (!moreOpen) {
-      return
-    }
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMoreOpen(false)
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [moreOpen])
+  const accountActive = isAccountSection(location.pathname)
 
   return (
-    <>
-      {moreOpen ? (
-        <div className="app-more-backdrop" onClick={() => setMoreOpen(false)}>
-          <div
-            className="app-more-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t('nav.moreMenu')}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <NavLink to="/tracker-settings" className={navClassName} onClick={() => setMoreOpen(false)}>
-              {t('nav.trackerSettings')}
-            </NavLink>
-            <NavLink to="/profile" className={navClassName} onClick={() => setMoreOpen(false)}>
-              {t('nav.profile')}
-            </NavLink>
-            <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
-              {t('nav.logOut')}
-            </button>
-          </div>
-        </div>
-      ) : null}
-      <nav className="app-bottom-nav" aria-label={t('nav.menu')}>
-        <NavLink to="/" end className={bottomNavClassName}>
-          <NavEntriesIcon />
-          <span>{t('nav.entries')}</span>
-        </NavLink>
-        <NavLink to="/goals" className={bottomNavClassName}>
-          <NavGoalsIcon />
-          <span>{t('nav.goals')}</span>
-        </NavLink>
-        <NavLink to="/tags" className={bottomNavClassName}>
-          <NavTagsIcon />
-          <span>{t('nav.tags')}</span>
-        </NavLink>
-        <button
-          type="button"
-          className={`app-bottom-nav-link${moreActive || moreOpen ? ' is-active' : ''}`}
-          aria-haspopup="dialog"
-          aria-expanded={moreOpen}
-          onClick={() => setMoreOpen((open) => !open)}
-        >
-          <NavMoreIcon />
-          <span>{t('nav.more')}</span>
-        </button>
-      </nav>
-    </>
+    <nav className="app-bottom-nav" aria-label={t('nav.menu')}>
+      <NavLink to="/" end className={bottomNavClassName}>
+        <NavEntriesIcon />
+        <span>{t('nav.entries')}</span>
+      </NavLink>
+      <NavLink to="/goals" className={bottomNavClassName}>
+        <NavGoalsIcon />
+        <span>{t('nav.goals')}</span>
+      </NavLink>
+      <NavLink to="/tags" className={bottomNavClassName}>
+        <NavTagsIcon />
+        <span>{t('nav.tags')}</span>
+      </NavLink>
+      <NavLink
+        to="/profile"
+        className={() => `app-bottom-nav-link${accountActive ? ' is-active' : ''}`}
+      >
+        <NavProfileIcon />
+        <span>{t('nav.profile')}</span>
+      </NavLink>
+    </nav>
   )
 }
 

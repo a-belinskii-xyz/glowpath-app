@@ -222,12 +222,82 @@ export function NavTagsIcon(props: IconProps) {
   )
 }
 
-export function NavMoreIcon(props: IconProps) {
+export function NavProfileIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>
-      <circle cx="6.5" cy="12" r="1.45" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.45" fill="currentColor" />
-      <circle cx="17.5" cy="12" r="1.45" fill="currentColor" />
+      <circle
+        cx="12"
+        cy="8.25"
+        r="3.15"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M5.4 18.6c.85-3.05 3.2-4.6 6.6-4.6s5.75 1.55 6.6 4.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <circle
+        cx="11"
+        cy="11"
+        r="5.75"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M15.6 15.6 19.25 19.25"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M12 5.5v13M5.5 12h13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
+export function SettingsIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <circle
+        cx="12"
+        cy="12"
+        r="3.05"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M12 4.4v1.7M12 17.9v1.7M4.4 12h1.7M17.9 12h1.7M6.55 6.55l1.2 1.2M16.25 16.25l1.2 1.2M17.45 6.55l-1.2 1.2M7.75 16.25l-1.2 1.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
     </BaseIcon>
   )
 }

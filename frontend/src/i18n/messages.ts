@@ -89,6 +89,7 @@ export const en = {
     noFavoritesThisMonth: 'No favorite entries for this month.',
     searchPlaceholder: 'Search moments…',
     searchClear: 'Clear search',
+    searchClose: 'Close search',
     searchNoResults: 'No matching moments found.',
     searchResults: 'Search results',
     favoritesOnly: 'Favorites only',
@@ -427,6 +428,8 @@ export const en = {
     reminderTimeRequired: 'Choose a reminder time to enable mood or goal reminders.',
     saveNotifications: 'Save notification settings',
     notificationsSaved: 'Notification settings saved.',
+    trackerSettingsLink: 'Mood colors, icons, and note templates',
+    logOutHint: 'You can sign back in anytime from this device.',
     moodPreferencesTitle: 'Mood appearance',
     moodPreferencesLead:
       'Rename mood levels and choose a color and icon for each. Names and colors appear on charts, the calendar, and when logging entries.',
@@ -811,6 +814,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     noFavoritesThisMonth: 'В этом месяце избранных записей нет.',
     searchPlaceholder: 'Поиск моментов…',
     searchClear: 'Очистить поиск',
+    searchClose: 'Закрыть поиск',
     searchNoResults: 'Подходящих моментов не найдено.',
     searchResults: 'Результаты поиска',
     favoritesOnly: 'Только избранные',
@@ -1154,6 +1158,8 @@ export const ru: DeepStringLeaves<typeof en> = {
     reminderTimeRequired: 'Укажите время, чтобы включить напоминания о настроении или целях.',
     saveNotifications: 'Сохранить уведомления',
     notificationsSaved: 'Настройки уведомлений сохранены.',
+    trackerSettingsLink: 'Цвета настроения, иконки и шаблоны заметок',
+    logOutHint: 'Можно снова войти с этого устройства в любой момент.',
     moodPreferencesTitle: 'Оформление настроений',
     moodPreferencesLead:
       'Переименуйте уровни настроения и выберите цвет с иконкой для каждого. Названия и цвета отображаются на графиках, в календаре и при записи.',
