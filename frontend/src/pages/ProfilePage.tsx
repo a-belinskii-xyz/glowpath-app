@@ -100,14 +100,9 @@ function ProfileSettingsPanel({
   const headerRef = useRef<HTMLButtonElement>(null)
   const lockTopRef = useRef<number | null>(null)
   const [mounted, setMounted] = useState(false)
-  const [stickTop, setStickTop] = useState<number | null>(null)
 
   const handleToggle = () => {
-    const top = headerRef.current?.getBoundingClientRect().top ?? null
-    lockTopRef.current = top
-    if (!open && top !== null) {
-      setStickTop(top)
-    }
+    lockTopRef.current = headerRef.current?.getBoundingClientRect().top ?? null
     onToggle()
   }
 
@@ -131,9 +126,6 @@ function ProfileSettingsPanel({
     const frame = window.requestAnimationFrame(() => {
       keepElementViewportTop(header, top)
       lockTopRef.current = null
-      if (!open) {
-        setStickTop(null)
-      }
     })
     return () => window.cancelAnimationFrame(frame)
   }, [open, mounted])
@@ -146,7 +138,6 @@ function ProfileSettingsPanel({
         className="profile-shortcut"
         aria-expanded={open}
         aria-controls={contentId}
-        style={stickTop === null ? undefined : { top: stickTop }}
         onClick={handleToggle}
       >
         <span className="profile-shortcut-icon" aria-hidden="true">

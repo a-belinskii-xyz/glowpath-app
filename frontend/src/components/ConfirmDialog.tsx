@@ -57,7 +57,7 @@ export function ConfirmDialog({
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
       document.body.style.overflow = previousOverflow
-      previous?.focus?.()
+      previous?.focus?.({ preventScroll: true })
     }
   }, [open, isBusy, onCancel])
 

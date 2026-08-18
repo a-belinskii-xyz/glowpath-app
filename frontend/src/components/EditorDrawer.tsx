@@ -114,7 +114,7 @@ export function EditorDrawer({
       window.clearTimeout(timeout)
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
-      previous?.focus?.()
+      previous?.focus?.({ preventScroll: true })
     }
   }, [open, onClose])
 
