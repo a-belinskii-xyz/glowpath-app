@@ -767,44 +767,43 @@ export function MoodEntryForm({
           {isPastEntryDay ? t('entries.howAreYouFeelingPast') : t('entries.howAreYouFeeling')}
         </h2>
 
-        <div
-          className="mood-card-rail"
-          role="group"
-          aria-label={t('entries.moodScore')}
-        >
-          {moodScoreOptions.map((option) => {
-            const isSelected = moodPicked && score === option.score
-            return (
-              <button
-                key={option.score}
-                type="button"
-                className={`mood-card${isSelected ? ' mood-card-selected' : ''}`}
-                style={{
-                  ['--mood-card-color' as string]: option.color,
-                  borderColor: isSelected ? option.color : undefined,
-                  background: isSelected ? moodSubtleFill(option.color) : undefined,
-                  boxShadow: isSelected ? moodGlowBoxShadow(option.color, 'md') : undefined,
-                }}
-                onClick={() => pickMood(option.score)}
-                aria-pressed={isSelected}
-              >
-                <span style={{ filter: moodGlowFilter(option.color) }}>
-                  <MoodScoreIcon
-                    style={option.style}
-                    className="mood-card-emoji"
-                    fallbackScore={option.score}
-                  />
-                </span>
-                <span className="mood-card-label">{option.label}</span>
-                <span className="mood-card-phrase">{moodPhrase(option.score)}</span>
-              </button>
-            )
-          })}
+        <div className="mood-picker" role="group" aria-label={t('entries.moodScore')}>
+          <div className="mood-picker-options">
+            {moodScoreOptions.map((option) => {
+              const isSelected = moodPicked && score === option.score
+              return (
+                <button
+                  key={option.score}
+                  type="button"
+                  className={`mood-picker-option${isSelected ? ' is-selected' : ''}`}
+                  style={{
+                    ['--mood-picker-color' as string]: option.color,
+                    borderColor: isSelected ? option.color : undefined,
+                    background: isSelected ? moodSubtleFill(option.color) : undefined,
+                    boxShadow: isSelected ? moodGlowBoxShadow(option.color, 'sm') : undefined,
+                  }}
+                  onClick={() => pickMood(option.score)}
+                  aria-pressed={isSelected}
+                >
+                  <span
+                    className="mood-picker-icon-wrap"
+                    style={{ filter: moodGlowFilter(option.color) }}
+                  >
+                    <MoodScoreIcon
+                      style={option.style}
+                      className="mood-picker-icon"
+                      fallbackScore={option.score}
+                    />
+                  </span>
+                  <span className="mood-picker-label">{option.label}</span>
+                </button>
+              )
+            })}
+          </div>
+          <p className={`mood-picker-caption${!moodPicked ? ' muted' : ''}`}>
+            {moodPicked ? moodPhrase(score) : t('entries.pickMoodHint')}
+          </p>
         </div>
-
-        {!moodPicked ? (
-          <p className="entry-mood-hint muted">{t('entries.pickMoodHint')}</p>
-        ) : null}
       </section>
 
       {detailsVisible ? (

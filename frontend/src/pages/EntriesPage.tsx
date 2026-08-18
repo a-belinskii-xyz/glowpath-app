@@ -13,6 +13,7 @@ import { IconButton, IconLinkButton } from '../components/IconButton'
 import { PlusIcon, SearchIcon } from '../components/icons'
 import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MonthControl } from '../components/MonthControl'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
@@ -22,6 +23,7 @@ import {
   dayKey,
   formatDayHeading,
   formatMonthHeading,
+  formatMonthHeadingCompact,
   formatTime,
   formatWeekHeading,
   formatYearMonthParam,
@@ -70,6 +72,15 @@ export function EntriesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
+  const isNarrow = useMediaQuery('(max-width: 899px)')
+  const monthShortLabels = useMemo(() => t('calendar.monthsShort').split('|'), [t])
+  const formatHeading = useCallback(
+    (headingYear: number, headingMonth: number) =>
+      isNarrow
+        ? formatMonthHeadingCompact(headingYear, headingMonth, monthShortLabels)
+        : formatMonthHeading(headingYear, headingMonth, dateLocale),
+    [dateLocale, isNarrow, monthShortLabels],
+  )
 
   const initialMonth = (() => {
     const now = getCurrentYearMonth(timeZone)
@@ -136,8 +147,8 @@ export function EntriesPage() {
   const canGoNextMonth =
     year < currentMonth.year || (year === currentMonth.year && month < currentMonth.month)
   const monthTitleSizeLabels = useMemo(
-    () => Array.from({ length: 12 }, (_, index) => formatMonthHeading(year, index, dateLocale)),
-    [dateLocale, year],
+    () => Array.from({ length: 12 }, (_, index) => formatHeading(year, index)),
+    [formatHeading, year],
   )
   const goalStatsBounds = goalStatsPeriod === 'week' ? weekBounds : monthBounds
   const isCurrentGoalPeriod =
@@ -767,7 +778,7 @@ export function EntriesPage() {
 
       <header className="page-header entries-toolbar">
         <MonthControl
-          label={formatMonthHeading(year, month, dateLocale)}
+          label={formatHeading(year, month)}
           sizeLabels={monthTitleSizeLabels}
           previousLabel={t('calendar.previousMonth')}
           nextLabel={t('calendar.nextMonth')}
@@ -927,7 +938,7 @@ export function EntriesPage() {
 
       {isLoading ? (
         <p className="muted">{t('common.loadingEntries')}</p>
-      ) : user?.email_verified && entries.length === 0 ? (
+      ) : user?.email_verified && entries.length === 0 && (isSearchMode || favoritesOnly || !stats) ? (
         <div className="entry-feed">
           <section className="day-section">
             <p className="muted entry-feed-empty">
