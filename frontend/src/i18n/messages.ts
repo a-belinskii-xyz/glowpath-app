@@ -430,6 +430,9 @@ export const en = {
     saveNotifications: 'Save notification settings',
     notificationsSaved: 'Notification settings saved.',
     trackerSettingsLink: 'Mood colors, icons, and note templates',
+    notificationsLink: 'Reminders via email and Telegram',
+    appearanceLink: 'Colors on past entries',
+    settingsMenu: 'Settings',
     logOutHint: 'You can sign back in anytime from this device.',
     moodPreferencesTitle: 'Mood appearance',
     moodPreferencesLead:
@@ -1161,6 +1164,9 @@ export const ru: DeepStringLeaves<typeof en> = {
     saveNotifications: 'Сохранить уведомления',
     notificationsSaved: 'Настройки уведомлений сохранены.',
     trackerSettingsLink: 'Цвета настроения, иконки и шаблоны заметок',
+    notificationsLink: 'Напоминания в email и Telegram',
+    appearanceLink: 'Цвета прошлых записей',
+    settingsMenu: 'Настройки',
     logOutHint: 'Можно снова войти с этого устройства в любой момент.',
     moodPreferencesTitle: 'Оформление настроений',
     moodPreferencesLead:

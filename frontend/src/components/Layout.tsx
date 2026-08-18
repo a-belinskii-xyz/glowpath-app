@@ -1,5 +1,5 @@
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 import { CaptureAttribution } from './CaptureAttribution'
 import { LanguageSwitcher } from './LanguageSwitcher'
@@ -54,6 +54,18 @@ function BottomNav() {
   )
 }
 
+function AppFrame({ className, children }: { className: string; children: ReactNode }) {
+  const { cssVars } = useAmbientGlow()
+  const rootStyle = cssVars as CSSProperties
+
+  return (
+    <div className="app-root" style={rootStyle}>
+      <div className="app-ambient" aria-hidden="true" />
+      <div className={className}>{children}</div>
+    </div>
+  )
+}
+
 function ShellChrome({
   sidebar,
   onboarding,
@@ -65,14 +77,12 @@ function ShellChrome({
 }) {
   const { t } = useLocale()
   const { logout } = useAuth()
-  const { cssVars } = useAmbientGlow()
   const location = useLocation()
-  const shellStyle = cssVars as CSSProperties
   const hideBottomNav = isFocusedEntryFlow(location.pathname)
 
   if (onboarding) {
     return (
-      <div className="app-shell" style={shellStyle}>
+      <AppFrame className="app-shell">
         <CaptureAttribution />
         <header className="app-header">
           <span className="brand">{t('brand')}</span>
@@ -86,13 +96,13 @@ function ShellChrome({
         <main className="app-main">
           <Outlet />
         </main>
-      </div>
+      </AppFrame>
     )
   }
 
   if (!sidebar) {
     return (
-      <div className="app-shell" style={shellStyle}>
+      <AppFrame className="app-shell">
         <CaptureAttribution />
         <header className="app-header">
           <Link to="/" className="brand">
@@ -111,14 +121,13 @@ function ShellChrome({
         <main className="app-main">
           <Outlet />
         </main>
-      </div>
+      </AppFrame>
     )
   }
 
   return (
-    <div
+    <AppFrame
       className={`app-shell app-shell--sidebar${hideBottomNav ? ' app-shell--no-bottom-nav' : ''}`}
-      style={shellStyle}
     >
       <CaptureAttribution />
       <aside className="app-sidebar" aria-label={t('nav.menu')}>
@@ -152,7 +161,7 @@ function ShellChrome({
         <Outlet />
       </main>
       {hideBottomNav ? null : <BottomNav />}
-    </div>
+    </AppFrame>
   )
 }
 

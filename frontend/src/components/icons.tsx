@@ -301,3 +301,42 @@ export function SettingsIcon(props: IconProps) {
     </BaseIcon>
   )
 }
+
+export function BellIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M6.2 9.5c0-3.1 2.55-5.7 5.8-5.7s5.8 2.6 5.8 5.7c0 4.05 1.7 5.5 1.7 5.5H4.5S6.2 13.55 6.2 9.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.55 18.15a2.5 2.5 0 0 0 4.9 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
+export function PaletteIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M12 4.6a7.4 7.4 0 1 0 .35 14.78h1.4a1.85 1.85 0 0 0 1.62-2.75 1.85 1.85 0 0 1 1.62-2.8H17.1a3.35 3.35 0 0 0 2.85-5.1A7.4 7.4 0 0 0 12 4.6z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <circle cx="9.1" cy="10.1" r="1.05" fill="currentColor" />
+      <circle cx="12.15" cy="8.15" r="1.05" fill="currentColor" />
+      <circle cx="15.05" cy="10.1" r="1.05" fill="currentColor" />
+      <circle cx="10.35" cy="13.35" r="1.05" fill="currentColor" />
+    </BaseIcon>
+  )
+}

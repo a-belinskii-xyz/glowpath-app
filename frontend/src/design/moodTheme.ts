@@ -173,6 +173,12 @@ export function impactToGlowLevel(impact: number): GlowLevel | null {
   return null
 }
 
+const themeCache = new Map<string, MoodTheme>()
+
+function themeCacheKey(hex: string, intensity: MoodIntensity, fallback: string): string {
+  return `${hex.trim()}|${intensity}|${fallback}`
+}
+
 /**
  * Build a full mood theme from a single user color.
  * All UI that “breathes” mood should consume this instead of ad-hoc wash math.
@@ -183,6 +189,11 @@ export function buildMoodTheme(
 ): MoodTheme {
   const intensity = options.intensity ?? 'moderate'
   const fallback = options.fallback ?? FALLBACK_HEX
+  const cacheKey = themeCacheKey(hex, intensity, fallback)
+  const cached = themeCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
   const raw = hexToOklab(hex) ? hex.trim() : fallback
   const lab = hexToOklab(raw) ?? hexToOklab(fallback)!
 
@@ -207,7 +218,7 @@ export function buildMoodTheme(
   const glow = buildGlowFilters(raw, intensity)
   const glowBox = buildGlowBoxShadows(raw, intensity)
 
-  return {
+  const theme: MoodTheme = {
     raw,
     intensity,
     wash: surface100,
@@ -234,6 +245,8 @@ export function buildMoodTheme(
       '--mood-track': track,
     },
   }
+  themeCache.set(cacheKey, theme)
+  return theme
 }
 
 /** Convenience: CSS `filter` for a mood/goal icon glow. Default = historical sm. */

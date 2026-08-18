@@ -1,3 +1,4 @@
+import { memo, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -13,25 +14,17 @@ function resolveTab(value: string | null): TrackerTab {
   return value === 'templates' ? 'templates' : 'moods'
 }
 
-export function TrackerSettingsPage() {
+function TrackerSettingsPanels({
+  tab,
+  onTabChange,
+}: {
+  tab: TrackerTab
+  onTabChange: (tab: TrackerTab) => void
+}) {
   const { t } = useLocale()
-  const { scores } = useMoodPreferences()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const tab = resolveTab(searchParams.get('tab'))
-  usePageAmbientGlow(Object.values(scores).map((style) => style.color))
-
-  const setTab = (next: TrackerTab) => {
-    setSearchParams(next === 'moods' ? {} : { tab: next }, { replace: true })
-  }
 
   return (
-    <section className="page">
-      <EmailVerificationBanner />
-      <header className="page-header">
-        <h1>{t('trackerSettings.title')}</h1>
-      </header>
-      <p className="muted">{t('trackerSettings.lead')}</p>
-
+    <>
       <div
         className="segmented-control tracker-settings-tabs"
         role="tablist"
@@ -42,7 +35,7 @@ export function TrackerSettingsPage() {
           role="tab"
           aria-selected={tab === 'moods'}
           className={`segmented-control-option${tab === 'moods' ? ' is-active' : ''}`}
-          onClick={() => setTab('moods')}
+          onClick={() => onTabChange('moods')}
         >
           {t('trackerSettings.tabMoods')}
         </button>
@@ -51,7 +44,7 @@ export function TrackerSettingsPage() {
           role="tab"
           aria-selected={tab === 'templates'}
           className={`segmented-control-option${tab === 'templates' ? ' is-active' : ''}`}
-          onClick={() => setTab('templates')}
+          onClick={() => onTabChange('templates')}
         >
           {t('trackerSettings.tabTemplates')}
         </button>
@@ -68,6 +61,43 @@ export function TrackerSettingsPage() {
       ) : (
         <TemplatesPage embedded />
       )}
+    </>
+  )
+}
+
+const TrackerSettingsLocalContent = memo(function TrackerSettingsLocalContent() {
+  const [tab, setTab] = useState<TrackerTab>('moods')
+  return <TrackerSettingsPanels tab={tab} onTabChange={setTab} />
+})
+
+function TrackerSettingsUrlContent() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = resolveTab(searchParams.get('tab'))
+
+  const setTab = (next: TrackerTab) => {
+    setSearchParams(next === 'moods' ? {} : { tab: next }, { replace: true })
+  }
+
+  return <TrackerSettingsPanels tab={tab} onTabChange={setTab} />
+}
+
+export function TrackerSettingsContent({ syncUrl = false }: { syncUrl?: boolean }) {
+  return syncUrl ? <TrackerSettingsUrlContent /> : <TrackerSettingsLocalContent />
+}
+
+export function TrackerSettingsPage() {
+  const { t } = useLocale()
+  const { scores } = useMoodPreferences()
+  usePageAmbientGlow(Object.values(scores).map((style) => style.color))
+
+  return (
+    <section className="page">
+      <EmailVerificationBanner />
+      <header className="page-header">
+        <h1>{t('trackerSettings.title')}</h1>
+      </header>
+      <p className="muted">{t('trackerSettings.lead')}</p>
+      <TrackerSettingsContent syncUrl />
     </section>
   )
 }

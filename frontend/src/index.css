@@ -134,16 +134,9 @@ input {
   initial-value: 0;
 }
 
-.app-shell {
-  position: relative;
-  isolation: isolate;
+.app-root {
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse 95% 70% at 6% -4%, var(--ambient-c1) 0%, transparent 62%),
-    radial-gradient(ellipse 85% 62% at 96% 4%, var(--ambient-c2) 0%, transparent 58%),
-    radial-gradient(ellipse 80% 58% at 88% 96%, var(--ambient-c3) 0%, transparent 60%),
-    radial-gradient(ellipse 75% 54% at 10% 90%, var(--ambient-c4) 0%, transparent 56%),
-    var(--chrome-bg-app);
+  background: var(--chrome-bg-app);
   transition:
     --ambient-c1 var(--motion-ambient-duration) var(--motion-ambient-easing),
     --ambient-c2 var(--motion-ambient-duration) var(--motion-ambient-easing),
@@ -152,6 +145,25 @@ input {
     --brand-ink-1 1.6s var(--motion-ambient-easing),
     --brand-ink-2 1.6s var(--motion-ambient-easing),
     --brand-ink-3 1.6s var(--motion-ambient-easing);
+}
+
+.app-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 70% at 6% -4%, var(--ambient-c1) 0%, transparent 62%),
+    radial-gradient(ellipse 85% 62% at 96% 4%, var(--ambient-c2) 0%, transparent 58%),
+    radial-gradient(ellipse 80% 58% at 88% 96%, var(--ambient-c3) 0%, transparent 60%),
+    radial-gradient(ellipse 75% 54% at 10% 90%, var(--ambient-c4) 0%, transparent 56%);
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  min-height: 100vh;
 }
 
 .app-shell--sidebar {
@@ -380,6 +392,10 @@ input {
 
 .page.narrow {
   max-width: 480px;
+}
+
+.page-profile {
+  overflow-anchor: none;
 }
 
 .page-header {
@@ -763,6 +779,7 @@ input {
   display: grid;
   gap: 1.25rem;
   padding: 1.25rem 1.35rem;
+  overflow-anchor: none;
 }
 
 .profile-account-row {
@@ -886,24 +903,49 @@ input {
   display: grid;
   gap: 0.5rem;
   margin: 0 0 1.15rem;
+  overflow-anchor: none;
+}
+
+.profile-settings-panel {
+  border-radius: var(--chrome-radius-card);
+  background: var(--chrome-surface);
+  border: 1px solid rgb(255 255 255 / 70%);
+  box-shadow: var(--chrome-shadow-soft);
+  overflow-anchor: none;
 }
 
 .profile-shortcut {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  width: 100%;
+  margin: 0;
   padding: 0.85rem 0.95rem;
+  border: 0;
   border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
-  border: 1px solid rgb(255 255 255 / 70%);
-  box-shadow: var(--chrome-shadow-soft);
+  box-shadow: none;
   color: var(--chrome-text-primary);
+  font: inherit;
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.profile-settings-panel .profile-shortcut {
+  border-radius: 0;
+  position: sticky;
+  z-index: 2;
 }
 
 .profile-shortcut:hover {
   text-decoration: none;
   background: color-mix(in oklab, var(--chrome-surface) 86%, var(--chrome-surface-inset));
+}
+
+.profile-settings-panel.is-open .profile-shortcut {
+  background: color-mix(in oklab, var(--chrome-surface) 90%, var(--chrome-surface-inset));
 }
 
 .profile-shortcut-icon {
@@ -944,6 +986,36 @@ input {
   height: 1.05rem;
   flex-shrink: 0;
   color: var(--chrome-text-secondary);
+  transition: transform 0.18s ease;
+}
+
+.profile-settings-panel.is-open .profile-shortcut-chevron {
+  transform: rotate(90deg);
+}
+
+.profile-settings-panel-body {
+  display: grid;
+  gap: 1.25rem;
+  padding: 0.15rem 0.95rem 1.1rem;
+  border-top: 1px solid color-mix(in oklab, var(--chrome-border-default) 70%, transparent);
+  overflow-anchor: none;
+}
+
+.profile-settings-panel-body[hidden] {
+  display: none;
+}
+
+.profile-settings-subheading {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.profile-settings-panel-body .profile-section-lead {
+  margin-bottom: 0.75rem;
+}
+
+.profile-settings-panel-body .tracker-settings-tabs {
+  margin-top: 0.15rem;
 }
 
 .profile-logout {
@@ -951,6 +1023,7 @@ input {
   gap: 0.4rem;
   margin-top: 2rem;
   justify-items: start;
+  overflow-anchor: none;
 }
 
 .profile-logout-button {
@@ -5512,6 +5585,8 @@ code {
   .entry-favorite-mark,
   .attachment-image-skeleton,
   .brand,
+  .app-root,
+  .app-ambient,
   .app-shell {
     animation: none !important;
     transition: none !important;
@@ -6750,6 +6825,7 @@ code {
   .icon-button,
   .app-bottom-nav-link,
   .entry-overflow-trigger,
+  .profile-shortcut,
   .segmented-control-option {
     touch-action: manipulation;
   }

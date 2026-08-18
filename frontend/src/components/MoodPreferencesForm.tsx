@@ -158,10 +158,13 @@ export function MoodPreferencesForm() {
   }, [scores, locale])
 
   useEffect(() => {
+    if (editingScore === null) {
+      return
+    }
     void refreshUploadedIcons().catch(() => {
       setUploadedIcons({})
     })
-  }, [refreshUploadedIcons])
+  }, [editingScore, refreshUploadedIcons])
 
   const applyPreferences = (preferences: MoodPreferencesPublic) => {
     setPreferences(preferences)
@@ -839,7 +842,7 @@ export function MoodPreferencesForm() {
                   style={{ backgroundColor: previewStyle.color }}
                   aria-hidden
                 />
-                <span style={{ filter: moodGlowFilter(previewStyle.color) }}>
+                <span className="mood-preferences-icon-slot">
                   <MoodScoreIcon
                     style={previewStyle}
                     className="mood-preferences-emoji"

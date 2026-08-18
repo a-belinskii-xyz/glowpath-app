@@ -1,11 +1,10 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { memo, type ReactNode, useLayoutEffect, useRef, useState } from 'react'
 
 import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
-import { ChevronRightIcon, SettingsIcon } from '../components/icons'
+import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon } from '../components/icons'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -17,9 +16,159 @@ import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
 import { formatApiError } from '../lib/errors'
+import { TrackerSettingsContent } from './TrackerSettingsPage'
+
+type SettingsPanelId = 'tracker' | 'notifications' | 'appearance'
+
+const TrackerSettingsPanelBody = memo(function TrackerSettingsPanelBody() {
+  return <TrackerSettingsContent />
+})
+
+const NotificationSettingsPanelBody = memo(function NotificationSettingsPanelBody({
+  timezone,
+}: {
+  timezone: string
+}) {
+  const { t } = useLocale()
+
+  return (
+    <>
+      <section aria-labelledby="profile-telegram-heading">
+        <h2 id="profile-telegram-heading" className="profile-settings-subheading">
+          {t('profile.telegramTitle')}
+        </h2>
+        <p className="profile-section-lead">{t('profile.telegramLead')}</p>
+        <TelegramLinkForm />
+      </section>
+      <NotificationSettingsForm timezone={timezone} />
+    </>
+  )
+})
+
+const AppearanceSettingsPanelBody = memo(function AppearanceSettingsPanelBody() {
+  return <HistoricalColorsSetting />
+})
+
+function getScrollParent(element: HTMLElement): HTMLElement | Window {
+  let current = element.parentElement
+  while (current) {
+    const { overflowY } = window.getComputedStyle(current)
+    if (
+      (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') &&
+      current.scrollHeight > current.clientHeight
+    ) {
+      return current
+    }
+    current = current.parentElement
+  }
+  return window
+}
+
+function keepElementViewportTop(element: HTMLElement, top: number) {
+  for (let pass = 0; pass < 3; pass += 1) {
+    const delta = element.getBoundingClientRect().top - top
+    if (Math.abs(delta) < 0.5) {
+      return
+    }
+    const scroller = getScrollParent(element)
+    if (scroller === window) {
+      window.scrollBy(0, delta)
+    } else {
+      scroller.scrollTop += delta
+    }
+  }
+}
+
+function ProfileSettingsPanel({
+  id,
+  icon,
+  title,
+  lead,
+  open,
+  onToggle,
+  children,
+}: {
+  id: SettingsPanelId
+  icon: ReactNode
+  title: string
+  lead: string
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  const contentId = `profile-settings-${id}`
+  const headerRef = useRef<HTMLButtonElement>(null)
+  const lockTopRef = useRef<number | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [stickTop, setStickTop] = useState<number | null>(null)
+
+  const handleToggle = () => {
+    const top = headerRef.current?.getBoundingClientRect().top ?? null
+    lockTopRef.current = top
+    if (!open && top !== null) {
+      setStickTop(top)
+    }
+    onToggle()
+  }
+
+  useLayoutEffect(() => {
+    if (open && !mounted) {
+      setMounted(true)
+    }
+
+    const header = headerRef.current
+    const top = lockTopRef.current
+    if (header === null || top === null) {
+      return
+    }
+
+    keepElementViewportTop(header, top)
+
+    if (open && !mounted) {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      keepElementViewportTop(header, top)
+      lockTopRef.current = null
+      if (!open) {
+        setStickTop(null)
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [open, mounted])
+
+  return (
+    <div className={`profile-settings-panel${open ? ' is-open' : ''}`}>
+      <button
+        ref={headerRef}
+        type="button"
+        className="profile-shortcut"
+        aria-expanded={open}
+        aria-controls={contentId}
+        style={stickTop === null ? undefined : { top: stickTop }}
+        onClick={handleToggle}
+      >
+        <span className="profile-shortcut-icon" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="profile-shortcut-copy">
+          <span className="profile-shortcut-title">{title}</span>
+          <span className="profile-shortcut-lead">{lead}</span>
+        </span>
+        <ChevronRightIcon className="profile-shortcut-chevron" />
+      </button>
+      {mounted ? (
+        <div id={contentId} className="profile-settings-panel-body" hidden={!open}>
+          {children}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 export function ProfilePage() {
-  const { user, logout, refreshUser, updateTimezone } = useAuth()
+  const { user, logout, updateTimezone } = useAuth()
   const { locale, setLocale, t } = useLocale()
   const { scores } = useMoodPreferences()
   usePageAmbientGlow(Object.values(scores).map((style) => style.color))
@@ -28,12 +177,17 @@ export function ProfilePage() {
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetMessage, setResetMessage] = useState<string | null>(null)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [openPanel, setOpenPanel] = useState<SettingsPanelId | null>(null)
 
   if (!user) {
     return null
   }
 
   const timezoneOptions = timezoneSelectOptions(user.timezone)
+
+  const togglePanel = (id: SettingsPanelId) => {
+    setOpenPanel((current) => (current === id ? null : id))
+  }
 
   const handleTimezoneChange = async (nextTimezone: string) => {
     if (nextTimezone === user.timezone) {
@@ -65,31 +219,48 @@ export function ProfilePage() {
   }
 
   return (
-    <section className="page">
+    <section className="page page-profile">
       <EmailVerificationBanner />
-      <div className="page-header">
+      <header className="page-header">
         <h1>{t('profile.title')}</h1>
-        <button type="button" className="button button-secondary" onClick={() => void refreshUser()}>
-          {t('common.refresh')}
-        </button>
-      </div>
+      </header>
 
       <PageErrorAlert error={timezoneError} />
       <PageErrorAlert error={resetError} />
       {resetMessage ? <Alert variant="success">{resetMessage}</Alert> : null}
 
-      <nav className="profile-shortcuts" aria-label={t('nav.sectionTrack')}>
-        <Link to="/tracker-settings" className="profile-shortcut">
-          <span className="profile-shortcut-icon" aria-hidden="true">
-            <SettingsIcon />
-          </span>
-          <span className="profile-shortcut-copy">
-            <span className="profile-shortcut-title">{t('nav.trackerSettings')}</span>
-            <span className="profile-shortcut-lead">{t('profile.trackerSettingsLink')}</span>
-          </span>
-          <ChevronRightIcon className="profile-shortcut-chevron" />
-        </Link>
-      </nav>
+      <div className="profile-shortcuts" role="region" aria-label={t('profile.settingsMenu')}>
+        <ProfileSettingsPanel
+          id="tracker"
+          icon={<SettingsIcon />}
+          title={t('nav.trackerSettings')}
+          lead={t('profile.trackerSettingsLink')}
+          open={openPanel === 'tracker'}
+          onToggle={() => togglePanel('tracker')}
+        >
+          <TrackerSettingsPanelBody />
+        </ProfileSettingsPanel>
+        <ProfileSettingsPanel
+          id="notifications"
+          icon={<BellIcon />}
+          title={t('profile.notificationsTitle')}
+          lead={t('profile.notificationsLink')}
+          open={openPanel === 'notifications'}
+          onToggle={() => togglePanel('notifications')}
+        >
+          <NotificationSettingsPanelBody timezone={user.timezone} />
+        </ProfileSettingsPanel>
+        <ProfileSettingsPanel
+          id="appearance"
+          icon={<PaletteIcon />}
+          title={t('profile.appearanceTitle')}
+          lead={t('profile.appearanceLink')}
+          open={openPanel === 'appearance'}
+          onToggle={() => togglePanel('appearance')}
+        >
+          <AppearanceSettingsPanelBody />
+        </ProfileSettingsPanel>
+      </div>
 
       <div className="card profile-account">
         <div className="profile-account-row">
@@ -167,24 +338,6 @@ export function ProfilePage() {
           </div>
         </div>
       </div>
-
-      <section className="profile-section" aria-labelledby="profile-appearance-heading">
-        <h2 id="profile-appearance-heading">{t('profile.appearanceTitle')}</h2>
-        <p className="profile-section-lead">{t('profile.appearanceLead')}</p>
-        <HistoricalColorsSetting />
-      </section>
-
-      <section className="profile-section" aria-labelledby="profile-telegram-heading">
-        <h2 id="profile-telegram-heading">{t('profile.telegramTitle')}</h2>
-        <p className="profile-section-lead">{t('profile.telegramLead')}</p>
-        <TelegramLinkForm />
-      </section>
-
-      <section className="profile-section" aria-labelledby="profile-notifications-heading">
-        <h2 id="profile-notifications-heading">{t('profile.notificationsTitle')}</h2>
-        <p className="profile-section-lead">{t('profile.notificationsLead')}</p>
-        <NotificationSettingsForm timezone={user.timezone} />
-      </section>
 
       <div className="profile-logout">
         <button type="button" className="button button-secondary profile-logout-button" onClick={logout}>
