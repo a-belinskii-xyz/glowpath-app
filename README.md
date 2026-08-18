@@ -70,7 +70,7 @@ make frontend-dev
 
 Open http://localhost:5173 — register, log in, view profile, verify email, reset password.
 
-Ensure `backend/.env` includes `FRONTEND_URL=http://localhost:5173` and `CORS_ORIGINS=http://localhost:5173` (see `backend/.env.example`). Email links and Google OAuth redirect use `FRONTEND_URL`.
+Ensure `backend/.env` includes `FRONTEND_URL=http://localhost:5173` and `CORS_ORIGINS` covering the UI origin (see `backend/.env.example`). `localhost` and `127.0.0.1` are different CORS origins; the API adds loopback aliases automatically. Email links and Google OAuth redirect use `FRONTEND_URL`.
 
 ### Service URLs
 

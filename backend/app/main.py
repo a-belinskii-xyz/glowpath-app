@@ -4,6 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.v1.router import api_v1_router
 from app.config import settings
+from app.core.cors import cors_allow_origin_regex, cors_allow_origins
 
 app = FastAPI(
     title=settings.app_name,
@@ -12,16 +13,16 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-_cors_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+# Session first so CORS is outermost and still labels error / preflight responses.
+app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret_key)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins,
+    allow_origins=cors_allow_origins(settings),
+    allow_origin_regex=cors_allow_origin_regex(settings),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret_key)
 
 app.include_router(api_v1_router, prefix="/v1")
 
