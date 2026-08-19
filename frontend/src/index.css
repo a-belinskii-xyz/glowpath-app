@@ -466,8 +466,7 @@ input {
   order: 3;
 }
 
-.entries-search-toggle,
-.entries-new-icon {
+.entries-search-toggle {
   display: none;
 }
 
@@ -778,6 +777,7 @@ input {
 .profile-account {
   display: grid;
   gap: 1.25rem;
+  margin: 0 0 1.15rem;
   padding: 1.25rem 1.35rem;
   overflow-anchor: none;
 }
@@ -902,7 +902,7 @@ input {
 .profile-shortcuts {
   display: grid;
   gap: 0.5rem;
-  margin: 0 0 1.15rem;
+  margin: 0;
   overflow-anchor: none;
 }
 
@@ -6536,13 +6536,8 @@ code {
     min-height: 2.5rem;
   }
 
-  .entries-search-toggle,
-  .entries-new-icon {
+  .entries-search-toggle {
     display: inline-flex;
-  }
-
-  .entries-new-text {
-    display: none;
   }
 
   .entries-search {

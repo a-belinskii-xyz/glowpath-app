@@ -168,7 +168,7 @@ export function ProfilePage() {
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetMessage, setResetMessage] = useState<string | null>(null)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
-  const [openPanel, setOpenPanel] = useState<SettingsPanelId | null>(null)
+  const [openPanels, setOpenPanels] = useState<ReadonlySet<SettingsPanelId>>(() => new Set())
 
   if (!user) {
     return null
@@ -177,7 +177,15 @@ export function ProfilePage() {
   const timezoneOptions = timezoneSelectOptions(user.timezone)
 
   const togglePanel = (id: SettingsPanelId) => {
-    setOpenPanel((current) => (current === id ? null : id))
+    setOpenPanels((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
   }
 
   const handleTimezoneChange = async (nextTimezone: string) => {
@@ -219,39 +227,6 @@ export function ProfilePage() {
       <PageErrorAlert error={timezoneError} />
       <PageErrorAlert error={resetError} />
       {resetMessage ? <Alert variant="success">{resetMessage}</Alert> : null}
-
-      <div className="profile-shortcuts" role="region" aria-label={t('profile.settingsMenu')}>
-        <ProfileSettingsPanel
-          id="tracker"
-          icon={<SettingsIcon />}
-          title={t('nav.trackerSettings')}
-          lead={t('profile.trackerSettingsLink')}
-          open={openPanel === 'tracker'}
-          onToggle={() => togglePanel('tracker')}
-        >
-          <TrackerSettingsPanelBody />
-        </ProfileSettingsPanel>
-        <ProfileSettingsPanel
-          id="notifications"
-          icon={<BellIcon />}
-          title={t('profile.notificationsTitle')}
-          lead={t('profile.notificationsLink')}
-          open={openPanel === 'notifications'}
-          onToggle={() => togglePanel('notifications')}
-        >
-          <NotificationSettingsPanelBody timezone={user.timezone} />
-        </ProfileSettingsPanel>
-        <ProfileSettingsPanel
-          id="appearance"
-          icon={<PaletteIcon />}
-          title={t('profile.appearanceTitle')}
-          lead={t('profile.appearanceLink')}
-          open={openPanel === 'appearance'}
-          onToggle={() => togglePanel('appearance')}
-        >
-          <AppearanceSettingsPanelBody />
-        </ProfileSettingsPanel>
-      </div>
 
       <div className="card profile-account">
         <div className="profile-account-row">
@@ -328,6 +303,39 @@ export function ProfilePage() {
             </select>
           </div>
         </div>
+      </div>
+
+      <div className="profile-shortcuts" role="region" aria-label={t('profile.settingsMenu')}>
+        <ProfileSettingsPanel
+          id="tracker"
+          icon={<SettingsIcon />}
+          title={t('nav.trackerSettings')}
+          lead={t('profile.trackerSettingsLink')}
+          open={openPanels.has('tracker')}
+          onToggle={() => togglePanel('tracker')}
+        >
+          <TrackerSettingsPanelBody />
+        </ProfileSettingsPanel>
+        <ProfileSettingsPanel
+          id="notifications"
+          icon={<BellIcon />}
+          title={t('profile.notificationsTitle')}
+          lead={t('profile.notificationsLink')}
+          open={openPanels.has('notifications')}
+          onToggle={() => togglePanel('notifications')}
+        >
+          <NotificationSettingsPanelBody timezone={user.timezone} />
+        </ProfileSettingsPanel>
+        <ProfileSettingsPanel
+          id="appearance"
+          icon={<PaletteIcon />}
+          title={t('profile.appearanceTitle')}
+          lead={t('profile.appearanceLink')}
+          open={openPanels.has('appearance')}
+          onToggle={() => togglePanel('appearance')}
+        >
+          <AppearanceSettingsPanelBody />
+        </ProfileSettingsPanel>
       </div>
 
       <div className="profile-logout">

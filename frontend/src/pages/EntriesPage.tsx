@@ -825,9 +825,6 @@ export function EntriesPage() {
           >
             <PlusIcon />
           </IconLinkButton>
-          <Link className="button entries-new-text" to="/entries/new">
-            {t('entries.newEntry')}
-          </Link>
         </div>
         <div
           className={`entries-search${showSearchField ? ' is-open' : ''}${searchInput ? ' has-clear' : ''}`}
