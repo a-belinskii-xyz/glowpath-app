@@ -118,6 +118,13 @@ class Settings(BaseSettings):
         validation_alias="EMBEDDING_MODEL",
     )
     embedding_dims: int = Field(default=384, ge=1, validation_alias="EMBEDDING_DIMS")
+    # pgvector cosine distance is 1 - cosine similarity (0 identical, 2 opposite).
+    embedding_search_max_distance: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=2.0,
+        validation_alias="EMBEDDING_SEARCH_MAX_DISTANCE",
+    )
 
 
 settings = Settings()

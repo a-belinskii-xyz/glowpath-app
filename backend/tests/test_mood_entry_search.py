@@ -1,4 +1,4 @@
-"""Semantic search API tests with mocked embeddings (no model download)."""
+"""Hybrid mood-entry search: substring match plus optional semantic ranking."""
 
 from __future__ import annotations
 
@@ -11,6 +11,12 @@ from fastapi.testclient import TestClient
 
 from tests.conftest import FakeEmailService, register_verify_and_login
 from tests.test_mood_entries import _auth_headers, _create_entry
+
+LONG_NOTE = (
+    "Не следует, однако, забывать о том, что курс на социально-ориентированный "
+    "национальный проект представляет собой интересный эксперимент проверки "
+    "соответствующих условий активизации."
+)
 
 
 def _fake_embed_texts(texts: list[str]) -> list[list[float]]:
@@ -35,20 +41,14 @@ def _fake_embed_texts(texts: list[str]) -> list[list[float]]:
 @pytest.fixture
 def embedding_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "embedding_enabled", True)
+    monkeypatch.setattr(settings, "embedding_search_max_distance", 0.5)
     monkeypatch.setattr(
         "app.services.embedding_service.embed_texts",
         _fake_embed_texts,
     )
 
 
-def test_search_returns_semantically_related_entries(
-    auth_client: TestClient,
-    mailer: FakeEmailService,
-    embedding_enabled: None,
-) -> None:
-    del embedding_enabled
-    token = register_verify_and_login(auth_client, mailer, "search-mood@example.com")
-
+def _seed_walk_and_coffee(auth_client: TestClient, token: str) -> tuple[str, str]:
     walk = _create_entry(
         auth_client,
         token,
@@ -69,6 +69,17 @@ def test_search_returns_semantically_related_entries(
         note=None,
         recorded_at="2026-07-03T10:00:00+03:00",
     )
+    return walk.json()["id"], coffee.json()["id"]
+
+
+def test_search_returns_semantically_related_entries(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    embedding_enabled: None,
+) -> None:
+    del embedding_enabled
+    token = register_verify_and_login(auth_client, mailer, "search-mood@example.com")
+    walk_id, coffee_id = _seed_walk_and_coffee(auth_client, token)
 
     response = auth_client.get(
         "/v1/mood-entries/search",
@@ -80,11 +91,149 @@ def test_search_returns_semantically_related_entries(
     assert body["limit"] == 10
     assert body["offset"] == 0
     ids = [item["id"] for item in body["items"]]
-    assert walk.json()["id"] in ids
-    assert ids[0] == walk.json()["id"]
-    assert coffee.json()["id"] in ids
-    # Entries without notes have no embedding and must not appear.
-    assert len(ids) == 2
+    assert ids == [walk_id]
+    assert coffee_id not in ids
+
+
+def test_search_includes_distant_entries_when_threshold_is_loose(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    embedding_enabled: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    del embedding_enabled
+    monkeypatch.setattr(settings, "embedding_search_max_distance", 2.0)
+    token = register_verify_and_login(auth_client, mailer, "search-loose@example.com")
+    walk_id, coffee_id = _seed_walk_and_coffee(auth_client, token)
+
+    response = auth_client.get(
+        "/v1/mood-entries/search",
+        params={"q": "park birds outdoor stroll", "limit": 10},
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert ids[0] == walk_id
+    assert coffee_id in ids
+
+
+def test_search_finds_exact_word_in_long_note(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    embedding_enabled: None,
+) -> None:
+    del embedding_enabled
+    token = register_verify_and_login(auth_client, mailer, "search-exact@example.com")
+    hit = _create_entry(
+        auth_client,
+        token,
+        note=LONG_NOTE,
+        recorded_at="2026-07-04T17:59:00+03:00",
+    )
+    assert hit.status_code == 201
+    noise = _create_entry(
+        auth_client,
+        token,
+        note="цууццу",
+        recorded_at="2026-08-17T13:59:00+03:00",
+    )
+    assert noise.status_code == 201
+
+    response = auth_client.get(
+        "/v1/mood-entries/search",
+        params={"q": "интересный", "limit": 10},
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert ids == [hit.json()["id"]]
+    assert noise.json()["id"] not in ids
+
+
+def test_search_phrase_match_beats_semantic_threshold(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    embedding_enabled: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    del embedding_enabled
+    monkeypatch.setattr(settings, "embedding_search_max_distance", 0.01)
+    token = register_verify_and_login(auth_client, mailer, "search-phrase@example.com")
+    hit = _create_entry(auth_client, token, note=LONG_NOTE)
+    assert hit.status_code == 201
+
+    response = auth_client.get(
+        "/v1/mood-entries/search",
+        params={"q": "интересный эксперимент", "limit": 10},
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert ids == [hit.json()["id"]]
+
+
+def test_search_substring_works_when_embeddings_disabled(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "search-no-embed@example.com")
+    hit = _create_entry(auth_client, token, note=LONG_NOTE)
+    assert hit.status_code == 201
+
+    response = auth_client.get(
+        "/v1/mood-entries/search",
+        params={"q": "интересный", "limit": 10},
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["items"]] == [hit.json()["id"]]
+
+
+def test_search_escapes_like_wildcards(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "search-wild@example.com")
+    hit = _create_entry(auth_client, token, note="Progress 100% done")
+    assert hit.status_code == 201
+    _create_entry(auth_client, token, note="Progress 1000 done")
+
+    response = auth_client.get(
+        "/v1/mood-entries/search",
+        params={"q": "100%", "limit": 10},
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["items"]] == [hit.json()["id"]]
+
+
+def test_search_single_word_skips_embeddings(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    embedding_enabled: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    del embedding_enabled
+    calls: list[list[str]] = []
+
+    def _tracking_embed(texts: list[str]) -> list[list[float]]:
+        calls.append(texts)
+        return _fake_embed_texts(texts)
+
+    monkeypatch.setattr("app.services.embedding_service.embed_texts", _tracking_embed)
+    token = register_verify_and_login(auth_client, mailer, "search-skip-embed@example.com")
+    created = _create_entry(auth_client, token, note="Morning coffee at home")
+    assert created.status_code == 201
+    calls.clear()
+
+    response = auth_client.get(
+        "/v1/mood-entries/search",
+        params={"q": "coffee", "limit": 10},
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["items"]] == [created.json()["id"]]
+    assert calls == []
 
 
 def test_search_rejects_blank_query(

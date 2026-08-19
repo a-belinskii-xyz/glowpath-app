@@ -8,9 +8,11 @@ from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import select
+from sqlalchemy import and_, case, exists, or_, select
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.sql.elements import ColumnElement
 
+from app.config import settings
 from app.core.attachment_kind import AttachmentKind
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
@@ -47,6 +49,9 @@ from app.services.mood_preferences_service import (
 from app.services.storage import ObjectStorage, StorageError
 
 CALENDAR_SCORES_PER_DAY = 3
+# Single-token queries are too noisy for MiniLM; those are lexical-only.
+_SEMANTIC_SEARCH_MIN_TOKENS = 2
+_LIKE_ESCAPE = "\\"
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_AUDIO_BYTES = 10 * 1024 * 1024
@@ -370,6 +375,25 @@ def list_mood_entries(
     )
 
 
+def _like_contains_pattern(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def _lexical_search_match(query: str) -> ColumnElement[bool]:
+    pattern = _like_contains_pattern(query)
+    transcription_hit = exists(
+        select(1).where(
+            MoodEntryAttachment.mood_entry_id == MoodEntry.id,
+            MoodEntryAttachment.transcription.ilike(pattern, escape=_LIKE_ESCAPE),
+        )
+    )
+    return or_(
+        MoodEntry.note.ilike(pattern, escape=_LIKE_ESCAPE),
+        transcription_hit,
+    )
+
+
 def search_mood_entries(
     db: Session,
     *,
@@ -377,24 +401,49 @@ def search_mood_entries(
     query: str,
     limit: int,
 ) -> list[MoodEntry]:
-    from app.services.embedding_service import embed_texts
-
     cleaned = query.strip()
     if not cleaned:
         raise MoodEntryError(
             "Search query must not be empty", code=ErrorCode.SEARCH_QUERY_EMPTY, status_code=400
         )
 
-    query_vector = embed_texts([cleaned])[0]
-    distance = MoodEntry.embedding.cosine_distance(query_vector)
+    lexical_match = _lexical_search_match(cleaned)
+    use_semantic = (
+        settings.embedding_enabled and len(cleaned.split()) >= _SEMANTIC_SEARCH_MIN_TOKENS
+    )
+
+    if not use_semantic:
+        stmt = (
+            select(MoodEntry)
+            .options(*_entry_load_options())
+            .where(MoodEntry.user_id == user_id, lexical_match)
+            .order_by(MoodEntry.recorded_at.desc(), MoodEntry.created_at.desc())
+            .limit(limit)
+        )
+        return list(db.scalars(stmt).all())
+
+    from app.services.embedding_service import embed_texts
+
+    distance = MoodEntry.embedding.cosine_distance(embed_texts([cleaned])[0])
     stmt = (
         select(MoodEntry)
         .options(*_entry_load_options())
         .where(
             MoodEntry.user_id == user_id,
-            MoodEntry.embedding.is_not(None),
+            or_(
+                lexical_match,
+                and_(
+                    MoodEntry.embedding.is_not(None),
+                    distance <= settings.embedding_search_max_distance,
+                ),
+            ),
         )
-        .order_by(distance)
+        .order_by(
+            case((lexical_match, 0), else_=1),
+            case((lexical_match, MoodEntry.recorded_at)).desc(),
+            distance.asc().nulls_last(),
+            MoodEntry.recorded_at.desc(),
+        )
         .limit(limit)
     )
     return list(db.scalars(stmt).all())
