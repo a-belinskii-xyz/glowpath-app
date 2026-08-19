@@ -223,3 +223,6 @@ node_modules/
 frontend/dist/
 frontend/dist-ssr/
 *.local
+
+# UI review
+.ui-review/
