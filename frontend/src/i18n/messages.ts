@@ -251,7 +251,7 @@ export const en = {
       'Reset “{label}” to the default name, color, and emoji? This saves immediately.',
     resetMoodAllTitle: 'Reset all mood levels',
     resetMoodAll:
-      'Reset every mood name and color to defaults? Icon changes are not included; save afterward to apply names and colors.',
+      'Reset every mood name and color to defaults? Icon changes are not included. This saves immediately.',
     removeMoodIconTitle: 'Remove icon',
     removeMoodIcon: 'Delete this uploaded icon? If it is in use, the mood will fall back to emoji.',
     removeGoalIconTitle: 'Remove icon',
@@ -439,7 +439,7 @@ export const en = {
       'Rename mood levels and choose a color and icon for each. Names and colors appear on charts, the calendar, and when logging entries.',
   },
   moodPreferences: {
-    lead: 'Emoji and uploads save immediately. Names and colors are saved with the button below. Up to 3 uploaded images per mood (512 KB each).',
+    lead: 'Changes save as you edit. Up to 3 uploaded images per mood (512 KB each).',
     listLead: 'Choose a mood level to edit its name, color, and icon.',
     editScore: 'Edit mood “{label}”',
     save: 'Save mood appearance',
@@ -981,7 +981,7 @@ export const ru: DeepStringLeaves<typeof en> = {
       'Сбросить «{label}» к названию, цвету и эмодзи по умолчанию? Изменение сохранится сразу.',
     resetMoodAllTitle: 'Сбросить все уровни',
     resetMoodAll:
-      'Сбросить все названия и цвета к значениям по умолчанию? Иконки не затрагиваются; названия и цвета применятся после сохранения.',
+      'Сбросить все названия и цвета к значениям по умолчанию? Иконки не затрагиваются. Изменение сохранится сразу.',
     removeMoodIconTitle: 'Удалить иконку',
     removeMoodIcon:
       'Удалить эту загруженную иконку? Если она используется, настроение вернётся к эмодзи.',
@@ -1173,7 +1173,7 @@ export const ru: DeepStringLeaves<typeof en> = {
       'Переименуйте уровни настроения и выберите цвет с иконкой для каждого. Названия и цвета отображаются на графиках, в календаре и при записи.',
   },
   moodPreferences: {
-    lead: 'Эмодзи и загрузки сохраняются сразу. Названия и цвета — кнопкой ниже. До 3 загруженных изображений на настроение (до 512 КБ каждое).',
+    lead: 'Изменения сохраняются сразу. До 3 загруженных изображений на настроение (до 512 КБ каждое).',
     listLead: 'Выберите уровень настроения, чтобы изменить название, цвет и иконку.',
     editScore: 'Изменить настроение «{label}»',
     save: 'Сохранить оформление',

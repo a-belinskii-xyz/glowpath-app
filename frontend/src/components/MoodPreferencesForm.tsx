@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useCallback, useEffect, useState } from 'react'
+import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   deleteMoodIcon,
@@ -19,7 +19,6 @@ import { IconButton } from './IconButton'
 import { EditIcon } from './icons'
 import { ImageCropModal } from './ImageCropModal'
 import { MoodScoreIcon } from './MoodScoreIcon'
-import { StableButtonLabel } from './StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
@@ -40,7 +39,7 @@ import {
   getMoodScoreOptions,
   isValidHexColor,
 } from '../lib/moodScale'
-import type { MoodPreferencesPublic, MoodScoreIconType } from '../types/moodPreferences'
+import type { MoodPreferencesPublic, MoodScoreIconType, MoodScoreStylePublic } from '../types/moodPreferences'
 
 type PendingCrop = {
   score: number
@@ -61,6 +60,9 @@ type PendingConfirm =
 type IconSourceUi = 'emoji' | 'upload'
 
 const MAX_UPLOADS_PER_SCORE = 3
+const APPEARANCE_SAVE_DELAY_MS = 400
+
+type AppearancePatch = { color?: string; label?: string }
 
 function groupIconsByScore(items: MoodIconMeta[]): Record<number, MoodIconMeta[]> {
   const grouped: Record<number, MoodIconMeta[]> = {}
@@ -88,7 +90,6 @@ export function MoodPreferencesForm() {
   const [maxUploadsPerScore, setMaxUploadsPerScore] = useState(MAX_UPLOADS_PER_SCORE)
   const [sourceUiByScore, setSourceUiByScore] = useState<Record<number, IconSourceUi>>({})
   const [isSaving, setIsSaving] = useState(false)
-  const [justSaved, setJustSaved] = useState(false)
   const [iconBusyScore, setIconBusyScore] = useState<number | null>(null)
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null)
@@ -109,6 +110,20 @@ export function MoodPreferencesForm() {
     }
     return t('moodPreferences.uploadFailed')
   }
+
+  const draftColorsRef = useRef<Record<number, string>>({})
+  const draftLabelsRef = useRef<Record<number, string>>({})
+  const scoresRef = useRef(scores)
+  const localeRef = useRef(locale)
+  const skipDraftSyncRef = useRef(false)
+  const saveTimerRef = useRef<number | null>(null)
+  const pendingScoresRef = useRef(new Set<number>())
+  const persistChainRef = useRef(Promise.resolve())
+  const persistPendingScoresRef = useRef<() => Promise<void>>(async () => {})
+  const persistGenerationRef = useRef<Record<number, number>>({})
+
+  scoresRef.current = scores
+  localeRef.current = locale
 
   const closeCropEditor = useCallback(() => {
     setPendingCrop(null)
@@ -131,31 +146,42 @@ export function MoodPreferencesForm() {
     setMaxUploadsPerScore(response.max_per_score)
   }, [])
 
+  const syncDraftsFromScores = useCallback(
+    (nextScores: Record<string, MoodScoreStylePublic>, nextLocale = locale) => {
+      const nextColors = Object.fromEntries(
+        Object.entries(nextScores).map(([score, style]) => [Number(score), style.color]),
+      )
+      const nextLabels = Object.fromEntries(
+        Object.entries(nextScores).map(([score, style]) => [
+          Number(score),
+          style.label || defaultMoodScoreLabel(Number(score), nextLocale),
+        ]),
+      )
+      draftColorsRef.current = nextColors
+      draftLabelsRef.current = nextLabels
+      setDraftColors(nextColors)
+      setDraftLabels(nextLabels)
+      setDraftEmojis(
+        Object.fromEntries(
+          Object.entries(nextScores).map(([score, style]) => [
+            Number(score),
+            style.icon_type === 'emoji'
+              ? style.icon
+              : defaultMoodScoreStyle(Number(score), nextLocale).icon,
+          ]),
+        ),
+      )
+    },
+    [locale],
+  )
+
   useEffect(() => {
-    setDraftColors(
-      Object.fromEntries(
-        Object.entries(scores).map(([score, style]) => [Number(score), style.color]),
-      ),
-    )
-    setDraftLabels(
-      Object.fromEntries(
-        Object.entries(scores).map(([score, style]) => [
-          Number(score),
-          style.label || defaultMoodScoreLabel(Number(score), locale),
-        ]),
-      ),
-    )
-    setDraftEmojis(
-      Object.fromEntries(
-        Object.entries(scores).map(([score, style]) => [
-          Number(score),
-          style.icon_type === 'emoji'
-            ? style.icon
-            : defaultMoodScoreStyle(Number(score), locale).icon,
-        ]),
-      ),
-    )
-  }, [scores, locale])
+    if (skipDraftSyncRef.current) {
+      skipDraftSyncRef.current = false
+      return
+    }
+    syncDraftsFromScores(scores, locale)
+  }, [scores, locale, syncDraftsFromScores])
 
   useEffect(() => {
     if (editingScore === null) {
@@ -168,49 +194,187 @@ export function MoodPreferencesForm() {
 
   const applyPreferences = (preferences: MoodPreferencesPublic) => {
     setPreferences(preferences)
-    setDraftColors(
-      Object.fromEntries(
-        Object.entries(preferences.scores).map(([score, style]) => [Number(score), style.color]),
-      ),
-    )
-    setDraftLabels(
-      Object.fromEntries(
-        Object.entries(preferences.scores).map(([score, style]) => [
-          Number(score),
-          style.label || defaultMoodScoreLabel(Number(score), locale),
-        ]),
-      ),
-    )
-    setDraftEmojis(
-      Object.fromEntries(
-        Object.entries(preferences.scores).map(([score, style]) => [
-          Number(score),
-          style.icon_type === 'emoji'
-            ? style.icon
-            : defaultMoodScoreStyle(Number(score), locale).icon,
-        ]),
-      ),
-    )
+    syncDraftsFromScores(preferences.scores)
   }
 
+  const buildAppearancePatch = (score: number): AppearancePatch => {
+    const saved = scoresRef.current[String(score)]
+    const nextLocale = localeRef.current
+    const patch: AppearancePatch = {}
+    const color = draftColorsRef.current[score]
+    if (
+      color &&
+      isValidHexColor(color) &&
+      color.toLowerCase() !== (saved?.color ?? '').toLowerCase()
+    ) {
+      patch.color = color
+    }
+
+    const label = (draftLabelsRef.current[score] ?? '').trim()
+    if (label && label.length <= MAX_MOOD_SCORE_LABEL_LENGTH) {
+      const defaultLabel = defaultMoodScoreLabel(score, nextLocale)
+      const savedLabel = saved?.label || defaultLabel
+      const nextStored = label === defaultLabel ? '' : label
+      const currentStored = savedLabel === defaultLabel ? '' : savedLabel
+      if (nextStored !== currentStored) {
+        patch.label = nextStored
+      }
+    }
+
+    return patch
+  }
+
+  const hasAppearancePatch = (patch: AppearancePatch) =>
+    patch.color !== undefined || patch.label !== undefined
+
+  const persistPendingScores = () => {
+    persistChainRef.current = persistChainRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        while (pendingScoresRef.current.size > 0) {
+          const score = pendingScoresRef.current.values().next().value as number
+          pendingScoresRef.current.delete(score)
+          const patch = buildAppearancePatch(score)
+          if (!hasAppearancePatch(patch)) {
+            continue
+          }
+          const generation = persistGenerationRef.current[score] ?? 0
+          try {
+            const saved = await patchMoodPreferences({
+              scores: { [String(score)]: patch },
+            })
+            if (generation !== (persistGenerationRef.current[score] ?? 0)) {
+              continue
+            }
+            skipDraftSyncRef.current = true
+            setPreferences(saved)
+          } catch (err) {
+            if (err instanceof ApiError && err.status === 403) {
+              setError(t('errors.verifyToManageMoodPreferences'))
+            } else {
+              setError(formatApiError(err, t, 'errors.failedSave'))
+            }
+            break
+          }
+        }
+      })
+    return persistChainRef.current
+  }
+
+  persistPendingScoresRef.current = persistPendingScores
+
+  const bumpScoreGeneration = (score: number) => {
+    persistGenerationRef.current[score] = (persistGenerationRef.current[score] ?? 0) + 1
+  }
+
+  const cancelScheduledPersist = (score?: number) => {
+    if (score === undefined) {
+      for (const option of moodScoreOptions) {
+        bumpScoreGeneration(option.score)
+      }
+      pendingScoresRef.current.clear()
+    } else {
+      bumpScoreGeneration(score)
+      pendingScoresRef.current.delete(score)
+    }
+    if (saveTimerRef.current !== null && pendingScoresRef.current.size === 0) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+  }
+
+  const flushScoreAppearance = (score: number) => {
+    pendingScoresRef.current.add(score)
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    void persistPendingScores()
+  }
+
+  const schedulePersist = (score: number) => {
+    pendingScoresRef.current.add(score)
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current)
+    }
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null
+      void persistPendingScores()
+    }, APPEARANCE_SAVE_DELAY_MS)
+  }
+
+  const revertInvalidDrafts = (score: number) => {
+    const saved = scoresRef.current[String(score)]
+    if (!saved) {
+      return
+    }
+    const color = draftColorsRef.current[score]
+    if (!color || !isValidHexColor(color)) {
+      const nextColors = { ...draftColorsRef.current, [score]: saved.color }
+      draftColorsRef.current = nextColors
+      setDraftColors(nextColors)
+    }
+    const label = (draftLabelsRef.current[score] ?? '').trim()
+    if (!label) {
+      const nextLabel = saved.label || defaultMoodScoreLabel(score, localeRef.current)
+      const nextLabels = { ...draftLabelsRef.current, [score]: nextLabel }
+      draftLabelsRef.current = nextLabels
+      setDraftLabels(nextLabels)
+    }
+  }
+
+  const closeScoreEditor = () => {
+    if (editingScore !== null) {
+      revertInvalidDrafts(editingScore)
+    }
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    void persistPendingScores()
+    setEditingScore(null)
+    setError(null)
+    setSuccess(null)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      void persistPendingScoresRef.current()
+    }
+  }, [])
+
   const handleColorChange = (score: number, value: string) => {
-    setDraftColors((current) => ({ ...current, [score]: value }))
+    const nextColors = { ...draftColorsRef.current, [score]: value }
+    draftColorsRef.current = nextColors
+    setDraftColors(nextColors)
+    setError(null)
+    schedulePersist(score)
   }
 
   const handleLabelChange = (score: number, value: string) => {
-    setDraftLabels((current) => ({ ...current, [score]: value }))
+    const nextLabels = { ...draftLabelsRef.current, [score]: value }
+    draftLabelsRef.current = nextLabels
+    setDraftLabels(nextLabels)
+    setError(null)
+    schedulePersist(score)
   }
 
   const patchIconStyle = async (
     score: number,
     patch: { icon_type: MoodScoreIconType; icon: string; color?: string },
   ) => {
+    cancelScheduledPersist(score)
     setIconBusyScore(score)
     setError(null)
     setSuccess(null)
     try {
+      const appearance = buildAppearancePatch(score)
       const saved = await patchMoodPreferences({
-        scores: { [String(score)]: patch },
+        scores: { [String(score)]: { ...appearance, ...patch } },
       })
       applyPreferences(saved)
     } catch (err) {
@@ -404,12 +568,15 @@ export function MoodPreferencesForm() {
   }
 
   const handleResetScore = async (score: number) => {
+    cancelScheduledPersist(score)
     const defaultStyle = defaultMoodScoreStyle(score, locale)
-    setDraftColors((current) => ({
-      ...current,
-      [score]: DEFAULT_MOOD_SCORE_COLORS[score] ?? defaultStyle.color,
-    }))
-    setDraftLabels((current) => ({ ...current, [score]: defaultStyle.label }))
+    const nextColor = DEFAULT_MOOD_SCORE_COLORS[score] ?? defaultStyle.color
+    const nextColors = { ...draftColorsRef.current, [score]: nextColor }
+    const nextLabels = { ...draftLabelsRef.current, [score]: defaultStyle.label }
+    draftColorsRef.current = nextColors
+    draftLabelsRef.current = nextLabels
+    setDraftColors(nextColors)
+    setDraftLabels(nextLabels)
     setDraftEmojis((current) => ({ ...current, [score]: defaultStyle.icon }))
 
     setIconBusyScore(score)
@@ -418,7 +585,7 @@ export function MoodPreferencesForm() {
       const saved = await patchMoodPreferences({
         scores: {
           [String(score)]: {
-            color: DEFAULT_MOOD_SCORE_COLORS[score] ?? defaultStyle.color,
+            color: nextColor,
             icon_type: 'emoji',
             icon: defaultStyle.icon,
             label: '',
@@ -437,24 +604,46 @@ export function MoodPreferencesForm() {
     }
   }
 
-  const handleResetAll = () => {
-    setDraftColors({ ...DEFAULT_MOOD_SCORE_COLORS })
-    setDraftLabels(
-      Object.fromEntries(
-        moodScoreOptions.map((option) => [
-          option.score,
-          defaultMoodScoreLabel(option.score, locale),
-        ]),
-      ),
+  const handleResetAll = async () => {
+    cancelScheduledPersist()
+    const nextColors = { ...DEFAULT_MOOD_SCORE_COLORS }
+    const nextLabels = Object.fromEntries(
+      moodScoreOptions.map((option) => [
+        option.score,
+        defaultMoodScoreLabel(option.score, locale),
+      ]),
     )
-    setDraftEmojis(
-      Object.fromEntries(
-        moodScoreOptions.map((option) => [
-          option.score,
-          defaultMoodScoreStyle(option.score, locale).icon,
-        ]),
-      ),
-    )
+    draftColorsRef.current = nextColors
+    draftLabelsRef.current = nextLabels
+    setDraftColors(nextColors)
+    setDraftLabels(nextLabels)
+
+    setIsSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const saved = await patchMoodPreferences({
+        scores: Object.fromEntries(
+          moodScoreOptions.map((option) => [
+            String(option.score),
+            {
+              color: DEFAULT_MOOD_SCORE_COLORS[option.score],
+              label: '',
+            },
+          ]),
+        ),
+      })
+      applyPreferences(saved)
+      setSuccess(t('moodPreferences.saved'))
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError(t('errors.verifyToManageMoodPreferences'))
+      } else {
+        setError(formatApiError(err, t, 'errors.failedSave'))
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const runPendingConfirm = async () => {
@@ -468,7 +657,7 @@ export function MoodPreferencesForm() {
       return
     }
     if (action.kind === 'reset-all') {
-      handleResetAll()
+      await handleResetAll()
       return
     }
     await handleRemoveUpload(action.score, action.iconId)
@@ -498,69 +687,6 @@ export function MoodPreferencesForm() {
       confirmLabel: t('moodPreferences.removeIcon'),
     }
   })()
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
-    setSuccess(null)
-    setJustSaved(false)
-
-    for (const option of moodScoreOptions) {
-      const color = draftColors[option.score]
-      if (!color || !isValidHexColor(color)) {
-        setError(t('moodPreferences.invalidColor', { label: option.label }))
-        return
-      }
-      const label = draftLabels[option.score]?.trim() ?? ''
-      if (!label) {
-        setError(t('moodPreferences.invalidLabel', { label: option.label }))
-        return
-      }
-      if (label.length > MAX_MOOD_SCORE_LABEL_LENGTH) {
-        setError(t('moodPreferences.labelTooLong', { max: String(MAX_MOOD_SCORE_LABEL_LENGTH) }))
-        return
-      }
-    }
-
-    setIsSaving(true)
-    setError(null)
-    try {
-      const saved = await patchMoodPreferences({
-        scores: Object.fromEntries(
-          moodScoreOptions.map((option) => {
-            const draftLabel = draftLabels[option.score]?.trim() ?? ''
-            const defaultLabel = defaultMoodScoreLabel(option.score, locale)
-            return [
-              String(option.score),
-              {
-                color: draftColors[option.score],
-                // Empty string clears a custom override when restoring the default name.
-                label: draftLabel === defaultLabel ? '' : draftLabel,
-              },
-            ]
-          }),
-        ),
-      })
-      applyPreferences(saved)
-      setSuccess(t('moodPreferences.saved'))
-      setJustSaved(true)
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
-        setError(t('errors.verifyToManageMoodPreferences'))
-      } else {
-        setError(formatApiError(err, t, 'errors.failedSave'))
-      }
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!justSaved) {
-      return
-    }
-    const timer = window.setTimeout(() => setJustSaved(false), 1800)
-    return () => window.clearTimeout(timer)
-  }, [justSaved])
 
   if (isLoading) {
     return <p className="muted">{t('common.loadingMoodPreferences')}</p>
@@ -613,6 +739,7 @@ export function MoodPreferencesForm() {
               value={label}
               maxLength={MAX_MOOD_SCORE_LABEL_LENGTH}
               onChange={(event) => handleLabelChange(option.score, event.target.value)}
+              onBlur={() => flushScoreAppearance(option.score)}
               aria-label={t('moodPreferences.labelFor', { score: option.score })}
             />
           </label>
@@ -632,14 +759,24 @@ export function MoodPreferencesForm() {
           </button>
         </div>
 
-        <ColorPicker
-          id={`mood-color-${option.score}`}
-          value={draftColors[option.score] ?? option.color}
-          onChange={(hex) => handleColorChange(option.score, hex)}
-          disabled={iconBusy}
-          colorLabel={t('moodPreferences.colorFor', { label })}
-          hexLabel={t('moodPreferences.hexFor', { label })}
-        />
+        <div
+          onBlur={(event) => {
+            const next = event.relatedTarget
+            if (next instanceof Node && event.currentTarget.contains(next)) {
+              return
+            }
+            flushScoreAppearance(option.score)
+          }}
+        >
+          <ColorPicker
+            id={`mood-color-${option.score}`}
+            value={draftColors[option.score] ?? option.color}
+            onChange={(hex) => handleColorChange(option.score, hex)}
+            disabled={iconBusy}
+            colorLabel={t('moodPreferences.colorFor', { label })}
+            hexLabel={t('moodPreferences.hexFor', { label })}
+          />
+        </div>
 
         <fieldset className="mood-preferences-icon-source" disabled={iconBusy}>
           <legend className="form-label">{t('moodPreferences.iconSource')}</legend>
@@ -797,7 +934,10 @@ export function MoodPreferencesForm() {
   }
 
   return (
-    <form className="card form mood-preferences-form" onSubmit={(e) => void handleSubmit(e)}>
+    <form
+      className="card form mood-preferences-form"
+      onSubmit={(event) => event.preventDefault()}
+    >
       {pendingCrop ? (
         <ImageCropModal
           image={pendingCrop.image}
@@ -855,6 +995,14 @@ export function MoodPreferencesForm() {
                 label={t('moodPreferences.editScore', { label })}
                 size="sm"
                 onClick={() => {
+                  if (editingScore !== null && editingScore !== option.score) {
+                    revertInvalidDrafts(editingScore)
+                  }
+                  if (saveTimerRef.current !== null) {
+                    window.clearTimeout(saveTimerRef.current)
+                    saveTimerRef.current = null
+                  }
+                  void persistPendingScores()
                   setError(null)
                   setSuccess(null)
                   setEditingScore(option.score)
@@ -876,11 +1024,7 @@ export function MoodPreferencesForm() {
               })
             : ''
         }
-        onClose={() => {
-          setEditingScore(null)
-          setError(null)
-          setSuccess(null)
-        }}
+        onClose={closeScoreEditor}
         accentColors={drawerColors}
       >
         <PageErrorAlert error={error} />
@@ -894,28 +1038,9 @@ export function MoodPreferencesForm() {
           type="button"
           className="button button-danger-ghost"
           onClick={() => setPendingConfirm({ kind: 'reset-all' })}
-        >
-          {t('moodPreferences.resetAll')}
-        </button>
-        <button
-          type="submit"
-          className={`button${justSaved ? ' is-saved' : ''}`}
           disabled={isSaving}
         >
-          <StableButtonLabel
-            active={
-              isSaving
-                ? t('common.saving')
-                : justSaved
-                  ? t('moodPreferences.saveDone')
-                  : t('moodPreferences.save')
-            }
-            labels={[
-              t('moodPreferences.save'),
-              t('moodPreferences.saveDone'),
-              t('common.saving'),
-            ]}
-          />
+          {t('moodPreferences.resetAll')}
         </button>
       </div>
     </form>
