@@ -108,6 +108,63 @@ export type MoodEntryStatsResponse = {
   comparison: MoodMonthComparisonPublic
 }
 
+export type InsightKind =
+  | 'weekend'
+  | 'weekday'
+  | 'daypart'
+  | 'within_day'
+  | 'tag_mood'
+  | 'mood_tag'
+
+export type InsightDirection = 'higher' | 'lower' | 'more_often' | 'less_often'
+
+export type InsightStrength = 'modest' | 'strong'
+
+export type InsightSubjectType = 'weekday' | 'weekend' | 'weekday_band' | 'daypart' | 'tag'
+
+export type InsightStatsPublic = {
+  delta: number | null
+  lift: number | null
+  group_mean: number | null
+  complement_mean: number | null
+  group_share: number | null
+  complement_share: number | null
+  group_n: number
+  complement_n: number
+}
+
+export type InsightSubjectPublic = {
+  type: InsightSubjectType | string
+  key: string
+  label: string
+  id?: string | null
+  slug?: string | null
+  color?: string | null
+  icon_type?: MoodScoreIconType | null
+  icon?: string | null
+}
+
+export type MoodInsightPublic = {
+  id: string
+  kind: InsightKind | string
+  direction: InsightDirection | string
+  strength: InsightStrength | string
+  title: string
+  body: string
+  sample: string
+  stats: InsightStatsPublic
+  subjects: InsightSubjectPublic[]
+}
+
+export type MoodInsightsResponse = {
+  window_from: string
+  window_to: string
+  active_days: number
+  entry_count: number
+  baseline_index: number | null
+  items: MoodInsightPublic[]
+}
+
 export type MoodEntryGoalProgress = {
   goal_id: string
   amount: number

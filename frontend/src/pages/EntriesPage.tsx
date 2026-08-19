@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, getMoodInsights, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
 import { getGoalCalendar, getGoalStats, listGoals } from '../api/goals'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
+import { PatternInsights } from '../components/PatternInsights'
 import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodStats'
 import { EntryRow } from '../components/EntryRow'
 import { HeartIcon } from '../components/HeartIcon'
@@ -41,7 +42,7 @@ import { buildGradientWashFromScores, motion } from '../design'
 import { useScrollAmbientGlow } from '../hooks/useScrollAmbientGlow'
 import { entryMoodColor } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
-import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse } from '../types/mood'
+import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse, MoodInsightsResponse } from '../types/mood'
 
 const PAGE_SIZE = 20
 const DAY_FETCH_LIMIT = 100
@@ -102,6 +103,8 @@ export function EntriesPage() {
 
   const [stats, setStats] = useState<MoodEntryStatsResponse | null>(null)
   const [isStatsLoading, setIsStatsLoading] = useState(true)
+  const [insights, setInsights] = useState<MoodInsightsResponse | null>(null)
+  const [isInsightsLoading, setIsInsightsLoading] = useState(true)
   const [goalStatsPeriod, setGoalStatsPeriod] = useState<GoalStatsPeriod>('week')
   const [weekAnchorDate, setWeekAnchorDate] = useState(() => todayKey(timeZone))
   const [goalStatsItems, setGoalStatsItems] = useState<GoalPeriodStatPublic[]>([])
@@ -325,6 +328,28 @@ export function EntriesPage() {
     }
   }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified])
 
+  const focusEntryId = searchParams.get('entry')
+  const loadInsights = useCallback(async () => {
+    if (!user?.email_verified) {
+      setInsights(null)
+      setIsInsightsLoading(false)
+      return
+    }
+
+    setIsInsightsLoading(true)
+    try {
+      const response = await getMoodInsights({
+        limit: 4,
+        ...(focusEntryId ? { focus_entry_id: focusEntryId } : {}),
+      })
+      setInsights(response)
+    } catch {
+      setInsights(null)
+    } finally {
+      setIsInsightsLoading(false)
+    }
+  }, [focusEntryId, locale, user?.email_verified])
+
   const loadGoalStats = useCallback(async () => {
     if (!user?.email_verified || calendarMode !== 'goals') {
       setGoalStatsItems([])
@@ -488,6 +513,10 @@ export function EntriesPage() {
   useEffect(() => {
     void loadStats()
   }, [loadStats])
+
+  useEffect(() => {
+    void loadInsights()
+  }, [loadInsights])
 
   useEffect(() => {
     void loadGoalStats()
@@ -737,6 +766,7 @@ export function EntriesPage() {
     setEntries((current) => current.filter((entry) => entry.id !== entryId))
     void loadCalendar()
     void loadStats()
+    void loadInsights()
     void loadGoalStats()
   }
 
@@ -925,11 +955,18 @@ export function EntriesPage() {
         ) : isStatsLoading ? (
           <p className="muted">{t('common.loadingStats')}</p>
         ) : stats ? (
-          <EmotionStatsBarChart
-            stats={stats}
-            todayDate={todayKey(timeZone)}
-            canAddToday={isCurrentMonthView}
-          />
+          <>
+            <EmotionStatsBarChart
+              stats={stats}
+              todayDate={todayKey(timeZone)}
+              canAddToday={isCurrentMonthView}
+            />
+            <PatternInsights
+              insights={insights}
+              isLoading={isInsightsLoading}
+              highlightId={focusEntryId ? insights?.items[0]?.id : null}
+            />
+          </>
         ) : null
       ) : null}
 

@@ -69,6 +69,7 @@ class ErrorCode(StrEnum):
     MOOD_ENTRY_NOT_FOUND = "mood_entry_not_found"
     RECORDED_AT_MISSING_TIMEZONE = "recorded_at_missing_timezone"
     RECORDED_TO_BEFORE_FROM = "recorded_to_before_from"
+    RECORDED_RANGE_INCOMPLETE = "recorded_range_incomplete"
     SEARCH_QUERY_EMPTY = "search_query_empty"
     UNKNOWN_TIMEZONE = "unknown_timezone"
     PHOTO_LIMIT_REACHED = "photo_limit_reached"

@@ -155,3 +155,46 @@ class MoodEntryStatsResponse(BaseModel):
     month_index: float | None
     active_days: int
     comparison: MoodMonthComparisonPublic
+
+
+class InsightStatsPublic(BaseModel):
+    delta: float | None
+    lift: float | None
+    group_mean: float | None
+    complement_mean: float | None
+    group_share: float | None
+    complement_share: float | None
+    group_n: int
+    complement_n: int
+
+
+class InsightSubjectPublic(BaseModel):
+    type: str
+    key: str
+    label: str
+    id: uuid.UUID | None = None
+    slug: str | None = None
+    color: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+
+
+class MoodInsightPublic(BaseModel):
+    id: str
+    kind: str
+    direction: str
+    strength: str
+    title: str
+    body: str
+    sample: str
+    stats: InsightStatsPublic
+    subjects: list[InsightSubjectPublic]
+
+
+class MoodInsightsResponse(BaseModel):
+    window_from: datetime
+    window_to: datetime
+    active_days: int
+    entry_count: int
+    baseline_index: float | None
+    items: list[MoodInsightPublic]

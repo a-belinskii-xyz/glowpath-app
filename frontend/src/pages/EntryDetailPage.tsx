@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodEntry, patchMoodEntry } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodEntry, getMoodInsights, patchMoodEntry } from '../api/moodEntries'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AttachmentAudio } from '../components/AttachmentAudio'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -13,6 +13,7 @@ import { IconButton, IconLinkButton } from '../components/IconButton'
 import { DeleteIcon, EditIcon } from '../components/icons'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
+import { PatternInsights } from '../components/PatternInsights'
 import { TagIcon } from '../components/TagIcon'
 import { useAuth } from '../context/AuthContext'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
@@ -23,7 +24,7 @@ import { intlLocale } from '../i18n/t'
 import { ApiError, formatApiError } from '../lib/errors'
 import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/datetime'
 import { entryMoodColor, entryMoodStyle } from '../lib/moodScale'
-import type { MoodEntryPublic } from '../types/mood'
+import type { MoodEntryPublic, MoodInsightsResponse } from '../types/mood'
 
 export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -35,6 +36,8 @@ export function EntryDetailPage() {
   const dateLocale = intlLocale(locale)
 
   const [entry, setEntry] = useState<MoodEntryPublic | null>(null)
+  const [insights, setInsights] = useState<MoodInsightsResponse | null>(null)
+  const [isInsightsLoading, setIsInsightsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -75,6 +78,34 @@ export function EntryDetailPage() {
 
     void load()
   }, [id, locale, t])
+
+  useEffect(() => {
+    if (!id || !user?.email_verified) {
+      setInsights(null)
+      return
+    }
+    let cancelled = false
+    setIsInsightsLoading(true)
+    void getMoodInsights({ limit: 1, focus_entry_id: id })
+      .then((response) => {
+        if (!cancelled) {
+          setInsights(response)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setInsights(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsInsightsLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id, locale, user?.email_verified])
 
   const handleDelete = async () => {
     if (!entry) {
@@ -294,6 +325,10 @@ export function EntryDetailPage() {
             </div>
           </div>
         </article>
+      ) : null}
+
+      {entry && user?.email_verified ? (
+        <PatternInsights insights={insights} isLoading={isInsightsLoading} compact />
       ) : null}
     </section>
   )

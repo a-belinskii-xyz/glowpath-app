@@ -12,6 +12,7 @@ import type {
   MoodEntryPatch,
   MoodEntryPublic,
   MoodEntryStatsResponse,
+  MoodInsightsResponse,
   SearchMoodEntriesParams,
 } from '../types/mood'
 import { apiRequest, getApiBaseUrl } from './client'
@@ -109,6 +110,35 @@ export function getMoodEntryStats(params: {
     auth: true,
     headers: moodHeaders(),
   })
+}
+
+export function getMoodInsights(params: {
+  recorded_from?: string
+  recorded_to?: string
+  limit?: number
+  focus_entry_id?: string
+} = {}): Promise<MoodInsightsResponse> {
+  const search = new URLSearchParams()
+  if (params.recorded_from) {
+    search.set('recorded_from', params.recorded_from)
+  }
+  if (params.recorded_to) {
+    search.set('recorded_to', params.recorded_to)
+  }
+  if (params.limit !== undefined) {
+    search.set('limit', String(params.limit))
+  }
+  if (params.focus_entry_id) {
+    search.set('focus_entry_id', params.focus_entry_id)
+  }
+  const query = search.toString()
+  return apiRequest<MoodInsightsResponse>(
+    `/v1/mood-entries/insights${query ? `?${query}` : ''}`,
+    {
+      auth: true,
+      headers: moodHeaders(),
+    },
+  )
 }
 
 export function getMoodEntry(entryId: string): Promise<MoodEntryPublic> {

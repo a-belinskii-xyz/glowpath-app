@@ -31,6 +31,7 @@ from app.schemas.mood_entry import (
     MoodEntryPatch,
     MoodEntryPublic,
     MoodEntryStatsResponse,
+    MoodInsightsResponse,
 )
 from app.services.mood_entry_service import (
     MoodEntryError,
@@ -48,6 +49,7 @@ from app.services.mood_entry_service import (
     serialize_mood_entry,
     upload_attachment,
 )
+from app.services.mood_insight_service import get_mood_insights
 from app.services.mood_preferences_service import (
     ColorDisplaySettings,
     get_color_display_settings,
@@ -190,6 +192,37 @@ def stats_entries(
         _handle_mood_error(exc)
         raise
     return MoodEntryStatsResponse.model_validate(payload)
+
+
+@router.get("/insights", response_model=MoodInsightsResponse)
+def insight_entries(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
+    recorded_from: Annotated[datetime | None, Query()] = None,
+    recorded_to: Annotated[datetime | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=8)] = 4,
+    focus_entry_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> MoodInsightsResponse:
+    """Pattern cards over mood × weekday × time of day × tags.
+
+    Omit ``recorded_from`` / ``recorded_to`` to use the rolling 8-week window.
+    ``focus_entry_id`` only reorders already-qualified cards (post-save).
+    """
+    try:
+        payload = get_mood_insights(
+            db,
+            user=current_user,
+            locale=locale,
+            recorded_from=recorded_from,
+            recorded_to=recorded_to,
+            limit=limit,
+            focus_entry_id=focus_entry_id,
+        )
+    except MoodEntryError as exc:
+        _handle_mood_error(exc)
+        raise
+    return MoodInsightsResponse.model_validate(payload)
 
 
 @router.get("/search", response_model=MoodEntryListResponse)

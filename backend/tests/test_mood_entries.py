@@ -1,4 +1,5 @@
 import io
+from datetime import date, timedelta
 
 from app.models.tag import Tag
 from app.services.storage import FakeStorage
@@ -760,3 +761,84 @@ def test_entry_keeps_tag_color_snapshot_when_tag_color_changes(
     )
     live = auth_client.get(f"/v1/mood-entries/{entry_id}", headers=headers)
     assert live.json()["tags"][0]["color"] == "#112233"
+
+
+def test_insights_empty_when_too_few_days(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-insights-empty@example.com")
+    _create_entry(auth_client, token, score=4, recorded_at="2026-07-10T12:00:00+03:00")
+
+    response = auth_client.get(
+        "/v1/mood-entries/insights",
+        params={
+            "recorded_from": "2026-06-01T00:00:00+03:00",
+            "recorded_to": "2026-08-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["entry_count"] == 1
+    assert body["active_days"] == 1
+    assert body["items"] == []
+
+
+def test_insights_weekend_pattern(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-insights-weekend@example.com")
+    start = date(2026, 6, 1)  # Monday
+    for offset in range(28):
+        day = start + timedelta(days=offset)
+        score = 5 if day.weekday() >= 5 else 3
+        recorded_at = f"{day.isoformat()}T12:00:00+03:00"
+        created = _create_entry(auth_client, token, score=score, recorded_at=recorded_at)
+        assert created.status_code == 201
+
+    response = auth_client.get(
+        "/v1/mood-entries/insights",
+        params={
+            "recorded_from": "2026-06-01T00:00:00+03:00",
+            "recorded_to": "2026-07-01T00:00:00+03:00",
+            "limit": 4,
+        },
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["active_days"] == 28
+    kinds = {item["kind"] for item in body["items"]}
+    assert "weekend" in kinds
+    weekend = next(item for item in body["items"] if item["kind"] == "weekend")
+    assert weekend["direction"] == "higher"
+    assert weekend["stats"]["delta"] is not None
+    assert weekend["stats"]["delta"] > 0
+    assert "weekend" in weekend["title"].lower()
+
+
+def test_insights_rejects_incomplete_and_inverted_range(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-insights-range@example.com")
+    incomplete = auth_client.get(
+        "/v1/mood-entries/insights",
+        params={"recorded_from": "2026-06-01T00:00:00+03:00"},
+        headers=_auth_headers(token),
+    )
+    assert incomplete.status_code == 400
+    assert incomplete.json()["detail"]["code"] == "recorded_range_incomplete"
+
+    inverted = auth_client.get(
+        "/v1/mood-entries/insights",
+        params={
+            "recorded_from": "2026-08-01T00:00:00+03:00",
+            "recorded_to": "2026-07-01T00:00:00+03:00",
+        },
+        headers=_auth_headers(token),
+    )
+    assert inverted.status_code == 400
+    assert inverted.json()["detail"]["code"] == "recorded_to_before_from"
