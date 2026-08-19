@@ -4520,6 +4520,107 @@ code {
   cursor: not-allowed;
 }
 
+.attachment-audio-card {
+  cursor: default;
+}
+
+.attachment-audio-card.is-recording {
+  border-color: color-mix(in oklab, var(--chrome-action-danger) 45%, var(--chrome-border-strong));
+  background: color-mix(in oklab, var(--chrome-action-danger) 6%, var(--chrome-surface));
+}
+
+.attachment-audio-card.is-recording:hover,
+.attachment-audio-card.is-recording:focus-within {
+  border-color: color-mix(in oklab, var(--chrome-action-danger) 55%, var(--chrome-border-strong));
+  background: color-mix(in oklab, var(--chrome-action-danger) 8%, var(--chrome-surface));
+  color: inherit;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--chrome-action-danger) 16%, transparent);
+}
+
+.attachment-audio-card.is-recording .attachment-audio-actions {
+  display: block;
+}
+
+.attachment-audio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.2rem;
+}
+
+.attachment-audio-action {
+  position: relative;
+  gap: 0.4rem;
+}
+
+.attachment-audio-action svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.audio-recorder-live {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.audio-recorder-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.4rem;
+}
+
+.audio-recorder-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--chrome-action-danger);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--chrome-action-danger) 45%, transparent);
+  animation: audio-recorder-pulse 1.35s ease-out infinite;
+}
+
+.audio-recorder-time {
+  font-size: 0.88rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--chrome-text-primary);
+}
+
+.audio-recorder-live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.attachment-audio-item {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.attachment-audio-item .entry-audio-player {
+  flex: 1 1 14rem;
+  max-width: none;
+}
+
+@keyframes audio-recorder-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--chrome-action-danger) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 0.45rem color-mix(in oklab, var(--chrome-action-danger) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--chrome-action-danger) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audio-recorder-dot {
+    animation: none;
+  }
+}
+
 .attachment-list {
   list-style: none;
   margin: 0;

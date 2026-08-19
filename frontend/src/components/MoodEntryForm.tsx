@@ -14,10 +14,12 @@ import { listNoteTemplates } from '../api/noteTemplates'
 import { listTagGroups } from '../api/tagGroups'
 import { PageErrorAlert } from './PageErrorAlert'
 import { GoalIcon } from './GoalIcon'
+import { AudioRecorder } from './AudioRecorder'
 import { AudioIcon, PhotoIcon } from './icons'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { PhotoCollageEditor, type CollagePhotoDraft } from './PhotoCollageEditor'
+import { SoftAudioPlayer } from './SoftAudioPlayer'
 import { StableButtonLabel } from './StableButtonLabel'
 import { TagIcon } from './TagIcon'
 import { useAuth } from '../context/AuthContext'
@@ -45,6 +47,7 @@ import {
   isMoodEntryDraftEmpty,
   setMoodEntryDraft,
 } from '../lib/moodEntryDraft'
+import { MAX_AUDIO_BYTES } from '../lib/audioRecorder'
 import { getStoredMoodEntrySource } from '../lib/moodEntrySource'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic, TagPublic } from '../types/tag'
@@ -142,6 +145,7 @@ export function MoodEntryForm({
     () => initialEntry?.attachments.find((item) => item.kind === 'audio') ?? null,
   )
   const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null)
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingTags, setIsLoadingTags] = useState(true)
@@ -300,6 +304,21 @@ export function MoodEntryForm({
       urls.clear()
     }
   }, [])
+
+  const pendingAudioUrl = useMemo(() => {
+    if (!pendingAudio) {
+      return null
+    }
+    return URL.createObjectURL(pendingAudio)
+  }, [pendingAudio])
+
+  useEffect(() => {
+    return () => {
+      if (pendingAudioUrl) {
+        URL.revokeObjectURL(pendingAudioUrl)
+      }
+    }
+  }, [pendingAudioUrl])
 
   const entryDate = recordedAtLocal.split('T')[0] ?? ''
   const isPastEntryDay = Boolean(entryDate) && entryDate < todayKey(timeZone)
@@ -537,6 +556,7 @@ export function MoodEntryForm({
 
   const photoCount = photoDrafts.length
   const hasAudio = existingAudio !== null || pendingAudio !== null
+  const selectedMoodColor = moodScoreOptions.find((option) => option.score === score)?.color
 
   const collagePhotos: CollagePhotoDraft[] = photoDrafts.map((draft) => {
     if (draft.source === 'existing') {
@@ -586,10 +606,26 @@ export function MoodEntryForm({
     }
     if (hasAudio) {
       setError(t('errors.audioLimit'))
+      event.target.value = ''
       return
     }
+    if (file.size > MAX_AUDIO_BYTES) {
+      setError(t('errors.audioTooLarge'))
+      event.target.value = ''
+      return
+    }
+    setError(null)
     setPendingAudio(file)
     event.target.value = ''
+  }
+
+  const handleRecordedAudio = (file: File) => {
+    if (hasAudio) {
+      setError(t('errors.audioLimit'))
+      return
+    }
+    setError(null)
+    setPendingAudio(file)
   }
 
   const removePhotoDraft = async (key: string) => {
@@ -942,8 +978,8 @@ export function MoodEntryForm({
                     disabled={photoCount >= 5}
                   />
                 </label>
-                <label
-                  className={`attachment-upload${hasAudio ? ' is-disabled' : ''}`}
+                <div
+                  className={`attachment-upload attachment-audio-card${hasAudio ? ' is-disabled' : ''}${isRecordingAudio ? ' is-recording' : ''}`}
                 >
                   <span className="attachment-upload-icon" aria-hidden="true">
                     <AudioIcon />
@@ -952,21 +988,44 @@ export function MoodEntryForm({
                     <span className="attachment-upload-title">
                       {t('entries.audio', { count: hasAudio ? 1 : 0 })}
                     </span>
-                    <span className="attachment-upload-action">
-                      {hasAudio ? t('entries.audioFull') : t('entries.addAudio')}
-                    </span>
-                    <span className="attachment-upload-hint">
-                      {t('entries.audioHint')}
-                    </span>
+                    {hasAudio ? (
+                      <>
+                        <span className="attachment-upload-action">
+                          {t('entries.audioFull')}
+                        </span>
+                        <span className="attachment-upload-hint">
+                          {t('entries.audioHint')}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="attachment-audio-actions">
+                          {isRecordingAudio ? null : (
+                            <label className="button button-small attachment-audio-action">
+                              {t('entries.addAudio')}
+                              <input
+                                className="visually-hidden"
+                                type="file"
+                                accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
+                                onChange={handleAudioChange}
+                              />
+                            </label>
+                          )}
+                          <AudioRecorder
+                            onRecorded={handleRecordedAudio}
+                            onError={setError}
+                            onBusyChange={setIsRecordingAudio}
+                          />
+                        </span>
+                        {isRecordingAudio ? null : (
+                          <span className="attachment-upload-hint">
+                            {t('entries.audioHint')}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </span>
-                  <input
-                    className="attachment-upload-input"
-                    type="file"
-                    accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
-                    onChange={handleAudioChange}
-                    disabled={hasAudio}
-                  />
-                </label>
+                </div>
               </div>
 
               <PhotoCollageEditor
@@ -1004,13 +1063,21 @@ export function MoodEntryForm({
                     </li>
                   ) : null}
                   {pendingAudio ? (
-                    <li>
-                      <span>
-                        {t('entries.attachmentItem', {
-                          kind: t('entries.kindAudio'),
-                          name: pendingAudio.name,
-                        })}
-                      </span>
+                    <li className="attachment-audio-item">
+                      {pendingAudioUrl ? (
+                        <SoftAudioPlayer
+                          src={pendingAudioUrl}
+                          accentColor={selectedMoodColor}
+                          title={pendingAudio.name}
+                        />
+                      ) : (
+                        <span>
+                          {t('entries.attachmentItem', {
+                            kind: t('entries.kindAudio'),
+                            name: pendingAudio.name,
+                          })}
+                        </span>
+                      )}
                       <button
                         type="button"
                         className="link-button"
@@ -1032,7 +1099,7 @@ export function MoodEntryForm({
           <button
             className="button"
             type="submit"
-            disabled={isSubmitting || (!moodPicked && mode === 'create')}
+            disabled={isSubmitting || isRecordingAudio || (!moodPicked && mode === 'create')}
           >
             <StableButtonLabel
               active={

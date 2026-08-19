@@ -159,6 +159,30 @@ export function AudioIcon(props: IconProps) {
   )
 }
 
+export function MicIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <rect
+        x="9.15"
+        y="3.5"
+        width="5.7"
+        height="10"
+        rx="2.85"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M6.5 11.25a5.5 5.5 0 0 0 11 0M12 16.75V20.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
 export function NavEntriesIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>
