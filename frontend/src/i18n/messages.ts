@@ -221,7 +221,9 @@ export const en = {
     relatedAria: 'Pattern related to this entry',
     title: 'Patterns',
     relatedTitle: 'Related pattern',
-    empty: 'No strong pattern stood out in this month. Keep logging on different days, times, and tags.',
+    emptyCurrent:
+      'A couple more mood notes this month and patterns will start to show. Different days and a tag or two help a lot.',
+    emptyPast: 'There isn’t enough data this month to spot a pattern.',
     scaleHint: 'Numbers are typical mood on the 1–5 scale — the same as the faces above.',
     scaleLegend: '1 awful · 2 bad · 3 neutral · 4 good · 5 great',
   },
@@ -975,7 +977,9 @@ export const ru: DeepStringLeaves<typeof en> = {
     relatedAria: 'Паттерн, связанный с этой записью',
     title: 'Паттерны',
     relatedTitle: 'Связанный паттерн',
-    empty: 'В этом месяце устойчивого паттерна нет. Продолжайте отмечать разные дни, время и теги.',
+    emptyCurrent:
+      'Ещё пара заметок о настроении в этом месяце — и начнут проявляться паттерны. Особенно если отмечать разные дни и теги.',
+    emptyPast: 'В этом месяце недостаточно данных, чтобы увидеть паттерн.',
     scaleHint: 'Цифры — типичное настроение по шкале 1–5, той же что у смайлов выше.',
     scaleLegend: '1 ужасно · 2 плохо · 3 нейтрально · 4 хорошо · 5 отлично',
   },

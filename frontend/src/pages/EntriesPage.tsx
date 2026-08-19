@@ -973,6 +973,7 @@ export function EntriesPage() {
               insights={insights}
               isLoading={isInsightsLoading}
               highlightId={focusEntryId ? insights?.items[0]?.id : null}
+              isCurrentPeriod={isCurrentMonthView}
             />
           </>
         ) : null

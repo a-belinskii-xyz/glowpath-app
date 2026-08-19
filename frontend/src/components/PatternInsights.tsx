@@ -9,6 +9,8 @@ type PatternInsightsProps = {
   highlightId?: string | null
   /** Single related card (entry detail). */
   compact?: boolean
+  /** Current calendar month: invite another note. Past month: no CTA. */
+  isCurrentPeriod?: boolean
 }
 
 export function PatternInsights({
@@ -16,6 +18,7 @@ export function PatternInsights({
   isLoading,
   highlightId = null,
   compact = false,
+  isCurrentPeriod = false,
 }: PatternInsightsProps) {
   const { t } = useLocale()
 
@@ -29,18 +32,17 @@ export function PatternInsights({
 
   const items = compact ? insights.items.slice(0, 1) : insights.items
   if (items.length === 0) {
-    if (compact || insights.active_days < 8) {
+    if (compact) {
       return null
     }
     return (
       <section className="pattern-insights" aria-label={t('patternInsights.ariaLabel')}>
-      <div className="pattern-insights-header">
-        <h2 className="pattern-insights-title">{t('patternInsights.title')}</h2>
-      </div>
-      <p className="muted pattern-insights-hint" title={t('patternInsights.scaleLegend')}>
-        {t('patternInsights.scaleHint')}
-      </p>
-      <p className="muted pattern-insights-empty">{t('patternInsights.empty')}</p>
+        <div className="pattern-insights-header">
+          <h2 className="pattern-insights-title">{t('patternInsights.title')}</h2>
+        </div>
+        <p className="muted pattern-insights-empty">
+          {isCurrentPeriod ? t('patternInsights.emptyCurrent') : t('patternInsights.emptyPast')}
+        </p>
       </section>
     )
   }
