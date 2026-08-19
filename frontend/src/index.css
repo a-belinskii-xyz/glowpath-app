@@ -452,6 +452,14 @@ input {
   margin-bottom: 1rem;
 }
 
+.companion-line {
+  margin: -0.35rem 0 0.95rem;
+  max-width: 36rem;
+  font-size: 0.98rem;
+  line-height: 1.45;
+  color: var(--chrome-text-secondary);
+}
+
 .entries-toolbar .month-control {
   order: 1;
   flex: 0 1 auto;
@@ -5316,6 +5324,14 @@ code {
   user-select: none;
 }
 
+.entry-mood-kicker {
+  margin: 0.15rem 0 0;
+  text-align: center;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--chrome-text-secondary);
+}
+
 .entry-mood-question {
   margin: 0;
   text-align: center;
@@ -6704,6 +6720,11 @@ code {
     align-items: center;
     gap: 0.45rem 0.5rem;
     margin-bottom: 0.75rem;
+  }
+
+  .companion-line {
+    margin: 0 0 0.85rem;
+    font-size: 0.92rem;
   }
 
   .entries-toolbar .month-control {

@@ -12,6 +12,7 @@ type EmotionStatsBarChartProps = {
   /** YYYY-MM-DD — when set with canAddToday, mood columns open create for that day. */
   todayDate?: string
   canAddToday?: boolean
+  emptyPrompt?: string
 }
 
 function comparisonClassName(verdict: MoodMonthComparisonPublic['verdict']): string {
@@ -48,6 +49,7 @@ export function EmotionStatsBarChart({
   stats,
   todayDate,
   canAddToday = false,
+  emptyPrompt,
 }: EmotionStatsBarChartProps) {
   const { t, tp } = useLocale()
   const { getScoreColor, getScoreStyle } = useMoodPreferences()
@@ -76,7 +78,9 @@ export function EmotionStatsBarChart({
       {isEmpty ? (
         <div className="emotion-stats-empty">
           <p className="emotion-stats-comparison emotion-stats-comparison-muted">
-            {interactive ? t('emotionStats.emptyPrompt') : t('emotionStats.emptyPromptPast')}
+            {interactive
+              ? (emptyPrompt ?? t('emotionStats.emptyPrompt'))
+              : t('emotionStats.emptyPromptPast')}
           </p>
           {interactive ? (
             <div

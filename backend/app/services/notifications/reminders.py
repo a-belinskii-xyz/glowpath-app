@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
-from app.core.i18n import DEFAULT_LOCALE, resolve_label
+from app.core.i18n import DEFAULT_LOCALE, normalize_locale, resolve_label
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.user import User
@@ -101,6 +101,7 @@ def process_due_reminders(
                 user=user,
                 channels=deliverable,
                 local_day=local_day,
+                local_hour=local_now.hour,
                 tz=tz,
                 stats=stats,
             )
@@ -120,9 +121,11 @@ def _process_user_reminders(
     user: User,
     channels: list[NotificationChannel],
     local_day: date,
+    local_hour: int,
     tz: ZoneInfo,
     stats: ReminderRunStats,
 ) -> None:
+    locale = normalize_locale(user.telegram_locale) if user.telegram_locale else DEFAULT_LOCALE
     if prefs.daily_mood_reminder_enabled and prefs.last_daily_mood_reminder_on != local_day:
         if _has_mood_entry_on_local_day(db, user=user, local_day=local_day, tz=tz):
             prefs.last_daily_mood_reminder_on = local_day
@@ -131,7 +134,11 @@ def _process_user_reminders(
                 dispatcher.send(
                     user=user,
                     channels=[channel],
-                    message=daily_mood_reminder_message(channel=channel),
+                    message=daily_mood_reminder_message(
+                        channel=channel,
+                        hour=local_hour,
+                        locale=locale,
+                    ),
                 )
             prefs.last_daily_mood_reminder_on = local_day
             stats.daily_mood_sent += 1

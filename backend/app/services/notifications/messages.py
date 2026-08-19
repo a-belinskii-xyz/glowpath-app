@@ -3,27 +3,42 @@ from __future__ import annotations
 from urllib.parse import urlencode
 
 from app.config import settings
+from app.core.companion import daily_reminder_intro, daily_reminder_subject
+from app.core.i18n import DEFAULT_LOCALE
 from app.core.mood_entry_source import MoodEntryAttributionKind, format_mood_entry_source
 from app.services.notifications.base import NotificationChannel, NotificationMessage
 
 
-def daily_mood_reminder_message(*, channel: NotificationChannel) -> NotificationMessage:
+def daily_mood_reminder_message(
+    *,
+    channel: NotificationChannel,
+    hour: int = 12,
+    locale: str = DEFAULT_LOCALE,
+) -> NotificationMessage:
     source = format_mood_entry_source(
         channel=channel.value,
         kind=MoodEntryAttributionKind.DAILY_MOOD_REMINDER,
     )
     log_url = f"{settings.frontend_url.rstrip('/')}/entries/new?{urlencode({'from': source})}"
     bot_url = _telegram_bot_deep_link(start="log")
-    subject = "Time to log your mood"
+    subject = daily_reminder_subject(hour=hour, locale=locale)
+    intro = daily_reminder_intro(hour=hour, locale=locale)
 
     if channel is NotificationChannel.TELEGRAM:
         lines = [
-            "Time to log your mood in GlowPath.",
+            intro,
             "",
-            f"Open the app: {log_url}",
+            "Log your mood in GlowPath." if locale != "ru" else "Запиши настроение в GlowPath.",
+            "",
+            f"Open the app: {log_url}" if locale != "ru" else f"Открыть приложение: {log_url}",
         ]
         if bot_url:
-            lines.extend(["", f"Or continue in the bot: {bot_url}"])
+            or_bot = (
+                f"Or continue in the bot: {bot_url}"
+                if locale != "ru"
+                else f"Или продолжить в боте: {bot_url}"
+            )
+            lines.extend(["", or_bot])
         body = "\n".join(lines)
         return NotificationMessage(
             subject=subject,
@@ -36,19 +51,32 @@ def daily_mood_reminder_message(*, channel: NotificationChannel) -> Notification
             },
         )
 
-    body = (
-        "Hi,\n\n"
-        "This is your daily GlowPath reminder — take a moment to note how you feel today.\n\n"
-        f"Log your mood: {log_url}\n\n"
-        "You can change reminder settings in your profile.\n"
-    )
-    html_body = (
-        "<p>Hi,</p>"
-        "<p>This is your daily GlowPath reminder — "
-        "take a moment to note how you feel today.</p>"
-        f'<p><a href="{log_url}">Log your mood</a></p>'
-        "<p>You can change reminder settings in your profile.</p>"
-    )
+    if locale == "ru":
+        body = (
+            "Привет,\n\n"
+            f"{intro}\n\n"
+            f"Записать настроение: {log_url}\n\n"
+            "Напоминания можно изменить в профиле.\n"
+        )
+        html_body = (
+            "<p>Привет,</p>"
+            f"<p>{intro}</p>"
+            f'<p><a href="{log_url}">Записать настроение</a></p>'
+            "<p>Напоминания можно изменить в профиле.</p>"
+        )
+    else:
+        body = (
+            "Hi,\n\n"
+            f"{intro}\n\n"
+            f"Log your mood: {log_url}\n\n"
+            "You can change reminder settings in your profile.\n"
+        )
+        html_body = (
+            "<p>Hi,</p>"
+            f"<p>{intro}</p>"
+            f'<p><a href="{log_url}">Log your mood</a></p>'
+            "<p>You can change reminder settings in your profile.</p>"
+        )
     return NotificationMessage(
         subject=subject,
         body=body,

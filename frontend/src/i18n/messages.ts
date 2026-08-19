@@ -1,3 +1,5 @@
+import { companionEn, companionRu } from './companion'
+
 export type MessageTree = {
   [key: string]: string | MessageTree
 }
@@ -106,7 +108,7 @@ export const en = {
     pickMoodFirst: 'Choose how you feel before saving.',
     moodConfirmed: '{mood}',
     changeMood: 'Change mood',
-    whatsOnYourMind: 'Tell me a little',
+    whatsOnYourMind: 'A few words',
     notePlaceholder: 'What’s on your mind…',
     useTemplate: 'Use a template',
     whatHappenedToday: 'What happened today?',
@@ -761,6 +763,7 @@ export const en = {
     telegramSendFailed: 'Failed to send Telegram notification',
     telegramSendRejected: 'Telegram rejected the notification',
   },
+  companion: companionEn,
 } as const
 
 export const ru: DeepStringLeaves<typeof en> = {
@@ -862,7 +865,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     pickMoodFirst: 'Сначала выбери, как ты себя чувствуешь.',
     moodConfirmed: '{mood}',
     changeMood: 'Изменить настроение',
-    whatsOnYourMind: 'Расскажи немного',
+    whatsOnYourMind: 'Пара слов',
     notePlaceholder: 'Что у тебя на уме…',
     useTemplate: 'Шаблон',
     whatHappenedToday: 'Что сегодня было?',
@@ -1523,6 +1526,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     telegramSendFailed: 'Не удалось отправить уведомление в Telegram',
     telegramSendRejected: 'Telegram отклонил уведомление',
   },
+  companion: companionRu,
 }
 
 export const messages = { en, ru } as const

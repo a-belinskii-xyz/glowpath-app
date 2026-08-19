@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from bot.api_client import ApiClientError, api_client
-from bot.i18n import normalize_bot_locale, t
+from bot.i18n import companion_t, normalize_bot_locale, t
 from bot.keyboards import (
     confirm_keyboard,
     goals_keyboard,
@@ -445,7 +445,7 @@ async def _prompt_current_step(
     if step == STEP_SCORE:
         await send_message(
             chat_id=chat_id,
-            text=t(locale, "choose_score"),
+            text=companion_t(locale, "choose_score", _catalog_timezone(catalog)),
             reply_markup=score_keyboard(catalog.get("scores") or []),
         )
         return
@@ -482,9 +482,15 @@ async def _prompt_current_step(
         )
         return
     if step == STEP_NOTE:
+        lead = companion_t(
+            locale,
+            "note_lead",
+            _catalog_timezone(catalog),
+            variants=2,
+        )
         await send_message(
             chat_id=chat_id,
-            text=t(locale, "note_prompt"),
+            text=f"{lead}\n\n{t(locale, 'note_prompt')}",
             reply_markup=note_keyboard(locale=locale),
         )
         return
@@ -726,7 +732,16 @@ async def _finalize_entry(
         logger.warning("failed to clear session after save")
 
     summary = format_summary(state, catalog)
-    await send_message(chat_id=chat_id, text=t(locale, "saved", summary=summary))
+    await send_message(
+        chat_id=chat_id,
+        text=companion_t(
+            locale,
+            "saved",
+            _catalog_timezone(catalog),
+            variants=2,
+            summary=summary,
+        ),
+    )
 
 
 async def _upload_pending_file(
@@ -767,6 +782,11 @@ def _is_image_document(document: dict[str, Any]) -> bool:
 def _locale_from_user(from_user: dict[str, Any]) -> str | None:
     locale = from_user.get("language_code")
     return locale if isinstance(locale, str) else None
+
+
+def _catalog_timezone(catalog: dict[str, Any]) -> str | None:
+    value = catalog.get("timezone")
+    return value if isinstance(value, str) and value else None
 
 
 def _parse_command(text: str) -> tuple[str | None, str | None]:

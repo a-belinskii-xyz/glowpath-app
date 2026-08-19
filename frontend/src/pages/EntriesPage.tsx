@@ -19,7 +19,10 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { intlLocale } from '../i18n/t'
-import { ApiError, formatApiError } from '../lib/errors'
+import {
+  companionDaypartForHour,
+  companionLine,
+} from '../lib/companion'
 import {
   dayKey,
   formatDayHeading,
@@ -33,11 +36,13 @@ import {
   getIsoWeekBounds,
   getMonthBounds,
   clampWeekAnchorToMonth,
+  localHour,
   parseYearMonthParam,
   shiftDateKey,
   todayKey,
   weekIntersectsMonth,
 } from '../lib/datetime'
+import { ApiError, formatApiError } from '../lib/errors'
 import { buildGradientWashFromScores, motion } from '../design'
 import { useScrollAmbientGlow } from '../hooks/useScrollAmbientGlow'
 import { entryMoodColor } from '../lib/moodScale'
@@ -147,6 +152,24 @@ export function EntriesPage() {
   )
   const currentMonth = useMemo(() => getCurrentYearMonth(timeZone), [timeZone])
   const isCurrentMonthView = year === currentMonth.year && month === currentMonth.month
+  const companionGreeting = useMemo(() => {
+    if (!isCurrentMonthView || isSearchMode) {
+      return null
+    }
+    const dateKey = todayKey(timeZone)
+    return companionLine(t, 'greeting', companionDaypartForHour(localHour(timeZone)), dateKey)
+  }, [isCurrentMonthView, isSearchMode, t, timeZone])
+  const emptyMonthCopy = useMemo(() => {
+    if (!isCurrentMonthView) {
+      return t('entries.noEntriesThisMonth')
+    }
+    const dateKey = todayKey(timeZone)
+    return companionLine(t, 'emptyMonth', companionDaypartForHour(localHour(timeZone)), dateKey)
+  }, [isCurrentMonthView, t, timeZone])
+  const emptyPromptCopy = useMemo(() => {
+    const dateKey = todayKey(timeZone)
+    return companionLine(t, 'emptyPrompt', companionDaypartForHour(localHour(timeZone)), dateKey)
+  }, [t, timeZone])
   const canGoNextMonth =
     year < currentMonth.year || (year === currentMonth.year && month < currentMonth.month)
   const monthTitleSizeLabels = useMemo(
@@ -892,6 +915,10 @@ export function EntriesPage() {
         </div>
       </header>
 
+      {companionGreeting ? (
+        <p className="companion-line">{companionGreeting}</p>
+      ) : null}
+
       <PageErrorAlert error={error} />
 
       {user?.email_verified && !isSearchMode ? (
@@ -968,6 +995,7 @@ export function EntriesPage() {
               stats={stats}
               todayDate={todayKey(timeZone)}
               canAddToday={isCurrentMonthView}
+              emptyPrompt={emptyPromptCopy}
             />
             <PatternInsights
               insights={insights}
@@ -989,7 +1017,7 @@ export function EntriesPage() {
                 ? t('entries.searchNoResults')
                 : favoritesOnly
                   ? t('entries.noFavoritesThisMonth')
-                  : t('entries.noEntriesThisMonth')}
+                  : emptyMonthCopy}
             </p>
           </section>
         </div>

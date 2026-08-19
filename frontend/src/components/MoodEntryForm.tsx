@@ -26,16 +26,23 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
-import { ApiError, formatApiError } from '../lib/errors'
-import { randomId } from '../lib/randomId'
+import {
+  companionDaypartForHour,
+  companionLine,
+  companionMoodPhrase,
+  type CompanionSlot,
+} from '../lib/companion'
 import {
   datetimeLocalToIso,
   entriesListPathForInstant,
   formatCalendarDate,
+  hourFromDatetimeLocal,
   isoToDatetimeLocal,
   nowDatetimeLocal,
   todayKey,
 } from '../lib/datetime'
+import { ApiError, formatApiError } from '../lib/errors'
+import { randomId } from '../lib/randomId'
 import { intlLocale } from '../i18n/t'
 import { getMoodScoreOptions } from '../lib/moodScale'
 import { emojiForGroupSlug } from '../lib/tagEmoji'
@@ -326,6 +333,10 @@ export function MoodEntryForm({
 
   const entryDate = recordedAtLocal.split('T')[0] ?? ''
   const isPastEntryDay = Boolean(entryDate) && entryDate < todayKey(timeZone)
+  const liveDaypart = companionDaypartForHour(hourFromDatetimeLocal(recordedAtLocal))
+  const companionSeed = entryDate || todayKey(timeZone)
+  const liveLine = (slot: CompanionSlot) =>
+    companionLine(t, slot, liveDaypart, companionSeed)
   const entryDateLabel = useMemo(
     () => (entryDate ? formatCalendarDate(entryDate, intlLocale(locale)) : ''),
     [entryDate, locale],
@@ -451,7 +462,9 @@ export function MoodEntryForm({
   }
 
   const moodPhrase = (scoreValue: number) =>
-    t(`entries.${isPastEntryDay ? 'moodPhrasePast' : 'moodPhrase'}.${scoreValue}`)
+    isPastEntryDay
+      ? t(`entries.moodPhrasePast.${scoreValue}`)
+      : companionMoodPhrase(t, liveDaypart, scoreValue)
 
   const renderTagChip = (tag: TagPublic) => {
     const selected = selectedTagIds.includes(tag.id)
@@ -831,8 +844,11 @@ export function MoodEntryForm({
           </label>
         </div>
 
+        {isPastEntryDay ? null : (
+          <p className="entry-mood-kicker">{liveLine('kicker')}</p>
+        )}
         <h2 id="entry-mood-question" className="entry-mood-question">
-          {isPastEntryDay ? t('entries.howAreYouFeelingPast') : t('entries.howAreYouFeeling')}
+          {isPastEntryDay ? t('entries.howAreYouFeelingPast') : liveLine('howAreYou')}
         </h2>
 
         <div className="mood-picker" role="group" aria-label={t('entries.moodScore')}>
@@ -869,7 +885,11 @@ export function MoodEntryForm({
             })}
           </div>
           <p className={`mood-picker-caption${!moodPicked ? ' muted' : ''}`}>
-            {moodPicked ? moodPhrase(score) : t('entries.pickMoodHint')}
+            {moodPicked
+              ? moodPhrase(score)
+              : isPastEntryDay
+                ? t('entries.pickMoodHint')
+                : liveLine('pickMoodHint')}
           </p>
         </div>
       </section>
@@ -882,8 +902,12 @@ export function MoodEntryForm({
             <MarkdownNoteEditor
               value={note}
               onChange={setNote}
-              label={t('entries.whatsOnYourMind')}
-              placeholder={t('entries.notePlaceholder')}
+              label={
+                isPastEntryDay ? t('entries.whatsOnYourMind') : liveLine('whatsOnYourMind')
+              }
+              placeholder={
+                isPastEntryDay ? t('entries.notePlaceholder') : liveLine('notePlaceholder')
+              }
               toolbar="simple"
               toolbarPlacement="after"
               size="large"
@@ -905,10 +929,10 @@ export function MoodEntryForm({
             <h2 id="entry-context-title" className="entry-chapter-title">
               {isPastEntryDay
                 ? t('entries.whatHappenedPast', { date: entryDateLabel })
-                : t('entries.whatHappenedToday')}
+                : liveLine('whatHappened')}
             </h2>
             <p className="entry-chapter-lead muted">
-              {t(isPastEntryDay ? 'entries.contextLeadPast' : 'entries.contextLead')}
+              {isPastEntryDay ? t('entries.contextLeadPast') : liveLine('contextLead')}
             </p>
 
             {isLoadingTags ? (
@@ -955,7 +979,7 @@ export function MoodEntryForm({
             <h2 id="entry-goals-title" className="entry-chapter-title">
               {isPastEntryDay
                 ? t('entries.goalsPast', { date: entryDateLabel })
-                : t('entries.goalsToday')}
+                : liveLine('goals')}
             </h2>
             <p className="entry-chapter-lead muted">{t('entries.goalsLead')}</p>
             {isLoadingGoals ? (

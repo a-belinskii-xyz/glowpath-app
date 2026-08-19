@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-MESSAGES: dict[str, dict[str, str]] = {
+from bot.companion import companion_key
+from bot.companion_i18n import COMPANION_MESSAGES
+
+_BASE_MESSAGES: dict[str, dict[str, str]] = {
     "en": {
         "help": (
             "GlowPath bot\n\n"
@@ -119,6 +122,11 @@ MESSAGES: dict[str, dict[str, str]] = {
     },
 }
 
+MESSAGES: dict[str, dict[str, str]] = {
+    lang: {**base, **COMPANION_MESSAGES.get(lang, {})}
+    for lang, base in _BASE_MESSAGES.items()
+}
+
 
 def normalize_bot_locale(locale: str | None) -> str:
     if not locale:
@@ -130,6 +138,24 @@ def normalize_bot_locale(locale: str | None) -> str:
 def t(locale: str | None, key: str, **kwargs: Any) -> str:
     lang = normalize_bot_locale(locale)
     template = MESSAGES.get(lang, MESSAGES["en"]).get(key) or MESSAGES["en"].get(key, key)
+    if kwargs:
+        return template.format(**kwargs)
+    return template
+
+
+def companion_t(
+    locale: str | None,
+    base: str,
+    timezone: str | None,
+    *,
+    variants: int = 3,
+    **kwargs: Any,
+) -> str:
+    key = companion_key(base, timezone, variants=variants)
+    lang = normalize_bot_locale(locale)
+    template = MESSAGES.get(lang, MESSAGES["en"]).get(key) or MESSAGES["en"].get(key)
+    if template is None:
+        return t(locale, base, **kwargs)
     if kwargs:
         return template.format(**kwargs)
     return template
