@@ -1,7 +1,9 @@
 import io
 from datetime import date, timedelta
 
+from app.models.goal import Goal
 from app.models.tag import Tag
+from app.models.user import User
 from app.services.storage import FakeStorage
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -588,6 +590,9 @@ def test_stats_counts_scores_for_range(
     assert body["month_index"] is not None
     assert body["comparison"]["verdict"] == "insufficient_data"
     assert body["comparison"]["previous_active_days"] == 1
+    assert body["favorite_count"] == 0
+    assert body["tags"] == []
+    assert body["goals"] == []
 
 
 def test_stats_compares_with_previous_month(
@@ -623,6 +628,76 @@ def test_stats_compares_with_previous_month(
     assert comparison["current_active_days"] == 3
     assert comparison["previous_active_days"] == 3
     assert "better" in comparison["message"].lower()
+
+
+def test_stats_includes_month_recap_icons(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    db: Session,
+) -> None:
+    email = "mood-stats-recap@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = _auth_headers(token)
+    tag_ids = _user_tag_ids(db, email)
+    user = db.scalar(select(User).where(User.email == email))
+    assert user is not None
+    goal = db.scalar(select(Goal).where(Goal.user_id == user.id).order_by(Goal.sort_order))
+    assert goal is not None
+    goal_id = str(goal.id)
+
+    patched = auth_client.patch(
+        f"/v1/goals/{goal_id}",
+        json={"starts_on": "2026-07-01"},
+        headers=headers,
+    )
+    assert patched.status_code == 200
+
+    first = _create_entry(
+        auth_client,
+        token,
+        score=5,
+        recorded_at="2026-07-14T09:00:00+03:00",
+        tag_ids=[tag_ids[0]],
+        goal_ids=[goal_id],
+    )
+    assert first.status_code == 201
+    favorited = auth_client.patch(
+        f"/v1/mood-entries/{first.json()['id']}",
+        json={"is_favorite": True},
+        headers=headers,
+    )
+    assert favorited.status_code == 200
+
+    second = _create_entry(
+        auth_client,
+        token,
+        score=4,
+        recorded_at="2026-07-15T10:00:00+03:00",
+        tag_ids=[tag_ids[0], tag_ids[1]],
+        goal_ids=[goal_id],
+    )
+    assert second.status_code == 201
+
+    response = auth_client.get(
+        "/v1/mood-entries/stats",
+        params={
+            "recorded_from": "2026-07-01T00:00:00+03:00",
+            "recorded_to": "2026-08-01T00:00:00+03:00",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["favorite_count"] == 1
+    tags_by_id = {item["id"]: item for item in body["tags"]}
+    assert tags_by_id[tag_ids[0]]["kind"] == "tag"
+    assert tags_by_id[tag_ids[0]]["count"] == 2
+    assert tags_by_id[tag_ids[1]]["count"] == 1
+    assert tags_by_id[tag_ids[0]]["icon"]
+    assert body["goals"][0]["id"] == goal_id
+    assert body["goals"][0]["kind"] == "goal"
+    assert body["goals"][0]["count"] == 2
+    assert body["goals"][0]["icon"]
 
 
 def test_stats_rejects_inverted_range(

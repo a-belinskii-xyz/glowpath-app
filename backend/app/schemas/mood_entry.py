@@ -12,7 +12,7 @@ from app.core.markdown_plain_text import (
     markdown_content_length,
 )
 from app.core.mood_entry_source import MoodEntrySource
-from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE
+from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE, MoodScoreIconType
 
 
 def _validate_note(value: str | None) -> str | None:
@@ -149,12 +149,25 @@ class MoodMonthComparisonPublic(BaseModel):
     previous_active_days: int
 
 
+class MoodRecapItemPublic(BaseModel):
+    id: uuid.UUID
+    kind: str
+    label: str
+    color: str
+    icon_type: MoodScoreIconType
+    icon: str
+    count: int
+
+
 class MoodEntryStatsResponse(BaseModel):
     total_entries: int
     scores: list[MoodScoreStatPublic]
     month_index: float | None
     active_days: int
     comparison: MoodMonthComparisonPublic
+    favorite_count: int = 0
+    tags: list[MoodRecapItemPublic] = Field(default_factory=list)
+    goals: list[MoodRecapItemPublic] = Field(default_factory=list)
 
 
 class InsightStatsPublic(BaseModel):

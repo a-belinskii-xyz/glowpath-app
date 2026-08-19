@@ -8,7 +8,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import and_, case, exists, or_, select
+from sqlalchemy import and_, case, exists, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -49,6 +49,7 @@ from app.services.mood_preferences_service import (
 from app.services.storage import ObjectStorage, StorageError
 
 CALENDAR_SCORES_PER_DAY = 3
+RECAP_ITEM_LIMIT = 16
 # Single-token queries are too noisy for MiniLM; those are lexical-only.
 _SEMANTIC_SEARCH_MIN_TOKENS = 2
 _LIKE_ESCAPE = "\\"
@@ -617,6 +618,19 @@ def get_mood_entry_stats(
     current_period = period_index_from_day_scores(group_scores_by_day(current_rows))
     previous_period = period_index_from_day_scores(group_scores_by_day(previous_rows))
     comparison = compare_month_indices(current_period, previous_period, locale=locale)
+    favorite_count = int(
+        db.scalar(
+            select(func.count())
+            .select_from(MoodEntry)
+            .where(
+                MoodEntry.user_id == user_id,
+                MoodEntry.recorded_at >= from_utc,
+                MoodEntry.recorded_at < to_utc,
+                MoodEntry.is_favorite.is_(True),
+            )
+        )
+        or 0
+    )
 
     return {
         "total_entries": total_entries,
@@ -632,7 +646,96 @@ def get_mood_entry_stats(
             "current_active_days": comparison.current_active_days,
             "previous_active_days": comparison.previous_active_days,
         },
+        "favorite_count": favorite_count,
+        "tags": _month_recap_tags(
+            db,
+            user_id=user_id,
+            from_utc=from_utc,
+            to_utc=to_utc,
+            locale=locale,
+        ),
+        "goals": _month_recap_goals(
+            db,
+            user_id=user_id,
+            from_utc=from_utc,
+            to_utc=to_utc,
+            locale=locale,
+        ),
     }
+
+
+def _month_recap_tags(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    from_utc: datetime,
+    to_utc: datetime,
+    locale: str,
+) -> list[dict[str, Any]]:
+    usage_count = func.count().label("usage_count")
+    rows = db.execute(
+        select(Tag, usage_count)
+        .join(MoodEntryTag, MoodEntryTag.tag_id == Tag.id)
+        .join(MoodEntry, MoodEntry.id == MoodEntryTag.mood_entry_id)
+        .where(
+            Tag.user_id == user_id,
+            MoodEntry.user_id == user_id,
+            MoodEntry.recorded_at >= from_utc,
+            MoodEntry.recorded_at < to_utc,
+        )
+        .group_by(Tag.id)
+        .order_by(usage_count.desc(), Tag.slug)
+        .limit(RECAP_ITEM_LIMIT)
+    ).all()
+    return [
+        {
+            "id": tag.id,
+            "kind": "tag",
+            "label": resolve_label(tag.labels, locale),
+            "color": tag.color,
+            "icon_type": tag.icon_type,
+            "icon": tag.icon,
+            "count": int(count),
+        }
+        for tag, count in rows
+    ]
+
+
+def _month_recap_goals(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    from_utc: datetime,
+    to_utc: datetime,
+    locale: str,
+) -> list[dict[str, Any]]:
+    usage_count = func.count().label("usage_count")
+    rows = db.execute(
+        select(Goal, usage_count)
+        .join(MoodEntryGoal, MoodEntryGoal.goal_id == Goal.id)
+        .join(MoodEntry, MoodEntry.id == MoodEntryGoal.mood_entry_id)
+        .where(
+            Goal.user_id == user_id,
+            MoodEntry.user_id == user_id,
+            MoodEntry.recorded_at >= from_utc,
+            MoodEntry.recorded_at < to_utc,
+        )
+        .group_by(Goal.id)
+        .order_by(usage_count.desc(), Goal.slug)
+        .limit(RECAP_ITEM_LIMIT)
+    ).all()
+    return [
+        {
+            "id": goal.id,
+            "kind": "goal",
+            "label": resolve_label(goal.labels, locale),
+            "color": goal.color,
+            "icon_type": goal.icon_type,
+            "icon": goal.icon,
+            "count": int(count),
+        }
+        for goal, count in rows
+    ]
 
 
 def get_mood_entry(db: Session, *, user_id: uuid.UUID, entry_id: uuid.UUID) -> MoodEntry:

@@ -100,12 +100,27 @@ export type MoodMonthComparisonPublic = {
   previous_active_days: number
 }
 
+export type MoodRecapItemKind = 'tag' | 'goal'
+
+export type MoodRecapItemPublic = {
+  id: string
+  kind: MoodRecapItemKind | string
+  label: string
+  color: string
+  icon_type: MoodScoreIconType
+  icon: string
+  count: number
+}
+
 export type MoodEntryStatsResponse = {
   total_entries: number
   scores: MoodScoreStatPublic[]
   month_index: number | null
   active_days: number
   comparison: MoodMonthComparisonPublic
+  favorite_count: number
+  tags: MoodRecapItemPublic[]
+  goals: MoodRecapItemPublic[]
 }
 
 export type InsightKind =

@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react'
+import { type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useLocale } from '../context/LocaleContext'
@@ -13,6 +13,7 @@ type EmotionStatsBarChartProps = {
   todayDate?: string
   canAddToday?: boolean
   emptyPrompt?: string
+  headerAction?: ReactNode
 }
 
 function comparisonClassName(verdict: MoodMonthComparisonPublic['verdict']): string {
@@ -50,6 +51,7 @@ export function EmotionStatsBarChart({
   todayDate,
   canAddToday = false,
   emptyPrompt,
+  headerAction = null,
 }: EmotionStatsBarChartProps) {
   const { t, tp } = useLocale()
   const { getScoreColor, getScoreStyle } = useMoodPreferences()
@@ -63,7 +65,10 @@ export function EmotionStatsBarChart({
   return (
     <section className="emotion-stats" aria-label={t('emotionStats.ariaLabel')}>
       <div className="emotion-stats-header">
-        <h2 className="emotion-stats-title">{t('emotionStats.title')}</h2>
+        <div className="emotion-stats-heading">
+          <h2 className="emotion-stats-title">{t('emotionStats.title')}</h2>
+          {headerAction}
+        </div>
         <p className="emotion-stats-summary muted">
           {isEmpty
             ? t('emotionStats.noEntries')

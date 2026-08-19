@@ -11,10 +11,12 @@ import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodS
 import { EntryRow } from '../components/EntryRow'
 import { HeartIcon } from '../components/HeartIcon'
 import { IconButton, IconLinkButton } from '../components/IconButton'
-import { PlusIcon, SearchIcon } from '../components/icons'
+import { PlusIcon, SearchIcon, SparkleIcon } from '../components/icons'
 import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MonthControl } from '../components/MonthControl'
+import { MonthSummaryOverlay } from '../components/MonthSummaryOverlay'
 import { useMediaQuery } from '../hooks/useMediaQuery'
+import { primeRecapAudio } from '../lib/recapSound'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
@@ -126,6 +128,8 @@ export function EntriesPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [recapOpen, setRecapOpen] = useState(false)
+  const [viewedSummaries, setViewedSummaries] = useState<Set<string>>(() => new Set())
 
   const [pendingScrollDay, setPendingScrollDay] = useState<string | null>(
     () => searchParams.get('day'),
@@ -152,6 +156,15 @@ export function EntriesPage() {
   )
   const currentMonth = useMemo(() => getCurrentYearMonth(timeZone), [timeZone])
   const isCurrentMonthView = year === currentMonth.year && month === currentMonth.month
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`
+  const hasMonthEntries = (stats?.total_entries ?? 0) > 0
+  const summarySeen = viewedSummaries.has(monthKey)
+  const canPlaySummary =
+    Boolean(user?.email_verified) &&
+    !isSearchMode &&
+    !isCurrentMonthView &&
+    hasMonthEntries &&
+    !isStatsLoading
   const companionGreeting = useMemo(() => {
     if (!isCurrentMonthView || isSearchMode) {
       return null
@@ -197,6 +210,10 @@ export function EntriesPage() {
   useEffect(() => {
     setWeekAnchorDate((current) => clampWeekAnchorToMonth(current, year, month, timeZone))
   }, [month, timeZone, year])
+
+  useEffect(() => {
+    setRecapOpen(false)
+  }, [month, year])
 
   const updateMonthParams = useCallback(
     (nextYear: number, nextMonth: number, options?: { day?: string; entry?: string }) => {
@@ -833,6 +850,22 @@ export function EntriesPage() {
     updateMonthParams(year, month, { day: date })
   }
 
+  const markSummarySeen = () => {
+    setViewedSummaries((current) => {
+      if (current.has(monthKey)) {
+        return current
+      }
+      const next = new Set(current)
+      next.add(monthKey)
+      return next
+    })
+  }
+
+  const handleCloseSummary = () => {
+    markSummarySeen()
+    setRecapOpen(false)
+  }
+
   return (
     <section className="page">
       <EmailVerificationBanner />
@@ -990,21 +1023,52 @@ export function EntriesPage() {
         ) : isStatsLoading ? (
           <p className="muted">{t('common.loadingStats')}</p>
         ) : stats ? (
-          <>
-            <EmotionStatsBarChart
-              stats={stats}
-              todayDate={todayKey(timeZone)}
-              canAddToday={isCurrentMonthView}
-              emptyPrompt={emptyPromptCopy}
-            />
-            <PatternInsights
-              insights={insights}
-              isLoading={isInsightsLoading}
-              highlightId={focusEntryId ? insights?.items[0]?.id : null}
-              isCurrentPeriod={isCurrentMonthView}
-            />
-          </>
+          <EmotionStatsBarChart
+            stats={stats}
+            todayDate={todayKey(timeZone)}
+            canAddToday={isCurrentMonthView}
+            emptyPrompt={emptyPromptCopy}
+            headerAction={
+              canPlaySummary ? (
+                <button
+                  type="button"
+                  className={
+                    summarySeen
+                      ? 'button button-secondary button-small month-summary-replay'
+                      : 'month-summary-invite'
+                  }
+                  onClick={() => {
+                    primeRecapAudio()
+                    setRecapOpen(true)
+                  }}
+                  aria-label={summarySeen ? t('monthSummary.replay') : t('monthSummary.buttonAria')}
+                >
+                  <SparkleIcon />
+                  <span>{summarySeen ? t('monthSummary.replay') : t('monthSummary.button')}</span>
+                </button>
+              ) : null
+            }
+          />
         ) : null
+      ) : null}
+
+      {user?.email_verified && !isSearchMode ? (
+        <PatternInsights
+          insights={insights}
+          isLoading={isInsightsLoading}
+          highlightId={focusEntryId ? insights?.items[0]?.id : null}
+          isCurrentPeriod={isCurrentMonthView}
+        />
+      ) : null}
+
+      {recapOpen && stats ? (
+        <MonthSummaryOverlay
+          open={recapOpen}
+          monthLabel={formatHeading(year, month)}
+          stats={stats}
+          highlight={insights?.items[0] ?? null}
+          onClose={handleCloseSummary}
+        />
       ) : null}
 
       {isLoading ? (

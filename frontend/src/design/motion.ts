@@ -37,6 +37,13 @@ export const motion = {
     durationMs: 72000,
     easing: 'ease-in-out',
   },
+  /** Month recap: a glow-sphere of the month, then a quiet reveal. */
+  recap: {
+    formMs: 880,
+    orbitMs: 4200,
+    revealMs: 780,
+    easing: 'cubic-bezier(0.33, 0.05, 0.2, 1)',
+  },
 } as const
 
 export type MotionTokens = typeof motion

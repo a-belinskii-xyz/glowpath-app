@@ -26,11 +26,7 @@ export function PatternInsights({
     return <p className="muted">{t('common.loadingInsights')}</p>
   }
 
-  if (!insights) {
-    return null
-  }
-
-  const items = compact ? insights.items.slice(0, 1) : insights.items
+  const items = compact ? insights?.items.slice(0, 1) ?? [] : insights?.items ?? []
   if (items.length === 0) {
     if (compact) {
       return null

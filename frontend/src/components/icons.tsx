@@ -364,3 +364,63 @@ export function PaletteIcon(props: IconProps) {
     </BaseIcon>
   )
 }
+
+export function SoundOnIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M5 10.2v3.6h2.7L12 17.6V6.4L7.7 10.2H5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.2 9.1a3.1 3.1 0 0 1 0 5.8M17.6 7.2a6.2 6.2 0 0 1 0 9.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
+export function SoundOffIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M5 10.2v3.6h2.7L12 17.6V6.4L7.7 10.2H5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.4 10.2 19 13.8M19 10.2 15.4 13.8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
+export function SparkleIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M12 3.4 13.35 9 19 10.2 13.35 11.4 12 17 10.65 11.4 5 10.2 10.65 9z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.2 15.1 18.85 17.1 20.9 17.7 18.85 18.3 18.2 20.3 17.55 18.3 15.5 17.7 17.55 17.1z"
+        fill="currentColor"
+      />
+    </BaseIcon>
+  )
+}
