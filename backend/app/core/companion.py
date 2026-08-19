@@ -52,54 +52,54 @@ def pick_companion_variant(seed: str, count: int) -> int:
 _DAILY_REMINDER_SUBJECT: dict[CompanionDaypart, LocaleLabels] = {
     CompanionDaypart.LATE_NIGHT: {
         "en": "Still up? Log your mood",
-        "ru": "Не спится? Запиши настроение",
+        "ru": "Ещё не спишь? Запиши настроение",
     },
     CompanionDaypart.MORNING: {
         "en": "Good morning — log your mood",
         "ru": "Доброе утро — запиши настроение",
     },
     CompanionDaypart.MIDDAY: {
-        "en": "Midday check-in — log your mood",
+        "en": "Midday — log your mood",
         "ru": "Середина дня — запиши настроение",
     },
     CompanionDaypart.AFTERNOON: {
-        "en": "Afternoon pause — log your mood",
+        "en": "Afternoon — log your mood",
         "ru": "День идёт — запиши настроение",
     },
     CompanionDaypart.EVENING: {
-        "en": "Evening check-in — log your mood",
-        "ru": "Вечерний чек-ин — запиши настроение",
+        "en": "Evening — log your mood",
+        "ru": "Вечер — запиши настроение",
     },
     CompanionDaypart.NIGHT: {
-        "en": "Before you rest — log your mood",
-        "ru": "Перед сном — запиши настроение",
+        "en": "Tonight — log your mood",
+        "ru": "На вечер — запиши настроение",
     },
 }
 
 _DAILY_REMINDER_INTRO: dict[CompanionDaypart, LocaleLabels] = {
     CompanionDaypart.LATE_NIGHT: {
-        "en": "Quiet hours. A short check-in if you want.",
-        "ru": "Тихие часы. Можно коротко отметиться.",
+        "en": "Still awake? A few words are enough, if you like.",
+        "ru": "Ещё не спишь? Можно просто оставить пару слов.",
     },
     CompanionDaypart.MORNING: {
-        "en": "Good morning. A small check-in is enough.",
-        "ru": "Доброе утро. Достаточно короткой отметки.",
+        "en": "Good morning. How are you today?",
+        "ru": "Доброе утро. Как ты?",
     },
     CompanionDaypart.MIDDAY: {
-        "en": "Midday. A short pause to note how you feel.",
-        "ru": "Середина дня. Можно на минуту остановиться.",
+        "en": "How’s the day going so far? A short note is plenty.",
+        "ru": "Как день идёт? Короткой записи вполне хватит.",
     },
     CompanionDaypart.AFTERNOON: {
-        "en": "How is the day going? A check-in if you want.",
-        "ru": "Как проходит день? Можно отметиться.",
+        "en": "How’s the afternoon going? A short note is plenty.",
+        "ru": "Как там день? Короткой записи вполне хватит.",
     },
     CompanionDaypart.EVENING: {
-        "en": "Evening. A note about today, if you want.",
-        "ru": "Вечер. Можно оставить пару слов про сегодня.",
+        "en": "Evening. Want to leave a few words about today?",
+        "ru": "Вечер. Хочешь оставить пару слов про сегодня?",
     },
     CompanionDaypart.NIGHT: {
-        "en": "The day is almost over. A last note if you want.",
-        "ru": "День почти закончился. Можно оставить заметку.",
+        "en": "Almost done with the day. A last note, if you want.",
+        "ru": "День почти кончился. Последняя заметка — если хочется.",
     },
 }
 
