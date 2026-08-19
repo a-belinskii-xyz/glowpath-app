@@ -132,12 +132,20 @@ export function EmotionStatsBarChart({
         <>
           <p className={comparisonClassName(comparison.verdict)}>{comparison.message}</p>
           {currentLabel && previousLabel && comparison.verdict !== 'insufficient_data' ? (
-            <p className="emotion-stats-indexes muted">
-              {t('emotionStats.monthIndex', { current: currentLabel, previous: previousLabel })}
-              {comparison.delta !== null
-                ? ` (${comparison.delta > 0 ? '+' : ''}${comparison.delta.toFixed(2)})`
-                : null}
-            </p>
+            <>
+              <p className="emotion-stats-indexes muted">
+                {t('emotionStats.monthIndex', { current: currentLabel, previous: previousLabel })}
+                {comparison.delta !== null
+                  ? ` (${comparison.delta > 0 ? '+' : ''}${comparison.delta.toFixed(2)})`
+                  : null}
+              </p>
+              <p
+                className="emotion-stats-indexes muted"
+                title={t('emotionStats.scaleLegend')}
+              >
+                {t('emotionStats.scaleHint')}
+              </p>
+            </>
           ) : null}
 
           <p className="emotion-stats-indexes muted">

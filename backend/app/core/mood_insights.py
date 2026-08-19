@@ -186,8 +186,9 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime
 from enum import StrEnum
 
-from app.core.i18n import LocaleLabels, resolve_label
+from app.core.i18n import LocaleLabels, normalize_locale, resolve_label
 from app.core.mood_analytics import STRONG_ABS_DELTA, day_mood_index
+from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE, MoodScore, mood_score_label
 
 # --- Tunable coefficients (see module docstring) -----------------------------
 
@@ -286,6 +287,17 @@ _EARLIER_DAYPARTS = frozenset({Daypart.MORNING, Daypart.AFTERNOON})
 
 
 # Monday = 0 … Sunday = 6, matching ``datetime.date.weekday``.
+WEEKDAY_NAME_LABELS: dict[int, LocaleLabels] = {
+    0: {"en": "Mondays", "ru": "Понедельники"},
+    1: {"en": "Tuesdays", "ru": "Вторники"},
+    2: {"en": "Wednesdays", "ru": "Среды"},
+    3: {"en": "Thursdays", "ru": "Четверги"},
+    4: {"en": "Fridays", "ru": "Пятницы"},
+    5: {"en": "Saturdays", "ru": "Субботы"},
+    6: {"en": "Sundays", "ru": "Воскресенья"},
+}
+
+# Dative / "on Fridays" form for body sentences.
 WEEKDAY_ON_LABELS: dict[int, LocaleLabels] = {
     0: {"en": "Mondays", "ru": "понедельникам"},
     1: {"en": "Tuesdays", "ru": "вторникам"},
@@ -294,6 +306,45 @@ WEEKDAY_ON_LABELS: dict[int, LocaleLabels] = {
     4: {"en": "Fridays", "ru": "пятницам"},
     5: {"en": "Saturdays", "ru": "субботам"},
     6: {"en": "Sundays", "ru": "воскресеньям"},
+}
+
+# Counted weekday nouns for sample lines (1 Monday / 4 Fridays / 4 пятницы).
+WEEKDAY_COUNT_FORMS: dict[int, dict[str, LocaleLabels]] = {
+    0: {
+        "one": {"en": "Monday", "ru": "понедельник"},
+        "few": {"en": "Mondays", "ru": "понедельника"},
+        "many": {"en": "Mondays", "ru": "понедельников"},
+    },
+    1: {
+        "one": {"en": "Tuesday", "ru": "вторник"},
+        "few": {"en": "Tuesdays", "ru": "вторника"},
+        "many": {"en": "Tuesdays", "ru": "вторников"},
+    },
+    2: {
+        "one": {"en": "Wednesday", "ru": "среда"},
+        "few": {"en": "Wednesdays", "ru": "среды"},
+        "many": {"en": "Wednesdays", "ru": "сред"},
+    },
+    3: {
+        "one": {"en": "Thursday", "ru": "четверг"},
+        "few": {"en": "Thursdays", "ru": "четверга"},
+        "many": {"en": "Thursdays", "ru": "четвергов"},
+    },
+    4: {
+        "one": {"en": "Friday", "ru": "пятница"},
+        "few": {"en": "Fridays", "ru": "пятницы"},
+        "many": {"en": "Fridays", "ru": "пятниц"},
+    },
+    5: {
+        "one": {"en": "Saturday", "ru": "суббота"},
+        "few": {"en": "Saturdays", "ru": "субботы"},
+        "many": {"en": "Saturdays", "ru": "суббот"},
+    },
+    6: {
+        "one": {"en": "Sunday", "ru": "воскресенье"},
+        "few": {"en": "Sundays", "ru": "воскресенья"},
+        "many": {"en": "Sundays", "ru": "воскресений"},
+    },
 }
 
 WEEKDAY_KEY: dict[int, str] = {
@@ -311,6 +362,14 @@ DAYPART_LABELS: dict[Daypart, LocaleLabels] = {
     Daypart.AFTERNOON: {"en": "afternoon", "ru": "днём"},
     Daypart.EVENING: {"en": "evening", "ru": "вечером"},
     Daypart.NIGHT: {"en": "night", "ru": "ночью"},
+}
+
+# Prepositional phrase for running text: "in the morning" / "утром".
+DAYPART_AT_LABELS: dict[Daypart, LocaleLabels] = {
+    Daypart.MORNING: {"en": "in the morning", "ru": "утром"},
+    Daypart.AFTERNOON: {"en": "in the afternoon", "ru": "днём"},
+    Daypart.EVENING: {"en": "in the evening", "ru": "вечером"},
+    Daypart.NIGHT: {"en": "at night", "ru": "ночью"},
 }
 
 DAYPART_NOUN_LABELS: dict[Daypart, LocaleLabels] = {
@@ -537,11 +596,7 @@ def _weekend_candidates(
     body_key = (
         "weekend_higher_body" if direction is InsightDirection.HIGHER else "weekend_lower_body"
     )
-    params = {
-        "group": _fmt_index(weekend_mean),
-        "complement": _fmt_index(weekday_mean),
-        "delta": _fmt_delta(delta),
-    }
+    params = _contrast_params(weekend_mean, weekday_mean, locale)
     return [
         InsightCandidate(
             id=f"weekend:weekend:{direction.value}",
@@ -550,10 +605,10 @@ def _weekend_candidates(
             strength=strength_for_delta(abs(delta)),
             title=_message(title_key, locale, params),
             body=_message(body_key, locale, params),
-            sample=_message(
-                "sample_weekend",
-                locale,
-                {"group_n": len(weekend), "complement_n": len(weekdays)},
+            sample=_sample_weekend(
+                weekend_n=len(weekend),
+                weekday_n=len(weekdays),
+                locale=locale,
             ),
             delta=delta,
             lift=None,
@@ -602,6 +657,7 @@ def _weekday_candidates(
         direction = direction_for_delta(delta)
         group_mean = sum(group) / len(group)
         complement_mean = sum(complement) / len(complement)
+        weekday_name = resolve_label(WEEKDAY_NAME_LABELS[weekday], locale)
         weekday_on = resolve_label(WEEKDAY_ON_LABELS[weekday], locale)
         key = WEEKDAY_KEY[weekday]
         title_key = (
@@ -613,10 +669,9 @@ def _weekday_candidates(
             "weekday_higher_body" if direction is InsightDirection.HIGHER else "weekday_lower_body"
         )
         params = {
+            "weekday": weekday_name,
             "weekday_on": weekday_on,
-            "group": _fmt_index(group_mean),
-            "complement": _fmt_index(complement_mean),
-            "delta": _fmt_delta(delta),
+            **_contrast_params(group_mean, complement_mean, locale),
         }
         results.append(
             InsightCandidate(
@@ -626,10 +681,11 @@ def _weekday_candidates(
                 strength=strength_for_delta(abs(delta)),
                 title=_message(title_key, locale, params),
                 body=_message(body_key, locale, params),
-                sample=_message(
-                    "sample_days",
-                    locale,
-                    {"group_n": len(group), "complement_n": len(complement)},
+                sample=_sample_weekday(
+                    weekday=weekday,
+                    group_n=len(group),
+                    complement_n=len(complement),
+                    locale=locale,
                 ),
                 delta=delta,
                 lift=None,
@@ -643,7 +699,7 @@ def _weekday_candidates(
                     InsightSubject(
                         type=InsightSubjectType.WEEKDAY,
                         key=key,
-                        label=weekday_on,
+                        label=weekday_name,
                     ),
                 ),
                 reliability=contrast_reliability(
@@ -700,16 +756,13 @@ def _daypart_candidates(
         lower_n = len(eligible[left])
         delta = -delta
 
-    # Sentence is always "A runs higher than B" with positive delta stored
-    # as higher − lower, direction = higher.
+    # Observation is about the later dip when evenings/nights are lower;
+    # otherwise "usually better at X". Delta is stored as higher − lower.
     params = {
-        "higher": resolve_label(DAYPART_NOUN_LABELS[higher], locale),
-        "lower": resolve_label(DAYPART_NOUN_LABELS[lower], locale),
-        "higher_at": resolve_label(DAYPART_LABELS[higher], locale),
-        "lower_at": resolve_label(DAYPART_LABELS[lower], locale),
-        "group": _fmt_index(higher_mean),
-        "complement": _fmt_index(lower_mean),
-        "delta": _fmt_delta(delta),
+        "higher_at": resolve_label(DAYPART_AT_LABELS[higher], locale),
+        "lower_at": resolve_label(DAYPART_AT_LABELS[lower], locale),
+        "higher_at_cap": _cap_first(resolve_label(DAYPART_AT_LABELS[higher], locale)),
+        **_contrast_params(higher_mean, lower_mean, locale),
     }
     return [
         InsightCandidate(
@@ -717,12 +770,14 @@ def _daypart_candidates(
             kind=InsightKind.DAYPART,
             direction=InsightDirection.HIGHER,
             strength=strength_for_delta(delta),
-            title=_message("daypart_higher_title", locale, params),
-            body=_message("daypart_higher_body", locale, params),
-            sample=_message(
-                "sample_days",
-                locale,
-                {"group_n": higher_n, "complement_n": lower_n},
+            title=_daypart_title(higher, lower, locale, params),
+            body=_message("daypart_body", locale, params),
+            sample=_sample_daypart(
+                higher=higher,
+                lower=lower,
+                higher_n=higher_n,
+                lower_n=lower_n,
+                locale=locale,
             ),
             delta=delta,
             lift=None,
@@ -759,6 +814,8 @@ def _within_day_candidates(
     locale: str,
 ) -> list[InsightCandidate]:
     paired: list[float] = []
+    earlier_values: list[float] = []
+    evening_values: list[float] = []
     for day in days.values():
         evening = day.dayparts.get(Daypart.EVENING)
         earlier_scores: list[int] = []
@@ -768,6 +825,8 @@ def _within_day_candidates(
             continue
         earlier = day_mood_index(earlier_scores)
         paired.append(evening - earlier)
+        earlier_values.append(earlier)
+        evening_values.append(evening)
 
     if len(paired) < MIN_PAIRED_DAYS:
         return []
@@ -781,12 +840,12 @@ def _within_day_candidates(
         if direction is InsightDirection.HIGHER
         else "within_day_lower_title"
     )
-    body_key = (
-        "within_day_higher_body"
-        if direction is InsightDirection.HIGHER
-        else "within_day_lower_body"
-    )
-    params = {"delta": _fmt_delta(mean_delta), "n": len(paired)}
+    earlier_mean = sum(earlier_values) / len(earlier_values)
+    evening_mean = sum(evening_values) / len(evening_values)
+    params = {
+        "earlier_mood": _fmt_mood(earlier_mean, locale),
+        "evening_mood": _fmt_mood(evening_mean, locale),
+    }
     # Complement n is the same set: this is a paired mean, not two groups.
     # Reliability still needs two arms; use n vs n so √H = √n.
     return [
@@ -796,12 +855,12 @@ def _within_day_candidates(
             direction=direction,
             strength=strength_for_delta(abs(mean_delta)),
             title=_message(title_key, locale, params),
-            body=_message(body_key, locale, params),
-            sample=_message("sample_paired", locale, {"n": len(paired)}),
+            body=_message("within_day_body", locale, params),
+            sample=_sample_paired(n=len(paired), locale=locale),
             delta=mean_delta,
             lift=None,
-            group_mean=None,
-            complement_mean=None,
+            group_mean=evening_mean,
+            complement_mean=earlier_mean,
             group_share=None,
             complement_share=None,
             group_n=len(paired),
@@ -850,9 +909,7 @@ def _tag_mood_candidates(
         )
         params = {
             "tag": tag.label,
-            "group": _fmt_index(group_mean),
-            "complement": _fmt_index(complement_mean),
-            "delta": _fmt_delta(delta),
+            **_contrast_params(group_mean, complement_mean, locale),
         }
         results.append(
             InsightCandidate(
@@ -862,10 +919,10 @@ def _tag_mood_candidates(
                 strength=strength_for_delta(abs(delta)),
                 title=_message(title_key, locale, params),
                 body=_message(body_key, locale, params),
-                sample=_message(
-                    "sample_days",
-                    locale,
-                    {"group_n": len(tagged), "complement_n": len(other)},
+                sample=_sample_tag_mood(
+                    tagged_n=len(tagged),
+                    other_n=len(other),
+                    locale=locale,
                 ),
                 delta=delta,
                 lift=None,
@@ -931,7 +988,6 @@ def _mood_tag_candidates(
         )
         params = {
             "tag": tag.label,
-            "lift": _fmt_lift(lift if direction is InsightDirection.MORE_OFTEN else 1.0 / lift),
             "share": _fmt_percent(p_tag_bright),
             "base": _fmt_percent(p_tag),
         }
@@ -943,10 +999,10 @@ def _mood_tag_candidates(
                 strength=strength_for_lift(lift),
                 title=_message(title_key, locale, params),
                 body=_message(body_key, locale, params),
-                sample=_message(
-                    "sample_mood_tag",
-                    locale,
-                    {"group_n": n_bright, "complement_n": tagged_days},
+                sample=_sample_mood_tag(
+                    bright_n=n_bright,
+                    tagged_n=tagged_bright,
+                    locale=locale,
                 ),
                 delta=None,
                 lift=lift,
@@ -1021,16 +1077,41 @@ def _pick_diverse(
     return picked
 
 
+def nearest_mood_score(value: float) -> MoodScore:
+    """Map a 1–5 average onto the nearest named mood (round half up).
+
+    Users think in faces, not tenths: 2.8 is ``neutral``, 3.7 is ``good``.
+    """
+    rounded = int(math.floor(value + 0.5))
+    clamped = min(MAX_MOOD_SCORE, max(MIN_MOOD_SCORE, rounded))
+    return MoodScore(clamped)
+
+
 def _fmt_index(value: float) -> str:
     return f"{value:.1f}"
 
 
-def _fmt_delta(value: float) -> str:
-    return f"{abs(value):.1f}"
+def _fmt_mood(value: float, locale: str) -> str:
+    """Inline reading for body copy: ``2.8 (neutral)`` / ``2.8 («нейтрально»)``."""
+    return _message(
+        "mood_reading",
+        locale,
+        {
+            "label": mood_score_label(nearest_mood_score(value), locale),
+            "number": _fmt_index(value),
+        },
+    )
 
 
-def _fmt_lift(value: float) -> str:
-    return f"{value:.1f}"
+def _contrast_params(
+    group_mean: float,
+    complement_mean: float,
+    locale: str,
+) -> dict[str, object]:
+    return {
+        "group_mood": _fmt_mood(group_mean, locale),
+        "complement_mood": _fmt_mood(complement_mean, locale),
+    }
 
 
 def _fmt_percent(value: float) -> str:
@@ -1042,156 +1123,293 @@ def _message(key: str, locale: str, params: Mapping[str, object]) -> str:
     return template.format(**params)
 
 
+def _cap_first(text: str) -> str:
+    if not text:
+        return text
+    return text[0].upper() + text[1:]
+
+
+def _plural_category(count: int, locale: str) -> str:
+    n = abs(count)
+    if normalize_locale(locale) == "ru":
+        n100 = n % 100
+        n10 = n % 10
+        if n10 == 1 and n100 != 11:
+            return "one"
+        if 2 <= n10 <= 4 and not (12 <= n100 <= 14):
+            return "few"
+        return "many"
+    return "one" if n == 1 else "many"
+
+
+def _counted(forms: Mapping[str, LocaleLabels], count: int, locale: str) -> str:
+    category = _plural_category(count, locale)
+    labels = forms.get(category) or forms.get("many") or next(iter(forms.values()))
+    return resolve_label(labels, locale)
+
+
+def _daypart_title(
+    higher: Daypart,
+    lower: Daypart,
+    locale: str,
+    params: Mapping[str, object],
+) -> str:
+    if lower is Daypart.EVENING:
+        return _message("daypart_dip_evening_title", locale, params)
+    if lower is Daypart.NIGHT:
+        return _message("daypart_dip_night_title", locale, params)
+    return _message("daypart_better_title", locale, params)
+
+
+def _sample_weekend(*, weekend_n: int, weekday_n: int, locale: str) -> str:
+    weekends = _counted(_WEEKEND_DAY_FORMS, weekend_n, locale)
+    weekdays = _counted(_WEEKDAY_BAND_FORMS, weekday_n, locale)
+    return f"{weekend_n} {weekends} · {weekday_n} {weekdays}"
+
+
+def _sample_weekday(*, weekday: int, group_n: int, complement_n: int, locale: str) -> str:
+    noun = _counted(WEEKDAY_COUNT_FORMS[weekday], group_n, locale)
+    other = _counted(_OTHER_DAY_FORMS, complement_n, locale)
+    return f"{group_n} {noun} · {complement_n} {other}"
+
+
+def _sample_daypart(
+    *,
+    higher: Daypart,
+    lower: Daypart,
+    higher_n: int,
+    lower_n: int,
+    locale: str,
+) -> str:
+    if normalize_locale(locale) == "ru":
+        higher_days = _counted(_DAYS_FORMS, higher_n, locale)
+        lower_days = _counted(_DAYS_FORMS, lower_n, locale)
+        higher_at = resolve_label(DAYPART_LABELS[higher], locale)
+        lower_at = resolve_label(DAYPART_LABELS[lower], locale)
+        return f"{higher_n} {higher_days} {higher_at} · {lower_n} {lower_days} {lower_at}"
+    higher_noun = resolve_label(DAYPART_NOUN_LABELS[higher], locale)
+    lower_noun = resolve_label(DAYPART_NOUN_LABELS[lower], locale)
+    return f"{higher_n} {higher_noun} · {lower_n} {lower_noun}"
+
+
+def _sample_paired(*, n: int, locale: str) -> str:
+    days = _counted(_DAYS_FORMS, n, locale)
+    return _message("sample_paired", locale, {"n": n, "days": days})
+
+
+def _sample_tag_mood(*, tagged_n: int, other_n: int, locale: str) -> str:
+    tagged = _counted(_TAGGED_DAY_FORMS, tagged_n, locale)
+    if normalize_locale(locale) == "ru":
+        other = _counted(_UNTAGGED_DAY_FORMS, other_n, locale)
+        return f"{tagged_n} {tagged} · {other_n} {other}"
+    return f"{tagged_n} {tagged} · {other_n} without the tag"
+
+
+def _sample_mood_tag(*, bright_n: int, tagged_n: int, locale: str) -> str:
+    good_days = _counted(_GOOD_DAY_FORMS, bright_n, locale)
+    return _message(
+        "sample_mood_tag",
+        locale,
+        {"bright_n": bright_n, "good_days": good_days, "tagged_n": tagged_n},
+    )
+
+
+_DAYS_FORMS: dict[str, LocaleLabels] = {
+    "one": {"en": "day", "ru": "день"},
+    "few": {"en": "days", "ru": "дня"},
+    "many": {"en": "days", "ru": "дней"},
+}
+
+_OTHER_DAY_FORMS: dict[str, LocaleLabels] = {
+    "one": {"en": "other day", "ru": "остальной день"},
+    "few": {"en": "other days", "ru": "остальных дня"},
+    "many": {"en": "other days", "ru": "остальных дней"},
+}
+
+_WEEKEND_DAY_FORMS: dict[str, LocaleLabels] = {
+    "one": {"en": "weekend day", "ru": "выходной"},
+    "few": {"en": "weekend days", "ru": "выходных"},
+    "many": {"en": "weekend days", "ru": "выходных"},
+}
+
+_WEEKDAY_BAND_FORMS: dict[str, LocaleLabels] = {
+    "one": {"en": "weekday", "ru": "будний день"},
+    "few": {"en": "weekdays", "ru": "будня"},
+    "many": {"en": "weekdays", "ru": "будней"},
+}
+
+_TAGGED_DAY_FORMS: dict[str, LocaleLabels] = {
+    "one": {"en": "tagged day", "ru": "день с тегом"},
+    "few": {"en": "tagged days", "ru": "дня с тегом"},
+    "many": {"en": "tagged days", "ru": "дней с тегом"},
+}
+
+_UNTAGGED_DAY_FORMS: dict[str, LocaleLabels] = {
+    "one": {"en": "day without the tag", "ru": "день без него"},
+    "few": {"en": "days without the tag", "ru": "дня без него"},
+    "many": {"en": "days without the tag", "ru": "дней без него"},
+}
+
+_GOOD_DAY_FORMS: dict[str, LocaleLabels] = {
+    "one": {"en": "good day", "ru": "хороший день"},
+    "few": {"en": "good days", "ru": "хороших дня"},
+    "many": {"en": "good days", "ru": "хороших дней"},
+}
+
+
 _MESSAGES: dict[str, LocaleLabels] = {
+    "mood_reading": {
+        "en": "{number} ({label})",
+        "ru": "{number} («{label}»)",
+    },
     "weekend_label": {"en": "weekends", "ru": "выходные"},
     "weekdays_label": {"en": "weekdays", "ru": "будни"},
     "weekend_higher_title": {
-        "en": "Weekends tend to feel lighter",
-        "ru": "По выходным обычно легче",
+        "en": "Your mood is usually better on weekends",
+        "ru": "По выходным настроение обычно выше",
     },
     "weekend_higher_body": {
         "en": (
-            "On Saturday and Sunday your day index is {group}, "
-            "{delta} above weekdays ({complement})."
+            "Your average mood is {group_mood} on weekends, "
+            "compared with {complement_mood} on weekdays."
         ),
         "ru": (
-            "В субботу и воскресенье индекс дня {group} — "
-            "на {delta} выше, чем в будни ({complement})."
+            "В субботу и воскресенье среднее настроение — {group_mood}. "
+            "В будни — {complement_mood}."
         ),
     },
     "weekend_lower_title": {
-        "en": "Weekends tend to sit lower",
-        "ru": "По выходным обычно тяжелее",
+        "en": "Your mood is usually lower on weekends",
+        "ru": "По выходным настроение обычно ниже",
     },
     "weekend_lower_body": {
         "en": (
-            "On Saturday and Sunday your day index is {group}, "
-            "{delta} below weekdays ({complement})."
+            "Your average mood is {group_mood} on weekends, "
+            "compared with {complement_mood} on weekdays."
         ),
         "ru": (
-            "В субботу и воскресенье индекс дня {group} — "
-            "на {delta} ниже, чем в будни ({complement})."
+            "В субботу и воскресенье среднее настроение — {group_mood}. "
+            "В будни — {complement_mood}."
         ),
     },
     "weekday_higher_title": {
-        "en": "Mood runs higher on {weekday_on}",
-        "ru": "По {weekday_on} настроение выше",
+        "en": "{weekday} usually feel better",
+        "ru": "{weekday} обычно ощущаются лучше",
     },
     "weekday_higher_body": {
-        "en": ("Your {weekday_on} day index is {group}, {delta} above other days ({complement})."),
+        "en": (
+            "Your average mood on {weekday_on} is {group_mood}, "
+            "compared with {complement_mood} on other days."
+        ),
         "ru": (
-            "По {weekday_on} индекс дня {group} — "
-            "на {delta} выше, чем в остальные дни ({complement})."
+            "Среднее настроение по {weekday_on} — {group_mood}, "
+            "а в остальные дни — {complement_mood}."
         ),
     },
     "weekday_lower_title": {
-        "en": "Mood runs lower on {weekday_on}",
-        "ru": "По {weekday_on} настроение ниже",
+        "en": "{weekday} tend to be harder",
+        "ru": "{weekday} обычно даются тяжелее",
     },
     "weekday_lower_body": {
-        "en": ("Your {weekday_on} day index is {group}, {delta} below other days ({complement})."),
-        "ru": (
-            "По {weekday_on} индекс дня {group} — "
-            "на {delta} ниже, чем в остальные дни ({complement})."
-        ),
-    },
-    "daypart_higher_title": {
-        "en": "{higher} run higher than {lower}",
-        "ru": "{higher_at} настроение выше, чем {lower_at}",
-    },
-    "daypart_higher_body": {
         "en": (
-            "Your mood index is {group} in the {higher_at} vs "
-            "{complement} in the {lower_at} ({delta} gap)."
+            "Your average mood on {weekday_on} is {group_mood}, "
+            "compared with {complement_mood} on other days."
         ),
         "ru": (
-            "Индекс настроения {group} {higher_at} против {complement} {lower_at} (разрыв {delta})."
+            "Среднее настроение по {weekday_on} — {group_mood}, "
+            "а в остальные дни — {complement_mood}."
         ),
+    },
+    "daypart_dip_evening_title": {
+        "en": "Your mood tends to dip by evening",
+        "ru": "К вечеру настроение обычно снижается",
+    },
+    "daypart_dip_night_title": {
+        "en": "Your mood tends to dip at night",
+        "ru": "К ночи настроение обычно снижается",
+    },
+    "daypart_better_title": {
+        "en": "Your mood is usually better {higher_at}",
+        "ru": "{higher_at_cap} настроение обычно лучше",
+    },
+    "daypart_body": {
+        "en": ("Your average mood is {group_mood} {higher_at} and {complement_mood} {lower_at}."),
+        "ru": ("Среднее настроение {higher_at} — {group_mood}, {lower_at} — {complement_mood}."),
     },
     "within_day_lower_title": {
-        "en": "Evenings dip compared with earlier the same day",
-        "ru": "К вечеру обычно ниже, чем раньше в тот же день",
-    },
-    "within_day_lower_body": {
-        "en": (
-            "On days you log both, evening is {delta} lower than "
-            "morning/afternoon ({n} paired days)."
-        ),
-        "ru": ("В дни с записями и днём и вечером вечер ниже на {delta} ({n} таких дней)."),
+        "en": "Your mood tends to dip by evening",
+        "ru": "К вечеру настроение обычно снижается",
     },
     "within_day_higher_title": {
-        "en": "Evenings lift compared with earlier the same day",
-        "ru": "К вечеру обычно выше, чем раньше в тот же день",
+        "en": "Your mood tends to lift by evening",
+        "ru": "К вечеру настроение обычно становится лучше",
     },
-    "within_day_higher_body": {
+    "within_day_body": {
         "en": (
-            "On days you log both, evening is {delta} higher than "
-            "morning/afternoon ({n} paired days)."
+            "On days with both daytime and evening entries, your average mood is "
+            "{earlier_mood} during the day and {evening_mood} in the evening."
         ),
-        "ru": ("В дни с записями и днём и вечером вечер выше на {delta} ({n} таких дней)."),
+        "ru": (
+            "В дни с записями днём и вечером среднее настроение днём — "
+            "{earlier_mood}, а вечером — {evening_mood}."
+        ),
     },
     "tag_mood_higher_title": {
-        "en": "Days with “{tag}” sit higher",
-        "ru": "В дни с «{tag}» настроение выше",
+        "en": "“{tag}” shows up more often on better days",
+        "ru": "«{tag}» чаще появляется в более лёгкие дни",
     },
     "tag_mood_higher_body": {
-        "en": ("Days tagged {tag} average {group} vs {complement} without it ({delta} higher)."),
-        "ru": (
-            "Дни с тегом «{tag}» в среднем {group} против {complement} без него (на {delta} выше)."
+        "en": (
+            "Your average mood is {group_mood} on days with this tag, "
+            "compared with {complement_mood} on other days."
         ),
+        "ru": ("В такие дни среднее настроение — {group_mood}. В остальные — {complement_mood}."),
     },
     "tag_mood_lower_title": {
-        "en": "Days with “{tag}” sit lower",
-        "ru": "В дни с «{tag}» настроение ниже",
+        "en": "“{tag}” shows up more often on lower-mood days",
+        "ru": "«{tag}» чаще появляется в более тяжёлые дни",
     },
     "tag_mood_lower_body": {
-        "en": ("Days tagged {tag} average {group} vs {complement} without it ({delta} lower)."),
-        "ru": (
-            "Дни с тегом «{tag}» в среднем {group} против {complement} без него (на {delta} ниже)."
+        "en": (
+            "Your average mood is {group_mood} on days with this tag, "
+            "compared with {complement_mood} on other days."
         ),
+        "ru": ("В такие дни среднее настроение — {group_mood}. В остальные — {complement_mood}."),
     },
     "mood_tag_more_title": {
-        "en": "When you feel better, “{tag}” shows up more",
-        "ru": "Когда легче, чаще появляется «{tag}»",
+        "en": "You mention “{tag}” more on good days",
+        "ru": "В хорошие дни ты чаще отмечаешь «{tag}»",
     },
     "mood_tag_more_body": {
         "en": (
-            "On brighter days you tag {tag} {lift}× as often as usual "
-            "({share}% of good days vs {base}% overall)."
+            "The tag appears on {share}% of good or great days, "
+            "compared with {base}% of days overall."
         ),
         "ru": (
-            "В более светлые дни тег «{tag}» встречается в {lift} раза чаще "
-            "({share}% хороших дней против {base}% в целом)."
+            "Этот тег появляется в {share}% дней с настроением «хорошо» или «отлично». "
+            "В целом — в {base}% дней."
         ),
     },
     "mood_tag_less_title": {
-        "en": "When you feel better, “{tag}” shows up less",
-        "ru": "Когда легче, «{tag}» появляется реже",
+        "en": "You mention “{tag}” less on good days",
+        "ru": "В хорошие дни ты реже отмечаешь «{tag}»",
     },
     "mood_tag_less_body": {
         "en": (
-            "On brighter days you tag {tag} {lift}× less often than usual "
-            "({share}% of good days vs {base}% overall)."
+            "The tag appears on {share}% of good or great days, "
+            "compared with {base}% of days overall."
         ),
         "ru": (
-            "В более светлые дни тег «{tag}» встречается в {lift} раза реже "
-            "({share}% хороших дней против {base}% в целом)."
+            "Этот тег появляется в {share}% дней с настроением «хорошо» или «отлично». "
+            "В целом — в {base}% дней."
         ),
     },
-    "sample_days": {
-        "en": "{group_n} vs {complement_n} days",
-        "ru": "{group_n} против {complement_n} дней",
-    },
-    "sample_weekend": {
-        "en": "{group_n} weekend days · {complement_n} weekdays",
-        "ru": "{group_n} выходных · {complement_n} будней",
-    },
     "sample_paired": {
-        "en": "{n} days with both earlier and evening logs",
-        "ru": "{n} дней с записями и днём и вечером",
+        "en": "{n} {days} with both daytime and evening entries",
+        "ru": "{n} {days} с записями днём и вечером",
     },
     "sample_mood_tag": {
-        "en": "{group_n} brighter days · tag on {complement_n} days",
-        "ru": "{group_n} более светлых дней · тег в {complement_n} днях",
+        "en": "{bright_n} {good_days} · tag appeared on {tagged_n} of them",
+        "ru": "{bright_n} {good_days} · тег отмечен в {tagged_n} из них",
     },
 }

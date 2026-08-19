@@ -21,7 +21,9 @@ from app.core.mood_insights import (
     bundle_days,
     contrast_reliability,
     daypart_for_hour,
+    nearest_mood_score,
 )
+from app.core.mood_scale import MoodScore
 
 
 def _at(day: date, hour: int) -> datetime:
@@ -86,6 +88,13 @@ def test_weekend_higher_than_weekdays() -> None:
     assert "weekend" in weekend.title.lower()
     assert weekend.group_mean == 5.0
     assert weekend.complement_mean == 3.0
+    assert "5.0 (great)" in weekend.body
+    assert "3.0 (neutral)" in weekend.body
+    assert "1–5" not in weekend.body
+    assert "around" not in weekend.body.lower()
+    assert " vs " not in weekend.body.lower()
+    assert "·" in weekend.sample
+    assert "vs" not in weekend.sample.lower()
 
 
 def test_weekend_message_is_localized() -> None:
@@ -94,6 +103,12 @@ def test_weekend_message_is_localized() -> None:
     items = build_insights(observations, tags={}, locale="ru")
     weekend = next(item for item in items if item.kind is InsightKind.WEEKEND)
     assert "выходн" in weekend.title.lower()
+    assert "5.0 («отлично»)" in weekend.body
+    assert "3.0 («нейтрально»)" in weekend.body
+    assert "шкале" not in weekend.body
+    assert "около" not in weekend.body
+    assert "против" not in weekend.body
+    assert "против" not in weekend.sample
 
 
 def test_quiet_when_days_are_flat() -> None:
@@ -116,6 +131,12 @@ def test_afternoon_higher_than_evening() -> None:
     assert "evening" in keys
     assert daypart.delta is not None
     assert daypart.delta >= MIN_INTERESTING_DELTA
+    assert "dip by evening" in daypart.title.lower()
+    assert "5.0 (great)" in daypart.body
+    assert "2.0 (bad)" in daypart.body
+    assert "vs" not in daypart.title.lower()
+    assert " vs " not in daypart.body.lower()
+    assert "1–5" not in daypart.body
 
 
 def test_within_day_evening_dip() -> None:
@@ -129,6 +150,14 @@ def test_within_day_evening_dip() -> None:
     assert within.direction is InsightDirection.LOWER
     assert within.delta is not None
     assert within.delta < 0
+    assert "dip by evening" in within.title.lower()
+    assert "5.0 (great)" in within.body
+    assert "2.0 (bad)" in within.body
+    assert "1–5" not in within.body
+    assert "during the day" in within.body
+    assert within.group_mean == 2.0
+    assert within.complement_mean == 5.0
+    assert "daytime and evening" in within.sample
 
 
 def test_tag_days_sit_higher() -> None:
@@ -154,6 +183,14 @@ def test_tag_days_sit_higher() -> None:
     assert tagged.subjects[0].tag is not None
     assert tagged.subjects[0].tag.slug == "walk"
     assert "Walk" in tagged.title
+    assert "shows up more often on better days" in tagged.title
+    assert "sit higher" not in tagged.title.lower()
+    assert "5.0 (great)" in tagged.body
+    assert "3.0 (neutral)" in tagged.body
+    assert "1–5" not in tagged.body
+    assert "tagged days" in tagged.sample
+    assert "without the tag" in tagged.sample
+    assert " vs " not in tagged.sample.lower()
 
 
 def test_when_happy_tag_appears_more_often() -> None:
@@ -186,6 +223,12 @@ def test_when_happy_tag_appears_more_often() -> None:
     assert mood_tag.lift == 2.0
     assert mood_tag.group_share == 1.0
     assert abs((mood_tag.complement_share or 0) - 0.5) < 1e-9
+    assert mood_tag.title == "You mention “Socializing” more on good days"
+    assert "100%" in mood_tag.body
+    assert "50%" in mood_tag.body
+    assert " vs " not in mood_tag.body.lower()
+    assert "×" not in mood_tag.body
+    assert "tag appeared on 8 of them" in mood_tag.sample
 
     # Diversity keeps one card per tag, so the public list may pick tag_mood
     # (same story: tagged days sit higher) instead of the lift card.
@@ -247,8 +290,62 @@ def test_focus_boost_reorders_matching_card() -> None:
         assert tagged.reliability == plain_tagged.reliability * FOCUS_BOOST
 
 
+def test_russian_copy_avoids_report_voice() -> None:
+    walk = uuid4()
+    tag = TagRef(walk, "walk", "Отдых", "#34d399", "emoji", "🛋️")
+    start = date(2026, 6, 1)
+    observations: list[MoodObservation] = []
+    for index, day in enumerate(_span(start, 16)):
+        if index % 2 == 0:
+            observations.append(_obs(day, 2, tags=frozenset({walk})))
+        else:
+            observations.append(_obs(day, 3))
+    items = build_insights(observations, tags={walk: tag}, locale="ru")
+    tagged = next(item for item in items if item.kind is InsightKind.TAG_MOOD)
+    assert tagged.direction is InsightDirection.LOWER
+    assert tagged.title == "«Отдых» чаще появляется в более тяжёлые дни"
+    assert "2.0 («плохо»)" in tagged.body
+    assert "3.0 («нейтрально»)" in tagged.body
+    assert "В дни с" not in tagged.title
+    assert "против" not in tagged.body
+    assert "против" not in tagged.sample
+    assert "шкале" not in tagged.body
+    assert "дня с тегом" in tagged.sample or "дней с тегом" in tagged.sample
+
+
+def test_weekday_copy_is_an_observation() -> None:
+    start = date(2026, 6, 1)  # Monday
+    observations: list[MoodObservation] = []
+    for day in _span(start, 28):
+        score = 5 if day.weekday() == 4 else 3
+        observations.append(_obs(day, score))
+    items = build_insights(observations, tags={}, locale="en")
+    friday = next(item for item in items if item.kind is InsightKind.WEEKDAY)
+    assert friday.direction is InsightDirection.HIGHER
+    assert friday.title == "Fridays usually feel better"
+    assert "3.0 (neutral)" in friday.body
+    assert "5.0 (great)" in friday.body
+    assert "runs higher" not in friday.title.lower()
+    assert "Fridays" in friday.sample
+    assert "other days" in friday.sample
+    ru = build_insights(observations, tags={}, locale="ru")
+    friday_ru = next(item for item in ru if item.kind is InsightKind.WEEKDAY)
+    assert friday_ru.title == "Пятницы обычно ощущаются лучше"
+    assert "по пятницам" in friday_ru.body
+    assert "против" not in friday_ru.sample
+
+
 def test_high_day_threshold_matches_good() -> None:
     assert HIGH_DAY_INDEX == 4.0
+
+
+def test_nearest_mood_score_round_half_up() -> None:
+    assert nearest_mood_score(1.0) is MoodScore.AWFUL
+    assert nearest_mood_score(2.4) is MoodScore.BAD
+    assert nearest_mood_score(2.5) is MoodScore.NEUTRAL
+    assert nearest_mood_score(2.8) is MoodScore.NEUTRAL
+    assert nearest_mood_score(3.7) is MoodScore.GOOD
+    assert nearest_mood_score(5.0) is MoodScore.GREAT
 
 
 def test_default_insight_window_ends_at_tomorrow_local() -> None:

@@ -34,10 +34,13 @@ export function PatternInsights({
     }
     return (
       <section className="pattern-insights" aria-label={t('patternInsights.ariaLabel')}>
-        <div className="pattern-insights-header">
-          <h2 className="pattern-insights-title">{t('patternInsights.title')}</h2>
-        </div>
-        <p className="muted pattern-insights-empty">{t('patternInsights.empty')}</p>
+      <div className="pattern-insights-header">
+        <h2 className="pattern-insights-title">{t('patternInsights.title')}</h2>
+      </div>
+      <p className="muted pattern-insights-hint" title={t('patternInsights.scaleLegend')}>
+        {t('patternInsights.scaleHint')}
+      </p>
+      <p className="muted pattern-insights-empty">{t('patternInsights.empty')}</p>
       </section>
     )
   }
@@ -52,6 +55,11 @@ export function PatternInsights({
           {compact ? t('patternInsights.relatedTitle') : t('patternInsights.title')}
         </h2>
       </div>
+      {compact ? null : (
+        <p className="muted pattern-insights-hint" title={t('patternInsights.scaleLegend')}>
+          {t('patternInsights.scaleHint')}
+        </p>
+      )}
       <ul className="pattern-insights-list">
         {items.map((item) => (
           <li key={item.id}>

@@ -340,6 +340,8 @@ export function EntriesPage() {
     try {
       const response = await getMoodInsights({
         limit: 4,
+        recorded_from: monthBounds.recorded_from,
+        recorded_to: monthBounds.recorded_to,
         ...(focusEntryId ? { focus_entry_id: focusEntryId } : {}),
       })
       setInsights(response)
@@ -348,7 +350,13 @@ export function EntriesPage() {
     } finally {
       setIsInsightsLoading(false)
     }
-  }, [focusEntryId, locale, user?.email_verified])
+  }, [
+    focusEntryId,
+    locale,
+    monthBounds.recorded_from,
+    monthBounds.recorded_to,
+    user?.email_verified,
+  ])
 
   const loadGoalStats = useCallback(async () => {
     if (!user?.email_verified || calendarMode !== 'goals') {
