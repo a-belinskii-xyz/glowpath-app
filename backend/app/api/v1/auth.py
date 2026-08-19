@@ -8,6 +8,7 @@ from app.api.deps import get_current_user, get_email_service
 from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error, structured_detail
+from app.core.feature_flags import features_for_user
 from app.core.google_oauth import oauth
 from app.db.session import get_db
 from app.models.user import User
@@ -56,6 +57,7 @@ def _to_user_public(user: User) -> UserPublic:
         onboarding_completed=user.onboarding_completed_at is not None,
         onboarding_completed_at=user.onboarding_completed_at,
         has_password=user.password_hash is not None,
+        features=features_for_user(user),
     )
 
 

@@ -31,6 +31,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "not_linked": "Link your account first (Profile → Connect Telegram), then try /log.",
         "choose_score": "How are you feeling?",
         "choose_tags": "Tags — {group}\nTap to toggle, then Next.",
+        "choose_frequent_tags": "Often this week\nTap to toggle, then Next.",
         "choose_goals": "Any goals for this entry?\nTap to toggle, then Next or Skip.",
         "note_prompt": (
             "Add content for this entry — you can combine them:\n"
@@ -87,6 +88,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "not_linked": "Сначала привяжите аккаунт (Профиль → Подключить Telegram), затем /log.",
         "choose_score": "Как вы себя чувствуете?",
         "choose_tags": "Теги — {group}\nНажимайте, чтобы выбрать, затем «Далее».",
+        "choose_frequent_tags": "Часто за неделю\nНажимайте, чтобы выбрать, затем «Далее».",
         "choose_goals": "Цели для этой записи?\nВыберите, затем «Далее» или «Пропустить».",
         "note_prompt": (
             "Добавьте контент — можно комбинировать:\n"

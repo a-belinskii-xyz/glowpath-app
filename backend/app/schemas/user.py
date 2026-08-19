@@ -13,6 +13,7 @@ class UserPublic(BaseModel):
     onboarding_completed: bool
     onboarding_completed_at: datetime | None
     has_password: bool
+    features: dict[str, bool] = Field(default_factory=dict)
 
     model_config = {"from_attributes": True}
 

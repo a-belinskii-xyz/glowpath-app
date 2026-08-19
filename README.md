@@ -181,6 +181,30 @@ Environment variables in `backend/.env` (see `backend/.env.example`):
 - `ENTRY_VISIBLE_TAG_GROUP_LIMIT` — max tag groups pinned to the entry form (default `6`; rest under “Other”)
 - `ENTRY_VISIBLE_GOAL_LIMIT` — max goals pinned to the entry form (default `3`)
 - `STATS_VISIBLE_GOAL_LIMIT` — max goals shown in calendar and period stats (default `5`)
+- `FEATURE_WEEKLY_FREQUENT_TAGS` — master switch for “often this week” tag shortcuts (default `false`; instant rollback)
+- `FEATURE_WEEKLY_FREQUENT_TAGS_PERCENT` — percent of users in a stable hash bucket (`0` = allowlists only, `100` = everyone)
+- `FEATURE_WEEKLY_FREQUENT_TAGS_EMAILS` — comma-separated emails always included when the master switch is on
+- `FEATURE_WEEKLY_FREQUENT_TAGS_USER_IDS` — comma-separated user UUIDs always included when the master switch is on
+- `FEATURE_WEEKLY_FREQUENT_TAGS_LIMIT` — how many frequent tags to show (default `8`)
+- `FEATURE_WEEKLY_FREQUENT_TAGS_DAYS` — lookback window in local calendar days (default `7`)
+
+Restart the `app` container after changing these (env is loaded at process start; targeting should later move to a DB table). Examples:
+
+```bash
+# Only allowlisted people (try it on yourself first)
+FEATURE_WEEKLY_FREQUENT_TAGS=true
+FEATURE_WEEKLY_FREQUENT_TAGS_PERCENT=0
+FEATURE_WEEKLY_FREQUENT_TAGS_EMAILS=you@example.com,friend@example.com
+
+# 20% of users (stable per account) plus the allowlist
+FEATURE_WEEKLY_FREQUENT_TAGS_PERCENT=20
+
+# Everyone
+FEATURE_WEEKLY_FREQUENT_TAGS_PERCENT=100
+
+# Instant rollback
+FEATURE_WEEKLY_FREQUENT_TAGS=false
+```
 
 ### Email registration flow
 

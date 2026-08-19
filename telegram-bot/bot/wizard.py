@@ -10,6 +10,7 @@ STEP_CONFIRM = "confirm"
 
 SOURCE_BOT = "telegram:bot"
 SOURCE_DAILY = "telegram:daily_mood_reminder"
+FREQUENT_TAGS_GROUP_SLUG = "frequent_week"
 
 # Match backend mood_entry_service / MoodEntryAttachment limits.
 MAX_PENDING_PHOTOS = 5
@@ -81,7 +82,19 @@ def toggle_id(state: dict[str, Any], key: str, item_id: str) -> dict[str, Any]:
 
 
 def entry_groups(catalog: dict[str, Any]) -> list[dict[str, Any]]:
-    return list(catalog.get("tag_groups") or [])
+    groups = list(catalog.get("tag_groups") or [])
+    frequent = list(catalog.get("frequent_tags") or [])
+    if frequent:
+        groups = [
+            {
+                "id": FREQUENT_TAGS_GROUP_SLUG,
+                "slug": FREQUENT_TAGS_GROUP_SLUG,
+                "label": FREQUENT_TAGS_GROUP_SLUG,
+                "tags": frequent,
+            },
+            *groups,
+        ]
+    return groups
 
 
 def entry_goals(catalog: dict[str, Any]) -> list[dict[str, Any]]:
@@ -136,9 +149,12 @@ def format_summary(state: dict[str, Any], catalog: dict[str, Any]) -> str:
 
     tag_labels: list[str] = []
     selected_tags = selected_set(state, "tag_ids")
+    seen_tags: set[str] = set()
     for group in entry_groups(catalog):
         for tag in group.get("tags") or []:
-            if str(tag["id"]) in selected_tags:
+            tag_id = str(tag["id"])
+            if tag_id in selected_tags and tag_id not in seen_tags:
+                seen_tags.add(tag_id)
                 tag_labels.append(str(tag["label"]))
 
     goal_labels: list[str] = []

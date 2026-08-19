@@ -7,6 +7,7 @@ export type UserPublic = {
   onboarding_completed: boolean
   onboarding_completed_at: string | null
   has_password: boolean
+  features: Record<string, boolean>
 }
 
 export type TokenResponse = {

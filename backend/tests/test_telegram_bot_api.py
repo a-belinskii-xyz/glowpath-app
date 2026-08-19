@@ -102,6 +102,7 @@ def test_bot_catalog_returns_scores_tags_goals(
     assert "label" in body["scores"][0]
     assert isinstance(body["tag_groups"], list)
     assert all(group["show_on_entry"] for group in body["tag_groups"])
+    assert body["frequent_tags"] == []
     assert isinstance(body["goals"], list)
 
 

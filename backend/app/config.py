@@ -97,6 +97,43 @@ class Settings(BaseSettings):
         validation_alias="STATS_VISIBLE_GOAL_LIMIT",
     )
 
+    # Weekly frequent-tag shortcuts on the entry form (bias-sensitive; default off).
+    # TODO: replace these env knobs with a DB-backed flags table (no server restart).
+    # Master kill switch. false = nobody sees the section, including allowlists.
+    feature_weekly_frequent_tags: bool = Field(
+        default=False,
+        validation_alias="FEATURE_WEEKLY_FREQUENT_TAGS",
+    )
+    # Percent of users (stable hash of user id). 0 = only allowlists, 100 = everyone.
+    feature_weekly_frequent_tags_percent: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        validation_alias="FEATURE_WEEKLY_FREQUENT_TAGS_PERCENT",
+    )
+    # Comma-separated emails always in when the master switch is on.
+    feature_weekly_frequent_tags_emails: str = Field(
+        default="",
+        validation_alias="FEATURE_WEEKLY_FREQUENT_TAGS_EMAILS",
+    )
+    # Comma-separated user UUIDs always in when the master switch is on.
+    feature_weekly_frequent_tags_user_ids: str = Field(
+        default="",
+        validation_alias="FEATURE_WEEKLY_FREQUENT_TAGS_USER_IDS",
+    )
+    feature_weekly_frequent_tags_limit: int = Field(
+        default=8,
+        ge=1,
+        le=24,
+        validation_alias="FEATURE_WEEKLY_FREQUENT_TAGS_LIMIT",
+    )
+    feature_weekly_frequent_tags_days: int = Field(
+        default=7,
+        ge=1,
+        le=31,
+        validation_alias="FEATURE_WEEKLY_FREQUENT_TAGS_DAYS",
+    )
+
     # Telegram bot integration (notifier + bot service auth)
     telegram_bot_token: str = Field(default="", validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_bot_username: str = Field(default="", validation_alias="TELEGRAM_BOT_USERNAME")

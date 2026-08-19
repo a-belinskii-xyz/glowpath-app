@@ -5363,6 +5363,10 @@ code {
   line-height: 1;
 }
 
+.entry-context-section-frequent {
+  background: color-mix(in oklab, var(--chrome-surface-inset) 82%, var(--chrome-action-primary) 8%);
+}
+
 .entry-context-more-label {
   margin: 0.15rem 0 0;
   font-size: 0.8rem;

@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
@@ -17,12 +19,15 @@ from app.core.default_tag_groups import (
 )
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
+from app.core.feature_flags import FeatureFlag, is_feature_enabled_for_user
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
 from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
 from app.core.mood_scale import MoodScoreIconType, is_valid_hex_color
+from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
+from app.models.user import User
 from app.models.user_tag_icon import UserTagIcon
 
 _SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
@@ -336,6 +341,62 @@ def serialize_tag_group(group: TagGroup, *, locale: str) -> dict[str, Any]:
 
 def serialize_tag_groups(groups: list[TagGroup], *, locale: str) -> list[dict[str, Any]]:
     return [serialize_tag_group(group, locale=locale) for group in groups]
+
+
+def list_frequent_tags(
+    db: Session,
+    *,
+    user: User,
+    limit: int | None = None,
+    days: int | None = None,
+) -> list[Tag]:
+    """Tags the user selected most often in the recent lookback window."""
+    window_days = days if days is not None else settings.feature_weekly_frequent_tags_days
+    result_limit = limit if limit is not None else settings.feature_weekly_frequent_tags_limit
+    since = _frequent_tags_since(user.timezone, days=window_days)
+    usage_count = func.count().label("usage_count")
+    last_used = func.max(MoodEntry.recorded_at).label("last_used")
+    ranked = (
+        select(Tag.id, usage_count, last_used)
+        .join(MoodEntryTag, MoodEntryTag.tag_id == Tag.id)
+        .join(MoodEntry, MoodEntry.id == MoodEntryTag.mood_entry_id)
+        .where(
+            Tag.user_id == user.id,
+            MoodEntry.user_id == user.id,
+            MoodEntry.recorded_at >= since,
+        )
+        .group_by(Tag.id)
+        .order_by(usage_count.desc(), last_used.desc(), Tag.slug)
+        .limit(result_limit)
+    )
+    ranked_ids = [row[0] for row in db.execute(ranked).all()]
+    if not ranked_ids:
+        return []
+    tags_by_id = {
+        tag.id: tag for tag in db.scalars(select(Tag).where(Tag.id.in_(ranked_ids))).all()
+    }
+    return [tags_by_id[tag_id] for tag_id in ranked_ids if tag_id in tags_by_id]
+
+
+def serialize_frequent_tags(db: Session, *, user: User, locale: str) -> list[dict[str, Any]]:
+    if not is_feature_enabled_for_user(FeatureFlag.WEEKLY_FREQUENT_TAGS, user):
+        return []
+    return [serialize_tag(tag, locale=locale) for tag in list_frequent_tags(db, user=user)]
+
+
+def _frequent_tags_since(timezone_name: str, *, days: int) -> datetime:
+    try:
+        tz = ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        tz = ZoneInfo("UTC")
+    now_local = datetime.now(tz)
+    start_local = (now_local - timedelta(days=days)).replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    return start_local.astimezone(UTC)
 
 
 def _count_visible_groups(db: Session, *, user_id: uuid.UUID) -> int:

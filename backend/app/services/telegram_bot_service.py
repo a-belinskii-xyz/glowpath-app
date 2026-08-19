@@ -17,7 +17,7 @@ from app.models.user import User
 from app.services.goal_service import goal_is_active_on, list_goals, serialize_goal
 from app.services.mood_entry_service import create_mood_entry
 from app.services.mood_preferences_service import get_or_create_preferences, serialize_preferences
-from app.services.tag_service import list_tag_groups, serialize_tag_group
+from app.services.tag_service import list_tag_groups, serialize_frequent_tags, serialize_tag_group
 from app.services.telegram_link_service import get_user_by_telegram_id
 
 
@@ -89,6 +89,7 @@ def build_catalog(db: Session, *, user: User, locale: str | None = None) -> dict
         "timezone": user.timezone,
         "scores": scores,
         "tag_groups": tag_groups,
+        "frequent_tags": serialize_frequent_tags(db, user=user, locale=resolved_locale),
         "goals": goals,
     }
 

@@ -86,6 +86,7 @@ class TelegramBotCatalogPublic(BaseModel):
     timezone: str
     scores: list[TelegramBotCatalogScore]
     tag_groups: list[TelegramBotCatalogTagGroup]
+    frequent_tags: list[TelegramBotCatalogTag] = Field(default_factory=list)
     goals: list[TelegramBotCatalogGoal]
 
 

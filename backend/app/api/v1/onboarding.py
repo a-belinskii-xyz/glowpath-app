@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.errors import raise_http_error
+from app.core.feature_flags import features_for_user
 from app.core.i18n import parse_accept_language
 from app.db.session import get_db
 from app.models.user import User
@@ -33,6 +34,7 @@ def _to_user_public(user: User) -> UserPublic:
         onboarding_completed=user.onboarding_completed_at is not None,
         onboarding_completed_at=user.onboarding_completed_at,
         has_password=user.password_hash is not None,
+        features=features_for_user(user),
     )
 
 

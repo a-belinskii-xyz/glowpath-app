@@ -127,6 +127,7 @@ export function MoodEntryForm({
     return amounts
   })
   const [tagGroups, setTagGroups] = useState<TagGroupPublic[]>([])
+  const [frequentTags, setFrequentTags] = useState<TagPublic[]>([])
   const [goals, setGoals] = useState<GoalPublic[]>([])
   const [noteTemplates, setNoteTemplates] = useState<NoteTemplatePublic[]>([])
   const [contextQuery, setContextQuery] = useState('')
@@ -160,6 +161,9 @@ export function MoodEntryForm({
           listNoteTemplates(),
         ])
         setTagGroups(tagsResponse.items)
+        setFrequentTags(
+          tagsResponse.frequent_tags_enabled ? (tagsResponse.frequent_tags ?? []) : [],
+        )
         setNoteTemplates(templatesResponse.items)
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
@@ -346,6 +350,17 @@ export function MoodEntryForm({
     [tagGroups],
   )
 
+  const visibleFrequentTags = useMemo(() => {
+    const query = contextQuery.trim().toLowerCase()
+    if (!query) {
+      return frequentTags
+    }
+    return frequentTags.filter(
+      (tag) =>
+        tag.label.toLowerCase().includes(query) || tag.slug.toLowerCase().includes(query),
+    )
+  }, [frequentTags, contextQuery])
+
   const visiblePrimaryGroups = useMemo(() => {
     const query = contextQuery.trim().toLowerCase()
     return primaryGroups
@@ -483,6 +498,23 @@ export function MoodEntryForm({
           {group.label}
         </legend>
         <div className="tag-chips">{group.tags.map(renderTagChip)}</div>
+      </fieldset>
+    )
+  }
+
+  const renderFrequentTags = () => {
+    if (visibleFrequentTags.length === 0) {
+      return null
+    }
+    return (
+      <fieldset className="entry-context-section entry-context-section-frequent">
+        <legend className="entry-context-section-label">
+          <span className="entry-context-section-emoji" aria-hidden="true">
+            ⏱
+          </span>
+          {t('entries.frequentTagsThisWeek')}
+        </legend>
+        <div className="tag-chips">{visibleFrequentTags.map(renderTagChip)}</div>
       </fieldset>
     )
   }
@@ -897,10 +929,13 @@ export function MoodEntryForm({
                   placeholder={t('entries.searchContextPlaceholder')}
                   autoComplete="off"
                 />
-                {visiblePrimaryGroups.length === 0 && visibleOtherGroups.length === 0 ? (
+                {visibleFrequentTags.length === 0 &&
+                visiblePrimaryGroups.length === 0 &&
+                visibleOtherGroups.length === 0 ? (
                   <p className="muted entry-context-empty">{t('entries.noContextMatches')}</p>
                 ) : (
                   <div className="entry-context-sections">
+                    {renderFrequentTags()}
                     {visiblePrimaryGroups.map(renderTagGroup)}
                     {visibleOtherGroups.length > 0 ? (
                       <>

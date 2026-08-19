@@ -20,6 +20,7 @@ from bot.telegram_api import (
     send_message,
 )
 from bot.wizard import (
+    FREQUENT_TAGS_GROUP_SLUG,
     MAX_PENDING_PHOTOS,
     SOURCE_BOT,
     SOURCE_DAILY,
@@ -454,9 +455,14 @@ async def _prompt_current_step(
         if index >= len(groups):
             return
         group = groups[index]
+        tag_prompt = (
+            t(locale, "choose_frequent_tags")
+            if group.get("slug") == FREQUENT_TAGS_GROUP_SLUG
+            else t(locale, "choose_tags", group=group.get("label") or "")
+        )
         await send_message(
             chat_id=chat_id,
-            text=t(locale, "choose_tags", group=group.get("label") or ""),
+            text=tag_prompt,
             reply_markup=tags_keyboard(
                 group.get("tags") or [],
                 selected_set(state, "tag_ids"),

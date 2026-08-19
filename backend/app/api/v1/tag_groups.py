@@ -10,6 +10,7 @@ from app.api.deps import get_current_verified_user, get_locale, get_storage_serv
 from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error
+from app.core.feature_flags import FeatureFlag, is_feature_enabled_for_user
 from app.db.session import get_db
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
@@ -51,6 +52,7 @@ from app.services.tag_service import (
     patch_tag_group,
     reorder_tag_groups,
     reorder_tags,
+    serialize_frequent_tags,
     serialize_tag,
     serialize_tag_group,
     serialize_tag_groups,
@@ -79,13 +81,23 @@ def _to_tag_public(tag: Tag, *, locale: str) -> TagPublic:
     return TagPublic.model_validate(serialize_tag(tag, locale=locale))
 
 
-def _to_list_response(groups: list[TagGroup], *, locale: str) -> TagGroupListResponse:
+def _to_list_response(
+    groups: list[TagGroup],
+    *,
+    locale: str,
+    user: User,
+    db: Session,
+) -> TagGroupListResponse:
     items = [
         TagGroupPublic.model_validate(item) for item in serialize_tag_groups(groups, locale=locale)
     ]
+    enabled = is_feature_enabled_for_user(FeatureFlag.WEEKLY_FREQUENT_TAGS, user)
+    frequent = serialize_frequent_tags(db, user=user, locale=locale) if enabled else []
     return TagGroupListResponse(
         items=items,
         entry_visible_tag_group_limit=settings.entry_visible_tag_group_limit,
+        frequent_tags_enabled=enabled,
+        frequent_tags=[TagPublic.model_validate(item) for item in frequent],
     )
 
 
@@ -122,7 +134,7 @@ def get_tag_groups(
     locale: str = Depends(get_locale),
 ) -> TagGroupListResponse:
     groups = list_tag_groups(db, user_id=current_user.id)
-    return _to_list_response(groups, locale=locale)
+    return _to_list_response(groups, locale=locale, user=current_user, db=db)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=TagGroupPublic)
@@ -163,7 +175,7 @@ def reorder_groups(
     except TagError as exc:
         _handle_tag_error(exc)
         raise
-    return _to_list_response(groups, locale=locale)
+    return _to_list_response(groups, locale=locale, user=current_user, db=db)
 
 
 @router.get("/icons/id/{icon_id}")

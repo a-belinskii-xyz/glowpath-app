@@ -63,6 +63,8 @@ class TagGroupPublic(BaseModel):
 class TagGroupListResponse(BaseModel):
     items: list[TagGroupPublic]
     entry_visible_tag_group_limit: int
+    frequent_tags_enabled: bool = False
+    frequent_tags: list[TagPublic] = Field(default_factory=list)
 
 
 class TagGroupCreate(BaseModel):

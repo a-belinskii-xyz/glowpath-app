@@ -21,7 +21,7 @@ from bot.wizard import (
 )
 
 
-def _catalog(*, tags: bool = True, goals: bool = True) -> dict:
+def _catalog(*, tags: bool = True, goals: bool = True, frequent: bool = False) -> dict:
     tag_groups = []
     if tags:
         tag_groups = [
@@ -42,12 +42,16 @@ def _catalog(*, tags: bool = True, goals: bool = True) -> dict:
     goal_items = []
     if goals:
         goal_items = [{"id": "goal1", "label": "Exercise", "icon_type": "emoji", "icon": "🏃"}]
+    frequent_tags = []
+    if frequent:
+        frequent_tags = [{"id": "t1", "label": "Calm"}, {"id": "t4", "label": "Coffee"}]
     return {
         "scores": [
             {"score": 1, "label": "awful", "emoji": "😢"},
             {"score": 4, "label": "good", "emoji": "🙂"},
         ],
         "tag_groups": tag_groups,
+        "frequent_tags": frequent_tags,
         "goals": goal_items,
     }
 
@@ -87,6 +91,35 @@ def test_advance_skips_empty_sections() -> None:
     state["score"] = 3
     state = advance_after_score(state, catalog)
     assert state["step"] == STEP_NOTE
+
+
+def test_advance_inserts_frequent_tags_before_groups() -> None:
+    catalog = _catalog(frequent=True)
+    state = new_wizard_state()
+    state["score"] = 4
+    state = advance_after_score(state, catalog)
+    assert state["step"] == STEP_TAGS
+    assert state["group_index"] == 0
+
+    state = advance_after_tags(state, catalog)
+    assert state["step"] == STEP_TAGS
+    assert state["group_index"] == 1
+
+    state = advance_after_tags(state, catalog)
+    assert state["step"] == STEP_TAGS
+    assert state["group_index"] == 2
+
+    state = advance_after_tags(state, catalog)
+    assert state["step"] == STEP_GOALS
+
+
+def test_format_summary_dedupes_frequent_and_group_tags() -> None:
+    catalog = _catalog(frequent=True)
+    state = new_wizard_state()
+    state["score"] = 4
+    state["tag_ids"] = ["t1"]
+    summary = format_summary(state, catalog)
+    assert summary.count("Calm") == 1
 
 
 def test_toggle_id() -> None:
