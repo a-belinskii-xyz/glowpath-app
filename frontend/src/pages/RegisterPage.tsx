@@ -90,7 +90,7 @@ export function RegisterPage() {
           value={timezone}
           hint={t('auth.timezoneHint')}
         />
-        <button className="button" type="submit" disabled={isSubmitting}>
+        <button className="button button-block" type="submit" disabled={isSubmitting}>
           <StableButtonLabel
             active={isSubmitting ? t('auth.creatingAccount') : t('nav.register')}
             labels={[t('nav.register'), t('auth.creatingAccount')]}

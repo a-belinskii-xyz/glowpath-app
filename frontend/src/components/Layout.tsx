@@ -112,8 +112,12 @@ function ShellChrome({
             <LanguageSwitcher id="guest-language" compact />
             {guestNav ? (
               <>
-                <Link to="/login">{t('nav.logIn')}</Link>
-                <Link to="/register">{t('nav.register')}</Link>
+                {location.pathname !== '/login' ? (
+                  <Link to="/login">{t('nav.logIn')}</Link>
+                ) : null}
+                {location.pathname !== '/register' ? (
+                  <Link to="/register">{t('nav.register')}</Link>
+                ) : null}
               </>
             ) : null}
           </nav>

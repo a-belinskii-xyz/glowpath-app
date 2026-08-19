@@ -50,7 +50,7 @@ export function ResendVerificationPage() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
-        <button className="button" type="submit" disabled={isSubmitting}>
+        <button className="button button-block" type="submit" disabled={isSubmitting}>
           <StableButtonLabel
             active={isSubmitting ? t('auth.sending') : t('auth.resendEmail')}
             labels={[t('auth.resendEmail'), t('auth.sending')]}

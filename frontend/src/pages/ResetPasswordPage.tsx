@@ -103,7 +103,7 @@ export function ResetPasswordPage() {
           value={passwordConfirm}
           onChange={(event) => setPasswordConfirm(event.target.value)}
         />
-        <button className="button" type="submit" disabled={isSubmitting}>
+        <button className="button button-block" type="submit" disabled={isSubmitting}>
           <StableButtonLabel
             active={isSubmitting ? t('common.saving') : t('auth.resetPassword')}
             labels={[t('auth.resetPassword'), t('common.saving')]}

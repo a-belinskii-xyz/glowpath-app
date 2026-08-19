@@ -26,6 +26,10 @@ import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/
 import { entryMoodColor, entryMoodStyle } from '../lib/moodScale'
 import type { MoodEntryPublic, MoodInsightsResponse } from '../types/mood'
 
+function isSameInstant(left: string, right: string, slackMs = 60_000) {
+  return Math.abs(new Date(left).getTime() - new Date(right).getTime()) < slackMs
+}
+
 export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -148,6 +152,12 @@ export function EntryDetailPage() {
   const backToEntries = entry
     ? entriesListPathForInstant(entry.recorded_at, timeZone, entry.id)
     : '/'
+  const showCreated = Boolean(entry && !isSameInstant(entry.created_at, entry.recorded_at))
+  const showUpdated = Boolean(
+    entry &&
+      entry.updated_at !== entry.created_at &&
+      !isSameInstant(entry.updated_at, entry.recorded_at),
+  )
 
   return (
     <section className="page page-entry-detail">
@@ -312,16 +322,21 @@ export function EntryDetailPage() {
                 </div>
               ) : null}
 
-              <p className="muted entry-detail-meta">
-                {t('entries.createdAt', {
-                  date: `${formatDayHeading(entry.created_at, timeZone, dateLocale)} ${formatTime(entry.created_at, timeZone, dateLocale)}`,
-                })}
-                {entry.updated_at !== entry.created_at
-                  ? ` · ${t('entries.updatedAt', {
-                      date: `${formatDayHeading(entry.updated_at, timeZone, dateLocale)} ${formatTime(entry.updated_at, timeZone, dateLocale)}`,
-                    })}`
-                  : null}
-              </p>
+              {showCreated || showUpdated ? (
+                <p className="muted entry-detail-meta">
+                  {showCreated
+                    ? t('entries.createdAt', {
+                        date: `${formatDayHeading(entry.created_at, timeZone, dateLocale)} ${formatTime(entry.created_at, timeZone, dateLocale)}`,
+                      })
+                    : null}
+                  {showCreated && showUpdated ? ' · ' : null}
+                  {showUpdated
+                    ? t('entries.updatedAt', {
+                        date: `${formatDayHeading(entry.updated_at, timeZone, dateLocale)} ${formatTime(entry.updated_at, timeZone, dateLocale)}`,
+                      })
+                    : null}
+                </p>
+              ) : null}
             </div>
           </div>
         </article>

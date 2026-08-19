@@ -79,7 +79,7 @@ export function LoginPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <button className="button" type="submit" disabled={isSubmitting}>
+        <button className="button button-block" type="submit" disabled={isSubmitting}>
           <StableButtonLabel
             active={isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
             labels={[t('auth.signIn'), t('auth.signingIn')]}

@@ -25,7 +25,8 @@ import { useAuth } from '../context/AuthContext'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
-import { todayKey } from '../lib/datetime'
+import { intlLocale } from '../i18n/t'
+import { todayKey, formatCalendarDate } from '../lib/datetime'
 import { ApiError, formatApiError } from '../lib/errors'
 import {
   dropEdgeFromClientY,
@@ -43,6 +44,7 @@ export function GoalsPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
   const timeZone = user?.timezone ?? 'UTC'
+  const dateLocale = intlLocale(locale)
 
   const [goals, setGoals] = useState<GoalPublic[]>([])
   const [visibleLimit, setVisibleLimit] = useState(3)
@@ -690,10 +692,12 @@ export function GoalsPage() {
                   <p className="muted goal-meta">
                     {goal.ends_on
                       ? t('goalsPage.dateRangeLabel', {
-                          start: goal.starts_on,
-                          end: goal.ends_on,
+                          start: formatCalendarDate(goal.starts_on, dateLocale),
+                          end: formatCalendarDate(goal.ends_on, dateLocale),
                         })
-                      : t('goalsPage.startsOnLabel', { date: goal.starts_on })}
+                      : t('goalsPage.startsOnLabel', {
+                          date: formatCalendarDate(goal.starts_on, dateLocale),
+                        })}
                   </p>
                   <p className="goal-times-per-week">
                     {goal.tracking_kind === 'quantity'
