@@ -211,6 +211,7 @@ export const en = {
     variants: 'Recap look',
     variant: {
       planet: 'Planet',
+      moons: 'Moons',
       mosaic: 'Field',
       cover: 'Cover',
       silk: 'Silk',
@@ -1013,6 +1014,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     variants: 'Вид итогов',
     variant: {
       planet: 'Планета',
+      moons: 'Спутники',
       mosaic: 'Поле',
       cover: 'Обложка',
       silk: 'Шёлк',

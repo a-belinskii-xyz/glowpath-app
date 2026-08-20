@@ -17,16 +17,18 @@ import type {
   MoodEntryStatsResponse,
   MoodRecapItemPublic,
 } from '../types/mood'
+import type { MoodScoreIconType, MoodScoreStylePublic } from '../types/moodPreferences'
 import { GoalIcon } from './GoalIcon'
 import { HeartIcon } from './HeartIcon'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { TagIcon } from './TagIcon'
 
 type RecapPhase = 'form' | 'orbit' | 'reveal'
-type RecapVariant = 'planet' | 'mosaic' | 'cover' | 'silk'
+type RecapVariant = 'planet' | 'moons' | 'mosaic' | 'cover' | 'silk'
+type RecapSatKind = 'mood' | 'tag' | 'goal'
 
 const VARIANT_KEY = 'mood-tracker.recap-look'
-const VARIANTS: RecapVariant[] = ['planet', 'mosaic', 'cover', 'silk']
+const VARIANTS: RecapVariant[] = ['planet', 'moons', 'mosaic', 'cover', 'silk']
 
 const COVER_WASH: GradientRecipe = {
   washStrength: 0.38,
@@ -41,6 +43,20 @@ type LitDay = {
   entryCount: number
   score: number
   color: string
+}
+
+type RecapSatellite = {
+  key: string
+  kind: RecapSatKind
+  label: string
+  color: string
+  count: number
+  ring: number
+  angle: number
+  size: number
+  icon_type: MoodScoreIconType
+  icon: string
+  score?: number
 }
 
 type MonthSummaryOverlayProps = {
@@ -76,7 +92,13 @@ function comparisonClassName(verdict: MoodEntryStatsResponse['comparison']['verd
 function readVariant(): RecapVariant {
   try {
     const stored = window.localStorage.getItem(VARIANT_KEY)
-    if (stored === 'planet' || stored === 'mosaic' || stored === 'cover' || stored === 'silk') {
+    if (
+      stored === 'planet' ||
+      stored === 'moons' ||
+      stored === 'mosaic' ||
+      stored === 'cover' ||
+      stored === 'silk'
+    ) {
       return stored
     }
   } catch {
@@ -85,14 +107,53 @@ function readVariant(): RecapVariant {
   return 'planet'
 }
 
-function planetScale(stats: MoodEntryStatsResponse): { size: string; glow: number } {
+function planetScale(
+  stats: MoodEntryStatsResponse,
+  compact = false,
+): { size: string; glow: number } {
   const density = Math.min(1, Math.max(0.28, stats.active_days / 22))
   const energy = Math.min(1, Math.max(0.32, Math.sqrt(Math.max(1, stats.total_entries)) / 7))
   const mix = density * 0.62 + energy * 0.38
+  if (compact) {
+    return {
+      size: `${(7.6 + mix * 2.6).toFixed(2)}rem`,
+      glow: Number((0.36 + mix * 0.48).toFixed(3)),
+    }
+  }
   return {
     size: `${(12.8 + mix * 5.4).toFixed(2)}rem`,
     glow: Number((0.42 + mix * 0.58).toFixed(3)),
   }
+}
+
+const SAT_EDGE_GAP = 0.72
+
+function satSize(count: number, kind: RecapSatKind): number {
+  const base = kind === 'mood' ? 2.9 : 2.7
+  return Number((base + Math.min(0.4, Math.sqrt(Math.max(1, count)) * 0.16)).toFixed(2))
+}
+
+function ringCapacity(radius: number, itemSize: number): number {
+  const slot = itemSize + SAT_EDGE_GAP
+  return Math.max(1, Math.floor((2 * Math.PI * radius) / slot))
+}
+
+function placeOnRing<T extends { count: number; kind: RecapSatKind }>(
+  items: T[],
+  ring: number,
+  phase: number,
+): RecapSatellite[] {
+  const count = items.length
+  if (count === 0) {
+    return []
+  }
+  const step = 360 / count
+  return items.map((item, index) => ({
+    ...item,
+    ring,
+    angle: phase + index * step,
+    size: satSize(item.count, item.kind),
+  })) as RecapSatellite[]
 }
 
 function persistVariant(variant: RecapVariant): void {
@@ -169,6 +230,97 @@ function sampleColors(days: LitDay[], max = 8): string[] {
   })
 }
 
+function collectSatelliteSeeds(
+  stats: MoodEntryStatsResponse,
+  getScoreStyle: (score: number) => MoodScoreStylePublic,
+) {
+  const moods = stats.scores
+    .filter((item) => item.count > 0)
+    .slice(0, 5)
+    .map((item) => {
+      const style = getScoreStyle(item.score)
+      return {
+        key: `mood-${item.score}`,
+        kind: 'mood' as const,
+        label: item.score_label || style.label,
+        color: style.color,
+        count: item.count,
+        icon_type: style.icon_type,
+        icon: style.icon,
+        score: item.score,
+      }
+    })
+  const tags = (stats.tags ?? []).slice(0, 6).map((item) => ({
+    key: `tag-${item.id}`,
+    kind: 'tag' as const,
+    label: item.label,
+    color: item.color,
+    count: item.count,
+    icon_type: item.icon_type,
+    icon: item.icon,
+  }))
+  const goals = (stats.goals ?? []).slice(0, 5).map((item) => ({
+    key: `goal-${item.id}`,
+    kind: 'goal' as const,
+    label: item.label,
+    color: item.color,
+    count: item.count,
+    icon_type: item.icon_type,
+    icon: item.icon,
+  }))
+  return { moods, tags, goals }
+}
+
+function maxSatSize(
+  items: { count: number; kind: RecapSatKind }[],
+  fallback: number,
+): number {
+  if (items.length === 0) {
+    return fallback
+  }
+  return Math.max(...items.map((item) => satSize(item.count, item.kind)))
+}
+
+function buildMoonRings(
+  stats: MoodEntryStatsResponse,
+  getScoreStyle: (score: number) => MoodScoreStylePublic,
+  coreRem: number,
+) {
+  const seeds = collectSatelliteSeeds(stats, getScoreStyle)
+  const moodSize = maxSatSize(seeds.moods, 2.9)
+  const tagSize = maxSatSize(seeds.tags, 2.7)
+  const goalSize = maxSatSize(seeds.goals, 2.7)
+  const r0 = coreRem / 2 + 0.95 + moodSize / 2 + SAT_EDGE_GAP
+  const r1 = r0 + moodSize / 2 + tagSize / 2 + SAT_EDGE_GAP
+  const r2 = r1 + tagSize / 2 + goalSize / 2 + SAT_EDGE_GAP
+  const moods = seeds.moods.slice(0, ringCapacity(r0, moodSize))
+  const tags = seeds.tags.slice(0, ringCapacity(r1, tagSize))
+  const goals = seeds.goals.slice(0, ringCapacity(r2, goalSize))
+  return [
+    {
+      id: 0,
+      radius: r0,
+      duration: '38s',
+      reverse: false,
+      items: placeOnRing(moods, 0, -10),
+    },
+    {
+      id: 1,
+      radius: r1,
+      duration: '52s',
+      reverse: false,
+      items: placeOnRing(tags, 1, 26),
+    },
+    {
+      id: 2,
+      radius: r2,
+      duration: '68s',
+      reverse: false,
+      items: placeOnRing(goals, 2, 48),
+    },
+  ]
+}
+
 export function MonthSummaryOverlay({
   open,
   monthLabel,
@@ -218,7 +370,14 @@ export function MonthSummaryOverlay({
     } as CSSProperties
   }, [litDays])
 
-  const planetLook = useMemo(() => planetScale(stats), [stats])
+  const planetLook = useMemo(
+    () => planetScale(stats, variant === 'moons'),
+    [stats, variant],
+  )
+  const moonRings = useMemo(
+    () => buildMoonRings(stats, getScoreStyle, Number.parseFloat(planetLook.size)),
+    [getScoreStyle, planetLook.size, stats],
+  )
 
   const openStats = useCallback(() => {
     openedRef.current = true
@@ -292,6 +451,7 @@ export function MonthSummaryOverlay({
   const moodChips = stats.scores.filter((item) => item.count > 0)
   const favoriteCount = stats.favorite_count ?? 0
   const waitingForClick = phase !== 'reveal'
+  const isPlanetLook = variant === 'planet' || variant === 'moons'
   const tileStagger = Math.min(38, 720 / Math.max(1, cells.filter((cell) => cell.inMonth).length))
 
   return createPortal(
@@ -354,8 +514,8 @@ export function MonthSummaryOverlay({
           </div>
         </div>
 
-        {variant === 'planet' ? (
-          <div className="month-recap-planet-scene">
+        {isPlanetLook ? (
+          <div className={`month-recap-planet-scene${variant === 'moons' ? ' is-moons' : ''}`}>
             <div
               className="month-recap-planet-rig"
               style={
@@ -367,6 +527,44 @@ export function MonthSummaryOverlay({
             >
               <span className="month-recap-planet-bloom is-outer" />
               <span className="month-recap-planet-bloom is-mid" />
+              {variant === 'moons'
+                ? moonRings.map((ring) =>
+                    ring.items.length > 0 ? (
+                      <div
+                        key={ring.id}
+                        className={`month-recap-orbit-ring${ring.reverse ? ' is-reverse' : ''}`}
+                        style={
+                          {
+                            ['--orbit-r' as string]: `${ring.radius.toFixed(2)}rem`,
+                            ['--orbit-dur' as string]: ring.duration,
+                          } as CSSProperties
+                        }
+                      >
+                        {ring.items.map((item, index) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            className={`month-recap-sat is-${item.kind}`}
+                            style={
+                              {
+                                ['--sat-a' as string]: `${item.angle.toFixed(1)}deg`,
+                                ['--sat-size' as string]: `${item.size}rem`,
+                                ['--sat-color' as string]: item.color,
+                                ['--sat-delay' as string]: `${160 + ring.id * 90 + index * 55}ms`,
+                              } as CSSProperties
+                            }
+                            title={`${item.label} · ${item.count}`}
+                            aria-label={`${item.label} · ${item.count}`}
+                          >
+                            <span className="month-recap-sat-face">
+                              <RecapSatIcon item={item} getScoreStyle={getScoreStyle} />
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null,
+                  )
+                : null}
               <span className="month-recap-planet-ring" />
               <span className="month-recap-planet-core">
                 <span className="month-recap-planet-body" />
@@ -510,7 +708,7 @@ export function MonthSummaryOverlay({
         </article>
         )}
 
-        {waitingForClick && variant !== 'planet' ? (
+        {waitingForClick && !isPlanetLook ? (
           <p className="month-recap-share-hint">{t('monthSummary.shareHint')}</p>
         ) : null}
 
@@ -614,6 +812,38 @@ export function MonthSummaryOverlay({
       </div>
     </div>,
     document.body,
+  )
+}
+
+function RecapSatIcon({
+  item,
+  getScoreStyle,
+}: {
+  item: RecapSatellite
+  getScoreStyle: (score: number) => MoodScoreStylePublic
+}) {
+  if (item.kind === 'mood') {
+    return (
+      <MoodScoreIcon
+        style={getScoreStyle(item.score ?? 3)}
+        className="month-recap-chip-icon"
+        fallbackScore={item.score ?? 3}
+      />
+    )
+  }
+  if (item.kind === 'goal') {
+    return (
+      <GoalIcon
+        style={{ color: item.color, icon_type: item.icon_type, icon: item.icon }}
+        className="month-recap-chip-icon"
+      />
+    )
+  }
+  return (
+    <TagIcon
+      style={{ color: item.color, icon_type: item.icon_type, icon: item.icon }}
+      className="month-recap-chip-icon"
+    />
   )
 }
 

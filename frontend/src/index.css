@@ -7306,15 +7306,16 @@ code {
 }
 
 .month-recap-variant {
-  padding: 0.28rem 0.7rem;
+  padding: 0.28rem 0.58rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--chrome-text-secondary);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 650;
   letter-spacing: 0.01em;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .month-recap-variant.is-current {
@@ -7375,21 +7376,105 @@ code {
   );
 }
 
-.month-recap-planet-bloom.is-mid {
-  width: 168%;
-  height: 168%;
-  background: radial-gradient(
-    circle,
-    color-mix(in oklab, var(--recap-c1) 52%, white) 0%,
-    color-mix(in oklab, var(--recap-c2) 32%, transparent) 42%,
-    transparent 70%
-  );
-  opacity: calc(0.55 + var(--planet-glow, 0.7) * 0.4);
+.month-recap-planet-scene.is-moons .month-recap-planet-bloom.is-outer {
+  width: 186%;
+  height: 186%;
+}
+
+.month-recap-planet-scene.is-moons .month-recap-planet-bloom.is-mid {
+  width: 138%;
+  height: 138%;
+}
+
+.month-recap-orbit-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: calc(var(--orbit-r) * 2);
+  height: calc(var(--orbit-r) * 2);
+  border: 1px solid rgb(255 255 255 / 34%);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.month-recap-backdrop.is-orbit .month-recap-orbit-ring,
+.month-recap-backdrop.is-reveal .month-recap-orbit-ring {
+  animation: month-recap-orbit-spin var(--orbit-dur, 40s) linear infinite;
+}
+
+.month-recap-backdrop.is-orbit .month-recap-orbit-ring.is-reverse,
+.month-recap-backdrop.is-reveal .month-recap-orbit-ring.is-reverse {
+  animation-direction: reverse;
+}
+
+.month-recap-sat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: var(--sat-size, 2rem);
+  height: var(--sat-size, 2rem);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -50%) rotate(var(--sat-a)) translateY(calc(var(--orbit-r) * -1));
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.month-recap-backdrop.is-form .month-recap-sat {
+  opacity: 0;
+  animation: month-recap-sat-arrive 0.55s ease forwards;
+  animation-delay: var(--sat-delay, 0ms);
+}
+
+.month-recap-backdrop.is-orbit .month-recap-sat,
+.month-recap-backdrop.is-reveal .month-recap-sat {
+  opacity: 1;
+}
+
+.month-recap-sat-face {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 78%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 86%);
+  box-shadow: 0 0 0.9rem color-mix(in oklab, var(--sat-color) 44%, transparent);
+  color: var(--sat-color);
+  transform: rotate(calc(var(--sat-a) * -1));
+}
+
+.month-recap-backdrop.is-orbit .month-recap-sat-face,
+.month-recap-backdrop.is-reveal .month-recap-sat-face {
+  animation: month-recap-orbit-unspin var(--orbit-dur, 40s) linear infinite;
+}
+
+.month-recap-backdrop.is-orbit .month-recap-orbit-ring.is-reverse .month-recap-sat-face,
+.month-recap-backdrop.is-reveal .month-recap-orbit-ring.is-reverse .month-recap-sat-face {
+  animation-direction: reverse;
+}
+
+.month-recap-sat-face .month-recap-chip-icon {
+  width: 74%;
+  height: 74%;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.month-recap-sat-face .month-recap-chip-icon img {
+  width: 100%;
+  height: 100%;
 }
 
 .month-recap-planet-ring {
   position: absolute;
   inset: -0.7rem;
+  z-index: 1;
   border-radius: 999px;
   border: 1px solid rgb(255 255 255 / 62%);
   box-shadow:
@@ -7401,6 +7486,7 @@ code {
 .month-recap-planet-core {
   position: absolute;
   inset: 0;
+  z-index: 1;
   overflow: hidden;
   border-radius: 999px;
   box-shadow:
@@ -7929,6 +8015,33 @@ code {
   }
 }
 
+@keyframes month-recap-orbit-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes month-recap-orbit-unspin {
+  from {
+    transform: rotate(calc(var(--sat-a) * -1));
+  }
+  to {
+    transform: rotate(calc(var(--sat-a) * -1 - 360deg));
+  }
+}
+
+@keyframes month-recap-sat-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes month-recap-poster-in {
   from {
     opacity: 0;
@@ -8024,13 +8137,17 @@ code {
   .month-recap-ribbon,
   .month-recap-planet-rig,
   .month-recap-planet-bands,
+  .month-recap-orbit-ring,
+  .month-recap-sat,
+  .month-recap-sat-face,
   .month-recap-card {
     animation: none !important;
     transition: none !important;
   }
 
   .month-recap-tile.is-lit,
-  .month-recap-ribbon {
+  .month-recap-ribbon,
+  .month-recap-sat {
     opacity: 1;
     transform: none;
   }
