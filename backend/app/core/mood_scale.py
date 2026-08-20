@@ -11,6 +11,7 @@ class MoodScoreIconType(StrEnum):
     EMOJI = "emoji"
     BUILTIN = "builtin"
     UPLOAD = "upload"
+    CATALOG = "catalog"
 
 
 class MoodScore(IntEnum):

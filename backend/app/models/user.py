@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, String, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,6 +13,8 @@ from app.db.names import table_name
 if TYPE_CHECKING:
     from app.models.auth_token import AuthToken
     from app.models.goal import Goal
+    from app.models.icon_pack import IconPack
+    from app.models.icon_pack_unlock import IconPackUnlock
     from app.models.mood_entry import MoodEntry
     from app.models.note_template import NoteTemplate
     from app.models.tag_group import TagGroup
@@ -22,6 +24,7 @@ if TYPE_CHECKING:
     from app.models.user_mood_preferences import UserMoodPreferences
     from app.models.user_notification_settings import UserNotificationSettings
     from app.models.user_tag_icon import UserTagIcon
+    from app.models.user_wallet import UserWallet
 from app.models.user_mood_preferences import UserMoodPreferences
 
 
@@ -55,6 +58,7 @@ class User(TimestampMixin, Base):
     timezone: Mapped[str] = mapped_column(String(64), server_default="Europe/Minsk")
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_staff: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
     telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)
@@ -80,6 +84,17 @@ class User(TimestampMixin, Base):
     mood_icons: Mapped[list["UserMoodIcon"]] = relationship(back_populates="user")
     goal_icons: Mapped[list["UserGoalIcon"]] = relationship(back_populates="user")
     tag_icons: Mapped[list["UserTagIcon"]] = relationship(back_populates="user")
+    wallet: Mapped["UserWallet | None"] = relationship(
+        back_populates="user",
+        uselist=False,
+    )
+    authored_icon_packs: Mapped[list["IconPack"]] = relationship(
+        back_populates="author",
+        foreign_keys="IconPack.author_id",
+    )
+    icon_pack_unlocks: Mapped[list["IconPackUnlock"]] = relationship(
+        back_populates="user",
+    )
 
     @property
     def telegram_linked(self) -> bool:

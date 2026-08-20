@@ -134,6 +134,26 @@ class Settings(BaseSettings):
         validation_alias="FEATURE_WEEKLY_FREQUENT_TAGS_DAYS",
     )
 
+    # Icon marketplace (catalog packs + internal token wallet).
+    feature_icon_marketplace: bool = Field(
+        default=True,
+        validation_alias="FEATURE_ICON_MARKETPLACE",
+    )
+    feature_icon_marketplace_percent: int = Field(
+        default=100,
+        ge=0,
+        le=100,
+        validation_alias="FEATURE_ICON_MARKETPLACE_PERCENT",
+    )
+    feature_icon_marketplace_emails: str = Field(
+        default="",
+        validation_alias="FEATURE_ICON_MARKETPLACE_EMAILS",
+    )
+    feature_icon_marketplace_user_ids: str = Field(
+        default="",
+        validation_alias="FEATURE_ICON_MARKETPLACE_USER_IDS",
+    )
+
     # Telegram bot integration (notifier + bot service auth)
     telegram_bot_token: str = Field(default="", validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_bot_username: str = Field(default="", validation_alias="TELEGRAM_BOT_USERNAME")

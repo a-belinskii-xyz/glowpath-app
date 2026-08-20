@@ -4,6 +4,7 @@ from app.api.v1 import (
     auth,
     goals,
     health,
+    marketplace,
     mood_entries,
     mood_preferences,
     note_templates,
@@ -11,6 +12,7 @@ from app.api.v1 import (
     onboarding,
     tag_groups,
     telegram,
+    wallet,
 )
 from app.config import settings
 
@@ -24,6 +26,8 @@ api_v1_router.include_router(tag_groups.router, prefix="/tag-groups")
 api_v1_router.include_router(goals.router, prefix="/goals")
 api_v1_router.include_router(notification_settings.router, prefix="/notification-settings")
 api_v1_router.include_router(mood_preferences.router, prefix="/mood-preferences")
+api_v1_router.include_router(marketplace.router, prefix="/marketplace")
+api_v1_router.include_router(wallet.router, prefix="/wallet")
 api_v1_router.include_router(telegram.router, prefix="/telegram")
 
 if settings.debug:

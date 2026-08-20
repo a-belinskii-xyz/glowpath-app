@@ -31,6 +31,7 @@ class FeatureUser(Protocol):
 
 class FeatureFlag(StrEnum):
     WEEKLY_FREQUENT_TAGS = "weekly_frequent_tags"
+    ICON_MARKETPLACE = "icon_marketplace"
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,15 @@ def targeting_for(flag: FeatureFlag) -> FeatureTargeting:
                 email.lower() for email in parse_csv(settings.feature_weekly_frequent_tags_emails)
             ),
             user_ids=parse_uuid_csv(settings.feature_weekly_frequent_tags_user_ids),
+        )
+    if flag is FeatureFlag.ICON_MARKETPLACE:
+        return FeatureTargeting(
+            enabled=settings.feature_icon_marketplace,
+            percent=settings.feature_icon_marketplace_percent,
+            emails=frozenset(
+                email.lower() for email in parse_csv(settings.feature_icon_marketplace_emails)
+            ),
+            user_ids=parse_uuid_csv(settings.feature_icon_marketplace_user_ids),
         )
     raise ValueError(f"Unknown feature flag: {flag}")
 
@@ -102,5 +112,9 @@ def features_for_user(user: FeatureUser) -> dict[str, bool]:
         FeatureFlag.WEEKLY_FREQUENT_TAGS.value: is_feature_enabled_for_user(
             FeatureFlag.WEEKLY_FREQUENT_TAGS,
             user,
-        )
+        ),
+        FeatureFlag.ICON_MARKETPLACE.value: is_feature_enabled_for_user(
+            FeatureFlag.ICON_MARKETPLACE,
+            user,
+        ),
     }

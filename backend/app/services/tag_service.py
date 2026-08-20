@@ -482,6 +482,14 @@ def _validate_tag_style(
             raise TagError(
                 "Uploaded icon was not found for this tag", code=ErrorCode.UPLOADED_ICON_NOT_FOUND
             )
+    elif resolved_type is MoodScoreIconType.CATALOG:
+        from app.services.marketplace_service import can_assign_catalog_icon
+
+        if not can_assign_catalog_icon(db, user_id=user_id, icon_id=resolved_icon):
+            raise TagError(
+                "Catalog icon is not assignable",
+                code=ErrorCode.CATALOG_ICON_NOT_ASSIGNABLE,
+            )
 
     return {
         "color": color,

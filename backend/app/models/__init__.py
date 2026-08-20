@@ -1,6 +1,11 @@
 from app.db.base import Base
 from app.models.auth_token import AuthToken
+from app.models.catalog_icon import CatalogIcon
+from app.models.catalog_icon_search_tag import CatalogIconSearchTag
 from app.models.goal import Goal
+from app.models.icon_pack import IconPack
+from app.models.icon_pack_unlock import IconPackUnlock
+from app.models.icon_search_tag import IconSearchTag
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MoodEntryAttachment
 from app.models.mood_entry_goal import MoodEntryGoal
@@ -16,11 +21,18 @@ from app.models.user_mood_icon import UserMoodIcon
 from app.models.user_mood_preferences import UserMoodPreferences
 from app.models.user_notification_settings import UserNotificationSettings
 from app.models.user_tag_icon import UserTagIcon
+from app.models.user_wallet import UserWallet
+from app.models.wallet_ledger import WalletLedger
 
 __all__ = [
     "AuthToken",
     "Base",
+    "CatalogIcon",
+    "CatalogIconSearchTag",
     "Goal",
+    "IconPack",
+    "IconPackUnlock",
+    "IconSearchTag",
     "MoodEntry",
     "MoodEntryAttachment",
     "MoodEntryGoal",
@@ -36,4 +48,6 @@ __all__ = [
     "UserMoodPreferences",
     "UserNotificationSettings",
     "UserTagIcon",
+    "UserWallet",
+    "WalletLedger",
 ]

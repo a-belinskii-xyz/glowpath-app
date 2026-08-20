@@ -309,6 +309,18 @@ def _coerce_style(
             )
         if not belongs:
             return default_mood_score_style(score)
+    elif icon_type is MoodScoreIconType.CATALOG:
+        from app.services.marketplace_service import can_assign_catalog_icon
+
+        if not can_assign_catalog_icon(db, user_id=user_id, icon_id=icon):
+            if strict_upload:
+                raise MoodPreferencesError(
+                    f"Catalog icon for score {score.value} is not assignable",
+                    code=ErrorCode.CATALOG_ICON_NOT_ASSIGNABLE,
+                    status_code=400,
+                    params={"score": str(score.value)},
+                )
+            return default_mood_score_style(score)
 
     return MoodScoreStyle(color=color, icon_type=icon_type, icon=icon)
 
