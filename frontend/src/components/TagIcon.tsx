@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { getBuiltinMoodIconPath } from '../lib/moodBuiltinIcons'
 import { getCachedTagIconObjectUrl, getTagIconObjectUrl } from '../lib/tagIconBlobUrl'
+import { useCatalogIconBlobUrl } from '../lib/useCatalogIconBlobUrl'
 import { DEFAULT_TAG_STYLE, type TagStyle } from '../types/tag'
 
 type TagIconProps = {
@@ -49,6 +50,7 @@ function useTagIconBlobUrl(iconId: string | null): string | null {
 
 export function TagIcon({ style, className }: TagIconProps) {
   const uploadUrl = useTagIconBlobUrl(style.icon_type === 'upload' ? style.icon : null)
+  const catalogUrl = useCatalogIconBlobUrl(style.icon_type === 'catalog' ? style.icon : null)
   const fallbackEmoji = DEFAULT_TAG_STYLE.icon
 
   if (style.icon_type === 'builtin') {
@@ -67,6 +69,18 @@ export function TagIcon({ style, className }: TagIconProps) {
     return (
       <span className={uploadClassName} aria-hidden>
         <img src={uploadUrl} alt="" loading="lazy" />
+      </span>
+    )
+  }
+
+  if (style.icon_type === 'catalog') {
+    const catalogClassName = [className, 'mood-score-icon-upload'].filter(Boolean).join(' ')
+    if (!catalogUrl) {
+      return <span className={catalogClassName}>{fallbackEmoji}</span>
+    }
+    return (
+      <span className={catalogClassName} aria-hidden>
+        <img src={catalogUrl} alt="" loading="lazy" />
       </span>
     )
   }

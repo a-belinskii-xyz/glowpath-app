@@ -1,6 +1,7 @@
-import { memo, type ReactNode, useLayoutEffect, useRef, useState } from 'react'
+import { memo, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { forgotPassword } from '../api/auth'
+import { getWallet } from '../api/wallet'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
@@ -169,12 +170,54 @@ export function ProfilePage() {
   const [resetMessage, setResetMessage] = useState<string | null>(null)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [openPanels, setOpenPanels] = useState<ReadonlySet<SettingsPanelId>>(() => new Set())
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [walletError, setWalletError] = useState<string | null>(null)
+  const [isLoadingWallet, setIsLoadingWallet] = useState(false)
+
+  const marketplaceEnabled = Boolean(user?.features?.icon_marketplace)
+
+  useEffect(() => {
+    if (!user || !marketplaceEnabled) {
+      setWalletBalance(null)
+      setWalletError(null)
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingWallet(true)
+    setWalletError(null)
+    void getWallet()
+      .then((wallet) => {
+        if (!cancelled) {
+          setWalletBalance(wallet.balance)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setWalletBalance(null)
+          setWalletError(formatApiError(err, t, 'errors.requestFailed'))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingWallet(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, marketplaceEnabled, t])
 
   if (!user) {
     return null
   }
 
   const timezoneOptions = timezoneSelectOptions(user.timezone)
+  const balanceLabel =
+    walletBalance === null
+      ? '—'
+      : new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : 'en-US').format(walletBalance)
 
   const togglePanel = (id: SettingsPanelId) => {
     setOpenPanels((current) => {
@@ -226,6 +269,7 @@ export function ProfilePage() {
 
       <PageErrorAlert error={timezoneError} />
       <PageErrorAlert error={resetError} />
+      <PageErrorAlert error={walletError} />
       {resetMessage ? <Alert variant="success">{resetMessage}</Alert> : null}
 
       <div className="card profile-account">
@@ -266,6 +310,21 @@ export function ProfilePage() {
         </div>
 
         <div className="profile-account-grid">
+          {marketplaceEnabled ? (
+            <div className="profile-wallet">
+              <span className="profile-account-label">{t('profile.walletBalance')}</span>
+              <p
+                className="profile-account-value profile-account-value--static profile-wallet-value"
+                aria-live="polite"
+              >
+                {isLoadingWallet ? t('profile.walletLoading') : balanceLabel}
+                {!isLoadingWallet && walletBalance !== null ? (
+                  <span className="profile-wallet-unit">{t('profile.walletTokens')}</span>
+                ) : null}
+              </p>
+              <p className="profile-field-hint">{t('profile.walletHint')}</p>
+            </div>
+          ) : null}
           <div>
             <label className="profile-account-label" htmlFor="profile-timezone">
               {t('common.timezone')}

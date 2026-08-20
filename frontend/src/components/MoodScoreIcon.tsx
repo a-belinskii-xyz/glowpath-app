@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { getBuiltinMoodIconPath } from '../lib/moodBuiltinIcons'
 import { getCachedMoodIconObjectUrl, getMoodIconObjectUrl } from '../lib/moodIconBlobUrl'
 import { defaultMoodScoreStyle } from '../lib/moodScale'
+import { useCatalogIconBlobUrl } from '../lib/useCatalogIconBlobUrl'
 import type { MoodScoreStylePublic } from '../types/moodPreferences'
 
 type MoodScoreIconProps = {
@@ -51,6 +52,7 @@ function useMoodIconBlobUrl(iconId: string | null): string | null {
 
 export function MoodScoreIcon({ style, className, fallbackScore = 3 }: MoodScoreIconProps) {
   const uploadUrl = useMoodIconBlobUrl(style.icon_type === 'upload' ? style.icon : null)
+  const catalogUrl = useCatalogIconBlobUrl(style.icon_type === 'catalog' ? style.icon : null)
   const fallbackEmoji = defaultMoodScoreStyle(fallbackScore).icon
 
   if (style.icon_type === 'builtin') {
@@ -73,6 +75,18 @@ export function MoodScoreIcon({ style, className, fallbackScore = 3 }: MoodScore
     return (
       <span className={uploadClassName} aria-hidden>
         <img src={uploadUrl} alt="" loading="lazy" />
+      </span>
+    )
+  }
+
+  if (style.icon_type === 'catalog') {
+    const catalogClassName = [className, 'mood-score-icon-upload'].filter(Boolean).join(' ')
+    if (!catalogUrl) {
+      return <span className={catalogClassName}>{fallbackEmoji}</span>
+    }
+    return (
+      <span className={catalogClassName} aria-hidden>
+        <img src={catalogUrl} alt="" loading="lazy" />
       </span>
     )
   }

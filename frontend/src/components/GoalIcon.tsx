@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { getBuiltinMoodIconPath } from '../lib/moodBuiltinIcons'
 import { getCachedGoalIconObjectUrl, getGoalIconObjectUrl } from '../lib/goalIconBlobUrl'
+import { useCatalogIconBlobUrl } from '../lib/useCatalogIconBlobUrl'
 import { DEFAULT_GOAL_STYLE, type GoalStyle } from '../types/goal'
 
 type GoalIconProps = {
@@ -49,6 +50,7 @@ function useGoalIconBlobUrl(iconId: string | null): string | null {
 
 export function GoalIcon({ style, className }: GoalIconProps) {
   const uploadUrl = useGoalIconBlobUrl(style.icon_type === 'upload' ? style.icon : null)
+  const catalogUrl = useCatalogIconBlobUrl(style.icon_type === 'catalog' ? style.icon : null)
   const fallbackEmoji = DEFAULT_GOAL_STYLE.icon
 
   if (style.icon_type === 'builtin') {
@@ -67,6 +69,18 @@ export function GoalIcon({ style, className }: GoalIconProps) {
     return (
       <span className={uploadClassName} aria-hidden>
         <img src={uploadUrl} alt="" loading="lazy" />
+      </span>
+    )
+  }
+
+  if (style.icon_type === 'catalog') {
+    const catalogClassName = [className, 'mood-score-icon-upload'].filter(Boolean).join(' ')
+    if (!catalogUrl) {
+      return <span className={catalogClassName}>{fallbackEmoji}</span>
+    }
+    return (
+      <span className={catalogClassName} aria-hidden>
+        <img src={catalogUrl} alt="" loading="lazy" />
       </span>
     )
   }

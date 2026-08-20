@@ -500,6 +500,10 @@ export const en = {
     notificationsLink: 'Reminders via email and Telegram',
     appearanceLink: 'Colors on past entries',
     settingsMenu: 'Settings',
+    walletBalance: 'Token balance',
+    walletTokens: 'tokens',
+    walletLoading: 'Loading…',
+    walletHint: 'Spend tokens to unlock icon packs in the marketplace.',
     logOutHint: 'You can sign back in anytime from this device.',
     moodPreferencesTitle: 'Mood appearance',
     moodPreferencesLead:
@@ -1329,6 +1333,10 @@ export const ru: DeepStringLeaves<typeof en> = {
     notificationsLink: 'Напоминания в email и Telegram',
     appearanceLink: 'Цвета прошлых записей',
     settingsMenu: 'Настройки',
+    walletBalance: 'Баланс токенов',
+    walletTokens: 'токенов',
+    walletLoading: 'Загрузка…',
+    walletHint: 'Токены нужны, чтобы открывать паки иконок в маркетплейсе.',
     logOutHint: 'Можно снова войти с этого устройства в любой момент.',
     moodPreferencesTitle: 'Оформление настроений',
     moodPreferencesLead:

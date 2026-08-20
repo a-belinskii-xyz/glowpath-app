@@ -847,10 +847,30 @@ input {
   gap: 1rem;
 }
 
+.profile-wallet-value {
+  gap: 0.45rem;
+}
+
+.profile-wallet-unit {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--chrome-text-secondary);
+}
+
 @media (min-width: 560px) {
   .profile-account-grid {
     grid-template-columns: 1fr 1fr;
     align-items: start;
+  }
+
+  .profile-account-grid:has(.profile-wallet) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 820px) {
+  .profile-account-grid:has(.profile-wallet) {
+    grid-template-columns: minmax(8rem, 0.7fr) 1fr 1fr;
   }
 }
 
