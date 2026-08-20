@@ -698,6 +698,13 @@ def test_stats_includes_month_recap_icons(
     assert body["goals"][0]["kind"] == "goal"
     assert body["goals"][0]["count"] == 2
     assert body["goals"][0]["icon"]
+    weeks = {item["week"]: item for item in body["weeks"]}
+    assert sorted(weeks) == [2, 3]
+    assert weeks[2]["entry_count"] == 1
+    assert weeks[3]["entry_count"] == 1
+    assert any(score["score"] == 5 for score in weeks[2]["scores"])
+    assert weeks[2]["tags"][0]["id"] == tag_ids[0]
+    assert weeks[2]["goals"][0]["id"] == goal_id
 
 
 def test_stats_rejects_inverted_range(

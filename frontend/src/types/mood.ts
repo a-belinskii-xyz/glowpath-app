@@ -112,6 +112,14 @@ export type MoodRecapItemPublic = {
   count: number
 }
 
+export type MoodRecapWeekPublic = {
+  week: number
+  entry_count: number
+  scores: MoodScoreStatPublic[]
+  tags: MoodRecapItemPublic[]
+  goals: MoodRecapItemPublic[]
+}
+
 export type MoodEntryStatsResponse = {
   total_entries: number
   scores: MoodScoreStatPublic[]
@@ -121,6 +129,7 @@ export type MoodEntryStatsResponse = {
   favorite_count: number
   tags: MoodRecapItemPublic[]
   goals: MoodRecapItemPublic[]
+  weeks?: MoodRecapWeekPublic[]
 }
 
 export type InsightKind =

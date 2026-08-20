@@ -159,6 +159,14 @@ class MoodRecapItemPublic(BaseModel):
     count: int
 
 
+class MoodRecapWeekPublic(BaseModel):
+    week: int
+    entry_count: int
+    scores: list[MoodScoreStatPublic]
+    tags: list[MoodRecapItemPublic] = Field(default_factory=list)
+    goals: list[MoodRecapItemPublic] = Field(default_factory=list)
+
+
 class MoodEntryStatsResponse(BaseModel):
     total_entries: int
     scores: list[MoodScoreStatPublic]
@@ -168,6 +176,7 @@ class MoodEntryStatsResponse(BaseModel):
     favorite_count: int = 0
     tags: list[MoodRecapItemPublic] = Field(default_factory=list)
     goals: list[MoodRecapItemPublic] = Field(default_factory=list)
+    weeks: list[MoodRecapWeekPublic] = Field(default_factory=list)
 
 
 class InsightStatsPublic(BaseModel):

@@ -16,7 +16,6 @@ import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MonthControl } from '../components/MonthControl'
 import { MonthSummaryOverlay } from '../components/MonthSummaryOverlay'
 import { useMediaQuery } from '../hooks/useMediaQuery'
-import { primeRecapAudio } from '../lib/recapSound'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
@@ -1037,10 +1036,7 @@ export function EntriesPage() {
                       ? 'button button-secondary button-small month-summary-replay'
                       : 'month-summary-invite'
                   }
-                  onClick={() => {
-                    primeRecapAudio()
-                    setRecapOpen(true)
-                  }}
+                  onClick={() => setRecapOpen(true)}
                   aria-label={summarySeen ? t('monthSummary.replay') : t('monthSummary.buttonAria')}
                 >
                   <SparkleIcon />
@@ -1065,7 +1061,10 @@ export function EntriesPage() {
         <MonthSummaryOverlay
           open={recapOpen}
           monthLabel={formatHeading(year, month)}
+          year={year}
+          month={month}
           stats={stats}
+          days={calendarDays}
           highlight={insights?.items[0] ?? null}
           onClose={handleCloseSummary}
         />

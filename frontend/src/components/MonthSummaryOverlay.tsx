@@ -3,62 +3,59 @@ import { createPortal } from 'react-dom'
 
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
-import { motion, moodGlowFilter, withHexAlpha } from '../design'
 import {
-  isRecapSoundMuted,
-  persistRecapSoundMuted,
-  startRecapSound,
-  type RecapHoverKind,
-  type RecapSoundHandle,
-} from '../lib/recapSound'
-import type { MoodInsightPublic, MoodEntryStatsResponse, MoodRecapItemPublic } from '../types/mood'
-import type { MoodScoreIconType } from '../types/moodPreferences'
+  buildGradientWash,
+  motion,
+  moodGlowBoxShadow,
+  withHexAlpha,
+  type GradientRecipe,
+} from '../design'
+import { buildMonthCalendarCells } from '../lib/datetime'
+import type {
+  CalendarDayPublic,
+  MoodInsightPublic,
+  MoodEntryStatsResponse,
+  MoodRecapItemPublic,
+} from '../types/mood'
 import { GoalIcon } from './GoalIcon'
 import { HeartIcon } from './HeartIcon'
-import { SoundOffIcon, SoundOnIcon } from './icons'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { TagIcon } from './TagIcon'
 
 type RecapPhase = 'form' | 'orbit' | 'reveal'
+type RecapVariant = 'planet' | 'mosaic' | 'cover' | 'silk'
 
-type ParticleKind = 'mood' | 'tag' | 'goal'
+const VARIANT_KEY = 'mood-tracker.recap-look'
+const VARIANTS: RecapVariant[] = ['planet', 'mosaic', 'cover', 'silk']
 
-type RecapSatellite = {
-  key: string
-  kind: ParticleKind
-  label: string
-  color: string
-  icon_type: MoodScoreIconType
-  icon: string
-  score?: number
-  angle: number
-  delayMs: number
-  size: number
+const COVER_WASH: GradientRecipe = {
+  washStrength: 0.38,
+  chromaScale: 0.92,
+  orderPower: 1.12,
+  angleDeg: 158,
+  midStopMinColors: 3,
 }
 
-type RecapRing = {
-  key: string
-  radius: string
-  duration: string
-  reverse: boolean
-  items: RecapSatellite[]
+type LitDay = {
+  date: string
+  entryCount: number
+  score: number
+  color: string
 }
 
 type MonthSummaryOverlayProps = {
   open: boolean
   monthLabel: string
+  year: number
+  month: number
   stats: MoodEntryStatsResponse
+  days?: CalendarDayPublic[]
   highlight?: MoodInsightPublic | null
   onClose: () => void
 }
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function unitNoise(seed: number): number {
-  const value = Math.sin(seed * 12.9898) * 43758.5453
-  return value - Math.floor(value)
 }
 
 function comparisonClassName(verdict: MoodEntryStatsResponse['comparison']['verdict']): string {
@@ -76,23 +73,109 @@ function comparisonClassName(verdict: MoodEntryStatsResponse['comparison']['verd
   }
 }
 
-function typicalMood(stats: MoodEntryStatsResponse): number {
-  if (stats.month_index != null) {
-    return stats.month_index
+function readVariant(): RecapVariant {
+  try {
+    const stored = window.localStorage.getItem(VARIANT_KEY)
+    if (stored === 'planet' || stored === 'mosaic' || stored === 'cover' || stored === 'silk') {
+      return stored
+    }
+  } catch {
+    /* ignore */
   }
-  let weighted = 0
-  let total = 0
-  for (const item of stats.scores) {
-    weighted += item.score * item.count
-    total += item.count
+  return 'planet'
+}
+
+function planetScale(stats: MoodEntryStatsResponse): { size: string; glow: number } {
+  const density = Math.min(1, Math.max(0.28, stats.active_days / 22))
+  const energy = Math.min(1, Math.max(0.32, Math.sqrt(Math.max(1, stats.total_entries)) / 7))
+  const mix = density * 0.62 + energy * 0.38
+  return {
+    size: `${(12.8 + mix * 5.4).toFixed(2)}rem`,
+    glow: Number((0.42 + mix * 0.58).toFixed(3)),
   }
-  return total > 0 ? weighted / total : 3
+}
+
+function persistVariant(variant: RecapVariant): void {
+  try {
+    window.localStorage.setItem(VARIANT_KEY, variant)
+  } catch {
+    /* ignore */
+  }
+}
+
+function dominantScore(
+  scores: { score: number; count?: number; score_color?: string }[],
+): { score: number; color?: string } {
+  const first = scores[0]
+  if (!first) {
+    return { score: 3 }
+  }
+  return { score: first.score, color: first.score_color }
+}
+
+function collectLitDays(
+  days: CalendarDayPublic[],
+  stats: MoodEntryStatsResponse,
+  getScoreColor: (score: number) => string,
+): LitDay[] {
+  const fromCalendar = [...days]
+    .filter((day) => day.entry_count > 0)
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .map((day) => {
+      const top = dominantScore(day.scores)
+      return {
+        date: day.date,
+        entryCount: day.entry_count,
+        score: top.score,
+        color: top.color ?? getScoreColor(top.score),
+      }
+    })
+  if (fromCalendar.length > 0) {
+    return fromCalendar
+  }
+  return (stats.weeks ?? [])
+    .filter((week) => week.entry_count > 0)
+    .map((week) => {
+      const ranked = [...week.scores].sort((left, right) => right.count - left.count)
+      const top = ranked[0]
+      const score = top?.score ?? 3
+      return {
+        date: `week-${week.week}`,
+        entryCount: week.entry_count,
+        score,
+        color: getScoreColor(score),
+      }
+    })
+}
+
+function chunkWeeks<T>(cells: T[]): T[][] {
+  const weeks: T[][] = []
+  for (let index = 0; index < cells.length; index += 7) {
+    weeks.push(cells.slice(index, index + 7))
+  }
+  return weeks
+}
+
+function sampleColors(days: LitDay[], max = 8): string[] {
+  if (days.length === 0) {
+    return []
+  }
+  if (days.length <= max) {
+    return days.map((day) => day.color)
+  }
+  return Array.from({ length: max }, (_, index) => {
+    const at = Math.round((index / Math.max(1, max - 1)) * (days.length - 1))
+    return days[at]?.color ?? days[0].color
+  })
 }
 
 export function MonthSummaryOverlay({
   open,
   monthLabel,
+  year,
+  month,
   stats,
+  days = [],
   highlight = null,
   onClose,
 }: MonthSummaryOverlayProps) {
@@ -100,18 +183,31 @@ export function MonthSummaryOverlay({
   const { getScoreColor, getScoreStyle } = useMoodPreferences()
   const titleId = useId()
   const closeRef = useRef<HTMLButtonElement>(null)
-  const skippedRef = useRef(false)
-  const soundRef = useRef<RecapSoundHandle | null>(null)
+  const openStatsRef = useRef<HTMLButtonElement>(null)
+  const openedRef = useRef(false)
   const [phase, setPhase] = useState<RecapPhase>('form')
-  const [soundMuted, setSoundMuted] = useState(isRecapSoundMuted)
-  const [soundAvailable, setSoundAvailable] = useState(false)
+  const [variant, setVariant] = useState<RecapVariant>(readVariant)
 
-  const rings = useMemo(
-    () => buildRings(stats, getScoreColor, getScoreStyle),
-    [getScoreColor, getScoreStyle, stats],
+  const litDays = useMemo(
+    () => collectLitDays(days, stats, getScoreColor),
+    [days, getScoreColor, stats],
   )
+  const litByDate = useMemo(() => {
+    const map = new Map<string, LitDay>()
+    for (const day of litDays) {
+      map.set(day.date, day)
+    }
+    return map
+  }, [litDays])
+  const cells = useMemo(() => buildMonthCalendarCells(year, month), [month, year])
+  const weeks = useMemo(() => chunkWeeks(cells), [cells])
+  const featuredTags = (stats.tags ?? []).slice(0, 3)
+  const coverWash = useMemo(() => {
+    const colors = sampleColors(litDays)
+    return colors.length > 0 ? buildGradientWash(colors, COVER_WASH) : null
+  }, [litDays])
   const auroraColors = useMemo(() => {
-    const used = stats.scores.filter((item) => item.count > 0).map((item) => getScoreColor(item.score))
+    const used = sampleColors(litDays, 4)
     const fallback = ['#60a5fa', '#34d399', '#94a3b8', '#f59e0b']
     const palette = [...used, ...fallback].slice(0, 4)
     return {
@@ -120,27 +216,23 @@ export function MonthSummaryOverlay({
       ['--recap-c3' as string]: withHexAlpha(palette[2] ?? fallback[2], 0x8c),
       ['--recap-c4' as string]: withHexAlpha(palette[3] ?? fallback[3], 0x7a),
     } as CSSProperties
-  }, [getScoreColor, stats.scores])
+  }, [litDays])
 
-  const skipToReveal = useCallback(() => {
-    skippedRef.current = true
+  const planetLook = useMemo(() => planetScale(stats), [stats])
+
+  const openStats = useCallback(() => {
+    openedRef.current = true
     setPhase('reveal')
   }, [])
 
-  const toggleSound = useCallback(() => {
-    const next = !soundMuted
-    persistRecapSoundMuted(next)
-    setSoundMuted(next)
-    soundRef.current?.setMuted(next)
-  }, [soundMuted])
-
-  const playHover = useCallback((kind: RecapHoverKind, id: string) => {
-    soundRef.current?.playHover(kind, id)
+  const chooseVariant = useCallback((next: RecapVariant) => {
+    setVariant(next)
+    persistVariant(next)
   }, [])
 
   useEffect(() => {
     if (!open) {
-      skippedRef.current = false
+      openedRef.current = false
       setPhase('form')
       return
     }
@@ -148,49 +240,33 @@ export function MonthSummaryOverlay({
     const reduced = prefersReducedMotion()
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    closeRef.current?.focus()
 
     if (reduced) {
-      skippedRef.current = true
+      openedRef.current = true
       setPhase('reveal')
-      setSoundAvailable(false)
+      closeRef.current?.focus()
       return () => {
         document.body.style.overflow = previousOverflow
       }
     }
 
-    skippedRef.current = false
-    const { formMs, orbitMs } = motion.recap
-    const handle = startRecapSound({
-      seed: stats.total_entries * 13 + stats.active_days * 7,
-      mood: typicalMood(stats),
-      muted: isRecapSoundMuted(),
-      orbitMs,
-    })
-    soundRef.current = handle
-    setSoundAvailable(handle !== null)
-    setSoundMuted(isRecapSoundMuted())
+    openedRef.current = false
+    openStatsRef.current?.focus()
     const orbit = window.setTimeout(() => {
-      if (!skippedRef.current) {
+      if (!openedRef.current) {
         setPhase('orbit')
       }
-    }, formMs)
-    const reveal = window.setTimeout(() => {
-      if (!skippedRef.current) {
-        setPhase('reveal')
-      }
-    }, formMs + orbitMs)
+    }, motion.recap.formMs)
     return () => {
       window.clearTimeout(orbit)
-      window.clearTimeout(reveal)
-      soundRef.current?.stop(true)
-      soundRef.current = null
       document.body.style.overflow = previousOverflow
     }
   }, [open])
 
   useEffect(() => {
-    soundRef.current?.setPhase(phase)
+    if (phase === 'reveal') {
+      closeRef.current?.focus()
+    }
   }, [phase])
 
   useEffect(() => {
@@ -203,15 +279,11 @@ export function MonthSummaryOverlay({
       }
       event.preventDefault()
       event.stopImmediatePropagation()
-      if (phase !== 'reveal') {
-        skipToReveal()
-        return
-      }
       onClose()
     }
     document.addEventListener('keydown', onKeyDown, true)
     return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [onClose, open, phase, skipToReveal])
+  }, [onClose, open])
 
   if (!open) {
     return null
@@ -219,7 +291,8 @@ export function MonthSummaryOverlay({
 
   const moodChips = stats.scores.filter((item) => item.count > 0)
   const favoriteCount = stats.favorite_count ?? 0
-  const showSkip = phase !== 'reveal'
+  const waitingForClick = phase !== 'reveal'
+  const tileStagger = Math.min(38, 720 / Math.max(1, cells.filter((cell) => cell.inMonth).length))
 
   return createPortal(
     <div
@@ -239,8 +312,8 @@ export function MonthSummaryOverlay({
           if (target.closest('button') || target.closest('.month-recap-card')) {
             return
           }
-          if (phase !== 'reveal') {
-            skipToReveal()
+          if (waitingForClick) {
+            openStats()
             return
           }
           onClose()
@@ -250,25 +323,25 @@ export function MonthSummaryOverlay({
           {t('monthSummary.kicker')} {monthLabel}
         </h2>
         <div className="month-recap-toolbar">
-          {showSkip ? (
-            <button type="button" className="button button-secondary button-small" onClick={skipToReveal}>
-              {t('monthSummary.skip')}
-            </button>
+          {waitingForClick ? (
+            <div className="month-recap-variants" role="radiogroup" aria-label={t('monthSummary.variants')}>
+              {VARIANTS.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  role="radio"
+                  aria-checked={variant === item}
+                  className={`month-recap-variant${variant === item ? ' is-current' : ''}`}
+                  onClick={() => chooseVariant(item)}
+                >
+                  {t(`monthSummary.variant.${item}`)}
+                </button>
+              ))}
+            </div>
           ) : (
             <span />
           )}
           <div className="month-recap-toolbar-end">
-            {soundAvailable ? (
-              <button
-                type="button"
-                className="month-recap-sound"
-                onClick={toggleSound}
-                aria-pressed={!soundMuted}
-                aria-label={soundMuted ? t('monthSummary.soundOn') : t('monthSummary.soundOff')}
-              >
-                {soundMuted ? <SoundOffIcon /> : <SoundOnIcon />}
-              </button>
-            ) : null}
             <button
               ref={closeRef}
               type="button"
@@ -281,54 +354,175 @@ export function MonthSummaryOverlay({
           </div>
         </div>
 
-        <div className="month-recap-cosmos" aria-hidden={phase === 'reveal'}>
-          <div className="month-recap-orb-mist" />
-          <div className="month-recap-orb">
-            <span className="month-recap-orb-blob is-a" />
-            <span className="month-recap-orb-blob is-b" />
-            <span className="month-recap-orb-blob is-c" />
-            <span className="month-recap-orb-glass" />
-          </div>
-          {rings.map((ring) => (
+        {variant === 'planet' ? (
+          <div className="month-recap-planet-scene">
             <div
-              key={ring.key}
-              className={`month-recap-orbit${ring.reverse ? ' is-reverse' : ''}`}
+              className="month-recap-planet-rig"
               style={
                 {
-                  ['--orbit-dur' as string]: ring.duration,
-                  ['--sat-r' as string]: ring.radius,
+                  ['--planet-size' as string]: planetLook.size,
+                  ['--planet-glow' as string]: planetLook.glow,
                 } as CSSProperties
               }
             >
-              {ring.items.map((item) => (
-                <span
-                  key={item.key}
-                  className={`month-recap-sat is-${item.kind}`}
-                  style={
-                    {
-                      ['--sat-a' as string]: `${item.angle}deg`,
-                      ['--sat-delay' as string]: `${item.delayMs}ms`,
-                      ['--sat-size' as string]: `${item.size}rem`,
-                      ['--mood-color' as string]: item.color,
-                      color: item.color,
-                      filter: moodGlowFilter(item.color),
-                    } as CSSProperties
-                  }
-                  title={item.label}
-                  onMouseEnter={() => playHover(item.kind, item.key)}
-                  onMouseDown={(event) => event.stopPropagation()}
-                >
-                  <span className="month-recap-sat-face">
-                    <RecapParticleIcon particle={item} />
-                  </span>
-                </span>
-              ))}
+              <span className="month-recap-planet-bloom is-outer" />
+              <span className="month-recap-planet-bloom is-mid" />
+              <span className="month-recap-planet-ring" />
+              <span className="month-recap-planet-core">
+                <span className="month-recap-planet-body" />
+                <span className="month-recap-planet-bands" />
+                <span className="month-recap-planet-spec" />
+              </span>
             </div>
-          ))}
-        </div>
+            <p className="month-recap-planet-name">{monthLabel}</p>
+          </div>
+        ) : (
+        <article className={`month-recap-poster is-${variant}`}>
+          {variant === 'cover' && coverWash ? (
+            <div className="month-recap-cover-wash" style={coverWash} aria-hidden="true" />
+          ) : null}
 
-        {phase !== 'reveal' ? (
-          <p className="month-recap-status">{t('monthSummary.orbiting')}</p>
+          <header className="month-recap-poster-top">
+            <p className="month-recap-poster-brand">{t('brand')}</p>
+            <p className="month-recap-poster-kicker">{t('monthSummary.kicker')}</p>
+            <h3 className="month-recap-poster-title">{monthLabel}</h3>
+          </header>
+
+          {variant === 'mosaic' ? (
+            <div className="month-recap-mosaic" aria-hidden="true">
+              <div className="month-recap-mosaic-grid">
+                {cells.map((cell, index) => {
+                  const lit = cell.inMonth ? litByDate.get(cell.date) : undefined
+                  const delay = cell.inMonth
+                    ? 60 + cells.slice(0, index).filter((item) => item.inMonth).length * tileStagger
+                    : 0
+                  return (
+                    <span
+                      key={cell.key}
+                      className={`month-recap-tile${cell.inMonth ? '' : ' is-pad'}${lit ? ' is-lit' : ''}`}
+                      style={
+                        {
+                          ['--tile-delay' as string]: `${delay}ms`,
+                          ...(lit
+                            ? {
+                                background: lit.color,
+                                boxShadow: moodGlowBoxShadow(
+                                  lit.color,
+                                  lit.entryCount > 2 ? 'md' : 'sm',
+                                ),
+                              }
+                            : {}),
+                        } as CSSProperties
+                      }
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {variant === 'silk' ? (
+            <div className="month-recap-silk" aria-hidden="true">
+              {weeks
+                .filter((week) => week.some((cell) => cell.inMonth))
+                .map((week, weekIndex) => (
+                  <div
+                    key={week[0]?.key ?? weekIndex}
+                    className="month-recap-ribbon"
+                    style={{ ['--ribbon-delay' as string]: `${180 + weekIndex * 90}ms` } as CSSProperties}
+                  >
+                    {week.map((cell) => {
+                      const lit = cell.inMonth ? litByDate.get(cell.date) : undefined
+                      return (
+                        <span
+                          key={cell.key}
+                          className={`month-recap-ribbon-seg${cell.inMonth ? '' : ' is-pad'}${lit ? ' is-lit' : ''}`}
+                          style={
+                            lit
+                              ? {
+                                  background: lit.color,
+                                  boxShadow: moodGlowBoxShadow(lit.color, 'sm'),
+                                }
+                              : undefined
+                          }
+                        />
+                      )
+                    })}
+                  </div>
+                ))}
+            </div>
+          ) : null}
+
+          {variant === 'cover' ? (
+            <div className="month-recap-cover-body">
+              <p className="month-recap-cover-hero">{stats.active_days}</p>
+              <p className="month-recap-cover-hero-label">{t('monthSummary.coverDays')}</p>
+              <div className="month-recap-cover-spine" aria-hidden="true">
+                {litDays.length > 0
+                  ? litDays.map((day) => (
+                      <span
+                        key={day.date}
+                        style={{
+                          background: day.color,
+                          flexGrow: Math.max(1, day.entryCount),
+                        }}
+                      />
+                    ))
+                  : null}
+              </div>
+            </div>
+          ) : null}
+
+          <footer className="month-recap-poster-foot">
+            {featuredTags.length > 0 ? (
+              <div className="month-recap-poster-tags">
+                {featuredTags.map((item) => (
+                  <span
+                    key={item.id}
+                    className="month-recap-poster-tag"
+                    style={{ color: item.color }}
+                  >
+                    <TagIcon
+                      style={{
+                        color: item.color,
+                        icon_type: item.icon_type,
+                        icon: item.icon,
+                      }}
+                      className="month-recap-chip-icon"
+                    />
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            ) : litDays.length === 0 ? (
+              <p className="month-recap-poster-empty">{t('monthSummary.pathEmpty')}</p>
+            ) : (
+              <span />
+            )}
+            <p className="month-recap-poster-meta">
+              {tp(stats.total_entries, {
+                one: 'monthSummary.entriesOne',
+                few: 'monthSummary.entriesFew',
+                many: 'monthSummary.entriesMany',
+              })}
+            </p>
+          </footer>
+        </article>
+        )}
+
+        {waitingForClick && variant !== 'planet' ? (
+          <p className="month-recap-share-hint">{t('monthSummary.shareHint')}</p>
+        ) : null}
+
+        {waitingForClick ? (
+          <button
+            ref={openStatsRef}
+            type="button"
+            className="month-recap-open-cta"
+            onClick={openStats}
+          >
+            {t('monthSummary.openStats')}
+          </button>
         ) : null}
 
         <section className="month-recap-card" aria-live="polite" aria-hidden={phase !== 'reveal'}>
@@ -381,7 +575,6 @@ export function MonthSummaryOverlay({
                     key={item.score}
                     className="month-recap-chip"
                     title={item.score_label}
-                    onMouseEnter={() => playHover('mood', `mood-${item.score}`)}
                   >
                     <MoodScoreIcon style={style} className="month-recap-chip-icon" fallbackScore={item.score} />
                     <span>{item.count}</span>
@@ -396,7 +589,7 @@ export function MonthSummaryOverlay({
               <span className="muted">{t('monthSummary.emptyTags')}</span>
             ) : (
               stats.tags.slice(0, 8).map((item) => (
-                <RecapNamedChip key={item.id} item={item} onHover={playHover} />
+                <RecapNamedChip key={item.id} item={item} />
               ))
             )}
           </RecapChipRow>
@@ -406,7 +599,7 @@ export function MonthSummaryOverlay({
               <span className="muted">{t('monthSummary.emptyGoals')}</span>
             ) : (
               stats.goals.slice(0, 8).map((item) => (
-                <RecapNamedChip key={item.id} item={item} onHover={playHover} />
+                <RecapNamedChip key={item.id} item={item} />
               ))
             )}
           </RecapChipRow>
@@ -433,21 +626,9 @@ function RecapChipRow({ label, children }: { label: string; children: ReactNode 
   )
 }
 
-function RecapNamedChip({
-  item,
-  onHover,
-}: {
-  item: MoodRecapItemPublic
-  onHover: (kind: RecapHoverKind, id: string) => void
-}) {
-  const kind: RecapHoverKind = item.kind === 'goal' ? 'goal' : 'tag'
+function RecapNamedChip({ item }: { item: MoodRecapItemPublic }) {
   return (
-    <span
-      className="month-recap-chip"
-      title={item.label}
-      style={{ color: item.color }}
-      onMouseEnter={() => onHover(kind, `${kind}-${item.id}`)}
-    >
+    <span className="month-recap-chip" title={item.label} style={{ color: item.color }}>
       {item.kind === 'goal' ? (
         <GoalIcon
           style={{ color: item.color, icon_type: item.icon_type, icon: item.icon }}
@@ -463,143 +644,4 @@ function RecapNamedChip({
       <span>{item.count}</span>
     </span>
   )
-}
-
-function RecapParticleIcon({
-  particle,
-}: {
-  particle: Pick<RecapSatellite, 'kind' | 'color' | 'icon_type' | 'icon' | 'label' | 'score'>
-}) {
-  if (particle.kind === 'mood' && particle.score != null) {
-    return (
-      <MoodScoreIcon
-        style={{
-          color: particle.color,
-          icon_type: particle.icon_type,
-          icon: particle.icon,
-          label: particle.label,
-        }}
-        className="month-recap-particle-icon"
-        fallbackScore={particle.score}
-      />
-    )
-  }
-  if (particle.kind === 'goal') {
-    return (
-      <GoalIcon
-        style={{ color: particle.color, icon_type: particle.icon_type, icon: particle.icon }}
-        className="month-recap-particle-icon"
-      />
-    )
-  }
-  return (
-    <TagIcon
-      style={{ color: particle.color, icon_type: particle.icon_type, icon: particle.icon }}
-      className="month-recap-particle-icon"
-    />
-  )
-}
-
-function placeOnRing<T>(
-  items: T[],
-  toSat: (item: T, index: number, angle: number) => RecapSatellite,
-  seed: number,
-): RecapSatellite[] {
-  const count = items.length
-  return items.map((item, index) => {
-    const jitter = (unitNoise(seed + index * 11) - 0.5) * (count > 2 ? 14 : 0)
-    const angle = (360 / Math.max(1, count)) * index + jitter
-    return toSat(item, index, angle)
-  })
-}
-
-function buildRings(
-  stats: MoodEntryStatsResponse,
-  getScoreColor: (score: number) => string,
-  getScoreStyle: (score: number) => { color: string; icon_type: MoodScoreIconType; icon: string; label: string },
-): RecapRing[] {
-  const seed = stats.total_entries * 13 + stats.active_days * 7
-  const moods = stats.scores.filter((item) => item.count > 0)
-  const tags = stats.tags.slice(0, 8)
-  const goals = stats.goals.slice(0, 6)
-
-  const rings: RecapRing[] = []
-
-  if (moods.length > 0) {
-    rings.push({
-      key: 'moods',
-      radius: '6.5rem',
-      duration: '38s',
-      reverse: false,
-      items: placeOnRing(
-        moods,
-        (item, index, angle) => {
-          const style = getScoreStyle(item.score)
-          return {
-            key: `mood-${item.score}`,
-            kind: 'mood',
-            label: item.score_label,
-            color: getScoreColor(item.score),
-            icon_type: style.icon_type,
-            icon: style.icon,
-            score: item.score,
-            angle,
-            delayMs: 160 + index * 80,
-            size: 1.85,
-          }
-        },
-        seed,
-      ),
-    })
-  }
-
-  if (tags.length > 0) {
-    rings.push({
-      key: 'tags',
-      radius: '8.7rem',
-      duration: '52s',
-      reverse: true,
-      items: placeOnRing(
-        tags,
-        (item, index, angle) => ({
-          key: `tag-${item.id}`,
-          kind: 'tag',
-          label: item.label,
-          color: item.color,
-          icon_type: item.icon_type,
-          icon: item.icon,
-          angle,
-          delayMs: 240 + index * 70,
-          size: 1.55,
-        }),
-        seed + 19,
-      ),
-    })
-  }
-
-  if (goals.length > 0) {
-    rings.push({
-      key: 'goals',
-      radius: '10.7rem',
-      duration: '68s',
-      reverse: false,
-      items: placeOnRing(
-        goals,
-        (item, index, angle) => ({
-          key: `goal-${item.id}`,
-          kind: 'goal',
-          label: item.label,
-          color: item.color,
-          icon_type: item.icon_type,
-          icon: item.icon,
-          angle,
-          delayMs: 320 + index * 80,
-          size: 1.55,
-        }),
-        seed + 41,
-      ),
-    })
-  }
-
-  return rings
 }

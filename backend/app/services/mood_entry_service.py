@@ -50,6 +50,7 @@ from app.services.storage import ObjectStorage, StorageError
 
 CALENDAR_SCORES_PER_DAY = 3
 RECAP_ITEM_LIMIT = 16
+RECAP_WEEK_ITEM_LIMIT = 6
 # Single-token queries are too noisy for MiniLM; those are lexical-only.
 _SEMANTIC_SEARCH_MIN_TOKENS = 2
 _LIKE_ESCAPE = "\\"
@@ -661,6 +662,16 @@ def get_mood_entry_stats(
             to_utc=to_utc,
             locale=locale,
         ),
+        "weeks": _month_recap_weeks(
+            db,
+            user_id=user_id,
+            from_utc=from_utc,
+            to_utc=to_utc,
+            locale=locale,
+            tz=tz,
+            current_rows=current_rows,
+            label_overrides=label_overrides,
+        ),
     }
 
 
@@ -736,6 +747,132 @@ def _month_recap_goals(
         }
         for goal, count in rows
     ]
+
+
+def _week_of_month(day: date) -> int:
+    return min(4, (day.day - 1) // 7 + 1)
+
+
+def _top_recap_items(
+    counts: dict[uuid.UUID, int],
+    catalog: dict[uuid.UUID, Any],
+    *,
+    kind: str,
+    locale: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    ranked = sorted(counts.items(), key=lambda item: (-item[1], str(item[0])))[:limit]
+    items: list[dict[str, Any]] = []
+    for item_id, count in ranked:
+        model = catalog.get(item_id)
+        if model is None:
+            continue
+        items.append(
+            {
+                "id": model.id,
+                "kind": kind,
+                "label": resolve_label(model.labels, locale),
+                "color": model.color,
+                "icon_type": model.icon_type,
+                "icon": model.icon,
+                "count": int(count),
+            }
+        )
+    return items
+
+
+def _month_recap_weeks(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    from_utc: datetime,
+    to_utc: datetime,
+    locale: str,
+    tz: ZoneInfo,
+    current_rows: list[tuple[date, int, datetime]],
+    label_overrides: dict[str, str],
+) -> list[dict[str, Any]]:
+    score_counts: dict[int, dict[int, int]] = {week: defaultdict(int) for week in range(1, 5)}
+    entry_counts = {week: 0 for week in range(1, 5)}
+    for local_day, score, _instant in current_rows:
+        week = _week_of_month(local_day)
+        score_counts[week][int(score)] += 1
+        entry_counts[week] += 1
+
+    tag_counts: dict[int, dict[uuid.UUID, int]] = {week: defaultdict(int) for week in range(1, 5)}
+    tags_by_id: dict[uuid.UUID, Tag] = {}
+    for tag, recorded_at in db.execute(
+        select(Tag, MoodEntry.recorded_at)
+        .join(MoodEntryTag, MoodEntryTag.tag_id == Tag.id)
+        .join(MoodEntry, MoodEntry.id == MoodEntryTag.mood_entry_id)
+        .where(
+            Tag.user_id == user_id,
+            MoodEntry.user_id == user_id,
+            MoodEntry.recorded_at >= from_utc,
+            MoodEntry.recorded_at < to_utc,
+        )
+    ).all():
+        week = _week_of_month(_local_date(recorded_at, tz))
+        tags_by_id[tag.id] = tag
+        tag_counts[week][tag.id] += 1
+
+    goal_counts: dict[int, dict[uuid.UUID, int]] = {week: defaultdict(int) for week in range(1, 5)}
+    goals_by_id: dict[uuid.UUID, Goal] = {}
+    for goal, recorded_at in db.execute(
+        select(Goal, MoodEntry.recorded_at)
+        .join(MoodEntryGoal, MoodEntryGoal.goal_id == Goal.id)
+        .join(MoodEntry, MoodEntry.id == MoodEntryGoal.mood_entry_id)
+        .where(
+            Goal.user_id == user_id,
+            MoodEntry.user_id == user_id,
+            MoodEntry.recorded_at >= from_utc,
+            MoodEntry.recorded_at < to_utc,
+        )
+    ).all():
+        week = _week_of_month(_local_date(recorded_at, tz))
+        goals_by_id[goal.id] = goal
+        goal_counts[week][goal.id] += 1
+
+    weeks: list[dict[str, Any]] = []
+    for week in range(1, 5):
+        if entry_counts[week] == 0:
+            continue
+        scores: list[dict[str, Any]] = []
+        for value in range(MIN_MOOD_SCORE, MAX_MOOD_SCORE + 1):
+            count = score_counts[week].get(value, 0)
+            if count == 0:
+                continue
+            mood = MoodScore(value)
+            scores.append(
+                {
+                    "score": value,
+                    "score_label": resolve_mood_score_label(mood, locale, label_overrides),
+                    "score_emoji": mood_score_emoji(mood),
+                    "count": count,
+                }
+            )
+        weeks.append(
+            {
+                "week": week,
+                "entry_count": entry_counts[week],
+                "scores": scores,
+                "tags": _top_recap_items(
+                    tag_counts[week],
+                    tags_by_id,
+                    kind="tag",
+                    locale=locale,
+                    limit=RECAP_WEEK_ITEM_LIMIT,
+                ),
+                "goals": _top_recap_items(
+                    goal_counts[week],
+                    goals_by_id,
+                    kind="goal",
+                    locale=locale,
+                    limit=RECAP_WEEK_ITEM_LIMIT,
+                ),
+            }
+        )
+    return weeks
 
 
 def get_mood_entry(db: Session, *, user_id: uuid.UUID, entry_id: uuid.UUID) -> MoodEntry:

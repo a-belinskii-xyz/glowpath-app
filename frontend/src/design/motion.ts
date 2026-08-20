@@ -37,7 +37,7 @@ export const motion = {
     durationMs: 72000,
     easing: 'ease-in-out',
   },
-  /** Month recap: a glow-sphere of the month, then a quiet reveal. */
+  /** Month recap: a glow planet, or a shareable poster, then a quiet stats reveal. */
   recap: {
     formMs: 880,
     orbitMs: 4200,
