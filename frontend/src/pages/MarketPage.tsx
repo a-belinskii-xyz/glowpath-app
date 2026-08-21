@@ -14,11 +14,14 @@ import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
+import { catalogIconMatchesQuery, groupCatalogIconsByPack } from '../lib/catalogIcons'
 import { ApiError, formatApiError } from '../lib/errors'
 import type {
   CatalogIconWithPackPublic,
   SearchTagPublic,
 } from '../types/marketplace'
+
+const PACK_COLLAPSED_COUNT = 8
 
 export function MarketPage() {
   const { t, locale } = useLocale()
@@ -28,6 +31,8 @@ export function MarketPage() {
   const [icons, setIcons] = useState<CatalogIconWithPackPublic[]>([])
   const [searchTags, setSearchTags] = useState<SearchTagPublic[]>([])
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [expandedPackIds, setExpandedPackIds] = useState<Record<string, boolean>>({})
   const [balance, setBalance] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -102,6 +107,13 @@ export function MarketPage() {
     }
   }
 
+  const filteredIcons = useMemo(
+    () => icons.filter((icon) => catalogIconMatchesQuery(icon, query)),
+    [icons, query],
+  )
+  const groups = useMemo(() => groupCatalogIconsByPack(filteredIcons), [filteredIcons])
+  const searching = query.trim().length > 0
+
   const balanceLabel =
     balance === null
       ? '—'
@@ -137,6 +149,18 @@ export function MarketPage() {
 
       <PageErrorAlert error={error} />
 
+      <label className="market-search">
+        <span className="visually-hidden">{t('market.search')}</span>
+        <input
+          className="form-input"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t('market.searchPlaceholder')}
+          autoComplete="off"
+        />
+      </label>
+
       {searchTags.length > 0 ? (
         <div className="market-tag-chips" role="toolbar" aria-label={t('market.filterTags')}>
           <button
@@ -161,67 +185,113 @@ export function MarketPage() {
 
       {isLoading ? (
         <p className="muted">{t('common.loadingMarket')}</p>
-      ) : icons.length === 0 ? (
-        <p className="market-empty">{t('market.empty')}</p>
+      ) : groups.length === 0 ? (
+        <p className="market-empty">
+          {searching || activeTag ? t('market.searchEmpty') : t('market.empty')}
+        </p>
       ) : (
-        <ul className="market-icon-grid">
-          {icons.map((icon) => {
-            const glow = icon.suggested_colors[0] ?? '#94a3b8'
-            const locked = !icon.pack.unlocked && icon.pack.price_tokens > 0
+        <div className="market-pack-list">
+          {groups.map((group) => {
+            const locked = !group.pack.unlocked && group.pack.price_tokens > 0
+            const expanded = searching || Boolean(expandedPackIds[group.pack.id])
+            const visibleIcons =
+              expanded || group.icons.length <= PACK_COLLAPSED_COUNT
+                ? group.icons
+                : group.icons.slice(0, PACK_COLLAPSED_COUNT)
+            const hiddenCount = group.icons.length - visibleIcons.length
             return (
-              <li key={icon.id} className="market-icon-card">
-                <div
-                  className="market-icon-card-media"
-                  style={{ filter: moodGlowFilter(glow) }}
-                >
-                  <CatalogIconThumb
-                    iconId={icon.id}
-                    label={icon.label}
-                    glowColor={glow}
-                  />
-                </div>
-                <div className="market-icon-card-body">
-                  <p className="market-icon-card-title">{icon.label}</p>
-                  <p className="market-icon-card-pack">{icon.pack.name}</p>
-                  <div className="market-icon-card-meta">
-                    {icon.suggested_colors.slice(0, 4).map((color) => (
-                      <span
-                        key={color}
-                        className="market-color-dot"
-                        style={{ background: color }}
-                        title={color}
-                      />
-                    ))}
+              <section key={group.pack.id} className="market-pack">
+                <header className="market-pack-header">
+                  <div className="market-pack-copy">
+                    <h2 className="market-pack-title">{group.pack.name}</h2>
+                    {group.pack.description ? (
+                      <p className="market-pack-description">{group.pack.description}</p>
+                    ) : null}
+                  </div>
+                  <div className="market-pack-actions">
                     {locked ? (
-                      <span className="market-price">
-                        {t('market.priceTokens', { count: String(icon.pack.price_tokens) })}
-                      </span>
+                      <>
+                        <span className="market-price">
+                          {t('market.priceTokens', { count: String(group.pack.price_tokens) })}
+                        </span>
+                        <button
+                          type="button"
+                          className="button button-secondary button-small"
+                          disabled={unlockingPackId === group.pack.id}
+                          onClick={() => void handleUnlock(group.pack.id)}
+                        >
+                          <StableButtonLabel
+                            active={
+                              unlockingPackId === group.pack.id
+                                ? t('market.unlocking')
+                                : t('market.unlock')
+                            }
+                            labels={[t('market.unlock'), t('market.unlocking')]}
+                          />
+                        </button>
+                      </>
                     ) : (
                       <span className="market-unlocked">{t('market.unlocked')}</span>
                     )}
                   </div>
-                  {locked ? (
-                    <button
-                      type="button"
-                      className="button button-secondary button-small market-unlock-button"
-                      disabled={unlockingPackId === icon.pack.id}
-                      onClick={() => void handleUnlock(icon.pack.id)}
-                    >
-                      <StableButtonLabel
-                        active={
-                          unlockingPackId === icon.pack.id
-                            ? t('market.unlocking')
-                            : t('market.unlock')
+                </header>
+                <ul className="market-pack-icons">
+                  {visibleIcons.map((icon) => {
+                    const glow = icon.suggested_colors[0] ?? '#94a3b8'
+                    return (
+                      <li key={icon.id} className="market-pack-icon">
+                        <div
+                          className="market-icon-card-media"
+                          style={{ filter: moodGlowFilter(glow) }}
+                        >
+                          <CatalogIconThumb
+                            iconId={icon.id}
+                            label={icon.label}
+                            glowColor={glow}
+                          />
+                        </div>
+                        <p className="market-pack-icon-label">{icon.label}</p>
+                      </li>
+                    )
+                  })}
+                  {hiddenCount > 0 ? (
+                    <li className="market-pack-icon">
+                      <button
+                        type="button"
+                        className="market-pack-more"
+                        onClick={() =>
+                          setExpandedPackIds((current) => ({
+                            ...current,
+                            [group.pack.id]: true,
+                          }))
                         }
-                        labels={[t('market.unlock'), t('market.unlocking')]}
-                      />
-                    </button>
+                      >
+                        +{hiddenCount}
+                      </button>
+                    </li>
                   ) : null}
-                </div>
-              </li>
+                  {expanded && group.icons.length > PACK_COLLAPSED_COUNT && !searching ? (
+                    <li className="market-pack-icon">
+                      <button
+                        type="button"
+                        className="market-pack-more is-open"
+                        onClick={() =>
+                          setExpandedPackIds((current) => ({
+                            ...current,
+                            [group.pack.id]: false,
+                          }))
+                        }
+                        aria-label={t('common.close')}
+                      >
+                        ▴
+                      </button>
+                    </li>
+                  ) : null}
+                </ul>
+              </section>
             )
           })}
-        </ul>
+        </div>
       )}
     </section>
   )

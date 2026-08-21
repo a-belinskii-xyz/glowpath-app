@@ -15,6 +15,8 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { EmojiPicker } from './EmojiPicker'
 import { GoalIcon } from './GoalIcon'
 import { ImageCropModal } from './ImageCropModal'
+import { CatalogIconPicker } from './CatalogIconPicker'
+import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { formatApiError } from '../lib/errors'
@@ -43,7 +45,7 @@ type PendingCrop = {
 
 const MAX_UPLOADS_PER_GOAL = 3
 
-type IconSourceUi = 'emoji' | 'upload'
+type IconSourceUi = 'emoji' | 'upload' | 'catalog'
 
 type GoalIconEditorProps = {
   /** Controlled color draft (saved with the parent form). */
@@ -61,15 +63,21 @@ type GoalIconEditorProps = {
    */
   pendingUpload?: PendingIconUpload | null
   onPendingUploadChange?: (upload: PendingIconUpload | null) => void
+  pendingCatalogIconId?: string | null
+  onPendingCatalogChange?: (iconId: string | null) => void
   disabled?: boolean
 }
 
 function resolveIconSourceUi(
   goal: GoalPublic | undefined,
   pendingUpload: PendingIconUpload | null | undefined,
+  pendingCatalogIconId: string | null | undefined,
 ): IconSourceUi {
   if (goal?.icon_type === 'upload' || pendingUpload) {
     return 'upload'
+  }
+  if (goal?.icon_type === 'catalog' || pendingCatalogIconId) {
+    return 'catalog'
   }
   return 'emoji'
 }
@@ -83,14 +91,18 @@ export function GoalIconEditor({
   onGoalChange,
   pendingUpload = null,
   onPendingUploadChange,
+  pendingCatalogIconId = null,
+  onPendingCatalogChange,
   disabled = false,
 }: GoalIconEditorProps) {
   const { t } = useLocale()
+  const { user } = useAuth()
+  const marketplaceEnabled = Boolean(user?.features?.icon_marketplace)
   const [uploadedIcons, setUploadedIcons] = useState<GoalIconMeta[]>([])
   const [maxUploads, setMaxUploads] = useState(MAX_UPLOADS_PER_GOAL)
   const [iconBusy, setIconBusy] = useState(false)
   const [sourceUi, setSourceUi] = useState<IconSourceUi>(() =>
-    resolveIconSourceUi(goal, pendingUpload),
+    resolveIconSourceUi(goal, pendingUpload, pendingCatalogIconId),
   )
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null)
   const [pendingRemoveIconId, setPendingRemoveIconId] = useState<string | null>(null)
@@ -100,11 +112,22 @@ export function GoalIconEditor({
 
   const uploadFull = uploadedIcons.length >= maxUploads
   const isCreateUpload = !goal && Boolean(onPendingUploadChange)
+  const previewCatalogId =
+    pendingCatalogIconId || (goal?.icon_type === 'catalog' ? goal.icon : null)
   const previewStyle: GoalStyle = {
     color,
-    icon_type: sourceUi === 'upload' && goal?.icon_type === 'upload' ? 'upload' : 'emoji',
+    icon_type:
+      sourceUi === 'upload' && goal?.icon_type === 'upload'
+        ? 'upload'
+        : sourceUi === 'catalog' && previewCatalogId
+          ? 'catalog'
+          : 'emoji',
     icon:
-      sourceUi === 'upload' && goal?.icon_type === 'upload' ? goal.icon : emoji || '🎯',
+      sourceUi === 'upload' && goal?.icon_type === 'upload'
+        ? goal.icon
+        : sourceUi === 'catalog' && previewCatalogId
+          ? previewCatalogId
+          : emoji || '🎯',
   }
 
   const cropValidationMessage = (reason: CropValidationError): string => {
@@ -148,8 +171,8 @@ export function GoalIconEditor({
   }, [pendingUpload])
 
   useEffect(() => {
-    setSourceUi(resolveIconSourceUi(goal, pendingUpload))
-  }, [goal?.id, goal?.icon_type, pendingUpload])
+    setSourceUi(resolveIconSourceUi(goal, pendingUpload, pendingCatalogIconId))
+  }, [goal?.id, goal?.icon_type, pendingUpload, pendingCatalogIconId])
 
   useEffect(() => {
     if (!goal) {
@@ -183,8 +206,30 @@ export function GoalIconEditor({
     setError(null)
     try {
       const updated = await patchGoal(goal.id, { icon_type: 'upload', icon: iconId })
+      onPendingCatalogChange?.(null)
       onGoalChange(updated)
       setSourceUi('upload')
+    } catch (err) {
+      setError(formatApiError(err, t, 'errors.failedSave'))
+    } finally {
+      setIconBusy(false)
+    }
+  }
+
+  const applyCatalogStyle = async (iconId: string) => {
+    onPendingUploadChange?.(null)
+    if (!goal || !onGoalChange) {
+      onPendingCatalogChange?.(iconId)
+      setSourceUi('catalog')
+      return
+    }
+    setIconBusy(true)
+    setError(null)
+    try {
+      const updated = await patchGoal(goal.id, { icon_type: 'catalog', icon: iconId })
+      onPendingCatalogChange?.(null)
+      onGoalChange(updated)
+      setSourceUi('catalog')
     } catch (err) {
       setError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
@@ -196,6 +241,7 @@ export function GoalIconEditor({
     if (next === 'emoji') {
       setSourceUi('emoji')
       onPendingUploadChange?.(null)
+      onPendingCatalogChange?.(null)
       if (goal && onGoalChange && goal.icon_type !== 'emoji') {
         setIconBusy(true)
         setError(null)
@@ -213,6 +259,11 @@ export function GoalIconEditor({
       }
       return
     }
+    if (next === 'catalog') {
+      setSourceUi('catalog')
+      return
+    }
+    onPendingCatalogChange?.(null)
     if (!goal) {
       setSourceUi('upload')
       return
@@ -227,6 +278,7 @@ export function GoalIconEditor({
   const handleEmojiSelect = (next: string) => {
     onEmojiChange(next)
     onPendingUploadChange?.(null)
+    onPendingCatalogChange?.(null)
     setSourceUi('emoji')
   }
 
@@ -310,6 +362,7 @@ export function GoalIconEditor({
         cropped: croppedFile,
         source: pendingCrop.sourceFile,
       })
+      onPendingCatalogChange?.(null)
       setSourceUi('upload')
       closeCropEditor()
       return
@@ -351,6 +404,7 @@ export function GoalIconEditor({
       setUploadedIcons(listed.items)
       setMaxUploads(listed.max_per_goal)
       if (resultGoal) {
+        onPendingCatalogChange?.(null)
         onGoalChange(resultGoal)
         setSourceUi('upload')
       }
@@ -477,6 +531,16 @@ export function GoalIconEditor({
           >
             {t('moodPreferences.iconTypeUpload')}
           </button>
+          {marketplaceEnabled || goal?.icon_type === 'catalog' || pendingCatalogIconId ? (
+            <button
+              type="button"
+              className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}`}
+              aria-pressed={sourceUi === 'catalog'}
+              onClick={() => void handleSourceChange('catalog')}
+            >
+              {t('moodPreferences.iconTypeCatalog')}
+            </button>
+          ) : null}
         </div>
 
         <div className="mood-preferences-icon-panel">
@@ -488,6 +552,13 @@ export function GoalIconEditor({
               onChange={handleEmojiSelect}
               disabled={busy}
               label={t('moodPreferences.chooseEmoji')}
+            />
+          ) : sourceUi === 'catalog' ? (
+            <CatalogIconPicker
+              selectedIconId={previewCatalogId}
+              glowColor={color}
+              disabled={busy}
+              onSelect={(icon) => void applyCatalogStyle(icon.id)}
             />
           ) : goal ? (
             <div className="mood-preferences-upload-section">

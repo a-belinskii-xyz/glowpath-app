@@ -56,6 +56,7 @@ export function TagsPage() {
   const [draftColor, setDraftColor] = useState(DEFAULT_TAG_STYLE.color)
   const [draftEmoji, setDraftEmoji] = useState(DEFAULT_TAG_STYLE.icon)
   const [pendingUpload, setPendingUpload] = useState<PendingIconUpload | null>(null)
+  const [pendingCatalogIconId, setPendingCatalogIconId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
@@ -114,14 +115,17 @@ export function TagsPage() {
       setDraftColor(DEFAULT_TAG_STYLE.color)
       setDraftEmoji(DEFAULT_TAG_STYLE.icon)
       setPendingUpload(null)
+      setPendingCatalogIconId(null)
     } else if (mode.kind === 'edit-group') {
       setName(mode.group.label)
       setPendingUpload(null)
+      setPendingCatalogIconId(null)
     } else {
       setName(mode.tag.label)
       setDraftColor(mode.tag.color)
       setDraftEmoji(mode.tag.icon_type === 'emoji' ? mode.tag.icon : DEFAULT_TAG_STYLE.icon)
       setPendingUpload(null)
+      setPendingCatalogIconId(null)
     }
   }
 
@@ -131,6 +135,7 @@ export function TagsPage() {
     setDraftColor(DEFAULT_TAG_STYLE.color)
     setDraftEmoji(DEFAULT_TAG_STYLE.icon)
     setPendingUpload(null)
+    setPendingCatalogIconId(null)
   }, [])
 
   const handleSubmit = async (event: FormEvent) => {
@@ -152,7 +157,10 @@ export function TagsPage() {
       const usingUpload =
         (editor.kind === 'edit-tag' && editor.tag.icon_type === 'upload') ||
         (editor.kind === 'create-tag' && pendingUpload !== null)
-      if (!usingUpload && !emoji) {
+      const usingCatalog =
+        (editor.kind === 'edit-tag' && editor.tag.icon_type === 'catalog') ||
+        (editor.kind === 'create-tag' && pendingCatalogIconId !== null)
+      if (!usingUpload && !usingCatalog && !emoji) {
         setError(t('tagsPage.emojiRequired'))
         return
       }
@@ -176,8 +184,8 @@ export function TagsPage() {
         const created = await createTag(editor.group.id, {
           labels,
           color: draftColor,
-          icon_type: 'emoji',
-          icon: draftEmoji.trim() || DEFAULT_TAG_STYLE.icon,
+          icon_type: pendingCatalogIconId ? 'catalog' : 'emoji',
+          icon: pendingCatalogIconId ?? (draftEmoji.trim() || DEFAULT_TAG_STYLE.icon),
         })
         if (pendingUpload) {
           await uploadTagIcon(
@@ -188,11 +196,12 @@ export function TagsPage() {
           )
         }
       } else {
-        const usingUpload = editor.tag.icon_type === 'upload'
+        const keepAssignedIcon =
+          editor.tag.icon_type === 'upload' || editor.tag.icon_type === 'catalog'
         await patchTag(editor.group.id, editor.tag.id, {
           labels,
           color: draftColor,
-          ...(usingUpload ? {} : { icon_type: 'emoji' as const, icon: draftEmoji.trim() }),
+          ...(keepAssignedIcon ? {} : { icon_type: 'emoji' as const, icon: draftEmoji.trim() }),
         })
       }
       await reload()
@@ -460,6 +469,12 @@ export function TagsPage() {
               pendingUpload={editor.kind === 'create-tag' ? pendingUpload : null}
               onPendingUploadChange={
                 editor.kind === 'create-tag' ? setPendingUpload : undefined
+              }
+              pendingCatalogIconId={
+                editor.kind === 'create-tag' ? pendingCatalogIconId : null
+              }
+              onPendingCatalogChange={
+                editor.kind === 'create-tag' ? setPendingCatalogIconId : undefined
               }
               onTagChange={
                 editor.kind === 'edit-tag'

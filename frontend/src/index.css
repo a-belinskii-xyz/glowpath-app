@@ -3969,9 +3969,26 @@ code {
   vertical-align: middle;
 }
 
+.mood-score-icon-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
 .mood-score-icon-upload img {
+  display: block;
   border-radius: 999px;
   object-fit: cover;
+}
+
+.tag-list-item-icon .mood-score-icon-upload,
+.goal-card-icon .mood-score-icon-upload,
+.tag-chip-icon .mood-score-icon-upload,
+.goal-chip-icon .mood-score-icon-upload {
+  width: 100%;
+  height: 100%;
 }
 
 .score-emoji img {
@@ -4481,7 +4498,7 @@ code {
 .goal-card-icon img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .goal-card-controls {
@@ -8269,6 +8286,101 @@ code {
   color: var(--chrome-text-secondary);
 }
 
+.market-search {
+  display: block;
+  margin: 0 0 0.9rem;
+}
+
+.market-pack-list {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.market-pack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.market-pack-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.market-pack-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.market-pack-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.market-pack-description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--chrome-text-secondary);
+  line-height: 1.4;
+}
+
+.market-pack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.market-pack-icons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.market-pack-icon {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  width: 5.5rem;
+}
+
+.market-pack-icon-label {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.market-pack-more {
+  width: 5.5rem;
+  height: 5.5rem;
+  border: 1px dashed var(--chrome-border-strong);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, white);
+  color: var(--chrome-text-secondary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.market-pack-more.is-open,
+.market-pack-more:hover {
+  border-style: solid;
+  color: var(--chrome-text-primary);
+  background: var(--chrome-surface);
+}
+
 .market-icon-grid {
   list-style: none;
   margin: 0;
@@ -8290,9 +8402,17 @@ code {
 .market-icon-card-media {
   display: grid;
   place-items: center;
-  aspect-ratio: 1;
-  border-radius: calc(var(--chrome-radius-control) - 2px);
+  width: 5.5rem;
+  height: 5.5rem;
+  margin-inline: auto;
+  border-radius: 50%;
+  overflow: hidden;
   background: color-mix(in oklab, var(--chrome-surface-inset) 90%, white);
+}
+
+.market-icon-card-media .catalog-icon-thumb {
+  width: 100%;
+  height: 100%;
 }
 
 .catalog-icon-thumb {
@@ -8300,19 +8420,107 @@ code {
   place-items: center;
   width: 4.5rem;
   height: 4.5rem;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 .catalog-icon-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .catalog-icon-thumb-placeholder {
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.65rem;
+  border-radius: 50%;
   background: color-mix(in oklab, var(--chrome-text-secondary) 18%, transparent);
+}
+
+.catalog-icon-picker {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.catalog-icon-picker-search {
+  display: block;
+  margin-bottom: 0.65rem;
+}
+
+.catalog-icon-picker-search-input {
+  width: 100%;
+}
+
+.catalog-icon-picker-group {
+  align-items: start;
+  grid-template-columns: 1fr;
+}
+
+.catalog-icon-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.catalog-icon-picker-tile {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0;
+  padding: 0.15rem;
+  border: 1px solid var(--chrome-border-strong);
+  border-radius: 50%;
+  background: var(--chrome-surface);
+  cursor: pointer;
+}
+
+.catalog-icon-picker-tile:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.catalog-icon-picker-tile-selected {
+  border-color: var(--chrome-action-primary);
+  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
+}
+
+.catalog-icon-picker-tile-locked {
+  cursor: pointer;
+}
+
+.catalog-icon-picker-tile-locked .catalog-icon-picker-thumb {
+  opacity: 0.72;
+}
+
+.catalog-icon-picker-thumb.catalog-icon-thumb {
+  width: 1.95rem;
+  height: 1.95rem;
+}
+
+.catalog-icon-picker-lock {
+  position: absolute;
+  right: -0.05rem;
+  bottom: -0.05rem;
+  display: grid;
+  place-items: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--chrome-surface) 88%, black);
+  color: var(--chrome-text-primary);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--chrome-border-strong) 70%, transparent);
+}
+
+.catalog-icon-picker-lock svg {
+  width: 0.62rem;
+  height: 0.62rem;
 }
 
 .market-icon-card-body {

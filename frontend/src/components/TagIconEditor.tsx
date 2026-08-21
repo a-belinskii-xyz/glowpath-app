@@ -15,6 +15,8 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { EmojiPicker } from './EmojiPicker'
 import { ImageCropModal } from './ImageCropModal'
 import { TagIcon } from './TagIcon'
+import { CatalogIconPicker } from './CatalogIconPicker'
+import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { formatApiError } from '../lib/errors'
@@ -43,7 +45,7 @@ type PendingCrop = {
 
 const MAX_UPLOADS_PER_TAG = 3
 
-type IconSourceUi = 'emoji' | 'upload'
+type IconSourceUi = 'emoji' | 'upload' | 'catalog'
 
 type TagIconEditorProps = {
   /** Controlled color draft (saved with the parent form). */
@@ -63,15 +65,21 @@ type TagIconEditorProps = {
    */
   pendingUpload?: PendingIconUpload | null
   onPendingUploadChange?: (upload: PendingIconUpload | null) => void
+  pendingCatalogIconId?: string | null
+  onPendingCatalogChange?: (iconId: string | null) => void
   disabled?: boolean
 }
 
 function resolveIconSourceUi(
   tag: TagPublic | undefined,
   pendingUpload: PendingIconUpload | null | undefined,
+  pendingCatalogIconId: string | null | undefined,
 ): IconSourceUi {
   if (tag?.icon_type === 'upload' || pendingUpload) {
     return 'upload'
+  }
+  if (tag?.icon_type === 'catalog' || pendingCatalogIconId) {
+    return 'catalog'
   }
   return 'emoji'
 }
@@ -86,14 +94,18 @@ export function TagIconEditor({
   onTagChange,
   pendingUpload = null,
   onPendingUploadChange,
+  pendingCatalogIconId = null,
+  onPendingCatalogChange,
   disabled = false,
 }: TagIconEditorProps) {
   const { t } = useLocale()
+  const { user } = useAuth()
+  const marketplaceEnabled = Boolean(user?.features?.icon_marketplace)
   const [uploadedIcons, setUploadedIcons] = useState<TagIconMeta[]>([])
   const [maxUploads, setMaxUploads] = useState(MAX_UPLOADS_PER_TAG)
   const [iconBusy, setIconBusy] = useState(false)
   const [sourceUi, setSourceUi] = useState<IconSourceUi>(() =>
-    resolveIconSourceUi(tag, pendingUpload),
+    resolveIconSourceUi(tag, pendingUpload, pendingCatalogIconId),
   )
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null)
   const [pendingRemoveIconId, setPendingRemoveIconId] = useState<string | null>(null)
@@ -103,11 +115,22 @@ export function TagIconEditor({
 
   const uploadFull = uploadedIcons.length >= maxUploads
   const isCreateUpload = !tag && Boolean(onPendingUploadChange)
+  const previewCatalogId =
+    pendingCatalogIconId || (tag?.icon_type === 'catalog' ? tag.icon : null)
   const previewStyle: TagStyle = {
     color,
-    icon_type: sourceUi === 'upload' && tag?.icon_type === 'upload' ? 'upload' : 'emoji',
+    icon_type:
+      sourceUi === 'upload' && tag?.icon_type === 'upload'
+        ? 'upload'
+        : sourceUi === 'catalog' && previewCatalogId
+          ? 'catalog'
+          : 'emoji',
     icon:
-      sourceUi === 'upload' && tag?.icon_type === 'upload' ? tag.icon : emoji || '🏷',
+      sourceUi === 'upload' && tag?.icon_type === 'upload'
+        ? tag.icon
+        : sourceUi === 'catalog' && previewCatalogId
+          ? previewCatalogId
+          : emoji || '🏷',
   }
 
   const cropValidationMessage = (reason: CropValidationError): string => {
@@ -151,8 +174,8 @@ export function TagIconEditor({
   }, [pendingUpload])
 
   useEffect(() => {
-    setSourceUi(resolveIconSourceUi(tag, pendingUpload))
-  }, [tag?.id, tag?.icon_type, pendingUpload])
+    setSourceUi(resolveIconSourceUi(tag, pendingUpload, pendingCatalogIconId))
+  }, [tag?.id, tag?.icon_type, pendingUpload, pendingCatalogIconId])
 
   useEffect(() => {
     if (!tag || !groupId) {
@@ -186,8 +209,30 @@ export function TagIconEditor({
     setError(null)
     try {
       const updated = await patchTag(groupId, tag.id, { icon_type: 'upload', icon: iconId })
+      onPendingCatalogChange?.(null)
       onTagChange(updated)
       setSourceUi('upload')
+    } catch (err) {
+      setError(formatApiError(err, t, 'errors.failedSave'))
+    } finally {
+      setIconBusy(false)
+    }
+  }
+
+  const applyCatalogStyle = async (iconId: string) => {
+    onPendingUploadChange?.(null)
+    if (!tag || !groupId || !onTagChange) {
+      onPendingCatalogChange?.(iconId)
+      setSourceUi('catalog')
+      return
+    }
+    setIconBusy(true)
+    setError(null)
+    try {
+      const updated = await patchTag(groupId, tag.id, { icon_type: 'catalog', icon: iconId })
+      onPendingCatalogChange?.(null)
+      onTagChange(updated)
+      setSourceUi('catalog')
     } catch (err) {
       setError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
@@ -199,6 +244,7 @@ export function TagIconEditor({
     if (next === 'emoji') {
       setSourceUi('emoji')
       onPendingUploadChange?.(null)
+      onPendingCatalogChange?.(null)
       if (tag && groupId && onTagChange && tag.icon_type !== 'emoji') {
         setIconBusy(true)
         setError(null)
@@ -216,6 +262,11 @@ export function TagIconEditor({
       }
       return
     }
+    if (next === 'catalog') {
+      setSourceUi('catalog')
+      return
+    }
+    onPendingCatalogChange?.(null)
     if (!tag) {
       setSourceUi('upload')
       return
@@ -230,6 +281,7 @@ export function TagIconEditor({
   const handleEmojiSelect = (next: string) => {
     onEmojiChange(next)
     onPendingUploadChange?.(null)
+    onPendingCatalogChange?.(null)
     setSourceUi('emoji')
   }
 
@@ -316,6 +368,7 @@ export function TagIconEditor({
         cropped: croppedFile,
         source: pendingCrop.sourceFile,
       })
+      onPendingCatalogChange?.(null)
       setSourceUi('upload')
       closeCropEditor()
       return
@@ -357,6 +410,7 @@ export function TagIconEditor({
       setUploadedIcons(listed.items)
       setMaxUploads(listed.max_per_tag)
       if (resultTag) {
+        onPendingCatalogChange?.(null)
         onTagChange(resultTag)
         setSourceUi('upload')
       }
@@ -485,6 +539,16 @@ export function TagIconEditor({
           >
             {t('moodPreferences.iconTypeUpload')}
           </button>
+          {marketplaceEnabled || tag?.icon_type === 'catalog' || pendingCatalogIconId ? (
+            <button
+              type="button"
+              className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}`}
+              aria-pressed={sourceUi === 'catalog'}
+              onClick={() => void handleSourceChange('catalog')}
+            >
+              {t('moodPreferences.iconTypeCatalog')}
+            </button>
+          ) : null}
         </div>
 
         <div className="mood-preferences-icon-panel">
@@ -496,6 +560,13 @@ export function TagIconEditor({
               onChange={handleEmojiSelect}
               disabled={busy}
               label={t('moodPreferences.chooseEmoji')}
+            />
+          ) : sourceUi === 'catalog' ? (
+            <CatalogIconPicker
+              selectedIconId={previewCatalogId}
+              glowColor={color}
+              disabled={busy}
+              onSelect={(icon) => void applyCatalogStyle(icon.id)}
             />
           ) : tag && groupId ? (
             <div className="mood-preferences-upload-section">

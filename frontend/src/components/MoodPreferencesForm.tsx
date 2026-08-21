@@ -18,7 +18,9 @@ import { EmojiPicker } from './EmojiPicker'
 import { IconButton } from './IconButton'
 import { EditIcon } from './icons'
 import { ImageCropModal } from './ImageCropModal'
+import { CatalogIconPicker } from './CatalogIconPicker'
 import { MoodScoreIcon } from './MoodScoreIcon'
+import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
@@ -57,7 +59,7 @@ type PendingConfirm =
   | { kind: 'reset-all' }
   | { kind: 'remove-icon'; score: number; iconId: string }
 
-type IconSourceUi = 'emoji' | 'upload'
+type IconSourceUi = 'emoji' | 'upload' | 'catalog'
 
 const MAX_UPLOADS_PER_SCORE = 3
 const APPEARANCE_SAVE_DELAY_MS = 400
@@ -75,12 +77,20 @@ function groupIconsByScore(items: MoodIconMeta[]): Record<number, MoodIconMeta[]
 }
 
 function resolveIconSourceUi(iconType: MoodScoreIconType): IconSourceUi {
-  return iconType === 'upload' ? 'upload' : 'emoji'
+  if (iconType === 'upload') {
+    return 'upload'
+  }
+  if (iconType === 'catalog') {
+    return 'catalog'
+  }
+  return 'emoji'
 }
 
 export function MoodPreferencesForm() {
   const { locale, t } = useLocale()
+  const { user } = useAuth()
   const { scores, isLoading, refreshPreferences, setPreferences } = useMoodPreferences()
+  const marketplaceEnabled = Boolean(user?.features?.icon_marketplace)
   const moodScoreOptions = getMoodScoreOptions(locale, scores)
 
   const [draftColors, setDraftColors] = useState<Record<number, string>>({})
@@ -398,6 +408,9 @@ export function MoodPreferencesForm() {
       })
       return
     }
+    if (iconType === 'catalog') {
+      return
+    }
     const uploads = uploadedIcons[score] ?? []
     if (uploads.length === 0) {
       return
@@ -406,6 +419,15 @@ export function MoodPreferencesForm() {
       icon_type: 'upload',
       icon: uploads[uploads.length - 1].id,
     })
+  }
+
+  const handleCatalogSelect = async (score: number, iconId: string) => {
+    setSourceUiByScore((current) => ({ ...current, [score]: 'catalog' }))
+    const current = scores[String(score)]
+    if (current?.icon_type === 'catalog' && current.icon === iconId) {
+      return
+    }
+    await patchIconStyle(score, { icon_type: 'catalog', icon: iconId })
   }
 
   const handleEmojiSelect = async (score: number, emoji: string) => {
@@ -801,6 +823,16 @@ export function MoodPreferencesForm() {
             >
               {t('moodPreferences.iconTypeUpload')}
             </button>
+            {marketplaceEnabled || currentStyle.icon_type === 'catalog' ? (
+              <button
+                type="button"
+                className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}`}
+                aria-pressed={sourceUi === 'catalog'}
+                onClick={() => void handleIconSourceChange(option.score, 'catalog')}
+              >
+                {t('moodPreferences.iconTypeCatalog')}
+              </button>
+            ) : null}
           </div>
 
           <div className="mood-preferences-icon-panel">
@@ -812,6 +844,16 @@ export function MoodPreferencesForm() {
                 onChange={(emoji) => void handleEmojiSelect(option.score, emoji)}
                 disabled={iconBusy}
                 label={t('moodPreferences.chooseEmoji')}
+              />
+            ) : sourceUi === 'catalog' ? (
+              <CatalogIconPicker
+                selectedIconId={
+                  currentStyle.icon_type === 'catalog' ? currentStyle.icon : null
+                }
+                glowColor={previewStyle.color}
+                suggestedMood={option.score}
+                disabled={iconBusy}
+                onSelect={(icon) => void handleCatalogSelect(option.score, icon.id)}
               />
             ) : (
               <div className="mood-preferences-upload-section">

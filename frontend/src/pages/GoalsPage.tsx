@@ -62,6 +62,7 @@ export function GoalsPage() {
   const [draftColor, setDraftColor] = useState(DEFAULT_GOAL_STYLE.color)
   const [draftEmoji, setDraftEmoji] = useState(DEFAULT_GOAL_STYLE.icon)
   const [pendingUpload, setPendingUpload] = useState<PendingIconUpload | null>(null)
+  const [pendingCatalogIconId, setPendingCatalogIconId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGoalId, setTogglingGoalId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -115,6 +116,7 @@ export function GoalsPage() {
       setDraftColor(DEFAULT_GOAL_STYLE.color)
       setDraftEmoji(DEFAULT_GOAL_STYLE.icon)
       setPendingUpload(null)
+      setPendingCatalogIconId(null)
     } else {
       setName(mode.goal.label)
       setTimesPerWeek(mode.goal.times_per_week)
@@ -126,6 +128,7 @@ export function GoalsPage() {
       setDraftColor(mode.goal.color)
       setDraftEmoji(mode.goal.icon_type === 'emoji' ? mode.goal.icon : DEFAULT_GOAL_STYLE.icon)
       setPendingUpload(null)
+      setPendingCatalogIconId(null)
     }
   }
 
@@ -135,6 +138,7 @@ export function GoalsPage() {
     setDraftColor(DEFAULT_GOAL_STYLE.color)
     setDraftEmoji(DEFAULT_GOAL_STYLE.icon)
     setPendingUpload(null)
+    setPendingCatalogIconId(null)
   }, [])
 
   const handleSubmit = async (event: FormEvent) => {
@@ -170,7 +174,10 @@ export function GoalsPage() {
     const usingUpload =
       (editor.kind === 'edit' && editor.goal.icon_type === 'upload') ||
       (editor.kind === 'create' && pendingUpload !== null)
-    if (!usingUpload && !emoji) {
+    const usingCatalog =
+      (editor.kind === 'edit' && editor.goal.icon_type === 'catalog') ||
+      (editor.kind === 'create' && pendingCatalogIconId !== null)
+    if (!usingUpload && !usingCatalog && !emoji) {
       setError(t('goalsPage.emojiRequired'))
       return
     }
@@ -203,13 +210,15 @@ export function GoalsPage() {
           show_on_entry: !atVisibleLimit,
           show_in_stats: !atStatsLimit,
           color: draftColor,
-          icon_type: 'emoji',
-          icon: emoji || DEFAULT_GOAL_STYLE.icon,
+          icon_type: pendingCatalogIconId ? 'catalog' : 'emoji',
+          icon: pendingCatalogIconId ?? (emoji || DEFAULT_GOAL_STYLE.icon),
         })
         if (pendingUpload) {
           await uploadGoalIcon(created.id, pendingUpload.cropped, pendingUpload.source)
         }
       } else {
+        const keepAssignedIcon =
+          editor.goal.icon_type === 'upload' || editor.goal.icon_type === 'catalog'
         await patchGoal(editor.goal.id, {
           labels,
           times_per_week: timesPerWeek,
@@ -217,7 +226,7 @@ export function GoalsPage() {
           starts_on: startsOn,
           ends_on: endsOn || null,
           color: draftColor,
-          ...(usingUpload ? {} : { icon_type: 'emoji' as const, icon: emoji }),
+          ...(keepAssignedIcon ? {} : { icon_type: 'emoji' as const, icon: emoji }),
         })
       }
       await reload()
@@ -507,6 +516,10 @@ export function GoalsPage() {
             onPendingUploadChange={
               editor?.kind === 'create' ? setPendingUpload : undefined
             }
+            pendingCatalogIconId={editor?.kind === 'create' ? pendingCatalogIconId : null}
+            onPendingCatalogChange={
+              editor?.kind === 'create' ? setPendingCatalogIconId : undefined
+            }
             onGoalChange={
               editor?.kind === 'edit'
                 ? (updated) => {
@@ -578,14 +591,16 @@ export function GoalsPage() {
                       style={{ backgroundColor: goal.color }}
                       aria-hidden
                     />
-                    <span style={{ filter: moodGlowFilter(goal.color) }}>
+                    <span
+                      className="goal-card-icon"
+                      style={{ filter: moodGlowFilter(goal.color) }}
+                    >
                       <GoalIcon
                         style={{
                           color: goal.color,
                           icon_type: goal.icon_type,
                           icon: goal.icon,
                         }}
-                        className="goal-card-icon"
                       />
                     </span>
                     <h2>{goal.label}</h2>
