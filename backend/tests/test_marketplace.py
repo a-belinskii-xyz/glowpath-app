@@ -112,8 +112,11 @@ def test_search_tags_and_icon_filter(
         headers=_auth_headers(token),
     )
     assert found.status_code == 200
-    ids = [item["id"] for item in found.json()["items"]]
+    items = found.json()["items"]
+    ids = [item["id"] for item in items]
     assert str(icon_id) in ids
+    matched = next(item for item in items if item["id"] == str(icon_id))
+    assert set(matched["pack"]["search_tags"]) == {"sport", "energy"}
 
     packs = auth_client.get(
         "/v1/marketplace/packs",

@@ -954,15 +954,15 @@ def pack_icon_count(db: Session, pack_id: uuid.UUID) -> int:
 
 
 def pack_search_tag_slugs(db: Session, pack_id: uuid.UUID) -> list[str]:
-    rows = db.scalars(
-        select(IconSearchTag.slug)
+    rows = db.execute(
+        select(IconSearchTag.slug, IconSearchTag.sort_order)
         .join(CatalogIconSearchTag, CatalogIconSearchTag.tag_id == IconSearchTag.id)
         .join(CatalogIcon, CatalogIcon.id == CatalogIconSearchTag.icon_id)
         .where(CatalogIcon.pack_id == pack_id)
-        .order_by(IconSearchTag.sort_order, IconSearchTag.slug)
         .distinct()
+        .order_by(IconSearchTag.sort_order, IconSearchTag.slug)
     ).all()
-    return list(rows)
+    return [slug for slug, _sort_order in rows]
 
 
 def serialize_search_tag(tag: IconSearchTag, *, locale: str) -> dict[str, Any]:
