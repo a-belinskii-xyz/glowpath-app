@@ -6,7 +6,7 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed reindex-embeddings
+.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed seed-marketplace reindex-embeddings
 
 FRONTEND := frontend
 
@@ -97,6 +97,11 @@ SEED_ARGS ?=
 MINIO_API_PORT ?= 9000
 seed: $(MARKER)
 	cd $(BACKEND) && MINIO_ENDPOINT=localhost:$(MINIO_API_PORT) $(BIN)/python -m dev_seed $(SEED_ARGS)
+
+# Official catalog packs from backend/app/data/marketplace/<pack>/.
+# Requires a running app container (`make up`).
+seed-marketplace:
+	docker compose exec -T app python -m app.services.marketplace_seed
 
 # Recompute semantic-search embeddings for all mood entries (requires EMBEDDING_ENABLED=true).
 reindex-embeddings: $(MARKER)

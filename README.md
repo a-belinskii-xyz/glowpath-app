@@ -407,6 +407,8 @@ Terminal 2: make frontend-dev
 
 Requires a running DB and MinIO (e.g. `make up`). `make seed` uses `DATABASE_URL` from `backend/.env` and overrides `MINIO_ENDPOINT` to `localhost:$(MINIO_API_PORT)` from the root `.env` so it works from the host against Compose.
 
+Icon catalog packs are seeded separately: put folders of images in `backend/app/data/marketplace/<pack>/` and run `make seed-marketplace` (needs the `app` container). See that folder's README.
+
 After upgrading an existing database (or seeding), backfill semantic-search vectors:
 
 ```bash
@@ -446,6 +448,7 @@ make migrate              # alembic upgrade head
 make migrate-create MSG="add users table"
 make migrate-down         # alembic downgrade -1 (or REV=base / REV=<revision>)
 make seed                 # local mock users/entries/attachments
+make seed-marketplace     # folder packs from backend/app/data/marketplace/
 make reindex-embeddings   # backfill note embeddings for semantic search
 make frontend-install
 make frontend-dev

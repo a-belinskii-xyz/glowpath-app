@@ -1,15 +1,25 @@
-"""Seed official free essentials pack + base search-tag vocabulary."""
+"""Seed official free essentials pack + folder-based mock packs."""
 
 from __future__ import annotations
 
+import json
+import re
+import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.marketplace import DEMO_MOCKS_PACK_SLUG, ESSENTIALS_PACK_SLUG, PackStatus
+from app.core.marketplace import (
+    ESSENTIALS_PACK_SLUG,
+    MAX_CATALOG_ICON_BYTES,
+    MAX_SUGGESTED_COLORS,
+    PackStatus,
+)
 from app.core.mood_builtin_icons import MOOD_BUILTIN_ICONS
-from app.core.mood_scale import DEFAULT_MOOD_SCORE_COLORS, MoodScore
+from app.core.mood_scale import DEFAULT_MOOD_SCORE_COLORS, MoodScore, is_valid_hex_color
 from app.models.catalog_icon import CatalogIcon
 from app.models.icon_pack import IconPack
 from app.models.icon_search_tag import IconSearchTag
@@ -19,17 +29,22 @@ from app.services.storage import ObjectStorage
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _PACKAGE_ROOT = Path(__file__).resolve().parents[1]  # backend/app (also /app/app in Docker)
 _FRONTEND_MOOD_ICONS = _REPO_ROOT / "frontend" / "public" / "mood-icons"
-_MARKETPLACE_MOCKS_CANDIDATES = (
-    _REPO_ROOT / "frontend" / "public" / "marketplace-mocks",
-    _PACKAGE_ROOT / "data" / "marketplace_mocks",
-)
+_MARKETPLACE_DIR = _PACKAGE_ROOT / "data" / "marketplace"
+_PACK_META_FILENAME = "pack.json"
+_SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
+_IMAGE_MIME_BY_SUFFIX: dict[str, str] = {
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+_DEFAULT_ICON_COLOR = "#94a3b8"
 
 
-def _marketplace_mocks_dir() -> Path:
-    for candidate in _MARKETPLACE_MOCKS_CANDIDATES:
-        if candidate.is_dir():
-            return candidate
-    return _MARKETPLACE_MOCKS_CANDIDATES[-1]
+def _marketplace_dir() -> Path:
+    return _MARKETPLACE_DIR
 
 
 DEFAULT_SEARCH_TAGS: list[tuple[str, dict[str, str], int]] = [
@@ -46,7 +61,7 @@ DEFAULT_SEARCH_TAGS: list[tuple[str, dict[str, str], int]] = [
 ]
 
 # Suggested search tags + colors for each builtin slug
-_BUILTIN_META: dict[str, dict] = {
+_BUILTIN_META: dict[str, dict[str, list[str]]] = {
     "awful-cloud": {
         "tags": ["sadness", "weather"],
         "colors": [DEFAULT_MOOD_SCORE_COLORS[MoodScore.AWFUL], "#94a3b8"],
@@ -89,79 +104,208 @@ _BUILTIN_META: dict[str, dict] = {
     },
 }
 
-_DEMO_MOCK_ICONS: list[dict] = [
-    {
-        "slug": "fox-happy",
-        "file": "fox-happy.svg",
-        "labels": {"en": "Happy fox", "ru": "Весёлый лис"},
-        "tags": ["joy", "animals"],
-        "colors": ["#f97316", "#f59e0b"],
-        "scores": [4, 5],
-    },
-    {
-        "slug": "fox-sad",
-        "file": "fox-sad.svg",
-        "labels": {"en": "Sad fox", "ru": "Грустный лис"},
-        "tags": ["sadness", "animals"],
-        "colors": ["#2563eb", "#60a5fa"],
-        "scores": [1, 2],
-    },
-    {
-        "slug": "fox-dumbbell",
-        "file": "fox-dumbbell.svg",
-        "labels": {"en": "Fox with dumbbells", "ru": "Лис с гантелями"},
-        "tags": ["sport", "fitness", "animals"],
-        "colors": ["#16a34a", "#84cc16"],
-        "scores": [4, 5],
-    },
-    {
-        "slug": "fox-sleep",
-        "file": "fox-sleep.svg",
-        "labels": {"en": "Sleepy fox", "ru": "Сонный лис"},
-        "tags": ["night", "calm", "animals"],
-        "colors": ["#7c3aed", "#a78bfa"],
-        "scores": [3],
-    },
-    {
-        "slug": "blob-joy",
-        "file": "blob-joy.svg",
-        "labels": {"en": "Joy blob", "ru": "Радостный блоб"},
-        "tags": ["joy", "energy"],
-        "colors": ["#db2777", "#f472b6"],
-        "scores": [5],
-    },
-    {
-        "slug": "star-burst",
-        "file": "star-burst.svg",
-        "labels": {"en": "Star burst", "ru": "Вспышка звезды"},
-        "tags": ["joy", "energy"],
-        "colors": ["#d97706", "#eab308"],
-        "scores": [4, 5],
-    },
-    {
-        "slug": "rain-cloud",
-        "file": "rain-cloud.svg",
-        "labels": {"en": "Rain cloud", "ru": "Дождевое облако"},
-        "tags": ["sadness", "weather"],
-        "colors": ["#64748b", "#94a3b8"],
-        "scores": [1, 2],
-    },
-    {
-        "slug": "coffee-cup",
-        "file": "coffee-cup.svg",
-        "labels": {"en": "Coffee cup", "ru": "Чашка кофе"},
-        "tags": ["calm", "energy"],
-        "colors": ["#dc2626", "#f97316"],
-        "scores": [3, 4],
-    },
-]
+
+@dataclass(frozen=True, slots=True)
+class DiscoveredMockIcon:
+    slug: str
+    path: Path
+    file_name: str
+    mime_type: str
+    labels: dict[str, str]
+    tags: tuple[str, ...]
+    colors: tuple[str, ...]
+    scores: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveredMockPack:
+    slug: str
+    labels: dict[str, dict[str, str]]
+    price_tokens: int
+    sort_order: int
+    icons: tuple[DiscoveredMockIcon, ...]
+
+
+def _slugify(raw: str) -> str:
+    slug = _SLUGIFY_RE.sub("-", raw.lower()).strip("-")
+    if not slug:
+        slug = "item"
+    if not slug[0].isalpha():
+        slug = f"p-{slug}"
+    return slug[:64]
+
+
+def _title_from_slug(slug: str) -> str:
+    words = [part for part in slug.replace("_", "-").split("-") if part]
+    if not words:
+        return slug
+    return " ".join(word.capitalize() if index == 0 else word for index, word in enumerate(words))
+
+
+def _locale_labels(raw: object, *, fallback: str) -> dict[str, str]:
+    if isinstance(raw, str) and raw.strip():
+        text = raw.strip()[:200]
+        return {"en": text, "ru": text}
+    if isinstance(raw, dict) and raw:
+        labels: dict[str, str] = {}
+        for locale, value in raw.items():
+            if isinstance(locale, str) and isinstance(value, str) and value.strip():
+                labels[locale.strip().lower()[:16]] = value.strip()[:200]
+        if labels:
+            return labels
+    return {"en": fallback, "ru": fallback}
+
+
+def _string_tuple(raw: object) -> tuple[str, ...]:
+    if not isinstance(raw, list):
+        return ()
+    values: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, str):
+            continue
+        slug = item.strip().lower()
+        if slug and slug not in seen:
+            seen.add(slug)
+            values.append(slug)
+    return tuple(values)
+
+
+def _color_tuple(raw: object, *, fallback: tuple[str, ...]) -> tuple[str, ...]:
+    if not isinstance(raw, list):
+        return fallback
+    colors = tuple(
+        item.strip() for item in raw if isinstance(item, str) and is_valid_hex_color(item.strip())
+    )
+    return colors[:MAX_SUGGESTED_COLORS] or fallback
+
+
+def _score_tuple(raw: object) -> tuple[int, ...]:
+    if not isinstance(raw, list):
+        return ()
+    scores: list[int] = []
+    for item in raw:
+        if isinstance(item, bool) or not isinstance(item, int):
+            continue
+        if 1 <= item <= 5 and item not in scores:
+            scores.append(item)
+    return tuple(scores)
+
+
+def _non_negative_int(raw: object, *, default: int) -> int:
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        return default
+    return max(raw, 0)
+
+
+def _load_pack_json(pack_dir: Path) -> dict[str, object]:
+    meta_path = pack_dir / _PACK_META_FILENAME
+    if not meta_path.is_file():
+        return {}
+    try:
+        raw = json.loads(meta_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {meta_path}: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"{meta_path} must be a JSON object")
+    return {str(key): value for key, value in raw.items()}
+
+
+def _icon_override(pack_meta: dict[str, object], *, slug: str, file_name: str) -> dict[str, object]:
+    icons = pack_meta.get("icons")
+    if not isinstance(icons, dict):
+        return {}
+    for key in (slug, file_name, Path(file_name).stem):
+        value = icons.get(key)
+        if isinstance(value, dict):
+            return {str(item_key): item_value for item_key, item_value in value.items()}
+    return {}
+
+
+def _discover_icons(pack_dir: Path, pack_meta: dict[str, object]) -> tuple[DiscoveredMockIcon, ...]:
+    default_tags = _string_tuple(pack_meta.get("tags"))
+    default_colors = _color_tuple(pack_meta.get("colors"), fallback=(_DEFAULT_ICON_COLOR,))
+    icons: list[DiscoveredMockIcon] = []
+    used_slugs: set[str] = set()
+    for path in sorted(pack_dir.iterdir(), key=lambda item: item.name.lower()):
+        if not path.is_file():
+            continue
+        mime_type = _IMAGE_MIME_BY_SUFFIX.get(path.suffix.lower())
+        if mime_type is None:
+            continue
+        slug = _slugify(path.stem)
+        if slug in used_slugs:
+            continue
+        size = path.stat().st_size
+        if size == 0 or size > MAX_CATALOG_ICON_BYTES:
+            print(f"Skipping {path}: empty or larger than {MAX_CATALOG_ICON_BYTES} bytes")
+            continue
+        used_slugs.add(slug)
+        override = _icon_override(pack_meta, slug=slug, file_name=path.name)
+        title = _title_from_slug(slug)
+        icons.append(
+            DiscoveredMockIcon(
+                slug=slug,
+                path=path,
+                file_name=path.name,
+                mime_type=mime_type,
+                labels=_locale_labels(override.get("labels"), fallback=title),
+                tags=_string_tuple(override.get("tags")) or default_tags,
+                colors=_color_tuple(override.get("colors"), fallback=default_colors),
+                scores=_score_tuple(override.get("scores")),
+            )
+        )
+    return tuple(icons)
+
+
+def discover_mock_packs(root: Path) -> tuple[DiscoveredMockPack, ...]:
+    """Each subdirectory of `root` becomes a pack; image files inside become icons."""
+    if not root.is_dir():
+        return ()
+    packs: list[DiscoveredMockPack] = []
+    used_slugs: set[str] = {ESSENTIALS_PACK_SLUG}
+    folders = sorted(
+        (path for path in root.iterdir() if path.is_dir() and not path.name.startswith(".")),
+        key=lambda path: path.name.lower(),
+    )
+    auto_sort = 10
+    for folder in folders:
+        slug = _slugify(folder.name)
+        if slug in used_slugs:
+            print(f"Skipping mock pack folder {folder.name}: reserved or duplicate slug {slug}")
+            continue
+        meta = _load_pack_json(folder)
+        icons = _discover_icons(folder, meta)
+        if not icons:
+            continue
+        used_slugs.add(slug)
+        title = _title_from_slug(slug)
+        raw_sort = meta.get("sort_order")
+        if isinstance(raw_sort, int) and not isinstance(raw_sort, bool):
+            sort_order = raw_sort
+        else:
+            sort_order = auto_sort
+            auto_sort += 10
+        packs.append(
+            DiscoveredMockPack(
+                slug=slug,
+                labels={
+                    "name": _locale_labels(meta.get("name"), fallback=title),
+                    "description": _locale_labels(
+                        meta.get("description"),
+                        fallback=f"Icons from marketplace/{folder.name}/.",
+                    ),
+                },
+                price_tokens=_non_negative_int(meta.get("price_tokens"), default=0),
+                sort_order=sort_order,
+                icons=icons,
+            )
+        )
+    return tuple(packs)
 
 
 def seed_default_search_tags(db: Session) -> list[IconSearchTag]:
-    existing = {
-        tag.slug: tag
-        for tag in db.scalars(select(IconSearchTag)).all()
-    }
+    existing = {tag.slug: tag for tag in db.scalars(select(IconSearchTag)).all()}
     created: list[IconSearchTag] = []
     for slug, labels, sort_order in DEFAULT_SEARCH_TAGS:
         if slug in existing:
@@ -177,9 +321,7 @@ def seed_default_search_tags(db: Session) -> list[IconSearchTag]:
 def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
     """Idempotent seed of the free official essentials pack from builtin SVGs."""
     seed_default_search_tags(db)
-    tags_by_slug = {
-        tag.slug: tag for tag in db.scalars(select(IconSearchTag)).all()
-    }
+    tags_by_slug = {tag.slug: tag for tag in db.scalars(select(IconSearchTag)).all()}
 
     pack = db.scalar(select(IconPack).where(IconPack.slug == ESSENTIALS_PACK_SLUG))
     if pack is None:
@@ -207,9 +349,7 @@ def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
 
     existing_icons = {
         icon.slug: icon
-        for icon in db.scalars(
-            select(CatalogIcon).where(CatalogIcon.pack_id == pack.id)
-        ).all()
+        for icon in db.scalars(select(CatalogIcon).where(CatalogIcon.pack_id == pack.id)).all()
     }
 
     cover_id = pack.cover_icon_id
@@ -220,15 +360,9 @@ def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
         if not svg_path.is_file():
             continue
         data = svg_path.read_bytes()
-        scores = (
-            [builtin.default_score.value]
-            if builtin.default_score is not None
-            else []
-        )
+        scores = [builtin.default_score.value] if builtin.default_score is not None else []
         icon = existing_icons.get(builtin.slug)
         if icon is None:
-            import uuid
-
             icon_id = uuid.uuid4()
             storage_key = f"catalog/{pack.id}/{icon_id}_{asset_name}"
             storage.put_object(
@@ -256,129 +390,118 @@ def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
             icon.suggested_mood_scores = scores
             icon.sort_order = index
 
-        icon.search_tags = [
-            tags_by_slug[slug] for slug in meta["tags"] if slug in tags_by_slug
-        ]
+        icon.search_tags = [tags_by_slug[slug] for slug in meta["tags"] if slug in tags_by_slug]
         if cover_id is None:
             cover_id = icon.id
 
     pack.cover_icon_id = cover_id
     if pack.published_at is None:
-        from datetime import datetime, timezone
-
-        pack.published_at = datetime.now(timezone.utc)
+        pack.published_at = datetime.now(UTC)
     db.flush()
     return pack
 
 
-def seed_demo_mocks_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
-    """Idempotent seed of temporary mock icons from frontend/public/marketplace-mocks."""
-    seed_default_search_tags(db)
-    tags_by_slug = {
-        tag.slug: tag for tag in db.scalars(select(IconSearchTag)).all()
-    }
-
-    pack = db.scalar(select(IconPack).where(IconPack.slug == DEMO_MOCKS_PACK_SLUG))
+def _seed_one_mock_pack(
+    db: Session,
+    *,
+    storage: ObjectStorage,
+    folder: DiscoveredMockPack,
+    tags_by_slug: dict[str, IconSearchTag],
+) -> IconPack:
+    pack = db.scalar(select(IconPack).where(IconPack.slug == folder.slug))
     if pack is None:
         pack = IconPack(
-            slug=DEMO_MOCKS_PACK_SLUG,
+            slug=folder.slug,
             author_id=None,
             is_official=True,
             status=PackStatus.PUBLISHED.value,
-            price_tokens=0,
-            labels={
-                "name": {"en": "Demo mocks", "ru": "Демо-моки"},
-                "description": {
-                    "en": "Temporary placeholder icons — replace files in marketplace-mocks/.",
-                    "ru": "Временные заглушки — замените файлы в marketplace-mocks/.",
-                },
-            },
-            sort_order=10,
+            price_tokens=folder.price_tokens,
+            labels=folder.labels,
+            sort_order=folder.sort_order,
         )
         db.add(pack)
         db.flush()
     else:
         pack.is_official = True
         pack.status = PackStatus.PUBLISHED.value
-        pack.price_tokens = 0
+        pack.price_tokens = folder.price_tokens
+        pack.labels = folder.labels
+        pack.sort_order = folder.sort_order
 
     existing_icons = {
         icon.slug: icon
-        for icon in db.scalars(
-            select(CatalogIcon).where(CatalogIcon.pack_id == pack.id)
-        ).all()
+        for icon in db.scalars(select(CatalogIcon).where(CatalogIcon.pack_id == pack.id)).all()
     }
 
-    import uuid
-    from datetime import datetime, timezone
-
     cover_id = pack.cover_icon_id
-    for index, item in enumerate(_DEMO_MOCK_ICONS):
-        svg_path = _marketplace_mocks_dir() / item["file"]
-        if not svg_path.is_file():
-            continue
-        data = svg_path.read_bytes()
-        icon = existing_icons.get(item["slug"])
+    for index, item in enumerate(folder.icons):
+        data = item.path.read_bytes()
+        icon = existing_icons.get(item.slug)
         if icon is None:
             icon_id = uuid.uuid4()
-            storage_key = f"catalog/{pack.id}/{icon_id}_{item['file']}"
+            storage_key = f"catalog/{pack.id}/{icon_id}_{item.file_name}"
             storage.put_object(
                 key=storage_key,
                 data=data,
-                content_type="image/svg+xml",
+                content_type=item.mime_type,
             )
             icon = CatalogIcon(
                 id=icon_id,
                 pack_id=pack.id,
-                slug=item["slug"],
-                labels=dict(item["labels"]),
+                slug=item.slug,
+                labels=dict(item.labels),
                 storage_key=storage_key,
-                mime_type="image/svg+xml",
+                mime_type=item.mime_type,
                 size_bytes=len(data),
-                suggested_colors=list(item["colors"]),
-                suggested_mood_scores=list(item["scores"]),
+                suggested_colors=list(item.colors),
+                suggested_mood_scores=list(item.scores),
                 sort_order=index,
             )
             db.add(icon)
             db.flush()
         else:
-            # Refresh bytes so replacing SVG files on disk is picked up on re-seed.
             storage.put_object(
                 key=icon.storage_key,
                 data=data,
-                content_type="image/svg+xml",
+                content_type=item.mime_type,
             )
-            icon.labels = dict(item["labels"])
-            icon.mime_type = "image/svg+xml"
+            icon.labels = dict(item.labels)
+            icon.mime_type = item.mime_type
             icon.size_bytes = len(data)
-            icon.suggested_colors = list(item["colors"])
-            icon.suggested_mood_scores = list(item["scores"])
+            icon.suggested_colors = list(item.colors)
+            icon.suggested_mood_scores = list(item.scores)
             icon.sort_order = index
 
-        icon.search_tags = [
-            tags_by_slug[slug] for slug in item["tags"] if slug in tags_by_slug
-        ]
+        icon.search_tags = [tags_by_slug[slug] for slug in item.tags if slug in tags_by_slug]
         if cover_id is None:
             cover_id = icon.id
 
-    if not any(
-        (_marketplace_mocks_dir() / item["file"]).is_file() for item in _DEMO_MOCK_ICONS
-    ):
-        raise FileNotFoundError(
-            f"No demo mock SVGs found under {_marketplace_mocks_dir()}"
-        )
-
     pack.cover_icon_id = cover_id
     if pack.published_at is None:
-        pack.published_at = datetime.now(timezone.utc)
+        pack.published_at = datetime.now(UTC)
     db.flush()
     return pack
 
 
+def seed_mock_packs(
+    db: Session,
+    *,
+    storage: ObjectStorage,
+    root: Path | None = None,
+) -> list[IconPack]:
+    """Idempotent seed: each folder under data/marketplace/ becomes a published pack."""
+    seed_default_search_tags(db)
+    tags_by_slug = {tag.slug: tag for tag in db.scalars(select(IconSearchTag)).all()}
+    return [
+        _seed_one_mock_pack(db, storage=storage, folder=folder, tags_by_slug=tags_by_slug)
+        for folder in discover_mock_packs(root or _marketplace_dir())
+    ]
+
+
 def seed_marketplace_catalog(db: Session, *, storage: ObjectStorage) -> list[IconPack]:
     essentials = seed_essentials_pack(db, storage=storage)
-    demo = seed_demo_mocks_pack(db, storage=storage)
-    return [essentials, demo]
+    mocks = seed_mock_packs(db, storage=storage)
+    return [essentials, *mocks]
 
 
 def main() -> None:
