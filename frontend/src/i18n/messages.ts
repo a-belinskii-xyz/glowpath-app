@@ -330,6 +330,8 @@ export const en = {
     unlockPackTitle: 'Unlock pack',
     unlockPack:
       'Unlock “{name}” for {price}? Tokens will be deducted from your balance.',
+    goToMarketTitle: 'Icon locked',
+    goToMarket: 'You don’t have “{label}”. Open the market to unlock it?',
   },
   tagsPage: {
     title: 'Tags',
@@ -552,8 +554,9 @@ export const en = {
     iconTypeCatalog: 'Market',
     selectCatalogIcon: 'Choose a marketplace icon:',
     catalogEmpty: 'No marketplace icons yet.',
-    catalogLocked: 'Locked. Open the market to unlock this icon.',
-    catalogLockedHint: 'Locked icons still show a preview. Tap one to open the market.',
+    catalogLocked: 'Locked. Unlock this pack in the market to use the icon.',
+    catalogLockedHint: 'Locked icons still show a preview. Tap one if you want to open the market.',
+    goToMarket: 'Go to market',
     catalogSearch: 'Search marketplace icons',
     catalogSearchPlaceholder: 'Search packs and icons…',
     catalogSearchEmpty: 'No icons match this search.',
@@ -1195,6 +1198,8 @@ export const ru: DeepStringLeaves<typeof en> = {
       'Удалить эту загруженную иконку? Если она используется, тег вернётся к эмодзи.',
     unlockPackTitle: 'Открыть пак',
     unlockPack: 'Открыть «{name}» за {price}? Токены спишутся с вашего баланса.',
+    goToMarketTitle: 'Иконка закрыта',
+    goToMarket: 'У вас нет изображения «{label}». Перейти в магазин, чтобы открыть его?',
   },
   tagsPage: {
     title: 'Теги',
@@ -1418,8 +1423,10 @@ export const ru: DeepStringLeaves<typeof en> = {
     iconTypeCatalog: 'Маркет',
     selectCatalogIcon: 'Выберите иконку из маркета:',
     catalogEmpty: 'В маркете пока нет иконок.',
-    catalogLocked: 'Закрыто. Откройте маркет, чтобы разблокировать иконку.',
-    catalogLockedHint: 'Закрытые иконки всё равно показываются. Нажмите, чтобы открыть маркет.',
+    catalogLocked: 'Закрыто. Откройте пак в маркете, чтобы использовать иконку.',
+    catalogLockedHint:
+      'Закрытые иконки всё равно показываются. Нажмите, если хотите перейти в магазин.',
+    goToMarket: 'Перейти в магазин',
     catalogSearch: 'Поиск иконок маркета',
     catalogSearchPlaceholder: 'Искать паки и иконки…',
     catalogSearchEmpty: 'Ничего не нашлось по этому запросу.',

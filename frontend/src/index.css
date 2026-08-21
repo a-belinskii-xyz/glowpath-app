@@ -1242,6 +1242,65 @@ code {
   justify-content: flex-end;
 }
 
+.confirm-dialog--preview {
+  width: min(100%, 26rem);
+}
+
+.confirm-dialog-preview {
+  display: flex;
+  justify-content: center;
+}
+
+.confirm-icon-preview {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.confirm-icon-preview-item {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+}
+
+.confirm-icon-preview-media {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, white);
+}
+
+.confirm-icon-preview--single .confirm-icon-preview-media {
+  width: 6.5rem;
+  height: 6.5rem;
+}
+
+.confirm-icon-preview--sample .confirm-icon-preview-media {
+  width: 4.35rem;
+  height: 4.35rem;
+}
+
+.confirm-icon-preview-media .catalog-icon-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.confirm-icon-preview-label {
+  margin: 0;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 .month-nav {
   display: flex;
   align-items: center;

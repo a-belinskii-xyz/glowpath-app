@@ -6,6 +6,7 @@ import {
   unlockMarketplacePack,
 } from '../api/marketplace'
 import { getWallet } from '../api/wallet'
+import { CatalogIconPreview } from '../components/CatalogIconPreview'
 import { CatalogIconThumb } from '../components/CatalogIconThumb'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -15,7 +16,7 @@ import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
-import { catalogIconMatchesQuery, groupCatalogIconsByPack } from '../lib/catalogIcons'
+import { catalogIconMatchesQuery, groupCatalogIconsByPack, pickRandomSample } from '../lib/catalogIcons'
 import { ApiError, formatApiError } from '../lib/errors'
 import type {
   CatalogIconWithPackPublic,
@@ -24,6 +25,12 @@ import type {
 } from '../types/marketplace'
 
 const PACK_COLLAPSED_COUNT = 8
+const PACK_UNLOCK_PREVIEW_COUNT = 4
+
+type PendingUnlock = {
+  pack: PackCardPublic
+  sample: CatalogIconWithPackPublic[]
+}
 
 export function MarketPage() {
   const { t, locale } = useLocale()
@@ -38,7 +45,7 @@ export function MarketPage() {
   const [balance, setBalance] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [pendingUnlock, setPendingUnlock] = useState<PackCardPublic | null>(null)
+  const [pendingUnlock, setPendingUnlock] = useState<PendingUnlock | null>(null)
   const [unlockingPackId, setUnlockingPackId] = useState<string | null>(null)
   const [unlockError, setUnlockError] = useState<string | null>(null)
 
@@ -106,10 +113,10 @@ export function MarketPage() {
 
   const handleUnlock = async () => {
     if (!pendingUnlock || unlockingPackId) return
-    setUnlockingPackId(pendingUnlock.id)
+    setUnlockingPackId(pendingUnlock.pack.id)
     setUnlockError(null)
     try {
-      await unlockMarketplacePack(pendingUnlock.id)
+      await unlockMarketplacePack(pendingUnlock.pack.id)
       setPendingUnlock(null)
       await reload()
     } catch (err) {
@@ -166,13 +173,18 @@ export function MarketPage() {
           variant="default"
           title={t('confirm.unlockPackTitle')}
           message={t('confirm.unlockPack', {
-            name: pendingUnlock.name,
-            price: t('market.priceTokens', { count: String(pendingUnlock.price_tokens) }),
+            name: pendingUnlock.pack.name,
+            price: t('market.priceTokens', { count: String(pendingUnlock.pack.price_tokens) }),
           })}
           confirmLabel={t('market.unlock')}
           busyLabel={t('market.unlocking')}
-          isBusy={unlockingPackId === pendingUnlock.id}
+          isBusy={unlockingPackId === pendingUnlock.pack.id}
           error={unlockError}
+          preview={
+            pendingUnlock.sample.length > 0 ? (
+              <CatalogIconPreview icons={pendingUnlock.sample} variant="sample" />
+            ) : null
+          }
           onCancel={closeUnlockDialog}
           onConfirm={() => {
             void handleUnlock()
@@ -251,7 +263,13 @@ export function MarketPage() {
                           disabled={unlockingPackId !== null}
                           onClick={() => {
                             setUnlockError(null)
-                            setPendingUnlock(group.pack)
+                            setPendingUnlock({
+                              pack: group.pack,
+                              sample: pickRandomSample(
+                                icons.filter((icon) => icon.pack.id === group.pack.id),
+                                PACK_UNLOCK_PREVIEW_COUNT,
+                              ),
+                            })
                           }}
                         >
                           <StableButtonLabel

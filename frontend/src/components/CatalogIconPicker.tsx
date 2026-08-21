@@ -13,7 +13,9 @@ import {
 } from '../lib/catalogIcons'
 import { formatApiError } from '../lib/errors'
 import type { CatalogIconWithPackPublic } from '../types/marketplace'
+import { CatalogIconPreview } from './CatalogIconPreview'
 import { CatalogIconThumb } from './CatalogIconThumb'
+import { ConfirmDialog } from './ConfirmDialog'
 
 const COLLAPSED_COUNT = 8
 
@@ -53,6 +55,7 @@ export function CatalogIconPicker({
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [query, setQuery] = useState('')
+  const [pendingLocked, setPendingLocked] = useState<CatalogIconWithPackPublic | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
@@ -135,6 +138,9 @@ export function CatalogIconPicker({
       })
     })
     const onPointerDown = (event: MouseEvent) => {
+      if (pendingLocked) {
+        return
+      }
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
         setExpanded(false)
       }
@@ -152,11 +158,11 @@ export function CatalogIconPicker({
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKey)
     }
-  }, [expanded])
+  }, [expanded, pendingLocked])
 
   const handleIconClick = (icon: CatalogIconWithPackPublic) => {
     if (!isCatalogIconAssignable(icon, user?.id)) {
-      navigate('/market')
+      setPendingLocked(icon)
       return
     }
     onSelect(icon)
@@ -207,6 +213,21 @@ export function CatalogIconPicker({
 
   return (
     <div className="catalog-icon-picker emoji-picker" ref={rootRef}>
+      {pendingLocked ? (
+        <ConfirmDialog
+          open
+          variant="default"
+          title={t('confirm.goToMarketTitle')}
+          message={t('confirm.goToMarket', { label: pendingLocked.label })}
+          confirmLabel={t('moodPreferences.goToMarket')}
+          preview={<CatalogIconPreview icons={[pendingLocked]} variant="single" />}
+          onCancel={() => setPendingLocked(null)}
+          onConfirm={() => {
+            setPendingLocked(null)
+            navigate('/market')
+          }}
+        />
+      ) : null}
       <div
         className="emoji-picker-strip catalog-icon-picker-strip"
         role="listbox"

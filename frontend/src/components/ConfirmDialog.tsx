@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useLocale } from '../context/LocaleContext'
@@ -17,6 +17,7 @@ export type ConfirmDialogProps = {
   variant?: 'danger' | 'default'
   isBusy?: boolean
   error?: string | null
+  preview?: ReactNode
   onConfirm: () => void
   onCancel: () => void
 }
@@ -31,6 +32,7 @@ export function ConfirmDialog({
   variant = 'danger',
   isBusy = false,
   error = null,
+  preview = null,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -80,7 +82,7 @@ export function ConfirmDialog({
       }}
     >
       <div
-        className={`card confirm-dialog${variant === 'danger' ? ' confirm-dialog--danger' : ''}`}
+        className={`card confirm-dialog${variant === 'danger' ? ' confirm-dialog--danger' : ''}${preview ? ' confirm-dialog--preview' : ''}`}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -89,6 +91,7 @@ export function ConfirmDialog({
         <h2 id={titleId} className="confirm-dialog-title">
           {title}
         </h2>
+        {preview ? <div className="confirm-dialog-preview">{preview}</div> : null}
         <p id={messageId} className="confirm-dialog-message">
           {message}
         </p>
