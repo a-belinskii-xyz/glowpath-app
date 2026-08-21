@@ -1,14 +1,15 @@
 # Marketplace icons
 
-Каждая **подпапка** = пак в каталоге. Каждый **файл картинки** внутри = иконка. Seed сканирует папки сам: править Python не нужно.
+Каждая **подпапка** = пак в каталоге. Каждый **файл картинки** внутри = иконка. Настройки пака — `pack.json` в этой же папке: цена, мета, сразу ли доступен.
 
 ```text
 marketplace/
   demo-mocks/          → pack slug `demo-mocks`
-    pack.json          ← необязательно: названия, теги, цвета
+    pack.json          ← цена, название, published/granted, мета иконок
     fox-happy.svg      → icon slug `fox-happy`
     rain-cloud.svg
   my-animals/          → новый пак `my-animals`
+    pack.json
     cat.png
     dog.webp
 ```
@@ -19,25 +20,30 @@ marketplace/
    Имя папки станет `slug` пака (`My Animals` → `my-animals`). Не используйте `essentials` — этот slug занят базовым набором.
 2. Положите туда картинки: `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`.
    Имя файла без расширения станет `slug` иконки (`Happy Fox.png` → `happy-fox`). Подпапки внутри пака игнорируются.
-3. По желанию добавьте `pack.json` (см. ниже). Без него названия возьмутся из имён папки/файлов, теги будут пустые, цвет `#94a3b8`.
+3. Положите `pack.json` (см. ниже). Без файла seed всё равно подхватит картинки с дефолтами (бесплатный published official, названия из файлов).
 4. Поднимите стек (`make up`) и подтяните каталог:
 
    ```bash
    make seed-marketplace
    ```
 
-Команда идемпотентна: новые файлы создадут иконки, замена файла обновит картинку в MinIO.
+Команда идемпотентна: новые файлы создадут иконки, замена файла и правки `pack.json` обновят каталог.
 
-## pack.json (необязательно)
+## pack.json
 
-См. `demo-mocks/pack.json`. Ключи `icons` — slug или имя файла. Поля, которых нет, берутся из дефолтов пака / имени файла.
+Живой пример: `demo-mocks/pack.json`.
 
 ```json
 {
+  "slug": "foxes",
   "name": {"en": "Foxes", "ru": "Лисы"},
   "description": {"en": "Cute foxes", "ru": "Милые лисы"},
-  "price_tokens": 0,
-  "sort_order": 10,
+  "price_tokens": 50,
+  "official": true,
+  "published": true,
+  "granted": false,
+  "sort_order": 20,
+  "cover": "happy-fox",
   "tags": ["animals"],
   "colors": ["#f97316"],
   "icons": {
@@ -51,9 +57,27 @@ marketplace/
 }
 ```
 
-Готовые теги: `joy`, `sadness`, `calm`, `energy`, `sport`, `fitness`, `animals`, `nature`, `weather`, `night`. Неизвестный тег в `"tags"` игнорируется — сначала добавьте его в `DEFAULT_SEARCH_TAGS` в `backend/app/services/marketplace_seed.py`.
+### Поля пака → БД
 
-`scores` — suggested mood 1–5. `price_tokens: 0` = бесплатный официальный пак (разблокирован у всех).
+| Поле | БД | По умолчанию |
+|------|-----|----------------|
+| `slug` | `icon_packs.slug` | имя папки |
+| `name` / `description` | `labels` (`en`/`ru`) | из имени папки |
+| `price_tokens` (или `price`) | `price_tokens` | `0` |
+| `official` (или `is_official`) | `is_official` | `true` |
+| `published` | `status`: `published` / `draft` | `true` |
+| `granted` (или `unlocked` / `available`) | сразу доступен всем | `true`, если цена `0` |
+| `sort_order` | `sort_order` | 10, 20, 30… по имени папок |
+| `cover` (или `cover_icon`) | `cover_icon_id` | первая иконка |
+| `tags` / `colors` | дефолты для иконок без своих полей | теги пустые, цвет `#94a3b8` |
+
+`granted: true` — пак сразу у всех (как бесплатный): в БД уйдёт `price_tokens = 0`, иконки можно ставить без покупки. Для платного пака: `"granted": false` и `"price_tokens": 50`.
+
+`published: false` — черновик, в витрине не показывается. Альтернатива: `"status": "draft"` / `"published"` / `"archived"`.
+
+Ключи в `icons` — slug или имя файла. Поля, которых нет, берутся из дефолтов пака / имени файла. `scores` — suggested mood 1–5.
+
+Готовые теги: `joy`, `sadness`, `calm`, `energy`, `sport`, `fitness`, `animals`, `nature`, `weather`, `night`. Неизвестный тег игнорируется — сначала добавьте его в `DEFAULT_SEARCH_TAGS` в `backend/app/services/marketplace_seed.py`.
 
 ## Что не подхватывается
 

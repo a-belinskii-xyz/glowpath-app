@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+from app.core.marketplace import PackStatus
 from app.models.catalog_icon import CatalogIcon
 from app.models.icon_pack import IconPack
 from app.services.marketplace_seed import (
@@ -62,6 +63,10 @@ def test_discover_mock_packs_from_folders(tmp_path: Path) -> None:
     assert weather_pack.icons[0].mime_type == "image/png"
     assert weather_pack.icons[0].tags == ()
     assert weather_pack.icons[0].colors == ("#94a3b8",)
+    assert weather_pack.price_tokens == 0
+    assert weather_pack.published is True
+    assert weather_pack.is_official is True
+    assert weather_pack.cover_slug is None
 
 
 def test_discover_skips_essentials_and_empty_folders(tmp_path: Path) -> None:
@@ -100,6 +105,10 @@ def test_bundled_demo_mocks_are_discoverable() -> None:
     happy = next(icon for icon in demo.icons if icon.slug == "fox-happy")
     assert happy.tags == ("joy", "animals")
     assert happy.scores == (4, 5)
+    assert demo.price_tokens == 0
+    assert demo.published is True
+    assert demo.is_official is True
+    assert demo.cover_slug == "fox-happy"
 
 
 def test_seed_mock_packs_creates_and_refreshes(
@@ -142,3 +151,68 @@ def test_seed_mock_packs_creates_and_refreshes(
     assert storage.get_object(key=refreshed.storage_key) == svg_path.read_bytes()
     remaining = db.scalars(select(CatalogIcon).where(CatalogIcon.pack_id == pack.id)).all()
     assert len(remaining) == 1
+
+
+def test_pack_json_controls_price_availability_and_cover(
+    db: Session, storage: FakeStorage, tmp_path: Path
+) -> None:
+    paid = tmp_path / "premium-foxes"
+    paid.mkdir()
+    (paid / "cover-fox.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg' id='cover'/>")
+    (paid / "extra-fox.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg' id='extra'/>")
+    (paid / "pack.json").write_text(
+        json.dumps(
+            {
+                "slug": "fox-premium",
+                "name": {"en": "Premium foxes", "ru": "Премиум-лисы"},
+                "description": {"en": "Paid pack", "ru": "Платный пак"},
+                "price_tokens": 50,
+                "official": True,
+                "published": True,
+                "granted": False,
+                "sort_order": 40,
+                "cover": "cover-fox",
+            }
+        )
+    )
+    draft = tmp_path / "wip"
+    draft.mkdir()
+    (draft / "idea.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg'/>")
+    (draft / "pack.json").write_text(
+        json.dumps(
+            {
+                "name": {"en": "WIP", "ru": "Черновик"},
+                "published": False,
+                "granted": True,
+                "price_tokens": 99,
+            }
+        )
+    )
+
+    discovered = discover_mock_packs(tmp_path)
+    by_slug = {pack.slug: pack for pack in discovered}
+    assert by_slug["fox-premium"].price_tokens == 50
+    assert by_slug["fox-premium"].published is True
+    assert by_slug["fox-premium"].cover_slug == "cover-fox"
+    assert by_slug["wip"].price_tokens == 0
+    assert by_slug["wip"].published is False
+
+    seed_mock_packs(db, storage=storage, root=tmp_path)
+    db.flush()
+
+    premium = db.scalar(select(IconPack).where(IconPack.slug == "fox-premium"))
+    assert premium is not None
+    assert premium.price_tokens == 50
+    assert premium.status == PackStatus.PUBLISHED.value
+    assert premium.is_official is True
+    assert premium.sort_order == 40
+    assert premium.published_at is not None
+    cover = db.get(CatalogIcon, premium.cover_icon_id)
+    assert cover is not None
+    assert cover.slug == "cover-fox"
+
+    wip = db.scalar(select(IconPack).where(IconPack.slug == "wip"))
+    assert wip is not None
+    assert wip.price_tokens == 0
+    assert wip.status == PackStatus.DRAFT.value
+    assert wip.published_at is None

@@ -4,7 +4,12 @@
     "en": "Temporary placeholder icons — drop files into this folder and run make seed-marketplace.",
     "ru": "Временные заглушки — положите файлы в эту папку и выполните make seed-marketplace."
   },
+  "price_tokens": 0,
+  "official": true,
+  "published": true,
+  "granted": true,
   "sort_order": 10,
+  "cover": "fox-happy",
   "icons": {
     "fox-happy": {
       "labels": {"en": "Happy fox", "ru": "Весёлый лис"},

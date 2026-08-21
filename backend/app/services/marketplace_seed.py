@@ -123,6 +123,9 @@ class DiscoveredMockPack:
     labels: dict[str, dict[str, str]]
     price_tokens: int
     sort_order: int
+    is_official: bool
+    published: bool
+    cover_slug: str | None
     icons: tuple[DiscoveredMockIcon, ...]
 
 
@@ -198,6 +201,31 @@ def _non_negative_int(raw: object, *, default: int) -> int:
     return max(raw, 0)
 
 
+def _bool(raw: object, *, default: bool) -> bool:
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        lowered = raw.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+    return default
+
+
+def _optional_slug(raw: object) -> str | None:
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    return _slugify(Path(raw.strip()).stem)
+
+
+def _first_present(meta: dict[str, object], *keys: str) -> object:
+    for key in keys:
+        if key in meta:
+            return meta[key]
+    return None
+
+
 def _load_pack_json(pack_dir: Path) -> dict[str, object]:
     meta_path = pack_dir / _PACK_META_FILENAME
     if not meta_path.is_file():
@@ -270,11 +298,11 @@ def discover_mock_packs(root: Path) -> tuple[DiscoveredMockPack, ...]:
     )
     auto_sort = 10
     for folder in folders:
-        slug = _slugify(folder.name)
+        meta = _load_pack_json(folder)
+        slug = _optional_slug(meta.get("slug")) or _slugify(folder.name)
         if slug in used_slugs:
             print(f"Skipping mock pack folder {folder.name}: reserved or duplicate slug {slug}")
             continue
-        meta = _load_pack_json(folder)
         icons = _discover_icons(folder, meta)
         if not icons:
             continue
@@ -286,6 +314,18 @@ def discover_mock_packs(root: Path) -> tuple[DiscoveredMockPack, ...]:
         else:
             sort_order = auto_sort
             auto_sort += 10
+        price_tokens = _non_negative_int(_first_present(meta, "price_tokens", "price"), default=0)
+        raw_granted = _first_present(meta, "granted", "unlocked", "available")
+        granted = _bool(raw_granted, default=price_tokens == 0)
+        raw_status = meta.get("status")
+        if isinstance(raw_status, str) and raw_status.strip().lower() in {
+            PackStatus.DRAFT.value,
+            PackStatus.PUBLISHED.value,
+            PackStatus.ARCHIVED.value,
+        }:
+            published = raw_status.strip().lower() == PackStatus.PUBLISHED.value
+        else:
+            published = _bool(meta.get("published"), default=True)
         packs.append(
             DiscoveredMockPack(
                 slug=slug,
@@ -296,8 +336,11 @@ def discover_mock_packs(root: Path) -> tuple[DiscoveredMockPack, ...]:
                         fallback=f"Icons from marketplace/{folder.name}/.",
                     ),
                 },
-                price_tokens=_non_negative_int(meta.get("price_tokens"), default=0),
+                price_tokens=0 if granted else price_tokens,
                 sort_order=sort_order,
+                is_official=_bool(_first_present(meta, "official", "is_official"), default=True),
+                published=published,
+                cover_slug=_optional_slug(_first_present(meta, "cover", "cover_icon")),
                 icons=icons,
             )
         )
@@ -408,13 +451,14 @@ def _seed_one_mock_pack(
     folder: DiscoveredMockPack,
     tags_by_slug: dict[str, IconSearchTag],
 ) -> IconPack:
+    status = PackStatus.PUBLISHED.value if folder.published else PackStatus.DRAFT.value
     pack = db.scalar(select(IconPack).where(IconPack.slug == folder.slug))
     if pack is None:
         pack = IconPack(
             slug=folder.slug,
             author_id=None,
-            is_official=True,
-            status=PackStatus.PUBLISHED.value,
+            is_official=folder.is_official,
+            status=status,
             price_tokens=folder.price_tokens,
             labels=folder.labels,
             sort_order=folder.sort_order,
@@ -422,8 +466,8 @@ def _seed_one_mock_pack(
         db.add(pack)
         db.flush()
     else:
-        pack.is_official = True
-        pack.status = PackStatus.PUBLISHED.value
+        pack.is_official = folder.is_official
+        pack.status = status
         pack.price_tokens = folder.price_tokens
         pack.labels = folder.labels
         pack.sort_order = folder.sort_order
@@ -433,7 +477,7 @@ def _seed_one_mock_pack(
         for icon in db.scalars(select(CatalogIcon).where(CatalogIcon.pack_id == pack.id)).all()
     }
 
-    cover_id = pack.cover_icon_id
+    seeded_icons: dict[str, CatalogIcon] = {}
     for index, item in enumerate(folder.icons):
         data = item.path.read_bytes()
         icon = existing_icons.get(item.slug)
@@ -473,12 +517,17 @@ def _seed_one_mock_pack(
             icon.sort_order = index
 
         icon.search_tags = [tags_by_slug[slug] for slug in item.tags if slug in tags_by_slug]
-        if cover_id is None:
-            cover_id = icon.id
+        seeded_icons[item.slug] = icon
 
-    pack.cover_icon_id = cover_id
-    if pack.published_at is None:
-        pack.published_at = datetime.now(UTC)
+    if folder.cover_slug and folder.cover_slug in seeded_icons:
+        pack.cover_icon_id = seeded_icons[folder.cover_slug].id
+    elif pack.cover_icon_id is None and folder.icons:
+        pack.cover_icon_id = seeded_icons[folder.icons[0].slug].id
+    if folder.published:
+        if pack.published_at is None:
+            pack.published_at = datetime.now(UTC)
+    else:
+        pack.published_at = None
     db.flush()
     return pack
 
