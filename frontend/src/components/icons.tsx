@@ -246,6 +246,27 @@ export function NavTagsIcon(props: IconProps) {
   )
 }
 
+export function NavMarketIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M6 8.5h12l-1.1 9.2a2 2 0 0 1-2 1.8H9.1a2 2 0 0 1-2-1.8L6 8.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 8.5V7a3 3 0 0 1 6 0v1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
 export function NavProfileIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>

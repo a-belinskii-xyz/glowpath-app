@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 
 import { CaptureAttribution } from './CaptureAttribution'
 import { LanguageSwitcher } from './LanguageSwitcher'
-import { NavEntriesIcon, NavGoalsIcon, NavProfileIcon, NavTagsIcon } from './icons'
+import { NavEntriesIcon, NavGoalsIcon, NavMarketIcon, NavProfileIcon, NavTagsIcon } from './icons'
 import { useAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -26,8 +26,10 @@ function isFocusedEntryFlow(pathname: string) {
 
 function BottomNav() {
   const { t } = useLocale()
+  const { user } = useAuth()
   const location = useLocation()
   const accountActive = isAccountSection(location.pathname)
+  const showMarket = Boolean(user?.features?.icon_marketplace)
 
   return (
     <nav className="app-bottom-nav" aria-label={t('nav.menu')}>
@@ -43,6 +45,12 @@ function BottomNav() {
         <NavTagsIcon />
         <span>{t('nav.tags')}</span>
       </NavLink>
+      {showMarket ? (
+        <NavLink to="/market" className={bottomNavClassName}>
+          <NavMarketIcon />
+          <span>{t('nav.market')}</span>
+        </NavLink>
+      ) : null}
       <NavLink
         to="/profile"
         className={() => `app-bottom-nav-link${accountActive ? ' is-active' : ''}`}
@@ -76,9 +84,10 @@ function ShellChrome({
   guestNav: boolean
 }) {
   const { t } = useLocale()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const location = useLocation()
   const hideBottomNav = isFocusedEntryFlow(location.pathname)
+  const showMarket = Boolean(user?.features?.icon_marketplace)
 
   if (onboarding) {
     return (
@@ -149,6 +158,11 @@ function ShellChrome({
           <NavLink to="/tags" className={navClassName}>
             {t('nav.tags')}
           </NavLink>
+          {showMarket ? (
+            <NavLink to="/market" className={navClassName}>
+              {t('nav.market')}
+            </NavLink>
+          ) : null}
           <NavLink to="/tracker-settings" className={navClassName}>
             {t('nav.trackerSettings')}
           </NavLink>
