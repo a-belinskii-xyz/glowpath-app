@@ -30,6 +30,7 @@ from app.models.icon_pack import IconPack
 from app.models.icon_pack_unlock import IconPackUnlock
 from app.models.icon_search_tag import IconSearchTag
 from app.models.user import User
+from app.models.wallet_ledger import WalletLedger
 from app.services.storage import ObjectStorage, StorageError
 from app.services.wallet_service import WalletError, apply_ledger_delta, get_or_create_wallet
 
@@ -324,6 +325,32 @@ def get_pack_or_raise(db: Session, pack_id: uuid.UUID) -> IconPack:
     return pack
 
 
+def get_pack_by_ref(db: Session, ref: str) -> IconPack:
+    """Resolve a pack by UUID or slug."""
+    raw = ref.strip()
+    if not raw:
+        raise MarketplaceError(
+            "Icon pack not found",
+            code=ErrorCode.ICON_PACK_NOT_FOUND,
+            status_code=404,
+        )
+    try:
+        pack_id = uuid.UUID(raw)
+    except ValueError:
+        pack = db.scalar(select(IconPack).where(IconPack.slug == raw.lower()))
+    else:
+        pack = db.get(IconPack, pack_id)
+        if pack is None:
+            pack = db.scalar(select(IconPack).where(IconPack.slug == raw.lower()))
+    if pack is None:
+        raise MarketplaceError(
+            "Icon pack not found",
+            code=ErrorCode.ICON_PACK_NOT_FOUND,
+            status_code=404,
+        )
+    return pack
+
+
 def get_catalog_icon_or_raise(db: Session, icon_id: uuid.UUID) -> CatalogIcon:
     icon = db.scalar(
         select(CatalogIcon)
@@ -605,6 +632,84 @@ def unlock_pack(
     db.add(unlock)
     db.flush()
     return unlock
+
+
+def _latest_unlock_charge(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    pack_id: uuid.UUID,
+) -> WalletLedger | None:
+    return db.scalar(
+        select(WalletLedger)
+        .where(
+            WalletLedger.user_id == user_id,
+            WalletLedger.pack_id == pack_id,
+            WalletLedger.kind == WalletLedgerKind.UNLOCK_PACK.value,
+            WalletLedger.delta < 0,
+        )
+        .order_by(WalletLedger.created_at.desc())
+        .limit(1)
+    )
+
+
+def revoke_pack_unlock(
+    db: Session,
+    *,
+    user: User,
+    pack_id: uuid.UUID,
+    note: str | None = None,
+    created_by: uuid.UUID | None = None,
+    refund_amount: int | None = None,
+) -> tuple[IconPack, WalletLedger | None, int]:
+    """Remove a pack unlock and credit a refund ledger row.
+
+    ``refund_amount`` defaults to whatever the user originally paid for this
+    pack (0 if it was free / never charged). Pass 0 to lock without refund.
+    """
+    pack = get_pack_or_raise(db, pack_id)
+    unlock = db.scalar(
+        select(IconPackUnlock).where(
+            IconPackUnlock.user_id == user.id,
+            IconPackUnlock.pack_id == pack.id,
+        )
+    )
+    if unlock is None:
+        raise MarketplaceError(
+            "Icon pack is not unlocked for this user",
+            code=ErrorCode.ICON_PACK_NOT_UNLOCKED,
+            status_code=404,
+        )
+    if refund_amount is None:
+        charge = _latest_unlock_charge(db, user_id=user.id, pack_id=pack.id)
+        refund_amount = abs(charge.delta) if charge is not None else 0
+    if refund_amount < 0:
+        raise MarketplaceError(
+            "Refund amount must be zero or positive",
+            code=ErrorCode.WALLET_GRANT_INVALID,
+        )
+    db.delete(unlock)
+    db.flush()
+    entry: WalletLedger | None = None
+    if refund_amount > 0:
+        try:
+            _wallet, entry = apply_ledger_delta(
+                db,
+                user_id=user.id,
+                delta=refund_amount,
+                kind=WalletLedgerKind.REFUND,
+                pack_id=pack.id,
+                note=note or f"Revoke pack {pack.slug}",
+                created_by=created_by,
+            )
+        except WalletError as exc:
+            raise MarketplaceError(
+                exc.message,
+                code=exc.code,
+                status_code=exc.status_code,
+                params=exc.params,
+            ) from exc
+    return pack, entry, refund_amount
 
 
 def list_user_unlocks(db: Session, *, user_id: uuid.UUID) -> list[IconPackUnlock]:
@@ -1038,6 +1143,7 @@ __all__ = [
     "delete_studio_pack",
     "download_catalog_icon",
     "get_catalog_icon_or_raise",
+    "get_pack_by_ref",
     "get_pack_detail",
     "get_pack_or_raise",
     "list_published_packs",
@@ -1049,6 +1155,7 @@ __all__ = [
     "patch_studio_pack",
     "publish_pack",
     "reject_pack",
+    "revoke_pack_unlock",
     "search_icons",
     "serialize_icon",
     "serialize_pack_card",

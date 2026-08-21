@@ -151,6 +151,7 @@ class ErrorCode(StrEnum):
     STAFF_REQUIRED = "staff_required"
     INSUFFICIENT_TOKENS = "insufficient_tokens"
     ICON_PACK_NOT_FOUND = "icon_pack_not_found"
+    ICON_PACK_NOT_UNLOCKED = "icon_pack_not_unlocked"
     ICON_PACK_SLUG_EXISTS = "icon_pack_slug_exists"
     ICON_PACK_NOT_EDITABLE = "icon_pack_not_editable"
     ICON_PACK_NOT_PUBLISHED = "icon_pack_not_published"

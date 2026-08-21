@@ -327,6 +327,9 @@ export const en = {
     removeGoalIcon: 'Delete this uploaded icon? If it is in use, the goal will fall back to emoji.',
     removeTagIconTitle: 'Remove icon',
     removeTagIcon: 'Delete this uploaded icon? If it is in use, the tag will fall back to emoji.',
+    unlockPackTitle: 'Unlock pack',
+    unlockPack:
+      'Unlock “{name}” for {price}? Tokens will be deducted from your balance.',
   },
   tagsPage: {
     title: 'Tags',
@@ -830,6 +833,7 @@ export const en = {
     invalidIconLabels: 'Invalid icon labels',
     coverIconNotInPack: 'Cover icon must belong to this pack',
     walletGrantInvalid: 'Invalid wallet grant',
+    iconPackNotUnlocked: 'This pack is not unlocked',
     noteTemplateNotFound: 'Note template not found',
     noteTemplateSlugExists: 'A note template with this slug already exists',
     noteTemplateReorderMismatch: 'The template order is invalid',
@@ -1189,6 +1193,8 @@ export const ru: DeepStringLeaves<typeof en> = {
     removeTagIconTitle: 'Удалить иконку',
     removeTagIcon:
       'Удалить эту загруженную иконку? Если она используется, тег вернётся к эмодзи.',
+    unlockPackTitle: 'Открыть пак',
+    unlockPack: 'Открыть «{name}» за {price}? Токены спишутся с вашего баланса.',
   },
   tagsPage: {
     title: 'Теги',
@@ -1694,6 +1700,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     invalidIconLabels: 'Некорректные названия иконки',
     coverIconNotInPack: 'Обложка должна быть иконкой из этого пака',
     walletGrantInvalid: 'Некорректное начисление токенов',
+    iconPackNotUnlocked: 'Этот пак не разблокирован',
     noteTemplateNotFound: 'Шаблон заметки не найден',
     noteTemplateSlugExists: 'Шаблон с таким идентификатором уже существует',
     noteTemplateReorderMismatch: 'Некорректный порядок шаблонов',

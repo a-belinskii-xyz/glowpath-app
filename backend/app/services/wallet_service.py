@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.error_codes import ErrorCode
@@ -31,9 +31,7 @@ def get_or_create_wallet(db: Session, *, user_id: uuid.UUID) -> UserWallet:
 
 def get_wallet_for_update(db: Session, *, user_id: uuid.UUID) -> UserWallet:
     get_or_create_wallet(db, user_id=user_id)
-    wallet = db.scalar(
-        select(UserWallet).where(UserWallet.user_id == user_id).with_for_update()
-    )
+    wallet = db.scalar(select(UserWallet).where(UserWallet.user_id == user_id).with_for_update())
     assert wallet is not None
     return wallet
 
@@ -110,6 +108,82 @@ def grant_tokens(
         note=note,
         created_by=created_by,
     )
+
+
+def adjust_tokens(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    delta: int,
+    note: str | None = None,
+    created_by: uuid.UUID | None = None,
+) -> tuple[UserWallet, WalletLedger]:
+    """Signed correction that still goes through the audited ledger."""
+    target = db.get(User, user_id)
+    if target is None:
+        raise WalletError(
+            "User not found",
+            code=ErrorCode.USER_NOT_FOUND,
+            status_code=404,
+        )
+    return apply_ledger_delta(
+        db,
+        user_id=user_id,
+        delta=delta,
+        kind=WalletLedgerKind.ADJUSTMENT,
+        note=note,
+        created_by=created_by,
+    )
+
+
+def ledger_total(db: Session, *, user_id: uuid.UUID) -> int:
+    total = db.scalar(
+        select(func.coalesce(func.sum(WalletLedger.delta), 0)).where(
+            WalletLedger.user_id == user_id
+        )
+    )
+    return int(total or 0)
+
+
+def reconcile_wallet_ledger(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    note: str,
+    created_by: uuid.UUID | None = None,
+) -> tuple[UserWallet, WalletLedger | None]:
+    """Write a ledger row for a balance that was changed outside the wallet API.
+
+    Does not change ``user_wallets.balance``. After this, ``sum(ledger.delta)``
+    matches the stored balance so grants no longer appear out of nowhere.
+    """
+    if not note.strip():
+        raise WalletError(
+            "Reconcile note is required",
+            code=ErrorCode.WALLET_GRANT_INVALID,
+        )
+    target = db.get(User, user_id)
+    if target is None:
+        raise WalletError(
+            "User not found",
+            code=ErrorCode.USER_NOT_FOUND,
+            status_code=404,
+        )
+    wallet = get_or_create_wallet(db, user_id=user_id)
+    gap = wallet.balance - ledger_total(db, user_id=user_id)
+    if gap == 0:
+        return wallet, None
+    entry = WalletLedger(
+        user_id=user_id,
+        delta=gap,
+        balance_after=wallet.balance,
+        kind=WalletLedgerKind.ADJUSTMENT.value,
+        note=note.strip(),
+        created_by=created_by,
+    )
+    db.add(entry)
+    db.flush()
+    return wallet, entry
 
 
 def list_ledger(

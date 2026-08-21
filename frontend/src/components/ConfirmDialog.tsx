@@ -11,6 +11,8 @@ export type ConfirmDialogProps = {
   message: string
   confirmLabel: string
   cancelLabel?: string
+  /** Label shown on the confirm button while `isBusy` is true. */
+  busyLabel?: string
   /** Visual tone for destructive actions. */
   variant?: 'danger' | 'default'
   isBusy?: boolean
@@ -25,6 +27,7 @@ export function ConfirmDialog({
   message,
   confirmLabel,
   cancelLabel,
+  busyLabel,
   variant = 'danger',
   isBusy = false,
   error = null,
@@ -36,6 +39,7 @@ export function ConfirmDialog({
   const messageId = useId()
   const confirmRef = useRef<HTMLButtonElement>(null)
   const resolvedCancel = cancelLabel ?? t('common.cancel')
+  const resolvedBusy = busyLabel ?? t('common.saving')
 
   useEffect(() => {
     if (!open) {
@@ -106,8 +110,8 @@ export function ConfirmDialog({
             onClick={onConfirm}
           >
             <StableButtonLabel
-              active={isBusy ? t('common.saving') : confirmLabel}
-              labels={[confirmLabel, t('common.saving')]}
+              active={isBusy ? resolvedBusy : confirmLabel}
+              labels={[confirmLabel, resolvedBusy]}
             />
           </button>
         </div>

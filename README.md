@@ -409,6 +409,19 @@ Requires a running DB and MinIO (e.g. `make up`). `make seed` uses `DATABASE_URL
 
 Icon catalog packs are seeded separately: put folders of images in `backend/app/data/marketplace/<pack>/` and run `make seed-marketplace` (needs the `app` container). See that folder's README.
 
+Token balance must go through `wallet_ledger` (never `UPDATE` `user_wallets` by hand). Operator CLI:
+
+```bash
+make wallet WALLET_ARGS='show --user you@example.com'
+make wallet WALLET_ARGS='grant --user you@example.com --amount 500 --note beta'
+make wallet WALLET_ARGS='reconcile --user you@example.com --note "manual DB +500"'
+make wallet WALLET_ARGS='unlocks --user you@example.com'
+make wallet WALLET_ARGS='revoke --user you@example.com --pack random-pics --note qa'
+docker compose exec -T app python -m app.cli.wallet --help
+```
+
+`grant` / `adjust` change the balance and write history. `reconcile` only writes a ledger row for a balance you already changed in SQL. `revoke` locks a bought pack and refunds what they paid (`--no-refund` to skip).
+
 After upgrading an existing database (or seeding), backfill semantic-search vectors:
 
 ```bash
@@ -449,6 +462,7 @@ make migrate-create MSG="add users table"
 make migrate-down         # alembic downgrade -1 (or REV=base / REV=<revision>)
 make seed                 # local mock users/entries/attachments
 make seed-marketplace     # folder packs from backend/app/data/marketplace/
+make wallet WALLET_ARGS='--help'  # grant/adjust/reconcile/revoke tokens with ledger
 make reindex-embeddings   # backfill note embeddings for semantic search
 make frontend-install
 make frontend-dev
@@ -465,6 +479,7 @@ To force a clean backend reinstall: `make reinstall`
 backend/
   app/
     api/v1/       # versioned API routes
+    cli/          # operator CLIs (wallet ledger)
     core/         # security, OAuth, mood scale, i18n
     db/           # SQLAlchemy engine, session, Base
     models/       # ORM models
