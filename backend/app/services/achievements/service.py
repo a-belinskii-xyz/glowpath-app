@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.achievements import (
@@ -81,11 +81,51 @@ def _get_or_create_progress(
     return row
 
 
+def _eligible_user_count(db: Session) -> int:
+    """Denominator for rarity: verified users."""
+    return int(
+        db.scalar(
+            select(func.count()).select_from(User).where(User.email_verified_at.is_not(None))
+        )
+        or 0
+    )
+
+
+def unlock_rates_by_achievement(
+    db: Session,
+    *,
+    achievement_ids: list[uuid.UUID] | None = None,
+) -> dict[uuid.UUID, float]:
+    """Return unlock percent (0–100) per achievement among verified users."""
+    eligible = _eligible_user_count(db)
+    if eligible <= 0:
+        return {}
+
+    stmt = (
+        select(
+            UserAchievement.achievement_id,
+            func.count(UserAchievement.id),
+        )
+        .where(UserAchievement.unlocked_at.is_not(None))
+        .group_by(UserAchievement.achievement_id)
+    )
+    if achievement_ids is not None:
+        if not achievement_ids:
+            return {}
+        stmt = stmt.where(UserAchievement.achievement_id.in_(achievement_ids))
+
+    rates: dict[uuid.UUID, float] = {}
+    for achievement_id, unlocked_count in db.execute(stmt).all():
+        rates[achievement_id] = round(100.0 * int(unlocked_count) / eligible, 1)
+    return rates
+
+
 def evaluate_user_achievements(
     db: Session,
     *,
     user: User,
     locale: str = "en",
+    source_entry_id: uuid.UUID | None = None,
 ) -> list[Achievement]:
     """Recompute progress and unlock newly completed achievements.
 
@@ -124,6 +164,8 @@ def evaluate_user_achievements(
 
         if result.complete:
             progress.unlocked_at = datetime.now(UTC)
+            if source_entry_id is not None:
+                progress.unlocked_by_entry_id = source_entry_id
             snapshot = grant_rewards(
                 db,
                 user_id=user.id,
@@ -165,12 +207,13 @@ def serialize_achievement_public(
     *,
     progress: UserAchievement | None,
     locale: str,
+    unlock_percent: float | None = None,
 ) -> dict[str, Any]:
     unlocked = progress is not None and progress.unlocked_at is not None
     is_secret = achievement.visibility == AchievementVisibility.SECRET.value
 
     if is_secret and not unlocked:
-        return {
+        payload = {
             "id": achievement.id,
             "visibility": achievement.visibility,
             "category": achievement.category,
@@ -180,13 +223,30 @@ def serialize_achievement_public(
             "progress_target": 1,
             "sort_order": achievement.sort_order,
         }
+        if unlock_percent is not None:
+            payload["unlock_percent"] = unlock_percent
+        return payload
 
     rewards = [
         serialize_reward_public(reward, locale=locale)
         for reward in sorted(achievement.rewards, key=lambda r: r.sort_order)
     ]
     if unlocked and progress is not None and progress.rewards_snapshot:
-        rewards = list(progress.rewards_snapshot)
+        # Prefer live cover/icon ids when snapshot is older.
+        live_by_kind = {
+            (r.get("kind"), r.get("pack_id") or r.get("catalog_icon_id")): r for r in rewards
+        }
+        merged: list[dict[str, Any]] = []
+        for snap in progress.rewards_snapshot:
+            if not isinstance(snap, dict):
+                continue
+            key = (snap.get("kind"), snap.get("pack_id") or snap.get("catalog_icon_id"))
+            live = live_by_kind.get(key)
+            if live is not None:
+                merged.append({**snap, **{k: v for k, v in live.items() if v is not None}})
+            else:
+                merged.append(dict(snap))
+        rewards = merged
 
     return {
         "id": achievement.id,
@@ -201,6 +261,12 @@ def serialize_achievement_public(
         "rewards": rewards,
         "unlocked": unlocked,
         "unlocked_at": progress.unlocked_at if progress else None,
+        "unlocked_by_entry_id": (
+            progress.unlocked_by_entry_id
+            if progress is not None and unlocked
+            else None
+        ),
+        "unlock_percent": unlock_percent,
         "is_new": bool(
             unlocked
             and progress is not None
@@ -229,11 +295,16 @@ def list_achievements_for_user(
     evaluate_user_achievements(db, user=user, locale=locale)
     achievements = list(db.scalars(_published_achievements_query()).all())
     progress_map = _user_progress_map(db, user_id=user.id)
+    rates = unlock_rates_by_achievement(
+        db,
+        achievement_ids=[achievement.id for achievement in achievements],
+    )
     return [
         serialize_achievement_public(
             achievement,
             progress=progress_map.get(achievement.id),
             locale=locale,
+            unlock_percent=rates.get(achievement.id, 0.0),
         )
         for achievement in achievements
     ]
@@ -249,7 +320,7 @@ def achievements_summary(
     achievements = list(db.scalars(_published_achievements_query()).all())
     progress_map = _user_progress_map(db, user_id=user.id)
 
-    unlocked = 0
+    unlocked_visible = 0
     total_visible = 0
     secret_unlocked = 0
     secret_total = 0
@@ -261,14 +332,13 @@ def achievements_summary(
             secret_total += 1
             if is_unlocked:
                 secret_unlocked += 1
-                unlocked += 1
         else:
             total_visible += 1
             if is_unlocked:
-                unlocked += 1
+                unlocked_visible += 1
 
     return {
-        "unlocked": unlocked,
+        "unlocked": unlocked_visible,
         "total_visible": total_visible,
         "secret_unlocked": secret_unlocked,
         "secret_total": secret_total,
@@ -285,11 +355,16 @@ def serialize_unlocked_list(
     if not unlocked:
         return []
     progress_map = _user_progress_map(db, user_id=user.id)
+    rates = unlock_rates_by_achievement(
+        db,
+        achievement_ids=[achievement.id for achievement in unlocked],
+    )
     return [
         serialize_achievement_public(
             achievement,
             progress=progress_map.get(achievement.id),
             locale=locale,
+            unlock_percent=rates.get(achievement.id, 0.0),
         )
         for achievement in unlocked
     ]

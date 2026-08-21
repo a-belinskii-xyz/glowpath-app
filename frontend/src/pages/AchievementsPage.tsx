@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { listAchievements, markAchievementSeen } from '../api/achievements'
 import { Alert } from '../components/Alert'
+import { CatalogIconThumb } from '../components/CatalogIconThumb'
 import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { PageErrorAlert } from '../components/PageErrorAlert'
@@ -17,24 +18,148 @@ type FilterId = 'all' | 'in_progress' | 'unlocked'
 
 const CATEGORY_ORDER = ['getting_started', 'streaks', 'collection', 'secrets'] as const
 
-function rewardLabel(
-  reward: AchievementRewardPublic,
-  t: (key: string, params?: Record<string, string | number>) => string,
-): string {
-  if (reward.kind === 'tokens' && reward.amount != null) {
-    return t('achievements.rewardTokens', { amount: reward.amount })
-  }
-  if (reward.kind === 'icon_pack') {
-    return t('achievements.rewardPack', { name: reward.pack_name || reward.pack_slug || '—' })
-  }
-  if (reward.kind === 'catalog_icon') {
-    return t('achievements.rewardIcon', { name: reward.icon_name || reward.icon_slug || '—' })
-  }
-  return reward.kind
-}
-
 function isMystery(item: AchievementPublic): boolean {
   return item.visibility === 'secret' && !item.unlocked
+}
+
+function marketHrefForReward(reward: AchievementRewardPublic): string | null {
+  if (reward.kind === 'icon_pack' && reward.pack_slug) {
+    return `/market?pack=${encodeURIComponent(reward.pack_slug)}`
+  }
+  if (reward.kind === 'catalog_icon' && reward.pack_slug) {
+    const params = new URLSearchParams({ pack: reward.pack_slug })
+    if (reward.icon_slug) {
+      params.set('icon', reward.icon_slug)
+    }
+    return `/market?${params.toString()}`
+  }
+  return null
+}
+
+function formatUnlockPercent(
+  percent: number | null | undefined,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string | null {
+  if (percent == null) {
+    return null
+  }
+  const rounded = percent < 1 && percent > 0 ? percent.toFixed(1) : String(Math.round(percent))
+  return t('achievements.unlockPercent', { percent: rounded })
+}
+
+function AchievementRewardChips({
+  rewards,
+  t,
+  stopPropagation,
+}: {
+  rewards: AchievementRewardPublic[]
+  t: (key: string, params?: Record<string, string | number>) => string
+  stopPropagation?: boolean
+}) {
+  const onInteractiveClick = (event: MouseEvent) => {
+    if (stopPropagation) {
+      event.stopPropagation()
+    }
+  }
+
+  return (
+    <span className="achievement-rewards">
+      {rewards.map((reward, index) => {
+        const key = `${reward.kind}-${index}`
+        if (reward.kind === 'tokens' && reward.amount != null) {
+          return (
+            <span key={key} className="achievement-reward-chip">
+              {t('achievements.rewardTokens', { amount: reward.amount })}
+            </span>
+          )
+        }
+
+        if (reward.kind === 'icon_pack') {
+          const href = marketHrefForReward(reward)
+          const label = reward.pack_name || reward.pack_slug || '—'
+          const body = (
+            <>
+              {reward.cover_icon_id ? (
+                <CatalogIconThumb
+                  iconId={reward.cover_icon_id}
+                  label={label}
+                  className="achievement-reward-thumb"
+                />
+              ) : (
+                <span className="achievement-reward-thumb achievement-reward-thumb--empty" aria-hidden="true" />
+              )}
+              <span className="achievement-reward-copy">
+                <span className="achievement-reward-kind">{t('achievements.rewardPackLabel')}</span>
+                <span className="achievement-reward-name">{label}</span>
+              </span>
+            </>
+          )
+          if (href) {
+            return (
+              <Link
+                key={key}
+                to={href}
+                className="achievement-reward-chip achievement-reward-chip--media"
+                onClick={onInteractiveClick}
+              >
+                {body}
+              </Link>
+            )
+          }
+          return (
+            <span key={key} className="achievement-reward-chip achievement-reward-chip--media">
+              {body}
+            </span>
+          )
+        }
+
+        if (reward.kind === 'catalog_icon') {
+          const href = marketHrefForReward(reward)
+          const label = reward.icon_name || reward.icon_slug || '—'
+          const body = (
+            <>
+              {reward.catalog_icon_id ? (
+                <CatalogIconThumb
+                  iconId={reward.catalog_icon_id}
+                  label={label}
+                  className="achievement-reward-thumb"
+                />
+              ) : (
+                <span className="achievement-reward-thumb achievement-reward-thumb--empty" aria-hidden="true" />
+              )}
+              <span className="achievement-reward-copy">
+                <span className="achievement-reward-kind">{t('achievements.rewardIconLabel')}</span>
+                <span className="achievement-reward-name">{label}</span>
+              </span>
+            </>
+          )
+          if (href) {
+            return (
+              <Link
+                key={key}
+                to={href}
+                className="achievement-reward-chip achievement-reward-chip--media"
+                onClick={onInteractiveClick}
+              >
+                {body}
+              </Link>
+            )
+          }
+          return (
+            <span key={key} className="achievement-reward-chip achievement-reward-chip--media">
+              {body}
+            </span>
+          )
+        }
+
+        return (
+          <span key={key} className="achievement-reward-chip">
+            {reward.kind}
+          </span>
+        )
+      })}
+    </span>
+  )
 }
 
 export function AchievementsPage() {
@@ -81,7 +206,7 @@ export function AchievementsPage() {
   }, [achievementsEnabled, reload, t])
 
   const summary = useMemo(() => {
-    let unlocked = 0
+    let unlockedVisible = 0
     let totalVisible = 0
     let secretUnlocked = 0
     let secretTotal = 0
@@ -90,16 +215,15 @@ export function AchievementsPage() {
         secretTotal += 1
         if (item.unlocked) {
           secretUnlocked += 1
-          unlocked += 1
         }
       } else {
         totalVisible += 1
         if (item.unlocked) {
-          unlocked += 1
+          unlockedVisible += 1
         }
       }
     }
-    return { unlocked, totalVisible, secretUnlocked, secretTotal }
+    return { unlockedVisible, totalVisible, secretUnlocked, secretTotal }
   }, [items])
 
   const filtered = useMemo(() => {
@@ -165,7 +289,7 @@ export function AchievementsPage() {
         <h1>{t('achievements.title')}</h1>
         <p className="page-lead">
           {t('achievements.progress', {
-            unlocked: summary.unlocked,
+            unlocked: summary.unlockedVisible,
             total: summary.totalVisible,
           })}
           {summary.secretTotal > 0
@@ -218,6 +342,7 @@ export function AchievementsPage() {
                 100,
                 Math.round((item.progress_current / Math.max(1, item.progress_target)) * 100),
               )
+              const rarity = formatUnlockPercent(item.unlock_percent, t)
               return (
                 <button
                   key={item.id}
@@ -245,6 +370,7 @@ export function AchievementsPage() {
                     ) : (
                       <span className="achievement-card-desc">{t('achievements.mysteryHint')}</span>
                     )}
+                    {rarity ? <span className="achievement-rarity">{rarity}</span> : null}
                     {!mystery && !item.unlocked ? (
                       <span className="achievement-progress" aria-hidden="true">
                         <span className="achievement-progress-bar" style={{ width: `${progressPct}%` }} />
@@ -256,13 +382,16 @@ export function AchievementsPage() {
                       </span>
                     ) : null}
                     {!mystery && item.rewards && item.rewards.length > 0 ? (
-                      <span className="achievement-rewards">
-                        {item.rewards.map((reward, index) => (
-                          <span key={`${reward.kind}-${index}`} className="achievement-reward-chip">
-                            {rewardLabel(reward, t)}
-                          </span>
-                        ))}
-                      </span>
+                      <AchievementRewardChips rewards={item.rewards} t={t} stopPropagation />
+                    ) : null}
+                    {item.unlocked && item.unlocked_by_entry_id ? (
+                      <Link
+                        to={`/entries/${item.unlocked_by_entry_id}`}
+                        className="achievement-entry-link"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {t('achievements.viewEntry')}
+                      </Link>
                     ) : null}
                   </span>
                 </button>
@@ -291,6 +420,9 @@ export function AchievementsPage() {
             ) : (
               <>
                 <p>{selected.description}</p>
+                {formatUnlockPercent(selected.unlock_percent, t) ? (
+                  <p className="muted">{formatUnlockPercent(selected.unlock_percent, t)}</p>
+                ) : null}
                 {selected.unlocked_at ? (
                   <p className="muted">
                     {t('achievements.unlockedAt', {
@@ -306,15 +438,15 @@ export function AchievementsPage() {
                   </p>
                 )}
                 {selected.rewards && selected.rewards.length > 0 ? (
-                  <ul className="achievement-detail-rewards">
-                    {selected.rewards.map((reward, index) => (
-                      <li key={`${reward.kind}-${index}`}>{rewardLabel(reward, t)}</li>
-                    ))}
-                  </ul>
+                  <AchievementRewardChips rewards={selected.rewards} t={t} />
                 ) : null}
-                <p>
-                  <Link to="/market">{t('achievements.openMarket')}</Link>
-                </p>
+                {selected.unlocked_by_entry_id ? (
+                  <p>
+                    <Link to={`/entries/${selected.unlocked_by_entry_id}`}>
+                      {t('achievements.viewEntry')}
+                    </Link>
+                  </p>
+                ) : null}
               </>
             )}
           </div>

@@ -19,6 +19,7 @@ from app.db.names import fk_column, table_name, unique_index_name
 
 if TYPE_CHECKING:
     from app.models.achievement import Achievement
+    from app.models.mood_entry import MoodEntry
     from app.models.user import User
 
 
@@ -61,8 +62,17 @@ class UserAchievement(TimestampMixin, Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    unlocked_by_entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("mood_entries"), ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     rewards_snapshot: Mapped[list | dict | None] = mapped_column(JSONB, nullable=True)
     seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="achievements")
     achievement: Mapped["Achievement"] = relationship(back_populates="user_progress")
+    unlocked_by_entry: Mapped["MoodEntry | None"] = relationship(
+        foreign_keys=[unlocked_by_entry_id],
+    )

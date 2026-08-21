@@ -4,6 +4,7 @@ export type AchievementRewardPublic = {
   pack_id?: string | null
   pack_slug?: string | null
   pack_name?: string | null
+  cover_icon_id?: string | null
   catalog_icon_id?: string | null
   icon_slug?: string | null
   icon_name?: string | null
@@ -26,6 +27,8 @@ export type AchievementPublic = {
   criteria?: Record<string, unknown> | null
   rewards?: AchievementRewardPublic[]
   unlocked_at?: string | null
+  unlocked_by_entry_id?: string | null
+  unlock_percent?: number | null
 }
 
 export type AchievementListResponse = {

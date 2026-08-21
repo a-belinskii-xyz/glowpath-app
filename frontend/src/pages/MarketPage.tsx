@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   listMarketplaceIcons,
@@ -35,6 +36,9 @@ type PendingUnlock = {
 export function MarketPage() {
   const { t, locale } = useLocale()
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const focusPackSlug = searchParams.get('pack')
+  const focusIconSlug = searchParams.get('icon')
   const marketplaceEnabled = Boolean(user?.features?.icon_marketplace)
 
   const [icons, setIcons] = useState<CatalogIconWithPackPublic[]>([])
@@ -132,6 +136,28 @@ export function MarketPage() {
   )
   const groups = useMemo(() => groupCatalogIconsByPack(filteredIcons), [filteredIcons])
   const searching = query.trim().length > 0
+
+  useEffect(() => {
+    if (!focusPackSlug || isLoading || groups.length === 0) {
+      return
+    }
+    const match = groups.find((group) => group.pack.slug === focusPackSlug)
+    if (!match) {
+      return
+    }
+    setExpandedPackIds((current) => ({ ...current, [match.pack.id]: true }))
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.getElementById(`market-pack-${match.pack.slug}`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (focusIconSlug) {
+        const iconEl = document.getElementById(
+          `market-icon-${match.pack.slug}-${focusIconSlug}`,
+        )
+        iconEl?.classList.add('is-focused')
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusIconSlug, focusPackSlug, groups, isLoading])
 
   const balanceLabel =
     balance === null
@@ -243,7 +269,13 @@ export function MarketPage() {
                 : group.icons.slice(0, PACK_COLLAPSED_COUNT)
             const hiddenCount = group.icons.length - visibleIcons.length
             return (
-              <section key={group.pack.id} className="market-pack">
+              <section
+                key={group.pack.id}
+                id={`market-pack-${group.pack.slug}`}
+                className={`market-pack${
+                  focusPackSlug === group.pack.slug ? ' is-focused' : ''
+                }`}
+              >
                 <header className="market-pack-header">
                   <div className="market-pack-copy">
                     <h2 className="market-pack-title">{group.pack.name}</h2>
@@ -290,8 +322,14 @@ export function MarketPage() {
                 <ul className="market-pack-icons">
                   {visibleIcons.map((icon) => {
                     const glow = icon.suggested_colors[0] ?? '#94a3b8'
+                    const focused =
+                      focusPackSlug === group.pack.slug && focusIconSlug === icon.slug
                     return (
-                      <li key={icon.id} className="market-pack-icon">
+                      <li
+                        key={icon.id}
+                        id={`market-icon-${group.pack.slug}-${icon.slug}`}
+                        className={`market-pack-icon${focused ? ' is-focused' : ''}`}
+                      >
                         <div
                           className="market-icon-card-media"
                           style={{ filter: moodGlowFilter(glow) }}

@@ -13,6 +13,7 @@ class AchievementRewardPublic(BaseModel):
     pack_id: UUID | None = None
     pack_slug: str | None = None
     pack_name: str | None = None
+    cover_icon_id: UUID | None = None
     catalog_icon_id: UUID | None = None
     icon_slug: str | None = None
     icon_name: str | None = None
@@ -36,6 +37,8 @@ class AchievementPublic(BaseModel):
     criteria: dict[str, Any] | None = None
     rewards: list[AchievementRewardPublic] = Field(default_factory=list)
     unlocked_at: datetime | None = None
+    unlocked_by_entry_id: UUID | None = None
+    unlock_percent: float | None = None
 
 
 class AchievementListResponse(BaseModel):

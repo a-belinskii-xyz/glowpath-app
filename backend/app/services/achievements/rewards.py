@@ -14,6 +14,7 @@ from app.core.marketplace import WalletLedgerKind
 from app.models.achievement import Achievement
 from app.models.achievement_reward import AchievementReward
 from app.models.catalog_icon import CatalogIcon
+from app.models.icon_pack import IconPack
 from app.models.icon_pack_unlock import IconPackUnlock
 from app.models.user_catalog_icon_unlock import UserCatalogIconUnlock
 from app.services.wallet_service import apply_ledger_delta, get_or_create_wallet
@@ -28,12 +29,14 @@ def _reward_snapshot_item(
     if reward.kind == AchievementRewardKind.TOKENS.value:
         item["amount"] = reward.amount
     elif reward.kind == AchievementRewardKind.ICON_PACK.value and reward.pack is not None:
+        pack: IconPack = reward.pack
         item["pack_id"] = str(reward.pack_id)
-        item["pack_slug"] = reward.pack.slug
+        item["pack_slug"] = pack.slug
         item["pack_name"] = resolve_label(
-            (reward.pack.labels or {}).get("name") or {},
+            (pack.labels or {}).get("name") or {},
             locale,
-        ) or reward.pack.slug
+        ) or pack.slug
+        item["cover_icon_id"] = str(pack.cover_icon_id) if pack.cover_icon_id else None
     elif (
         reward.kind == AchievementRewardKind.CATALOG_ICON.value
         and reward.catalog_icon is not None
@@ -42,6 +45,7 @@ def _reward_snapshot_item(
         item["icon_slug"] = reward.catalog_icon.slug
         item["icon_name"] = resolve_label(reward.catalog_icon.labels, locale)
         if reward.catalog_icon.pack is not None:
+            item["pack_id"] = str(reward.catalog_icon.pack_id)
             item["pack_slug"] = reward.catalog_icon.pack.slug
     return item
 

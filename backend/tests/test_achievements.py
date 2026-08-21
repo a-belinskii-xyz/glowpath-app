@@ -159,10 +159,19 @@ def test_first_entry_unlocks_and_grants_tokens(
     assert create.status_code == 201, create.text
     unlocked = create.json().get("unlocked_achievements") or []
     assert any(item.get("id") == str(first.id) for item in unlocked)
+    unlocked_item = next(item for item in unlocked if item.get("id") == str(first.id))
+    assert unlocked_item.get("unlocked_by_entry_id") == create.json()["id"]
+    assert unlocked_item.get("unlock_percent") is not None
 
     wallet = auth_client.get("/v1/wallet", headers=_auth_headers(token))
     assert wallet.status_code == 200
     assert wallet.json()["balance"] >= 10
+
+    listed = auth_client.get("/v1/achievements", headers=_auth_headers(token))
+    assert listed.status_code == 200
+    card = next(item for item in listed.json()["items"] if item["id"] == str(first.id))
+    assert card["unlocked_by_entry_id"] == create.json()["id"]
+    assert isinstance(card["unlock_percent"], (int, float))
 
     progress = db.scalar(
         select(UserAchievement).where(
@@ -172,6 +181,8 @@ def test_first_entry_unlocks_and_grants_tokens(
     )
     assert progress is not None
     assert progress.unlocked_at is not None
+    assert progress.unlocked_by_entry_id is not None
+    assert str(progress.unlocked_by_entry_id) == create.json()["id"]
 
 
 def test_friday_the_13th_in_user_timezone(

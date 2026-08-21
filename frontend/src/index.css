@@ -8816,3 +8816,96 @@ code {
   margin: 0.35rem 0 0;
   color: var(--chrome-text-secondary);
 }
+
+.achievements-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .achievements-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.achievement-rarity {
+  font-size: 0.78rem;
+  color: var(--chrome-text-secondary);
+}
+
+.achievement-entry-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.achievement-entry-link:hover {
+  text-decoration: underline;
+}
+
+.achievement-reward-chip--media {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.25rem 0.55rem 0.25rem 0.25rem;
+  text-decoration: none;
+  color: inherit;
+  max-width: 100%;
+}
+
+a.achievement-reward-chip--media:hover {
+  background: color-mix(in oklab, #60a5fa 28%, transparent);
+}
+
+.achievement-reward-thumb {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.45rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.achievement-reward-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.achievement-reward-thumb--empty {
+  background: color-mix(in oklab, #94a3b8 28%, transparent);
+}
+
+.achievement-reward-copy {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.achievement-reward-kind {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.achievement-reward-name {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.market-pack.is-focused {
+  outline: 2px solid color-mix(in oklab, #2563eb 55%, transparent);
+  outline-offset: 4px;
+  border-radius: 1rem;
+}
+
+.market-pack-icon.is-focused .market-icon-card-media {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+  border-radius: 0.75rem;
+}

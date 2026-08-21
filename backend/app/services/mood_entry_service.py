@@ -348,7 +348,12 @@ def create_mood_entry(
     _replace_entry_tags(db, entry, tags)
     _replace_entry_goals(db, entry, goals, amounts)
     upsert_entry_embedding(db, entry)
-    unlocked_payload = _evaluate_achievements_payload(db, user_id=user_id, locale=locale)
+    unlocked_payload = _evaluate_achievements_payload(
+        db,
+        user_id=user_id,
+        locale=locale,
+        source_entry_id=entry.id,
+    )
     db.commit()
     return _get_owned_entry(db, user_id=user_id, entry_id=entry.id), unlocked_payload
 
@@ -358,6 +363,7 @@ def _evaluate_achievements_payload(
     *,
     user_id: uuid.UUID,
     locale: str,
+    source_entry_id: uuid.UUID | None = None,
 ) -> list[dict[str, Any]]:
     from app.services.achievements.service import (
         evaluate_user_achievements,
@@ -367,7 +373,12 @@ def _evaluate_achievements_payload(
     user = db.get(User, user_id)
     if user is None:
         return []
-    unlocked = evaluate_user_achievements(db, user=user, locale=locale)
+    unlocked = evaluate_user_achievements(
+        db,
+        user=user,
+        locale=locale,
+        source_entry_id=source_entry_id,
+    )
     return serialize_unlocked_list(db, user=user, unlocked=unlocked, locale=locale)
 
 
@@ -943,7 +954,12 @@ def patch_mood_entry(
     if note_changed:
         upsert_entry_embedding(db, entry)
 
-    unlocked_payload = _evaluate_achievements_payload(db, user_id=user_id, locale=locale)
+    unlocked_payload = _evaluate_achievements_payload(
+        db,
+        user_id=user_id,
+        locale=locale,
+        source_entry_id=entry_id,
+    )
     db.commit()
     return _get_owned_entry(db, user_id=user_id, entry_id=entry_id), unlocked_payload
 
