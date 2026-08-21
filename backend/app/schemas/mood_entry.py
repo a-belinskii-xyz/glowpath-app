@@ -13,6 +13,7 @@ from app.core.markdown_plain_text import (
 )
 from app.core.mood_entry_source import MoodEntrySource
 from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE, MoodScoreIconType
+from app.schemas.achievement import AchievementPublic
 
 
 def _validate_note(value: str | None) -> str | None:
@@ -108,6 +109,7 @@ class MoodEntryPublic(BaseModel):
     attachments: list[AttachmentPublic]
     created_at: datetime
     updated_at: datetime
+    unlocked_achievements: list[AchievementPublic] = Field(default_factory=list)
 
 
 class MoodEntryListResponse(BaseModel):

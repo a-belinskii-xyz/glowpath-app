@@ -154,6 +154,26 @@ class Settings(BaseSettings):
         validation_alias="FEATURE_ICON_MARKETPLACE_USER_IDS",
     )
 
+    # Achievements (catalog unlocks + token / pack / icon rewards).
+    feature_achievements: bool = Field(
+        default=True,
+        validation_alias="FEATURE_ACHIEVEMENTS",
+    )
+    feature_achievements_percent: int = Field(
+        default=100,
+        ge=0,
+        le=100,
+        validation_alias="FEATURE_ACHIEVEMENTS_PERCENT",
+    )
+    feature_achievements_emails: str = Field(
+        default="",
+        validation_alias="FEATURE_ACHIEVEMENTS_EMAILS",
+    )
+    feature_achievements_user_ids: str = Field(
+        default="",
+        validation_alias="FEATURE_ACHIEVEMENTS_USER_IDS",
+    )
+
     # Telegram bot integration (notifier + bot service auth)
     telegram_bot_token: str = Field(default="", validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_bot_username: str = Field(default="", validation_alias="TELEGRAM_BOT_USERNAME")

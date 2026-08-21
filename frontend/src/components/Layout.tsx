@@ -17,7 +17,11 @@ function bottomNavClassName({ isActive }: { isActive: boolean }) {
 }
 
 function isAccountSection(pathname: string) {
-  return pathname.startsWith('/profile') || pathname.startsWith('/tracker-settings')
+  return (
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/tracker-settings') ||
+    pathname.startsWith('/achievements')
+  )
 }
 
 function isFocusedEntryFlow(pathname: string) {
@@ -88,6 +92,7 @@ function ShellChrome({
   const location = useLocation()
   const hideBottomNav = isFocusedEntryFlow(location.pathname)
   const showMarket = Boolean(user?.features?.icon_marketplace)
+  const showAchievements = Boolean(user?.features?.achievements)
 
   if (onboarding) {
     return (
@@ -167,6 +172,11 @@ function ShellChrome({
             {t('nav.trackerSettings')}
           </NavLink>
           <p className="app-sidebar-section">{t('nav.sectionAccount')}</p>
+          {showAchievements ? (
+            <NavLink to="/achievements" className={navClassName}>
+              {t('nav.achievements')}
+            </NavLink>
+          ) : null}
           <NavLink to="/profile" className={navClassName}>
             {t('nav.profile')}
           </NavLink>

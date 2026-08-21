@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, getMoodInsights, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
 import { getGoalCalendar, getGoalStats, listGoals } from '../api/goals'
+import { Alert } from '../components/Alert'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
@@ -48,6 +49,7 @@ import { buildGradientWashFromScores, motion } from '../design'
 import { useScrollAmbientGlow } from '../hooks/useScrollAmbientGlow'
 import { entryMoodColor } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
+import type { AchievementPublic } from '../types/achievement'
 import type { CalendarDayPublic, MoodEntryPublic, MoodEntryStatsResponse, MoodInsightsResponse } from '../types/mood'
 
 const PAGE_SIZE = 20
@@ -76,7 +78,13 @@ export function EntriesPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
   const { scores } = useMoodPreferences()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [unlockedToast, setUnlockedToast] = useState<AchievementPublic[]>(() => {
+    const state = location.state as { unlockedAchievements?: AchievementPublic[] } | null
+    return state?.unlockedAchievements ?? []
+  })
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
   const isNarrow = useMediaQuery('(max-width: 899px)')
@@ -88,6 +96,14 @@ export function EntriesPage() {
         : formatMonthHeading(headingYear, headingMonth, dateLocale),
     [dateLocale, isNarrow, monthShortLabels],
   )
+
+  useEffect(() => {
+    const state = location.state as { unlockedAchievements?: AchievementPublic[] } | null
+    if (state?.unlockedAchievements && state.unlockedAchievements.length > 0) {
+      setUnlockedToast(state.unlockedAchievements)
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: {} })
+    }
+  }, [location.pathname, location.search, location.state, navigate])
 
   const initialMonth = (() => {
     const now = getCurrentYearMonth(timeZone)
@@ -868,6 +884,21 @@ export function EntriesPage() {
   return (
     <section className="page">
       <EmailVerificationBanner />
+      {unlockedToast.length > 0 ? (
+        <Alert variant="success">
+          <div className="achievement-unlock-toast">
+            <strong>{t('achievements.unlockedToastTitle')}</strong>
+            <ul>
+              {unlockedToast.map((item) => (
+                <li key={item.id}>
+                  <span aria-hidden="true">{item.icon || '🏆'}</span> {item.name}
+                </li>
+              ))}
+            </ul>
+            <Link to="/achievements">{t('achievements.viewAll')}</Link>
+          </div>
+        </Alert>
+      ) : null}
 
       <header className="page-header entries-toolbar">
         <MonthControl

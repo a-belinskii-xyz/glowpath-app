@@ -1,11 +1,12 @@
 import { memo, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { forgotPassword } from '../api/auth'
+import { getAchievementsSummary } from '../api/achievements'
 import { getWallet } from '../api/wallet'
 import { Alert } from '../components/Alert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
-import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon } from '../components/icons'
+import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, TrophyIcon } from '../components/icons'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -18,6 +19,7 @@ import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
 import { formatApiError } from '../lib/errors'
 import { TrackerSettingsContent } from './TrackerSettingsPage'
+import { Link } from 'react-router-dom'
 
 type SettingsPanelId = 'tracker' | 'notifications' | 'appearance'
 
@@ -175,9 +177,15 @@ export function ProfilePage() {
   const [isLoadingWallet, setIsLoadingWallet] = useState(false)
 
   const marketplaceEnabled = Boolean(user?.features?.icon_marketplace)
+  const achievementsEnabled = Boolean(user?.features?.achievements)
+  const walletEnabled = marketplaceEnabled || achievementsEnabled
+  const [achievementSummary, setAchievementSummary] = useState<{
+    unlocked: number
+    total_visible: number
+  } | null>(null)
 
   useEffect(() => {
-    if (!user || !marketplaceEnabled) {
+    if (!user || !walletEnabled) {
       setWalletBalance(null)
       setWalletError(null)
       return
@@ -207,7 +215,32 @@ export function ProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [user, marketplaceEnabled, t])
+  }, [user, walletEnabled, t])
+
+  useEffect(() => {
+    if (!user || !achievementsEnabled) {
+      setAchievementSummary(null)
+      return
+    }
+    let cancelled = false
+    void getAchievementsSummary()
+      .then((summary) => {
+        if (!cancelled) {
+          setAchievementSummary({
+            unlocked: summary.unlocked,
+            total_visible: summary.total_visible,
+          })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAchievementSummary(null)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user, achievementsEnabled])
 
   if (!user) {
     return null
@@ -310,7 +343,7 @@ export function ProfilePage() {
         </div>
 
         <div className="profile-account-grid">
-          {marketplaceEnabled ? (
+          {walletEnabled ? (
             <div className="profile-wallet">
               <span className="profile-account-label">{t('profile.walletBalance')}</span>
               <p
@@ -365,6 +398,25 @@ export function ProfilePage() {
       </div>
 
       <div className="profile-shortcuts" role="region" aria-label={t('profile.settingsMenu')}>
+        {achievementsEnabled ? (
+          <Link to="/achievements" className="profile-shortcut">
+            <span className="profile-shortcut-icon" aria-hidden="true">
+              <TrophyIcon />
+            </span>
+            <span className="profile-shortcut-copy">
+              <span className="profile-shortcut-title">{t('nav.achievements')}</span>
+              <span className="profile-shortcut-lead">
+                {achievementSummary
+                  ? t('achievements.progress', {
+                      unlocked: achievementSummary.unlocked,
+                      total: achievementSummary.total_visible,
+                    })
+                  : t('profile.achievementsLink')}
+              </span>
+            </span>
+            <ChevronRightIcon className="profile-shortcut-chevron" />
+          </Link>
+        ) : null}
         <ProfileSettingsPanel
           id="tracker"
           icon={<SettingsIcon />}

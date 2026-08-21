@@ -289,6 +289,34 @@ export function NavProfileIcon(props: IconProps) {
   )
 }
 
+export function TrophyIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M8 4h8v3.5a4 4 0 0 1-8 0V4z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 5.5H5.5A2.5 2.5 0 0 0 8 8M16 5.5h2.5A2.5 2.5 0 0 1 16 8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <path
+        d="M10 14.5h4M12 11.5v3M9 19h6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
 export function SearchIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>

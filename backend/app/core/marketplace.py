@@ -18,6 +18,7 @@ class WalletLedgerKind(StrEnum):
     UNLOCK_PACK = "unlock_pack"
     ADJUSTMENT = "adjustment"
     REFUND = "refund"
+    ACHIEVEMENT = "achievement"
 
 
 PACK_STATUSES = frozenset(status.value for status in PackStatus)

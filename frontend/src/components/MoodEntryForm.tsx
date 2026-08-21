@@ -48,6 +48,7 @@ import { getMoodScoreOptions } from '../lib/moodScale'
 import { emojiForGroupSlug } from '../lib/tagEmoji'
 import type { GoalPublic } from '../types/goal'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
+import type { AchievementPublic } from '../types/achievement'
 import {
   clearMoodEntryDraft,
   getMoodEntryDraft,
@@ -767,21 +768,26 @@ export function MoodEntryForm({
       ...(sessionSource ? { source: sessionSource } : {}),
     }
 
-    try {
+        try {
       let savedId = initialEntry?.id
+      let unlocked: AchievementPublic[] = []
       if (mode === 'create') {
         const created = await createMoodEntry(payload)
         await syncAttachments(created.id)
         savedId = created.id
+        unlocked = created.unlocked_achievements ?? []
         const draftDateKey = recordedAtLocal.split('T')[0]
         if (user?.id && draftDateKey) {
           clearMoodEntryDraft(user.id, draftDateKey)
         }
       } else if (initialEntry) {
-        await patchMoodEntry(initialEntry.id, payload)
+        const patched = await patchMoodEntry(initialEntry.id, payload)
         await syncAttachments(initialEntry.id)
+        unlocked = patched.unlocked_achievements ?? []
       }
-      navigate(entriesListPathForInstant(payload.recorded_at, timeZone, savedId))
+      navigate(entriesListPathForInstant(payload.recorded_at, timeZone, savedId), {
+        state: unlocked.length > 0 ? { unlockedAchievements: unlocked } : undefined,
+      })
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToSaveEntries'))

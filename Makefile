@@ -6,7 +6,7 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed seed-marketplace reindex-embeddings wallet
+.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed seed-marketplace seed-achievements reindex-embeddings wallet
 
 FRONTEND := frontend
 
@@ -102,6 +102,11 @@ seed: $(MARKER)
 # Requires a running app container (`make up`).
 seed-marketplace:
 	docker compose exec -T app python -m app.services.marketplace_seed
+
+# Achievement catalog from backend/app/data/achievements/catalog.json.
+# Run after seed-marketplace when rewards reference packs/icons.
+seed-achievements:
+	docker compose exec -T app python -m app.services.achievements.seed
 
 # Ledger-backed wallet ops. Do not UPDATE user_wallets by hand.
 #   make wallet WALLET_ARGS='grant --user you@example.com --amount 500 --note beta'

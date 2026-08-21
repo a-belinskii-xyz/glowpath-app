@@ -318,7 +318,8 @@ def create_mood_entry(
     source: str | None = None,
     goal_progress: list[Any] | None = None,
     fill_quantity_from_target: bool = False,
-) -> MoodEntry:
+    locale: str = "en",
+) -> tuple[MoodEntry, list[dict[str, Any]]]:
     recorded_at_utc = _to_utc(recorded_at)
     tz = _resolve_user_tz(_user_timezone(db, user_id=user_id))
     entry_local_date = _local_date(recorded_at_utc, tz)
@@ -347,8 +348,27 @@ def create_mood_entry(
     _replace_entry_tags(db, entry, tags)
     _replace_entry_goals(db, entry, goals, amounts)
     upsert_entry_embedding(db, entry)
+    unlocked_payload = _evaluate_achievements_payload(db, user_id=user_id, locale=locale)
     db.commit()
-    return _get_owned_entry(db, user_id=user_id, entry_id=entry.id)
+    return _get_owned_entry(db, user_id=user_id, entry_id=entry.id), unlocked_payload
+
+
+def _evaluate_achievements_payload(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    locale: str,
+) -> list[dict[str, Any]]:
+    from app.services.achievements.service import (
+        evaluate_user_achievements,
+        serialize_unlocked_list,
+    )
+
+    user = db.get(User, user_id)
+    if user is None:
+        return []
+    unlocked = evaluate_user_achievements(db, user=user, locale=locale)
+    return serialize_unlocked_list(db, user=user, unlocked=unlocked, locale=locale)
 
 
 def list_mood_entries(
@@ -885,7 +905,8 @@ def patch_mood_entry(
     user_id: uuid.UUID,
     entry_id: uuid.UUID,
     fields: dict[str, Any],
-) -> MoodEntry:
+    locale: str = "en",
+) -> tuple[MoodEntry, list[dict[str, Any]]]:
     entry = _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
     note_changed = "note" in fields
 
@@ -922,8 +943,9 @@ def patch_mood_entry(
     if note_changed:
         upsert_entry_embedding(db, entry)
 
+    unlocked_payload = _evaluate_achievements_payload(db, user_id=user_id, locale=locale)
     db.commit()
-    return _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
+    return _get_owned_entry(db, user_id=user_id, entry_id=entry_id), unlocked_payload
 
 
 def delete_mood_entry(
@@ -932,10 +954,13 @@ def delete_mood_entry(
     user_id: uuid.UUID,
     entry_id: uuid.UUID,
     storage: ObjectStorage,
+    locale: str = "en",
 ) -> None:
     entry = _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
     storage_keys = [attachment.storage_key for attachment in entry.attachments]
     db.delete(entry)
+    db.flush()
+    _evaluate_achievements_payload(db, user_id=user_id, locale=locale)
     db.commit()
     for key in storage_keys:
         with contextlib.suppress(StorageError):

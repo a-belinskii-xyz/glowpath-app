@@ -23,6 +23,7 @@ import { ResendVerificationPage } from './pages/ResendVerificationPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { TagsPage } from './pages/TagsPage'
 import { MarketPage } from './pages/MarketPage'
+import { AchievementsPage } from './pages/AchievementsPage'
 import { TemplatesRedirect, TrackerSettingsPage } from './pages/TrackerSettingsPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
@@ -59,6 +60,7 @@ function App() {
                     <Route path="entries/:id" element={<EntryDetailPage />} />
                     <Route path="tags" element={<TagsPage />} />
                     <Route path="market" element={<MarketPage />} />
+                    <Route path="achievements" element={<AchievementsPage />} />
                     <Route path="goals" element={<GoalsPage />} />
                     <Route path="tracker-settings" element={<TrackerSettingsPage />} />
                     <Route path="templates" element={<TemplatesRedirect />} />

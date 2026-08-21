@@ -1,3 +1,4 @@
+import type { AchievementPublic } from './achievement'
 import type { MoodEntrySource } from '../lib/moodEntrySource'
 import type { MoodScoreIconType } from './moodPreferences'
 
@@ -51,6 +52,7 @@ export type MoodEntryPublic = {
   attachments: AttachmentPublic[]
   created_at: string
   updated_at: string
+  unlocked_achievements?: AchievementPublic[]
 }
 
 export type MoodEntryListResponse = {

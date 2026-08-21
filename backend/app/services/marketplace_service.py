@@ -288,7 +288,19 @@ def user_can_assign_catalog_icon(
         return False
     if pack.price_tokens == 0:
         return True
-    return _pack_is_unlocked(db, user_id=user.id, pack_id=pack.id)
+    if _pack_is_unlocked(db, user_id=user.id, pack_id=pack.id):
+        return True
+    from app.models.user_catalog_icon_unlock import UserCatalogIconUnlock
+
+    return (
+        db.scalar(
+            select(UserCatalogIconUnlock.id).where(
+                UserCatalogIconUnlock.user_id == user.id,
+                UserCatalogIconUnlock.catalog_icon_id == icon.id,
+            )
+        )
+        is not None
+    )
 
 
 def can_assign_catalog_icon(

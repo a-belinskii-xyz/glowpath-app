@@ -104,7 +104,7 @@ def create_entry_for_telegram_user(
     note: str | None,
     source: str | None,
 ) -> MoodEntry:
-    return create_mood_entry(
+    entry, _unlocked = create_mood_entry(
         db,
         user_id=user.id,
         score=score,
@@ -114,7 +114,9 @@ def create_entry_for_telegram_user(
         goal_ids=goal_ids,
         source=source,
         fill_quantity_from_target=True,
+        locale=user.telegram_locale or "en",
     )
+    return entry
 
 
 def get_session(db: Session, *, telegram_user_id: int) -> TelegramSession | None:

@@ -10,6 +10,7 @@ from app.db.mixins import TimestampMixin
 from app.db.names import fk_column, index_name, table_name
 
 if TYPE_CHECKING:
+    from app.models.achievement import Achievement
     from app.models.icon_pack import IconPack
     from app.models.user import User
 
@@ -18,7 +19,7 @@ class WalletLedger(TimestampMixin, Base):
     __tablename__ = table_name("wallet_ledger")
     __table_args__ = (
         CheckConstraint(
-            "kind IN ('grant', 'unlock_pack', 'adjustment', 'refund')",
+            "kind IN ('grant', 'unlock_pack', 'adjustment', 'refund', 'achievement')",
             name="wallet_ledger_kind_values",
         ),
         Index(
@@ -44,6 +45,11 @@ class WalletLedger(TimestampMixin, Base):
     pack_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey(fk_column("icon_packs"), ondelete="SET NULL"),
+        nullable=True,
+    )
+    achievement_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("achievements"), ondelete="SET NULL"),
         nullable=True,
     )
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)

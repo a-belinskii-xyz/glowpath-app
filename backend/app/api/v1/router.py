@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    achievements,
     auth,
     goals,
     health,
@@ -28,6 +29,7 @@ api_v1_router.include_router(notification_settings.router, prefix="/notification
 api_v1_router.include_router(mood_preferences.router, prefix="/mood-preferences")
 api_v1_router.include_router(marketplace.router, prefix="/marketplace")
 api_v1_router.include_router(wallet.router, prefix="/wallet")
+api_v1_router.include_router(achievements.router, prefix="/achievements")
 api_v1_router.include_router(telegram.router, prefix="/telegram")
 
 if settings.debug:

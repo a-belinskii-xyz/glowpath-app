@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from app.models.note_template import NoteTemplate
     from app.models.tag_group import TagGroup
     from app.models.telegram_link_code import TelegramLinkCode
+    from app.models.user_achievement import UserAchievement
+    from app.models.user_catalog_icon_unlock import UserCatalogIconUnlock
     from app.models.user_goal_icon import UserGoalIcon
     from app.models.user_mood_icon import UserMoodIcon
     from app.models.user_mood_preferences import UserMoodPreferences
@@ -93,6 +95,12 @@ class User(TimestampMixin, Base):
         foreign_keys="IconPack.author_id",
     )
     icon_pack_unlocks: Mapped[list["IconPackUnlock"]] = relationship(
+        back_populates="user",
+    )
+    achievements: Mapped[list["UserAchievement"]] = relationship(
+        back_populates="user",
+    )
+    catalog_icon_unlocks: Mapped[list["UserCatalogIconUnlock"]] = relationship(
         back_populates="user",
     )
 

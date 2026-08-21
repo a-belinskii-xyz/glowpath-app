@@ -74,15 +74,17 @@ def _to_public(
     locale: str,
     label_overrides: dict[str, str] | None = None,
     color_settings: ColorDisplaySettings | None = None,
+    unlocked_achievements: list[dict] | None = None,
 ) -> MoodEntryPublic:
-    return MoodEntryPublic.model_validate(
-        serialize_mood_entry(
-            entry,
-            locale=locale,
-            label_overrides=label_overrides,
-            color_settings=color_settings,
-        )
+    payload = serialize_mood_entry(
+        entry,
+        locale=locale,
+        label_overrides=label_overrides,
+        color_settings=color_settings,
     )
+    if unlocked_achievements:
+        payload["unlocked_achievements"] = unlocked_achievements
+    return MoodEntryPublic.model_validate(payload)
 
 
 class _EntryView(TypedDict):
@@ -105,7 +107,7 @@ def create_entry(
     locale: str = Depends(get_locale),
 ) -> MoodEntryPublic:
     try:
-        entry = create_mood_entry(
+        entry, unlocked = create_mood_entry(
             db,
             user_id=current_user.id,
             score=body.score,
@@ -115,11 +117,17 @@ def create_entry(
             goal_ids=body.goal_ids,
             goal_progress=body.goal_progress,
             source=body.source,
+            locale=locale,
         )
     except MoodEntryError as exc:
         _handle_mood_error(exc)
         raise
-    return _to_public(entry, locale=locale, **_entry_view_kwargs(db, current_user.id))
+    return _to_public(
+        entry,
+        locale=locale,
+        unlocked_achievements=unlocked,
+        **_entry_view_kwargs(db, current_user.id),
+    )
 
 
 @router.get("", response_model=MoodEntryListResponse)
@@ -276,16 +284,22 @@ def patch_entry(
 ) -> MoodEntryPublic:
     fields = body.model_dump(exclude_unset=True)
     try:
-        entry = patch_mood_entry(
+        entry, unlocked = patch_mood_entry(
             db,
             user_id=current_user.id,
             entry_id=entry_id,
             fields=fields,
+            locale=locale,
         )
     except MoodEntryError as exc:
         _handle_mood_error(exc)
         raise
-    return _to_public(entry, locale=locale, **_entry_view_kwargs(db, current_user.id))
+    return _to_public(
+        entry,
+        locale=locale,
+        unlocked_achievements=unlocked,
+        **_entry_view_kwargs(db, current_user.id),
+    )
 
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)

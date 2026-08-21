@@ -169,3 +169,8 @@ class ErrorCode(StrEnum):
     INVALID_ICON_LABELS = "invalid_icon_labels"
     COVER_ICON_NOT_IN_PACK = "cover_icon_not_in_pack"
     WALLET_GRANT_INVALID = "wallet_grant_invalid"
+
+    # Achievements
+    ACHIEVEMENTS_DISABLED = "achievements_disabled"
+    ACHIEVEMENT_NOT_FOUND = "achievement_not_found"
+    ACHIEVEMENT_NOT_UNLOCKED = "achievement_not_unlocked"

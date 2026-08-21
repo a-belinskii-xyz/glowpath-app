@@ -43,6 +43,7 @@ def apply_ledger_delta(
     delta: int,
     kind: WalletLedgerKind | str,
     pack_id: uuid.UUID | None = None,
+    achievement_id: uuid.UUID | None = None,
     note: str | None = None,
     created_by: uuid.UUID | None = None,
 ) -> tuple[UserWallet, WalletLedger]:
@@ -71,6 +72,7 @@ def apply_ledger_delta(
         balance_after=next_balance,
         kind=kind_value,
         pack_id=pack_id,
+        achievement_id=achievement_id,
         note=note,
         created_by=created_by,
     )

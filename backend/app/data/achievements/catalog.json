@@ -1,0 +1,68 @@
+[
+  {
+    "slug": "first_entry",
+    "category": "getting_started",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 10,
+    "labels": { "en": "First step", "ru": "Первый шаг" },
+    "descriptions": {
+      "en": "Log your first mood entry.",
+      "ru": "Сделай первую запись настроения."
+    },
+    "icon": { "type": "emoji", "value": "🌱" },
+    "criteria": { "type": "entry_count", "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 10 }]
+  },
+  {
+    "slug": "entries_10",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 20,
+    "labels": { "en": "Getting into it", "ru": "Втянулся" },
+    "descriptions": {
+      "en": "Log 10 mood entries.",
+      "ru": "Сделай 10 записей настроения."
+    },
+    "icon": { "type": "emoji", "value": "📓" },
+    "criteria": { "type": "entry_count", "count": 10 },
+    "rewards": [{ "kind": "tokens", "amount": 25 }]
+  },
+  {
+    "slug": "consecutive_days_7",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 30,
+    "labels": { "en": "Seven days", "ru": "Семь дней" },
+    "descriptions": {
+      "en": "Check in every day for a week.",
+      "ru": "Отмечайся каждый день на протяжении недели."
+    },
+    "icon": { "type": "emoji", "value": "🔥" },
+    "criteria": { "type": "consecutive_days", "days": 7 },
+    "rewards": [
+      { "kind": "tokens", "amount": 50 },
+      { "kind": "icon_pack", "pack_slug": "random-pics" }
+    ]
+  },
+  {
+    "slug": "friday_the_13th",
+    "category": "secrets",
+    "visibility": "secret",
+    "status": "published",
+    "sort_order": 40,
+    "labels": { "en": "Unlucky Friday", "ru": "Пятница 13" },
+    "descriptions": {
+      "en": "Check in on Friday the 13th.",
+      "ru": "Отметься в пятницу 13-го."
+    },
+    "icon": { "type": "emoji", "value": "👻" },
+    "criteria": { "type": "calendar_match", "weekday": 4, "day": 13 },
+    "rewards": [
+      { "kind": "tokens", "amount": 30 },
+      { "kind": "catalog_icon", "pack_slug": "demo-mocks", "icon_slug": "fox-happy" }
+    ]
+  }
+]

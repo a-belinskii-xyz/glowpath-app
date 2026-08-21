@@ -28,13 +28,15 @@ from app.services.wallet_service import (
 router = APIRouter(tags=["wallet"])
 
 
-def _require_marketplace(user: User) -> None:
-    if not is_feature_enabled_for_user(FeatureFlag.ICON_MARKETPLACE, user):
+def _require_wallet(user: User) -> None:
+    marketplace_on = is_feature_enabled_for_user(FeatureFlag.ICON_MARKETPLACE, user)
+    achievements_on = is_feature_enabled_for_user(FeatureFlag.ACHIEVEMENTS, user)
+    if not marketplace_on and not achievements_on:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=structured_detail(
                 code=ErrorCode.MARKETPLACE_DISABLED,
-                message="Icon marketplace is not enabled for this user",
+                message="Wallet is not enabled for this user",
             ),
         )
 
@@ -55,7 +57,7 @@ def get_wallet(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
 ) -> WalletPublic:
-    _require_marketplace(current_user)
+    _require_wallet(current_user)
     wallet = get_or_create_wallet(db, user_id=current_user.id)
     db.commit()
     return WalletPublic(balance=wallet.balance)
@@ -68,7 +70,7 @@ def get_wallet_ledger(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
 ) -> WalletLedgerListResponse:
-    _require_marketplace(current_user)
+    _require_wallet(current_user)
     entries = list_ledger(db, user_id=current_user.id, limit=limit, offset=offset)
     return WalletLedgerListResponse(
         items=[
@@ -92,7 +94,7 @@ def post_staff_grant(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
 ) -> WalletPublic:
-    _require_marketplace(current_user)
+    _require_wallet(current_user)
     _require_staff(current_user)
     try:
         wallet, _entry = grant_tokens(
