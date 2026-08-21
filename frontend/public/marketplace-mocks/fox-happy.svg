@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="16" fill="#FDBA74"/>
+  <circle cx="32" cy="30" r="14" fill="#EA580C"/>
+  <circle cx="26" cy="28" r="2.5" fill="#FFF7ED"/>
+  <circle cx="38" cy="28" r="2.5" fill="#FFF7ED"/>
+  <path d="M26 36c2.5 3 9.5 3 12 0" stroke="#FFF7ED" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="32" y="58" text-anchor="middle" fill="#9A3412" font-size="7" font-family="system-ui,sans-serif">MOCK</text>
+</svg>
