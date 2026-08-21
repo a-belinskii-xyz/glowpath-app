@@ -77,17 +77,34 @@ function AchievementRewardChips({
         if (reward.kind === 'icon_pack') {
           const href = marketHrefForReward(reward)
           const label = reward.pack_name || reward.pack_slug || '—'
+          const previewIds = (
+            reward.preview_icon_ids?.length
+              ? reward.preview_icon_ids
+              : reward.cover_icon_id
+                ? [reward.cover_icon_id]
+                : []
+          ).slice(0, 3)
           const body = (
             <>
-              {reward.cover_icon_id ? (
-                <CatalogIconThumb
-                  iconId={reward.cover_icon_id}
-                  label={label}
-                  className="achievement-reward-thumb"
-                />
-              ) : (
-                <span className="achievement-reward-thumb achievement-reward-thumb--empty" aria-hidden="true" />
-              )}
+              <span className="achievement-reward-stack" aria-hidden="true">
+                {previewIds.length > 0 ? (
+                  previewIds.map((iconId, stackIndex) => (
+                    <span
+                      key={iconId}
+                      className="achievement-reward-stack-item"
+                      style={{ zIndex: previewIds.length - stackIndex }}
+                    >
+                      <CatalogIconThumb
+                        iconId={iconId}
+                        label=""
+                        className="achievement-reward-thumb"
+                      />
+                    </span>
+                  ))
+                ) : (
+                  <span className="achievement-reward-thumb achievement-reward-thumb--empty" />
+                )}
+              </span>
               <span className="achievement-reward-copy">
                 <span className="achievement-reward-kind">{t('achievements.rewardPackLabel')}</span>
                 <span className="achievement-reward-name">{label}</span>

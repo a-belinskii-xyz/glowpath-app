@@ -19,8 +19,32 @@ from app.models.icon_pack_unlock import IconPackUnlock
 from app.models.user_catalog_icon_unlock import UserCatalogIconUnlock
 from app.services.wallet_service import apply_ledger_delta, get_or_create_wallet
 
+PACK_PREVIEW_ICON_LIMIT = 3
+
+
+def _pack_preview_icon_ids(db: Session, *, pack: IconPack) -> list[str]:
+    """Up to 3 icon ids for stacked pack preview; cover first when set."""
+    ids: list[uuid.UUID] = []
+    if pack.cover_icon_id is not None:
+        ids.append(pack.cover_icon_id)
+    remaining = PACK_PREVIEW_ICON_LIMIT - len(ids)
+    if remaining <= 0:
+        return [str(icon_id) for icon_id in ids[:PACK_PREVIEW_ICON_LIMIT]]
+
+    query = select(CatalogIcon.id).where(CatalogIcon.pack_id == pack.id)
+    if ids:
+        query = query.where(CatalogIcon.id.notin_(ids))
+    extras = list(
+        db.scalars(
+            query.order_by(CatalogIcon.sort_order, CatalogIcon.created_at).limit(remaining)
+        ).all()
+    )
+    ids.extend(extras)
+    return [str(icon_id) for icon_id in ids[:PACK_PREVIEW_ICON_LIMIT]]
+
 
 def _reward_snapshot_item(
+    db: Session,
     reward: AchievementReward,
     *,
     locale: str,
@@ -37,6 +61,7 @@ def _reward_snapshot_item(
             locale,
         ) or pack.slug
         item["cover_icon_id"] = str(pack.cover_icon_id) if pack.cover_icon_id else None
+        item["preview_icon_ids"] = _pack_preview_icon_ids(db, pack=pack)
     elif (
         reward.kind == AchievementRewardKind.CATALOG_ICON.value
         and reward.catalog_icon is not None
@@ -109,13 +134,14 @@ def grant_rewards(
                     )
                 )
                 db.flush()
-        snapshot.append(_reward_snapshot_item(reward, locale=locale))
+        snapshot.append(_reward_snapshot_item(db, reward, locale=locale))
     return snapshot
 
 
 def serialize_reward_public(
+    db: Session,
     reward: AchievementReward,
     *,
     locale: str,
 ) -> dict[str, Any]:
-    return _reward_snapshot_item(reward, locale=locale)
+    return _reward_snapshot_item(db, reward, locale=locale)

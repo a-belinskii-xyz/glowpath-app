@@ -5,6 +5,7 @@ export type AchievementRewardPublic = {
   pack_slug?: string | null
   pack_name?: string | null
   cover_icon_id?: string | null
+  preview_icon_ids?: string[]
   catalog_icon_id?: string | null
   icon_slug?: string | null
   icon_name?: string | null

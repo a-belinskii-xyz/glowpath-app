@@ -101,6 +101,7 @@ def post_achievement_seen(
                 status_code=404,
             )
         payload = serialize_achievement_public(
+            db,
             achievement,
             progress=progress,
             locale=locale,

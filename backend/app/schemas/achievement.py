@@ -14,6 +14,7 @@ class AchievementRewardPublic(BaseModel):
     pack_slug: str | None = None
     pack_name: str | None = None
     cover_icon_id: UUID | None = None
+    preview_icon_ids: list[UUID] = Field(default_factory=list)
     catalog_icon_id: UUID | None = None
     icon_slug: str | None = None
     icon_name: str | None = None

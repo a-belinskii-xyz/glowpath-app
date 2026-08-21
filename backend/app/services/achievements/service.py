@@ -203,6 +203,7 @@ def mark_achievement_seen(
 
 
 def serialize_achievement_public(
+    db: Session,
     achievement: Achievement,
     *,
     progress: UserAchievement | None,
@@ -228,11 +229,11 @@ def serialize_achievement_public(
         return payload
 
     rewards = [
-        serialize_reward_public(reward, locale=locale)
+        serialize_reward_public(db, reward, locale=locale)
         for reward in sorted(achievement.rewards, key=lambda r: r.sort_order)
     ]
     if unlocked and progress is not None and progress.rewards_snapshot:
-        # Prefer live cover/icon ids when snapshot is older.
+        # Prefer live cover/preview ids when snapshot is older.
         live_by_kind = {
             (r.get("kind"), r.get("pack_id") or r.get("catalog_icon_id")): r for r in rewards
         }
@@ -301,6 +302,7 @@ def list_achievements_for_user(
     )
     return [
         serialize_achievement_public(
+            db,
             achievement,
             progress=progress_map.get(achievement.id),
             locale=locale,
@@ -361,6 +363,7 @@ def serialize_unlocked_list(
     )
     return [
         serialize_achievement_public(
+            db,
             achievement,
             progress=progress_map.get(achievement.id),
             locale=locale,
