@@ -1,7 +1,8 @@
 import io
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from app.models.goal import Goal
+from app.models.mood_entry_attachment import MoodEntryAttachment
 from app.models.tag import Tag
 from app.models.user import User
 from app.services.storage import FakeStorage
@@ -924,3 +925,80 @@ def test_insights_rejects_incomplete_and_inverted_range(
     )
     assert inverted.status_code == 400
     assert inverted.json()["detail"]["code"] == "recorded_to_before_from"
+
+
+def _upload_photo(
+    auth_client: TestClient,
+    token: str,
+    entry_id: str,
+    name: str,
+    payload: bytes = b"fake-photo",
+):
+    return auth_client.post(
+        f"/v1/mood-entries/{entry_id}/attachments",
+        headers=_auth_headers(token),
+        data={"kind": "photo"},
+        files={"file": (name, io.BytesIO(payload), "image/jpeg")},
+    )
+
+
+def test_gallery_photos_newest_first_excludes_audio_and_other_users(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    storage: FakeStorage,
+    db: Session,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "gallery-owner@example.com")
+    other_token = register_verify_and_login(auth_client, mailer, "gallery-other@example.com")
+    headers = _auth_headers(token)
+
+    first_entry_id = _create_entry(auth_client, token).json()["id"]
+    second_entry_id = _create_entry(
+        auth_client, token, recorded_at="2026-07-11T12:00:00+03:00"
+    ).json()["id"]
+    other_entry_id = _create_entry(auth_client, other_token).json()["id"]
+
+    older = _upload_photo(auth_client, token, first_entry_id, "older.jpg", b"older")
+    newer = _upload_photo(auth_client, token, second_entry_id, "newer.jpg", b"newer")
+    assert older.status_code == 201
+    assert newer.status_code == 201
+
+    audio = auth_client.post(
+        f"/v1/mood-entries/{first_entry_id}/attachments",
+        headers=headers,
+        data={"kind": "audio"},
+        files={"file": ("voice.mp3", io.BytesIO(b"fake-audio"), "audio/mpeg")},
+    )
+    assert audio.status_code == 201
+
+    other_photo = _upload_photo(auth_client, other_token, other_entry_id, "other.jpg", b"other")
+    assert other_photo.status_code == 201
+
+    older_id = older.json()["id"]
+    newer_id = newer.json()["id"]
+    older_row = db.get(MoodEntryAttachment, older_id)
+    newer_row = db.get(MoodEntryAttachment, newer_id)
+    assert older_row is not None
+    assert newer_row is not None
+    older_row.created_at = datetime(2026, 7, 10, 12, 0, tzinfo=UTC)
+    newer_row.created_at = datetime(2026, 7, 11, 15, 0, tzinfo=UTC)
+    db.commit()
+
+    response = auth_client.get("/v1/mood-entries/photos", headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    ids = [item["id"] for item in body["items"]]
+    assert ids == [newer_id, older_id]
+    assert body["items"][0]["mood_entry_id"] == second_entry_id
+    assert body["items"][0]["original_name"] == "newer.jpg"
+    assert "created_at" in body["items"][0]
+    assert audio.json()["id"] not in ids
+    assert other_photo.json()["id"] not in ids
+
+    page = auth_client.get(
+        "/v1/mood-entries/photos",
+        params={"limit": 1, "offset": 0},
+        headers=headers,
+    )
+    assert page.status_code == 200
+    assert [item["id"] for item in page.json()["items"]] == [newer_id]

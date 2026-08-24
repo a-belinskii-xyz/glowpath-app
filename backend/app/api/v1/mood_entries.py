@@ -25,6 +25,8 @@ from app.models.user import User
 from app.schemas.mood_entry import (
     AttachmentPublic,
     AttachmentReorderRequest,
+    GalleryPhotoListResponse,
+    GalleryPhotoPublic,
     MoodEntryCalendarResponse,
     MoodEntryCreate,
     MoodEntryListResponse,
@@ -42,6 +44,7 @@ from app.services.mood_entry_service import (
     get_mood_entry,
     get_mood_entry_calendar,
     get_mood_entry_stats,
+    list_gallery_photos,
     list_mood_entries,
     patch_mood_entry,
     reorder_photo_attachments,
@@ -256,6 +259,35 @@ def search_entries(
         items=[_to_public(entry, locale=locale, **view) for entry in entries],
         limit=limit,
         offset=0,
+    )
+
+
+@router.get("/photos", response_model=GalleryPhotoListResponse)
+def list_photos(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    limit: Annotated[int, Query(ge=1, le=100)] = 48,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> GalleryPhotoListResponse:
+    photos = list_gallery_photos(
+        db,
+        user_id=current_user.id,
+        limit=limit,
+        offset=offset,
+    )
+    return GalleryPhotoListResponse(
+        items=[
+            GalleryPhotoPublic(
+                id=photo.id,
+                mood_entry_id=photo.mood_entry_id,
+                original_name=photo.original_name,
+                mime_type=photo.mime_type,
+                created_at=photo.created_at,
+            )
+            for photo in photos
+        ],
+        limit=limit,
+        offset=offset,
     )
 
 

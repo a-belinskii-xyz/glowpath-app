@@ -408,6 +408,27 @@ def list_mood_entries(
     )
 
 
+def list_gallery_photos(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    limit: int,
+    offset: int,
+) -> list[MoodEntryAttachment]:
+    stmt = (
+        select(MoodEntryAttachment)
+        .join(MoodEntry, MoodEntry.id == MoodEntryAttachment.mood_entry_id)
+        .where(
+            MoodEntry.user_id == user_id,
+            MoodEntryAttachment.kind == AttachmentKind.PHOTO,
+        )
+        .order_by(MoodEntryAttachment.created_at.desc(), MoodEntryAttachment.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(db.scalars(stmt).all())
+
+
 def _like_contains_pattern(value: str) -> str:
     escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return f"%{escaped}%"

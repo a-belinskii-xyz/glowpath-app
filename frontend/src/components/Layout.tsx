@@ -3,7 +3,14 @@ import type { CSSProperties, ReactNode } from 'react'
 
 import { CaptureAttribution } from './CaptureAttribution'
 import { LanguageSwitcher } from './LanguageSwitcher'
-import { NavEntriesIcon, NavGoalsIcon, NavMarketIcon, NavProfileIcon, NavTagsIcon } from './icons'
+import {
+  NavEntriesIcon,
+  NavGalleryIcon,
+  NavGoalsIcon,
+  NavMarketIcon,
+  NavProfileIcon,
+  NavTagsIcon,
+} from './icons'
 import { useAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -40,6 +47,10 @@ function BottomNav() {
       <NavLink to="/" end className={bottomNavClassName}>
         <NavEntriesIcon />
         <span>{t('nav.entries')}</span>
+      </NavLink>
+      <NavLink to="/gallery" className={bottomNavClassName}>
+        <NavGalleryIcon />
+        <span>{t('nav.gallery')}</span>
       </NavLink>
       <NavLink to="/goals" className={bottomNavClassName}>
         <NavGoalsIcon />
@@ -156,6 +167,9 @@ function ShellChrome({
           <p className="app-sidebar-section">{t('nav.sectionTrack')}</p>
           <NavLink to="/" end className={navClassName}>
             {t('nav.entries')}
+          </NavLink>
+          <NavLink to="/gallery" className={navClassName}>
+            {t('nav.gallery')}
           </NavLink>
           <NavLink to="/goals" className={navClassName}>
             {t('nav.goals')}

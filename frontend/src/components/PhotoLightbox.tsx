@@ -1,29 +1,41 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 
 import { AttachmentImage } from './AttachmentImage'
 import { useLocale } from '../context/LocaleContext'
-import type { AttachmentPublic } from '../types/mood'
+import { intlLocale } from '../i18n/t'
+import { formatDayHeading, formatWeekday } from '../lib/datetime'
+
+export type LightboxPhoto = {
+  id: string
+  entryId: string
+  originalName: string
+  createdAt?: string
+}
 
 type PhotoLightboxProps = {
-  entryId: string
-  photos: AttachmentPublic[]
+  photos: LightboxPhoto[]
   index: number
   onClose: () => void
   onIndexChange: (index: number) => void
+  showOpenEntry?: boolean
+  timeZone?: string
 }
 
 export function PhotoLightbox({
-  entryId,
   photos,
   index,
   onClose,
   onIndexChange,
+  showOpenEntry = false,
+  timeZone = 'UTC',
 }: PhotoLightboxProps) {
-  const { t } = useLocale()
+  const { locale, t } = useLocale()
   const dialogRef = useRef<HTMLDivElement>(null)
   const photo = photos[index]
   const hasMultiple = photos.length > 1
+  const dateLocale = intlLocale(locale)
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -60,6 +72,7 @@ export function PhotoLightbox({
 
   const goPrev = () => onIndexChange((index - 1 + photos.length) % photos.length)
   const goNext = () => onIndexChange((index + 1) % photos.length)
+  const addedAt = photo.createdAt
 
   return createPortal(
     <div className="photo-lightbox-backdrop" role="presentation" onClick={onClose}>
@@ -68,7 +81,7 @@ export function PhotoLightbox({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={photo.original_name}
+        aria-label={photo.originalName}
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -94,9 +107,9 @@ export function PhotoLightbox({
         <div className="photo-lightbox-stage">
           <AttachmentImage
             className="photo-lightbox-image"
-            entryId={entryId}
+            entryId={photo.entryId}
             attachmentId={photo.id}
-            alt={photo.original_name}
+            alt={photo.originalName}
           />
         </div>
 
@@ -111,11 +124,28 @@ export function PhotoLightbox({
           </button>
         ) : null}
 
-        {hasMultiple ? (
-          <p className="photo-lightbox-counter">
-            {index + 1} / {photos.length}
-          </p>
-        ) : null}
+        <div className="photo-lightbox-footer">
+          {addedAt ? (
+            <div className="photo-lightbox-meta">
+              <p className="photo-lightbox-date">{formatDayHeading(addedAt, timeZone, dateLocale)}</p>
+              <p className="photo-lightbox-weekday">{formatWeekday(addedAt, timeZone, dateLocale)}</p>
+            </div>
+          ) : null}
+          {showOpenEntry ? (
+            <Link
+              className="button photo-lightbox-open-entry"
+              to={`/entries/${photo.entryId}`}
+              state={{ from: '/gallery' }}
+            >
+              {t('gallery.openEntry')}
+            </Link>
+          ) : null}
+          {hasMultiple ? (
+            <p className="photo-lightbox-counter">
+              {index + 1} / {photos.length}
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>,
     document.body,

@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { deleteMoodEntry, getMoodEntry, getMoodInsights, patchMoodEntry } from '../api/moodEntries'
 import { PageErrorAlert } from '../components/PageErrorAlert'
@@ -33,6 +33,7 @@ function isSameInstant(left: string, right: string, slackMs = 60_000) {
 export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const { locale, t } = useLocale()
   const { scores } = useMoodPreferences()
@@ -149,9 +150,12 @@ export function EntryDetailPage() {
   }
 
   const audioAttachment = entry?.attachments.find((attachment) => attachment.kind === 'audio')
+  const fromGallery = (location.state as { from?: string } | null)?.from === '/gallery'
   const backToEntries = entry
     ? entriesListPathForInstant(entry.recorded_at, timeZone, entry.id)
     : '/'
+  const backHref = fromGallery ? '/gallery' : backToEntries
+  const backLabel = fromGallery ? t('gallery.back') : t('common.backToEntries')
   const showCreated = Boolean(entry && !isSameInstant(entry.created_at, entry.recorded_at))
   const showUpdated = Boolean(
     entry &&
@@ -205,8 +209,8 @@ export function EntryDetailPage() {
               </IconButton>
             </div>
           ) : null}
-          <Link className="button button-secondary" to={backToEntries}>
-            {t('common.backToEntries')}
+          <Link className="button button-secondary" to={backHref}>
+            {backLabel}
           </Link>
         </div>
       </header>

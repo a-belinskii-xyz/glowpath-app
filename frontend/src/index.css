@@ -3031,8 +3031,10 @@ code {
   position: relative;
   width: min(100%, 56rem);
   max-height: min(100%, 90vh);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .photo-lightbox-stage {
@@ -3104,13 +3106,111 @@ code {
 }
 
 .photo-lightbox-counter {
-  position: absolute;
-  left: 50%;
-  bottom: -0.25rem;
-  transform: translate(-50%, 100%);
+  position: static;
   margin: 0;
   color: #e2e8f0;
   font-size: 0.875rem;
+}
+
+.photo-lightbox-footer {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  width: min(100%, 28rem);
+  padding: 0 0.5rem 0.15rem;
+  text-align: center;
+}
+
+.photo-lightbox-meta {
+  color: #e2e8f0;
+}
+
+.photo-lightbox-date {
+  margin: 0;
+  font-weight: 650;
+}
+
+.photo-lightbox-weekday {
+  margin: 0.15rem 0 0;
+  font-size: 0.92rem;
+  text-transform: capitalize;
+  color: #cbd5e1;
+}
+
+.photo-lightbox-open-entry {
+  margin-top: 0.2rem;
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: transparent;
+}
+
+.photo-lightbox-open-entry:hover {
+  text-decoration: none;
+  filter: brightness(0.97);
+}
+
+.page-gallery {
+  max-width: 72rem;
+}
+
+.gallery-months {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.gallery-month {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.gallery-month-heading {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 650;
+  color: var(--chrome-text-secondary, #374151);
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+@media (min-width: 640px) {
+  .gallery-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.28rem;
+  }
+}
+
+@media (min-width: 960px) {
+  .gallery-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.gallery-tile {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--chrome-surface-inset, #e2e8f0) 88%, transparent);
+  cursor: pointer;
+}
+
+.gallery-tile:focus-visible {
+  outline: 2px solid var(--chrome-text-primary, #0f172a);
+  outline-offset: 2px;
+}
+
+.gallery-tile-image,
+.gallery-tile-image.attachment-image-skeleton,
+.gallery-tile-image.attachment-image-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .load-more-sentinel {
@@ -7144,7 +7244,7 @@ code {
     right: 0;
     bottom: 0;
     z-index: 45;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 0.15rem;
     padding: 0.35rem 0.4rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
     background: color-mix(in oklab, var(--chrome-surface) 88%, transparent);

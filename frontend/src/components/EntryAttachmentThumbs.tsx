@@ -128,8 +128,11 @@ export function EntryAttachmentThumbs({
 
       {lightboxIndex !== null ? (
         <PhotoLightbox
-          entryId={entryId}
-          photos={photos}
+          photos={photos.map((photo) => ({
+            id: photo.id,
+            entryId,
+            originalName: photo.original_name,
+          }))}
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onIndexChange={setLightboxIndex}

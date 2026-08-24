@@ -207,6 +207,53 @@ export function NavEntriesIcon(props: IconProps) {
   )
 }
 
+export function NavGalleryIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <rect
+        x="4.5"
+        y="4.5"
+        width="6.25"
+        height="6.25"
+        rx="1.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <rect
+        x="13.25"
+        y="4.5"
+        width="6.25"
+        height="6.25"
+        rx="1.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <rect
+        x="4.5"
+        y="13.25"
+        width="6.25"
+        height="6.25"
+        rx="1.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <rect
+        x="13.25"
+        y="13.25"
+        width="6.25"
+        height="6.25"
+        rx="1.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+    </BaseIcon>
+  )
+}
+
 export function NavGoalsIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>

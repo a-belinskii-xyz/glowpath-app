@@ -13,6 +13,7 @@ import type {
   MoodEntryPublic,
   MoodEntryStatsResponse,
   MoodInsightsResponse,
+  GalleryPhotoListResponse,
   SearchMoodEntriesParams,
 } from '../types/mood'
 import { apiRequest, getApiBaseUrl } from './client'
@@ -73,6 +74,13 @@ function buildListQuery(params: ListMoodEntriesParams = {}): string {
 
 export function listMoodEntries(params: ListMoodEntriesParams = {}): Promise<MoodEntryListResponse> {
   return apiRequest<MoodEntryListResponse>(`/v1/mood-entries${buildListQuery(params)}`, {
+    auth: true,
+    headers: moodHeaders(),
+  })
+}
+
+export function listGalleryPhotos(params: { limit?: number; offset?: number } = {}): Promise<GalleryPhotoListResponse> {
+  return apiRequest<GalleryPhotoListResponse>(`/v1/mood-entries/photos${buildListQuery(params)}`, {
     auth: true,
     headers: moodHeaders(),
   })

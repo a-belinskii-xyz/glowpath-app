@@ -38,6 +38,20 @@ export type AttachmentPublic = {
   transcription: string | null
 }
 
+export type GalleryPhotoPublic = {
+  id: string
+  mood_entry_id: string
+  original_name: string
+  mime_type: string
+  created_at: string
+}
+
+export type GalleryPhotoListResponse = {
+  items: GalleryPhotoPublic[]
+  limit: number
+  offset: number
+}
+
 export type MoodEntryPublic = {
   id: string
   recorded_at: string

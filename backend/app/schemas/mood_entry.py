@@ -91,6 +91,20 @@ class AttachmentPublic(BaseModel):
     transcription: str | None = None
 
 
+class GalleryPhotoPublic(BaseModel):
+    id: uuid.UUID
+    mood_entry_id: uuid.UUID
+    original_name: str
+    mime_type: str
+    created_at: datetime
+
+
+class GalleryPhotoListResponse(BaseModel):
+    items: list[GalleryPhotoPublic]
+    limit: int
+    offset: int
+
+
 class AttachmentReorderRequest(BaseModel):
     ordered_ids: list[uuid.UUID] = Field(min_length=1)
 

@@ -12,6 +12,7 @@ import { CreateEntryPage } from './pages/CreateEntryPage'
 import { EditEntryPage } from './pages/EditEntryPage'
 import { EntryDetailPage } from './pages/EntryDetailPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+import { GalleryPage } from './pages/GalleryPage'
 import { GoalsPage } from './pages/GoalsPage'
 import { GoogleCallbackPage } from './pages/GoogleCallbackPage'
 import { HomePage } from './pages/HomePage'
@@ -58,6 +59,7 @@ function App() {
                     <Route path="entries/new" element={<CreateEntryPage />} />
                     <Route path="entries/:id/edit" element={<EditEntryPage />} />
                     <Route path="entries/:id" element={<EntryDetailPage />} />
+                    <Route path="gallery" element={<GalleryPage />} />
                     <Route path="tags" element={<TagsPage />} />
                     <Route path="market" element={<MarketPage />} />
                     <Route path="achievements" element={<AchievementsPage />} />
