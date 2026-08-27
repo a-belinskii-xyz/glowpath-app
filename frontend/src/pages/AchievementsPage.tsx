@@ -1,4 +1,4 @@
-import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { listAchievements, markAchievementSeen } from '../api/achievements'
@@ -15,11 +15,16 @@ import { formatApiError } from '../lib/errors'
 import type { AchievementPublic, AchievementRewardPublic } from '../types/achievement'
 
 type FilterId = 'all' | 'in_progress' | 'unlocked'
+type Translate = (key: string, params?: Record<string, string | number>) => string
 
 const CATEGORY_ORDER = ['getting_started', 'streaks', 'collection', 'secrets'] as const
 
 function isMystery(item: AchievementPublic): boolean {
   return item.visibility === 'secret' && !item.unlocked
+}
+
+function categoryTitle(key: string, t: Translate): string {
+  return t(`achievements.category.${key}` as 'achievements.category.getting_started')
 }
 
 function marketHrefForReward(reward: AchievementRewardPublic): string | null {
@@ -179,6 +184,83 @@ function AchievementRewardChips({
   )
 }
 
+function AchievementCard({
+  item,
+  t,
+  onOpen,
+}: {
+  item: AchievementPublic
+  t: Translate
+  onOpen: (item: AchievementPublic) => void
+}) {
+  const mystery = isMystery(item)
+  const progressPct = Math.min(
+    100,
+    Math.round((item.progress_current / Math.max(1, item.progress_target)) * 100),
+  )
+  const rarity = formatUnlockPercent(item.unlock_percent, t)
+  const category = item.category ? categoryTitle(item.category, t) : null
+
+  return (
+    <button
+      type="button"
+      className={`achievement-card${item.unlocked ? ' is-unlocked' : ''}${
+        mystery ? ' is-mystery' : ''
+      }${item.is_new ? ' is-new' : ''}`}
+      onClick={() => onOpen(item)}
+    >
+      <span className="achievement-card-icon" aria-hidden="true">
+        {mystery ? '?' : item.icon || '🏆'}
+      </span>
+      <span className="achievement-card-body">
+        {category && !mystery ? (
+          <span className="achievement-card-category">{category}</span>
+        ) : null}
+        <span className="achievement-card-title">
+          {mystery ? t('achievements.mysteryTitle') : item.name}
+          {item.visibility === 'secret' && item.unlocked ? (
+            <span className="achievement-secret-badge">{t('achievements.secretBadge')}</span>
+          ) : null}
+          {item.is_new ? (
+            <span className="achievement-new-badge">{t('achievements.newBadge')}</span>
+          ) : null}
+        </span>
+        <span className="achievement-card-desc">
+          {mystery ? t('achievements.mysteryHint') : item.description}
+        </span>
+        {rarity ? <span className="achievement-rarity">{rarity}</span> : null}
+        {!mystery && !item.unlocked ? (
+          <>
+            <span className="achievement-progress" aria-hidden="true">
+              <span className="achievement-progress-bar" style={{ width: `${progressPct}%` }} />
+            </span>
+            <span className="achievement-progress-label">
+              {item.progress_current} / {item.progress_target}
+            </span>
+          </>
+        ) : null}
+        {(!mystery && item.rewards && item.rewards.length > 0) ||
+        (item.unlocked && item.unlocked_by_entry_id) ? (
+          <span className="achievement-card-footer">
+            {!mystery && item.rewards && item.rewards.length > 0 ? (
+              <AchievementRewardChips rewards={item.rewards} t={t} stopPropagation />
+            ) : null}
+            {item.unlocked && item.unlocked_by_entry_id ? (
+              <Link
+                to={`/entries/${item.unlocked_by_entry_id}`}
+                className="achievement-entry-link"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {t('achievements.viewEntry')}
+              </Link>
+            ) : null}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  )
+}
+
 export function AchievementsPage() {
   const { t, locale } = useLocale()
   const { user } = useAuth()
@@ -227,7 +309,18 @@ export function AchievementsPage() {
     let totalVisible = 0
     let secretUnlocked = 0
     let secretTotal = 0
+    let inProgress = 0
+    let tokensEarned = 0
+    const categoryMap = new Map<string, { unlocked: number; total: number }>()
     for (const item of items) {
+      const categoryKey = item.category || 'collection'
+      const categoryRow = categoryMap.get(categoryKey) ?? { unlocked: 0, total: 0 }
+      categoryRow.total += 1
+      if (item.unlocked) {
+        categoryRow.unlocked += 1
+      }
+      categoryMap.set(categoryKey, categoryRow)
+
       if (item.visibility === 'secret') {
         secretTotal += 1
         if (item.unlocked) {
@@ -237,14 +330,35 @@ export function AchievementsPage() {
         totalVisible += 1
         if (item.unlocked) {
           unlockedVisible += 1
+        } else {
+          inProgress += 1
+        }
+      }
+      if (item.unlocked) {
+        for (const reward of item.rewards ?? []) {
+          if (reward.kind === 'tokens' && reward.amount) {
+            tokensEarned += reward.amount
+          }
         }
       }
     }
-    return { unlockedVisible, totalVisible, secretUnlocked, secretTotal }
+    const categoryKeys = [
+      ...CATEGORY_ORDER.filter((key) => categoryMap.has(key)),
+      ...[...categoryMap.keys()].filter((key) => !(CATEGORY_ORDER as readonly string[]).includes(key)),
+    ]
+    return {
+      unlockedVisible,
+      totalVisible,
+      secretUnlocked,
+      secretTotal,
+      inProgress,
+      tokensEarned,
+      categories: categoryKeys.map((key) => ({ key, ...categoryMap.get(key)! })),
+    }
   }, [items])
 
   const filtered = useMemo(() => {
-    return items.filter((item) => {
+    const visible = items.filter((item) => {
       if (filter === 'unlocked') {
         return item.unlocked
       }
@@ -253,22 +367,29 @@ export function AchievementsPage() {
       }
       return true
     })
+    return [...visible].sort((a, b) => {
+      const aCat = CATEGORY_ORDER.indexOf((a.category || 'collection') as (typeof CATEGORY_ORDER)[number])
+      const bCat = CATEGORY_ORDER.indexOf((b.category || 'collection') as (typeof CATEGORY_ORDER)[number])
+      const aOrder = aCat === -1 ? CATEGORY_ORDER.length : aCat
+      const bOrder = bCat === -1 ? CATEGORY_ORDER.length : bCat
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder
+      }
+      return a.sort_order - b.sort_order
+    })
   }, [items, filter])
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, AchievementPublic[]>()
-    for (const item of filtered) {
-      const key = item.category || 'collection'
-      const list = map.get(key) ?? []
-      list.push(item)
-      map.set(key, list)
-    }
-    const keys = [
-      ...CATEGORY_ORDER.filter((key) => map.has(key)),
-      ...[...map.keys()].filter((key) => !(CATEGORY_ORDER as readonly string[]).includes(key)),
-    ]
-    return keys.map((key) => ({ key, items: map.get(key) ?? [] }))
-  }, [filtered])
+  const recentUnlocked = useMemo(() => {
+    return items
+      .filter((item) => item.unlocked && !isMystery(item))
+      .sort((a, b) => (b.unlocked_at || '').localeCompare(a.unlocked_at || ''))
+      .slice(0, 4)
+  }, [items])
+
+  const unlockedPct =
+    summary.totalVisible > 0
+      ? Math.round((summary.unlockedVisible / summary.totalVisible) * 100)
+      : 0
 
   const openDetail = async (item: AchievementPublic) => {
     setSelected(item)
@@ -302,121 +423,143 @@ export function AchievementsPage() {
   return (
     <section className="page page-achievements">
       <EmailVerificationBanner />
-      <header className="page-header">
+      <header className="page-header achievements-header">
         <h1>{t('achievements.title')}</h1>
-        <p className="page-lead">
-          {t('achievements.progress', {
-            unlocked: summary.unlockedVisible,
-            total: summary.totalVisible,
-          })}
-          {summary.secretTotal > 0
-            ? ` · ${t('achievements.secretsProgress', {
-                unlocked: summary.secretUnlocked,
-                total: summary.secretTotal,
-              })}`
-            : null}
-        </p>
       </header>
 
       <PageErrorAlert error={error} />
 
-      <div className="achievements-filters" role="tablist" aria-label={t('achievements.filters')}>
-        {(
-          [
-            ['all', t('achievements.filterAll')],
-            ['in_progress', t('achievements.filterInProgress')],
-            ['unlocked', t('achievements.filterUnlocked')],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={filter === id}
-            className={`button button-small${filter === id ? '' : ' button-secondary'}`}
-            onClick={() => setFilter(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {isLoading ? <p className="muted">{t('common.loading')}</p> : null}
-
-      {!isLoading && grouped.length === 0 ? (
-        <Alert variant="info">{t('achievements.empty')}</Alert>
-      ) : null}
-
-      {grouped.map((group) => (
-        <section key={group.key} className="achievements-section" aria-labelledby={`ach-cat-${group.key}`}>
-          <h2 id={`ach-cat-${group.key}`} className="achievements-section-title">
-            {t(`achievements.category.${group.key}` as 'achievements.category.getting_started')}
-          </h2>
-          <div className="achievements-grid">
-            {group.items.map((item) => {
-              const mystery = isMystery(item)
-              const progressPct = Math.min(
-                100,
-                Math.round((item.progress_current / Math.max(1, item.progress_target)) * 100),
-              )
-              const rarity = formatUnlockPercent(item.unlock_percent, t)
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`achievement-card${item.unlocked ? ' is-unlocked' : ''}${
-                    mystery ? ' is-mystery' : ''
-                  }${item.is_new ? ' is-new' : ''}`}
-                  onClick={() => void openDetail(item)}
-                >
-                  <span className="achievement-card-icon" aria-hidden="true">
-                    {mystery ? '?' : item.icon || '🏆'}
-                  </span>
-                  <span className="achievement-card-body">
-                    <span className="achievement-card-title">
-                      {mystery ? t('achievements.mysteryTitle') : item.name}
-                      {item.visibility === 'secret' && item.unlocked ? (
-                        <span className="achievement-secret-badge">{t('achievements.secretBadge')}</span>
-                      ) : null}
-                      {item.is_new ? (
-                        <span className="achievement-new-badge">{t('achievements.newBadge')}</span>
-                      ) : null}
-                    </span>
-                    {!mystery ? (
-                      <span className="achievement-card-desc">{item.description}</span>
-                    ) : (
-                      <span className="achievement-card-desc">{t('achievements.mysteryHint')}</span>
-                    )}
-                    {rarity ? <span className="achievement-rarity">{rarity}</span> : null}
-                    {!mystery && !item.unlocked ? (
-                      <span className="achievement-progress" aria-hidden="true">
-                        <span className="achievement-progress-bar" style={{ width: `${progressPct}%` }} />
-                      </span>
-                    ) : null}
-                    {!mystery && !item.unlocked ? (
-                      <span className="achievement-progress-label">
-                        {item.progress_current} / {item.progress_target}
-                      </span>
-                    ) : null}
-                    {!mystery && item.rewards && item.rewards.length > 0 ? (
-                      <AchievementRewardChips rewards={item.rewards} t={t} stopPropagation />
-                    ) : null}
-                    {item.unlocked && item.unlocked_by_entry_id ? (
-                      <Link
-                        to={`/entries/${item.unlocked_by_entry_id}`}
-                        className="achievement-entry-link"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        {t('achievements.viewEntry')}
-                      </Link>
-                    ) : null}
-                  </span>
-                </button>
-              )
-            })}
+      <div className="achievements-layout">
+        <aside className="achievements-aside" aria-label={t('achievements.overview')}>
+          <div className="achievements-stat">
+            <span
+              className="achievements-stat-ring"
+              style={{ '--pct': unlockedPct } as CSSProperties}
+              aria-hidden="true"
+            />
+            <span className="achievements-stat-copy">
+              <span className="achievements-stat-label">{t('achievements.statUnlocked')}</span>
+              <span className="achievements-stat-value">
+                {summary.unlockedVisible}/{summary.totalVisible}
+              </span>
+            </span>
           </div>
-        </section>
-      ))}
+          <div className="achievements-stat">
+            <span className="achievements-stat-copy">
+              <span className="achievements-stat-label">{t('achievements.filterInProgress')}</span>
+              <span className="achievements-stat-value">{summary.inProgress}</span>
+            </span>
+          </div>
+          {summary.secretTotal > 0 ? (
+            <div className="achievements-stat">
+              <span className="achievements-stat-copy">
+                <span className="achievements-stat-label">{t('achievements.category.secrets')}</span>
+                <span className="achievements-stat-value">
+                  {summary.secretUnlocked}/{summary.secretTotal}
+                </span>
+              </span>
+            </div>
+          ) : null}
+          <div className="achievements-stat achievements-stat--tokens">
+            <span className="achievements-stat-copy">
+              <span className="achievements-stat-label">{t('achievements.statTokens')}</span>
+              <span className="achievements-stat-value">
+                {t('achievements.rewardTokens', { amount: summary.tokensEarned })}
+              </span>
+            </span>
+          </div>
+
+          {summary.categories.length > 0 ? (
+            <section className="achievements-aside-block">
+              <h2 className="achievements-aside-title">{t('achievements.categoriesHeading')}</h2>
+              <ul className="achievements-category-list">
+                {summary.categories.map((row) => {
+                  const pct = row.total > 0 ? Math.round((row.unlocked / row.total) * 100) : 0
+                  return (
+                    <li key={row.key} className="achievements-category-row">
+                      <span className="achievements-category-name">{categoryTitle(row.key, t)}</span>
+                      <span className="achievements-category-count">
+                        {row.unlocked}/{row.total}
+                      </span>
+                      <span className="achievement-progress" aria-hidden="true">
+                        <span className="achievement-progress-bar" style={{ width: `${pct}%` }} />
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ) : null}
+
+          <section className="achievements-aside-block">
+            <h2 className="achievements-aside-title">{t('achievements.recentlyUnlocked')}</h2>
+            {recentUnlocked.length === 0 ? (
+              <p className="achievements-aside-empty">{t('achievements.noneUnlockedYet')}</p>
+            ) : (
+              <ul className="achievements-recent-list">
+                {recentUnlocked.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className="achievements-recent-item"
+                      onClick={() => void openDetail(item)}
+                    >
+                      <span className="achievements-recent-icon" aria-hidden="true">
+                        {item.icon || '🏆'}
+                      </span>
+                      <span className="achievements-recent-copy">
+                        <span className="achievements-recent-name">{item.name}</span>
+                        {item.unlocked_at ? (
+                          <span className="achievements-recent-date">
+                            {new Date(item.unlocked_at).toLocaleDateString(dateLocale)}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </aside>
+
+        <div className="achievements-main">
+          <div className="achievements-filters" role="tablist" aria-label={t('achievements.filters')}>
+            {(
+              [
+                ['all', t('achievements.filterAll')],
+                ['in_progress', t('achievements.filterInProgress')],
+                ['unlocked', t('achievements.filterUnlocked')],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={filter === id}
+                className={`button button-small${filter === id ? '' : ' button-secondary'}`}
+                onClick={() => setFilter(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {isLoading ? <p className="muted">{t('common.loading')}</p> : null}
+
+          {!isLoading && filtered.length === 0 ? (
+            <Alert variant="info">{t('achievements.empty')}</Alert>
+          ) : null}
+
+          {!isLoading && filtered.length > 0 ? (
+            <div className="achievements-grid">
+              {filtered.map((item) => (
+                <AchievementCard key={item.id} item={item} t={t} onOpen={(row) => void openDetail(row)} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       <EditorDrawer
         open={selected !== null}
