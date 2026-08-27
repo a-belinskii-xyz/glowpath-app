@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, getMoodInsights, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, getMoodEntryStreak, getMoodInsights, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
 import { getGoalCalendar, getGoalStats, listGoals } from '../api/goals'
 import { Alert } from '../components/Alert'
 import { PageErrorAlert } from '../components/PageErrorAlert'
@@ -16,6 +16,7 @@ import { PlusIcon, SearchIcon, SparkleIcon } from '../components/icons'
 import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MonthControl } from '../components/MonthControl'
 import { MonthSummaryOverlay } from '../components/MonthSummaryOverlay'
+import { StreakBadge } from '../components/StreakBadge'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -125,6 +126,8 @@ export function EntriesPage() {
 
   const [stats, setStats] = useState<MoodEntryStatsResponse | null>(null)
   const [isStatsLoading, setIsStatsLoading] = useState(true)
+  const [streakDays, setStreakDays] = useState<number | null>(null)
+  const [streakLoggedToday, setStreakLoggedToday] = useState(false)
   const [insights, setInsights] = useState<MoodInsightsResponse | null>(null)
   const [isInsightsLoading, setIsInsightsLoading] = useState(true)
   const [goalStatsPeriod, setGoalStatsPeriod] = useState<GoalStatsPeriod>('week')
@@ -383,6 +386,23 @@ export function EntriesPage() {
     }
   }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified])
 
+  const loadStreak = useCallback(async () => {
+    if (!user?.email_verified) {
+      setStreakDays(null)
+      setStreakLoggedToday(false)
+      return
+    }
+
+    try {
+      const response = await getMoodEntryStreak()
+      setStreakDays(response.current_days)
+      setStreakLoggedToday(response.logged_today)
+    } catch {
+      setStreakDays(null)
+      setStreakLoggedToday(false)
+    }
+  }, [user?.email_verified])
+
   const focusEntryId = searchParams.get('entry')
   const loadInsights = useCallback(async () => {
     if (!user?.email_verified) {
@@ -576,6 +596,10 @@ export function EntriesPage() {
   useEffect(() => {
     void loadStats()
   }, [loadStats])
+
+  useEffect(() => {
+    void loadStreak()
+  }, [loadStreak])
 
   useEffect(() => {
     void loadInsights()
@@ -831,6 +855,7 @@ export function EntriesPage() {
     void loadStats()
     void loadInsights()
     void loadGoalStats()
+    void loadStreak()
   }
 
   const handleToggleFavorite = async (entryId: string, isFavorite: boolean) => {
@@ -978,8 +1003,15 @@ export function EntriesPage() {
         </div>
       </header>
 
-      {companionGreeting ? (
-        <p className="companion-line">{companionGreeting}</p>
+      {companionGreeting || (streakDays != null && streakDays > 0) ? (
+        <div className="entries-hero">
+          {companionGreeting ? (
+            <p className="companion-line">{companionGreeting}</p>
+          ) : null}
+          {streakDays != null && streakDays > 0 ? (
+            <StreakBadge days={streakDays} loggedToday={streakLoggedToday} />
+          ) : null}
+        </div>
       ) : null}
 
       <PageErrorAlert error={error} />

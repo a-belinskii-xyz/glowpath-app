@@ -91,6 +91,11 @@ export type MoodEntryCalendarResponse = {
   days: CalendarDayPublic[]
 }
 
+export type MoodEntryStreakResponse = {
+  current_days: number
+  logged_today: boolean
+}
+
 export type MoodScoreStatPublic = {
   score: number
   score_label: string

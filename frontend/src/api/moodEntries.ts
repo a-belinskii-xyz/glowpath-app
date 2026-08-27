@@ -12,6 +12,7 @@ import type {
   MoodEntryPatch,
   MoodEntryPublic,
   MoodEntryStatsResponse,
+  MoodEntryStreakResponse,
   MoodInsightsResponse,
   GalleryPhotoListResponse,
   SearchMoodEntriesParams,
@@ -105,6 +106,13 @@ export function getMoodEntryCalendar(params: {
   recorded_to: string
 }): Promise<MoodEntryCalendarResponse> {
   return apiRequest<MoodEntryCalendarResponse>(`/v1/mood-entries/calendar${buildListQuery(params)}`, {
+    auth: true,
+    headers: moodHeaders(),
+  })
+}
+
+export function getMoodEntryStreak(): Promise<MoodEntryStreakResponse> {
+  return apiRequest<MoodEntryStreakResponse>('/v1/mood-entries/streak', {
     auth: true,
     headers: moodHeaders(),
   })

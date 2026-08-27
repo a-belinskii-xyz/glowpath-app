@@ -460,6 +460,51 @@ input {
   color: var(--chrome-text-secondary);
 }
 
+.entries-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem 0.85rem;
+  margin: -0.35rem 0 0.95rem;
+}
+
+.entries-hero .companion-line {
+  margin: 0;
+  flex: 1 1 12rem;
+}
+
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.28rem 0.72rem 0.28rem 0.5rem;
+  border-radius: var(--chrome-radius-pill);
+  border: 1px solid color-mix(in oklab, #fb923c 26%, var(--chrome-border-default));
+  background: color-mix(in oklab, #fb923c 14%, var(--chrome-surface));
+  color: var(--chrome-text-primary);
+  font-size: 0.88rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.streak-badge.is-active {
+  border-color: color-mix(in oklab, #f97316 42%, var(--chrome-border-default));
+  background: color-mix(in oklab, #fb923c 22%, var(--chrome-surface));
+  box-shadow: 0 0 0 1px color-mix(in oklab, #fb923c 16%, transparent);
+}
+
+.streak-badge-fire {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.streak-badge-count {
+  white-space: nowrap;
+}
+
 .entries-toolbar .month-control {
   order: 1;
   flex: 0 1 auto;
@@ -6950,6 +6995,16 @@ code {
   .companion-line {
     margin: 0 0 0.85rem;
     font-size: 0.92rem;
+  }
+
+  .entries-hero {
+    margin: 0 0 0.85rem;
+    gap: 0.4rem 0.65rem;
+  }
+
+  .streak-badge {
+    font-size: 0.82rem;
+    padding: 0.24rem 0.62rem 0.24rem 0.42rem;
   }
 
   .entries-toolbar .month-control {

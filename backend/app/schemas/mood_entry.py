@@ -148,6 +148,11 @@ class MoodEntryCalendarResponse(BaseModel):
     days: list[CalendarDayPublic]
 
 
+class MoodEntryStreakResponse(BaseModel):
+    current_days: int
+    logged_today: bool
+
+
 class MoodScoreStatPublic(BaseModel):
     score: int
     score_label: str

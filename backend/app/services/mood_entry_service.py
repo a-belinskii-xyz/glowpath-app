@@ -32,6 +32,7 @@ from app.core.mood_scale import (
     mood_score_emoji,
     resolve_mood_score_label,
 )
+from app.core.streak import current_streak
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MAX_PHOTOS_PER_ENTRY, MoodEntryAttachment
@@ -581,6 +582,25 @@ def get_mood_entry_calendar(
             }
         )
     return days
+
+
+def get_mood_entry_streak(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    timezone_name: str,
+) -> dict[str, Any]:
+    """Return the current consecutive-day check-in streak in the user's timezone."""
+    tz = _resolve_user_tz(timezone_name)
+    today = datetime.now(tz).date()
+    recorded = db.scalars(
+        select(MoodEntry.recorded_at).where(MoodEntry.user_id == user_id)
+    ).all()
+    dates = {_local_date(instant, tz) for instant in recorded}
+    return {
+        "current_days": current_streak(dates, today=today),
+        "logged_today": today in dates,
+    }
 
 
 def get_mood_entry_stats(

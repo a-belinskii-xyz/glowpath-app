@@ -33,6 +33,7 @@ from app.schemas.mood_entry import (
     MoodEntryPatch,
     MoodEntryPublic,
     MoodEntryStatsResponse,
+    MoodEntryStreakResponse,
     MoodInsightsResponse,
 )
 from app.services.mood_entry_service import (
@@ -44,6 +45,7 @@ from app.services.mood_entry_service import (
     get_mood_entry,
     get_mood_entry_calendar,
     get_mood_entry_stats,
+    get_mood_entry_streak,
     list_gallery_photos,
     list_mood_entries,
     patch_mood_entry,
@@ -180,6 +182,23 @@ def calendar_entries(
         _handle_mood_error(exc)
         raise
     return MoodEntryCalendarResponse.model_validate({"days": days})
+
+
+@router.get("/streak", response_model=MoodEntryStreakResponse)
+def streak_entries(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> MoodEntryStreakResponse:
+    try:
+        payload = get_mood_entry_streak(
+            db,
+            user_id=current_user.id,
+            timezone_name=current_user.timezone,
+        )
+    except MoodEntryError as exc:
+        _handle_mood_error(exc)
+        raise
+    return MoodEntryStreakResponse.model_validate(payload)
 
 
 @router.get("/stats", response_model=MoodEntryStatsResponse)

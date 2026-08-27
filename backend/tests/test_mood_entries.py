@@ -1,5 +1,6 @@
 import io
 from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.models.goal import Goal
 from app.models.mood_entry_attachment import MoodEntryAttachment
@@ -551,6 +552,56 @@ def test_calendar_rejects_inverted_range(
         headers=_auth_headers(token),
     )
     assert response.status_code == 400
+
+
+def test_streak_empty_when_no_entries(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-streak-empty@example.com")
+    response = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
+    assert response.status_code == 200
+    assert response.json() == {"current_days": 0, "logged_today": False}
+
+
+def test_streak_counts_consecutive_local_days(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-streak-days@example.com")
+    tz = ZoneInfo("Europe/Minsk")
+    today = datetime.now(tz).date()
+
+    def _at(day: date, hour: int = 12) -> str:
+        return datetime(day.year, day.month, day.day, hour, 0, tzinfo=tz).isoformat()
+
+    _create_entry(auth_client, token, recorded_at=_at(today))
+    _create_entry(auth_client, token, recorded_at=_at(today, hour=18))
+    _create_entry(auth_client, token, recorded_at=_at(today - timedelta(days=1)))
+    _create_entry(auth_client, token, recorded_at=_at(today - timedelta(days=2)))
+    _create_entry(auth_client, token, recorded_at=_at(today - timedelta(days=4)))
+
+    response = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
+    assert response.status_code == 200
+    assert response.json() == {"current_days": 3, "logged_today": True}
+
+
+def test_streak_keeps_yesterday_when_today_missing(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-streak-grace@example.com")
+    tz = ZoneInfo("Europe/Minsk")
+    today = datetime.now(tz).date()
+    yesterday = today - timedelta(days=1)
+    recorded_at = datetime(
+        yesterday.year, yesterday.month, yesterday.day, 21, 0, tzinfo=tz
+    ).isoformat()
+    _create_entry(auth_client, token, recorded_at=recorded_at)
+
+    response = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
+    assert response.status_code == 200
+    assert response.json() == {"current_days": 1, "logged_today": False}
 
 
 def test_stats_counts_scores_for_range(
