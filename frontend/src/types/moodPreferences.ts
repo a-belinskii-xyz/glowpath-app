@@ -10,6 +10,7 @@ export type MoodScoreStylePublic = {
 export type MoodPreferencesPublic = {
   scores: Record<string, MoodScoreStylePublic>
   use_historical_colors: boolean
+  show_streak: boolean
 }
 
 export type MoodScoreStyleUpdate = {
@@ -23,4 +24,5 @@ export type MoodScoreStyleUpdate = {
 export type MoodPreferencesUpdate = {
   scores?: Record<string, MoodScoreStyleUpdate>
   use_historical_colors?: boolean
+  show_streak?: boolean
 }

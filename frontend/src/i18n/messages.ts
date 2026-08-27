@@ -488,7 +488,10 @@ export const en = {
     timezoneHint:
       'Used for calendars, charts, goals, and reminder times. Past entries keep the same moment; the local day may shift near midnight.',
     appearanceTitle: 'Appearance',
-    appearanceLead: 'Choose whether past entries keep the colors they had when you logged them.',
+    appearanceLead:
+      'Choose what shows on the home screen and whether past entries keep the colors they had when you logged them.',
+    showStreak: 'Show check-in streak',
+    showStreakHint: 'The fire badge on the home screen. Turn off if you prefer a quieter feed.',
     keepHistoricalColors: 'Keep colors from when you logged',
     keepHistoricalColorsHint:
       'Past entries keep the mood, tag, and goal colors they had at the time. Turn off to always show your current palette.',
@@ -528,7 +531,7 @@ export const en = {
     notificationsSaved: 'Notification settings saved.',
     trackerSettingsLink: 'Mood colors, icons, and note templates',
     notificationsLink: 'Reminders via email and Telegram',
-    appearanceLink: 'Colors on past entries',
+    appearanceLink: 'Streak badge and colors on past entries',
     settingsMenu: 'Settings',
     walletBalance: 'Token balance',
     walletTokens: 'tokens',
@@ -1410,7 +1413,9 @@ export const ru: DeepStringLeaves<typeof en> = {
       'Используется для календаря, графиков, целей и напоминаний. Прошлые записи сохраняют тот же момент; локальный день у полуночи может сдвинуться.',
     appearanceTitle: 'Оформление',
     appearanceLead:
-      'Выберите, оставлять ли у прошлых записей цвета, которые были в момент создания.',
+      'Выберите, что видно на главной и оставлять ли у прошлых записей цвета, которые были в момент создания.',
+    showStreak: 'Показывать стрик',
+    showStreakHint: 'Плашка с огоньком на главной. Выключите, если хотите меньше информационного шума.',
     keepHistoricalColors: 'Сохранять цвета на момент записи',
     keepHistoricalColorsHint:
       'Прошлые записи остаются в тех цветах настроения, тегов и целей, что были тогда. Выключите, чтобы везде показывать текущую палитру.',
@@ -1450,7 +1455,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     notificationsSaved: 'Настройки уведомлений сохранены.',
     trackerSettingsLink: 'Цвета настроения, иконки и шаблоны заметок',
     notificationsLink: 'Напоминания в email и Telegram',
-    appearanceLink: 'Цвета прошлых записей',
+    appearanceLink: 'Плашка стрика и цвета прошлых записей',
     settingsMenu: 'Настройки',
     walletBalance: 'Баланс токенов',
     walletTokens: 'токенов',

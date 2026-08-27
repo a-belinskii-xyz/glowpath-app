@@ -24,6 +24,7 @@ def test_get_mood_preferences_returns_defaults(auth_client: TestClient, mailer) 
     assert payload["scores"]["5"]["label"] == "great"
     assert payload["scores"]["1"]["label"] == "awful"
     assert payload["use_historical_colors"] is True
+    assert payload["show_streak"] is True
 
 
 def test_patch_mood_preferences_updates_label(auth_client: TestClient, mailer) -> None:
@@ -229,3 +230,21 @@ def test_patch_mood_preferences_toggles_historical_colors(auth_client: TestClien
 
     get_response = auth_client.get("/v1/mood-preferences", headers=headers)
     assert get_response.json()["use_historical_colors"] is False
+
+
+def test_patch_mood_preferences_toggles_show_streak(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-streak-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"show_streak": False},
+    )
+    assert response.status_code == 200
+    assert response.json()["show_streak"] is False
+    assert response.json()["use_historical_colors"] is True
+
+    get_response = auth_client.get("/v1/mood-preferences", headers=headers)
+    assert get_response.json()["show_streak"] is False

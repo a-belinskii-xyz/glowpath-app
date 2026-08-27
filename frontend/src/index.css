@@ -496,6 +496,17 @@ input {
   box-shadow: 0 0 0 1px color-mix(in oklab, #fb923c 16%, transparent);
 }
 
+.streak-badge.is-idle {
+  border-color: var(--chrome-border-default);
+  background: var(--chrome-surface-inset);
+  color: var(--chrome-text-secondary);
+}
+
+.streak-badge.is-idle .streak-badge-fire {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
 .streak-badge-fire {
   font-size: 1.05rem;
   line-height: 1;
@@ -956,6 +967,12 @@ input {
 
 .profile-connection-status {
   margin-bottom: 0.85rem;
+}
+
+.appearance-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
 }
 
 .profile-section {

@@ -10,6 +10,7 @@ import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, TrophyIcon } fro
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
+import { StreakDisplaySetting } from '../components/StreakDisplaySetting'
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
@@ -49,7 +50,19 @@ const NotificationSettingsPanelBody = memo(function NotificationSettingsPanelBod
 })
 
 const AppearanceSettingsPanelBody = memo(function AppearanceSettingsPanelBody() {
-  return <HistoricalColorsSetting />
+  const { t } = useLocale()
+  const { isLoading } = useMoodPreferences()
+
+  if (isLoading) {
+    return <p className="muted">{t('common.loadingMoodPreferences')}</p>
+  }
+
+  return (
+    <div className="appearance-settings">
+      <StreakDisplaySetting />
+      <HistoricalColorsSetting />
+    </div>
+  )
 })
 
 function getScrollParent(element: HTMLElement): HTMLElement | Window {

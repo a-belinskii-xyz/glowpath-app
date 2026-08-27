@@ -17,6 +17,7 @@ import type { MoodPreferencesPublic, MoodScoreStylePublic } from '../types/moodP
 type MoodPreferencesContextValue = {
   scores: Record<string, MoodScoreStylePublic>
   useHistoricalColors: boolean
+  showStreak: boolean
   isLoading: boolean
   refreshPreferences: () => Promise<void>
   setPreferences: (preferences: MoodPreferencesPublic) => void
@@ -33,12 +34,14 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
     defaultMoodPreferences(locale),
   )
   const [useHistoricalColors, setUseHistoricalColors] = useState(true)
+  const [showStreak, setShowStreak] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
 
   const refreshPreferences = useCallback(async () => {
     if (!user?.email_verified) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
+      setShowStreak(true)
       return
     }
 
@@ -47,9 +50,11 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       const preferences = await getMoodPreferences()
       setScores(preferences.scores)
       setUseHistoricalColors(preferences.use_historical_colors)
+      setShowStreak(preferences.show_streak ?? true)
     } catch {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
+      setShowStreak(true)
     } finally {
       setIsLoading(false)
     }
@@ -58,12 +63,14 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
   const setPreferences = useCallback((preferences: MoodPreferencesPublic) => {
     setScores(preferences.scores)
     setUseHistoricalColors(preferences.use_historical_colors)
+    setShowStreak(preferences.show_streak ?? true)
   }, [])
 
   useEffect(() => {
     if (!user?.email_verified) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
+      setShowStreak(true)
       setIsLoading(false)
       return
     }
@@ -75,13 +82,14 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
     () => ({
       scores,
       useHistoricalColors,
+      showStreak,
       isLoading,
       refreshPreferences,
       setPreferences,
       getScoreColor: (score: number) => getMoodScoreColor(score, scores),
       getScoreStyle: (score: number) => getMoodScoreStyle(score, scores, locale),
     }),
-    [scores, useHistoricalColors, isLoading, refreshPreferences, setPreferences, locale],
+    [scores, useHistoricalColors, showStreak, isLoading, refreshPreferences, setPreferences, locale],
   )
 
   return (

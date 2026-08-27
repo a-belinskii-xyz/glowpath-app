@@ -13,10 +13,12 @@ export function StreakBadge({
     few: 'entries.streakFew',
     many: 'entries.streakMany',
   })
+  const idle = days <= 0
+  const stateClass = idle ? ' is-idle' : loggedToday ? ' is-active' : ''
 
   return (
     <span
-      className={`streak-badge${loggedToday ? ' is-active' : ''}`}
+      className={`streak-badge${stateClass}`}
       aria-label={t('entries.streakAria', { count: days })}
     >
       <span className="streak-badge-fire" aria-hidden="true">

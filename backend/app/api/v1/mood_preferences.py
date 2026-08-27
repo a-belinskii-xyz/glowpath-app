@@ -88,6 +88,7 @@ def patch_mood_preferences(
             user_id=current_user.id,
             score_updates=updates or None,
             use_historical_colors=body.use_historical_colors,
+            show_streak=body.show_streak,
         )
     except MoodPreferencesError as exc:
         _handle_preferences_error(exc)

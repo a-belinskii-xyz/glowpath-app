@@ -55,6 +55,7 @@ def update_preferences(
     user_id: uuid.UUID,
     score_updates: dict[str, dict[str, Any]] | None = None,
     use_historical_colors: bool | None = None,
+    show_streak: bool | None = None,
 ) -> UserMoodPreferences:
     prefs = get_or_create_preferences(db, user_id=user_id)
     if score_updates:
@@ -62,6 +63,8 @@ def update_preferences(
         prefs.score_styles = merged or None
     if use_historical_colors is not None:
         prefs.use_historical_colors = use_historical_colors
+    if show_streak is not None:
+        prefs.show_streak = show_streak
     db.commit()
     db.refresh(prefs)
     return prefs
@@ -76,6 +79,7 @@ def serialize_preferences(
     return {
         "scores": _resolved_score_styles(db, prefs.user_id, prefs.score_styles, locale=locale),
         "use_historical_colors": bool(prefs.use_historical_colors),
+        "show_streak": bool(prefs.show_streak),
     }
 
 

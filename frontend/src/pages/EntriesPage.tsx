@@ -78,7 +78,7 @@ function mergeEntries(
 export function EntriesPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
-  const { scores } = useMoodPreferences()
+  const { scores, showStreak } = useMoodPreferences()
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -387,7 +387,7 @@ export function EntriesPage() {
   }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified])
 
   const loadStreak = useCallback(async () => {
-    if (!user?.email_verified) {
+    if (!user?.email_verified || !showStreak) {
       setStreakDays(null)
       setStreakLoggedToday(false)
       return
@@ -401,7 +401,7 @@ export function EntriesPage() {
       setStreakDays(null)
       setStreakLoggedToday(false)
     }
-  }, [user?.email_verified])
+  }, [showStreak, user?.email_verified])
 
   const focusEntryId = searchParams.get('entry')
   const loadInsights = useCallback(async () => {
@@ -1003,12 +1003,12 @@ export function EntriesPage() {
         </div>
       </header>
 
-      {companionGreeting || (streakDays != null && streakDays > 0) ? (
+      {companionGreeting || (showStreak && streakDays != null) ? (
         <div className="entries-hero">
           {companionGreeting ? (
             <p className="companion-line">{companionGreeting}</p>
           ) : null}
-          {streakDays != null && streakDays > 0 ? (
+          {showStreak && streakDays != null ? (
             <StreakBadge days={streakDays} loggedToday={streakLoggedToday} />
           ) : null}
         </div>

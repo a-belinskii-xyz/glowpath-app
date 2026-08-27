@@ -27,5 +27,10 @@ class UserMoodPreferences(TimestampMixin, Base):
         nullable=False,
         server_default=text("true"),
     )
+    show_streak: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
 
     user: Mapped["User"] = relationship(back_populates="mood_preferences")
