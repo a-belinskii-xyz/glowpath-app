@@ -32,7 +32,7 @@ from app.core.mood_scale import (
     mood_score_emoji,
     resolve_mood_score_label,
 )
-from app.core.streak import current_streak
+from app.core.streak import check_in_date, current_streak
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MAX_PHOTOS_PER_ENTRY, MoodEntryAttachment
@@ -322,8 +322,11 @@ def create_mood_entry(
     locale: str = "en",
 ) -> tuple[MoodEntry, list[dict[str, Any]]]:
     recorded_at_utc = _to_utc(recorded_at)
-    tz = _resolve_user_tz(_user_timezone(db, user_id=user_id))
+    timezone_name = _user_timezone(db, user_id=user_id)
+    tz = _resolve_user_tz(timezone_name)
     entry_local_date = _local_date(recorded_at_utc, tz)
+    written_at = datetime.now(UTC)
+    logged_on = check_in_date(recorded_at_utc, written_at, tz=tz)
     tags = _resolve_user_tags(db, user_id=user_id, tag_ids=tag_ids)
     goals = _resolve_user_goals(
         db,
@@ -341,6 +344,8 @@ def create_mood_entry(
         score=score,
         score_color=_score_color_for_user(db, user_id=user_id, score=score),
         recorded_at=recorded_at_utc,
+        logged_on=logged_on,
+        logged_timezone=timezone_name,
         note=note,
         source=source,
     )
@@ -584,19 +589,44 @@ def get_mood_entry_calendar(
     return days
 
 
+def _entry_logged_timezone(entry: MoodEntry, *, fallback: str) -> str:
+    stored = (entry.logged_timezone or "").strip()
+    if not stored:
+        return fallback
+    try:
+        _resolve_user_tz(stored)
+    except MoodEntryError:
+        return fallback
+    return stored
+
+
+def _refresh_logged_on(entry: MoodEntry, *, timezone_name: str) -> None:
+    tz = _resolve_user_tz(timezone_name)
+    written_at = entry.created_at or datetime.now(UTC)
+    entry.logged_on = check_in_date(entry.recorded_at, written_at, tz=tz)
+    if not entry.logged_timezone:
+        entry.logged_timezone = timezone_name
+
+
 def get_mood_entry_streak(
     db: Session,
     *,
     user_id: uuid.UUID,
     timezone_name: str,
 ) -> dict[str, Any]:
-    """Return the current consecutive-day check-in streak in the user's timezone."""
+    """Return the current same-day check-in streak in the user's timezone."""
     tz = _resolve_user_tz(timezone_name)
     today = datetime.now(tz).date()
-    recorded = db.scalars(
-        select(MoodEntry.recorded_at).where(MoodEntry.user_id == user_id)
-    ).all()
-    dates = {_local_date(instant, tz) for instant in recorded}
+    dates = {
+        day
+        for day in db.scalars(
+            select(MoodEntry.logged_on).where(
+                MoodEntry.user_id == user_id,
+                MoodEntry.logged_on.is_not(None),
+            )
+        ).all()
+        if day is not None
+    }
     return {
         "current_days": current_streak(dates, today=today),
         "logged_today": today in dates,
@@ -969,6 +999,8 @@ def patch_mood_entry(
             entry.score_color = _score_color_for_user(db, user_id=user_id, score=next_score)
     if "recorded_at" in fields and fields["recorded_at"] is not None:
         entry.recorded_at = _to_utc(fields["recorded_at"])
+        timezone_name = _entry_logged_timezone(entry, fallback=_user_timezone(db, user_id=user_id))
+        _refresh_logged_on(entry, timezone_name=timezone_name)
     if "note" in fields:
         entry.note = fields["note"]
     if "tag_ids" in fields:

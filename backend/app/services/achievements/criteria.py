@@ -45,10 +45,18 @@ def _entry_count(db: Session, *, user_id) -> int:
 
 def _distinct_local_dates(db: Session, *, user: User) -> list[date]:
     tz = _resolve_tz(user.timezone)
-    recorded = db.scalars(
-        select(MoodEntry.recorded_at).where(MoodEntry.user_id == user.id)
-    ).all()
+    recorded = db.scalars(select(MoodEntry.recorded_at).where(MoodEntry.user_id == user.id)).all()
     return sorted({_local_date(instant, tz) for instant in recorded})
+
+
+def _distinct_check_in_dates(db: Session, *, user: User) -> list[date]:
+    dates = db.scalars(
+        select(MoodEntry.logged_on).where(
+            MoodEntry.user_id == user.id,
+            MoodEntry.logged_on.is_not(None),
+        )
+    ).all()
+    return sorted({day for day in dates if day is not None})
 
 
 def _longest_streak(dates: list[date]) -> int:
@@ -92,7 +100,7 @@ def evaluate_criteria(db: Session, *, user: User, criteria: dict) -> CriteriaPro
 
     if criteria_type == CriteriaType.CONSECUTIVE_DAYS.value:
         target = max(1, int(criteria.get("days", 1)))
-        streak = _longest_streak(_distinct_local_dates(db, user=user))
+        streak = _longest_streak(_distinct_check_in_dates(db, user=user))
         return CriteriaProgress(current=min(streak, target), target=target)
 
     if criteria_type == CriteriaType.CALENDAR_MATCH.value:

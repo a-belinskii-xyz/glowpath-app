@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 from app.core.attachment_kind import AttachmentKind
 from app.core.mood_scale import DEFAULT_MOOD_SCORE_COLORS, MoodScore
+from app.core.streak import check_in_date
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MoodEntryAttachment
@@ -176,6 +177,9 @@ def create_entries_for_user(
                 id=entry_id,
                 user_id=user_id,
                 recorded_at=recorded_at,
+                created_at=recorded_at,
+                logged_on=check_in_date(recorded_at, recorded_at, tz=tz),
+                logged_timezone=persona.timezone,
                 score=score,
                 score_color=DEFAULT_MOOD_SCORE_COLORS[MoodScore(score)],
                 note=note,

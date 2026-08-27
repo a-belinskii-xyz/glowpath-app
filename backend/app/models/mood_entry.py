@@ -1,11 +1,12 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -55,6 +56,12 @@ class MoodEntry(TimestampMixin, Base):
             "user_id",
             "source",
         ),
+        Index(
+            index_name("mood_entries", "user_id__logged_on"),
+            "user_id",
+            "logged_on",
+            postgresql_where=text("logged_on IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -68,6 +75,10 @@ class MoodEntry(TimestampMixin, Base):
         index=True,
     )
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Civil day this entry counts toward a streak, frozen in logged_timezone.
+    # Null when the entry was written on a different local day than recorded_at.
+    logged_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    logged_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     score: Mapped[int] = mapped_column(SmallInteger)
     # Mood palette color at create / score-change time (not live preferences).
     score_color: Mapped[str] = mapped_column(String(7))

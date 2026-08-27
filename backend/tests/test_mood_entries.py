@@ -1,8 +1,11 @@
 import io
+import uuid
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from app.core.streak import check_in_date
 from app.models.goal import Goal
+from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MoodEntryAttachment
 from app.models.tag import Tag
 from app.models.user import User
@@ -44,6 +47,25 @@ def _create_entry(
     if headers:
         request_headers.update(headers)
     return auth_client.post("/v1/mood-entries", json=payload, headers=request_headers)
+
+
+def _stamp_written_on(
+    db: Session,
+    entry_id: str,
+    *,
+    written_at: datetime,
+    timezone_name: str = "Europe/Minsk",
+) -> None:
+    entry = db.get(MoodEntry, uuid.UUID(entry_id))
+    assert entry is not None
+    entry.created_at = written_at.astimezone(UTC) if written_at.tzinfo else written_at
+    entry.logged_timezone = timezone_name
+    entry.logged_on = check_in_date(
+        entry.recorded_at,
+        entry.created_at,
+        tz=ZoneInfo(timezone_name),
+    )
+    db.commit()
 
 
 def _user_tag_ids(db: Session, email: str) -> list[str]:
@@ -567,41 +589,121 @@ def test_streak_empty_when_no_entries(
 def test_streak_counts_consecutive_local_days(
     auth_client: TestClient,
     mailer: FakeEmailService,
+    db: Session,
 ) -> None:
     token = register_verify_and_login(auth_client, mailer, "mood-streak-days@example.com")
     tz = ZoneInfo("Europe/Minsk")
     today = datetime.now(tz).date()
 
-    def _at(day: date, hour: int = 12) -> str:
-        return datetime(day.year, day.month, day.day, hour, 0, tzinfo=tz).isoformat()
+    def _at(day: date, hour: int = 12) -> datetime:
+        return datetime(day.year, day.month, day.day, hour, 0, tzinfo=tz)
 
-    _create_entry(auth_client, token, recorded_at=_at(today))
-    _create_entry(auth_client, token, recorded_at=_at(today, hour=18))
-    _create_entry(auth_client, token, recorded_at=_at(today - timedelta(days=1)))
-    _create_entry(auth_client, token, recorded_at=_at(today - timedelta(days=2)))
-    _create_entry(auth_client, token, recorded_at=_at(today - timedelta(days=4)))
+    created_ids: list[str] = []
+    for day, hour in (
+        (today, 12),
+        (today, 18),
+        (today - timedelta(days=1), 12),
+        (today - timedelta(days=2), 12),
+        (today - timedelta(days=4), 12),
+    ):
+        response = _create_entry(auth_client, token, recorded_at=_at(day, hour).isoformat())
+        assert response.status_code == 201
+        created_ids.append(response.json()["id"])
+        _stamp_written_on(db, created_ids[-1], written_at=_at(day, hour))
 
     response = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
     assert response.status_code == 200
     assert response.json() == {"current_days": 3, "logged_today": True}
 
 
-def test_streak_keeps_yesterday_when_today_missing(
+def test_streak_ignores_backdated_entries(
     auth_client: TestClient,
     mailer: FakeEmailService,
 ) -> None:
-    token = register_verify_and_login(auth_client, mailer, "mood-streak-grace@example.com")
+    token = register_verify_and_login(auth_client, mailer, "mood-streak-backdate@example.com")
     tz = ZoneInfo("Europe/Minsk")
     today = datetime.now(tz).date()
     yesterday = today - timedelta(days=1)
     recorded_at = datetime(
         yesterday.year, yesterday.month, yesterday.day, 21, 0, tzinfo=tz
     ).isoformat()
-    _create_entry(auth_client, token, recorded_at=recorded_at)
+    created = _create_entry(auth_client, token, recorded_at=recorded_at)
+    assert created.status_code == 201
+
+    response = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
+    assert response.status_code == 200
+    assert response.json() == {"current_days": 0, "logged_today": False}
+
+
+def test_streak_keeps_yesterday_when_written_yesterday(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    db: Session,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-streak-grace@example.com")
+    tz = ZoneInfo("Europe/Minsk")
+    today = datetime.now(tz).date()
+    yesterday = today - timedelta(days=1)
+    written_at = datetime(yesterday.year, yesterday.month, yesterday.day, 21, 0, tzinfo=tz)
+    created = _create_entry(auth_client, token, recorded_at=written_at.isoformat())
+    assert created.status_code == 201
+    _stamp_written_on(db, created.json()["id"], written_at=written_at)
 
     response = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
     assert response.status_code == 200
     assert response.json() == {"current_days": 1, "logged_today": False}
+
+
+def test_streak_survives_timezone_change(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    db: Session,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-streak-tz@example.com")
+    tz = ZoneInfo("Europe/Minsk")
+    today = datetime.now(tz).date()
+    written_at = datetime(today.year, today.month, today.day, 8, 0, tzinfo=tz)
+    created = _create_entry(auth_client, token, recorded_at=written_at.isoformat())
+    assert created.status_code == 201
+    _stamp_written_on(db, created.json()["id"], written_at=written_at)
+
+    patch = auth_client.patch(
+        "/v1/auth/me",
+        json={"timezone": "America/Los_Angeles"},
+        headers=_auth_headers(token),
+    )
+    assert patch.status_code == 200
+
+    response = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
+    assert response.status_code == 200
+    assert response.json()["current_days"] == 1
+
+
+def test_streak_clears_when_recorded_at_is_moved_to_another_day(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-streak-patch@example.com")
+    tz = ZoneInfo("Europe/Minsk")
+    now = datetime.now(tz)
+    created = _create_entry(auth_client, token, recorded_at=now.isoformat())
+    assert created.status_code == 201
+    entry_id = created.json()["id"]
+
+    before = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
+    assert before.json() == {"current_days": 1, "logged_today": True}
+
+    yesterday = now.date() - timedelta(days=1)
+    past = datetime(yesterday.year, yesterday.month, yesterday.day, 12, 0, tzinfo=tz)
+    patched = auth_client.patch(
+        f"/v1/mood-entries/{entry_id}",
+        json={"recorded_at": past.isoformat()},
+        headers=_auth_headers(token),
+    )
+    assert patched.status_code == 200
+
+    after = auth_client.get("/v1/mood-entries/streak", headers=_auth_headers(token))
+    assert after.json() == {"current_days": 0, "logged_today": False}
 
 
 def test_stats_counts_scores_for_range(
