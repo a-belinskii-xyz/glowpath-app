@@ -492,6 +492,12 @@ export const en = {
       'Choose what shows on the home screen and whether past entries keep the colors they had when you logged them.',
     showStreak: 'Show check-in streak',
     showStreakHint: 'The fire badge on the home screen. Turn off if you prefer a quieter feed.',
+    showStreakInfo: 'How streaks are counted',
+    showStreakHow: 'How streaks work',
+    showStreakRuleSameDay: 'A day counts only if you wrote the entry on that same calendar day.',
+    showStreakRuleBackdate: 'Adding an entry for a past day later does not grow the streak.',
+    showStreakRuleTimezone:
+      'Changing timezones does not rewrite days you already checked in. If you have not logged today yet, yesterday still counts until midnight.',
     keepHistoricalColors: 'Keep colors from when you logged',
     keepHistoricalColorsHint:
       'Past entries keep the mood, tag, and goal colors they had at the time. Turn off to always show your current palette.',
@@ -1416,6 +1422,12 @@ export const ru: DeepStringLeaves<typeof en> = {
       'Выберите, что видно на главной и оставлять ли у прошлых записей цвета, которые были в момент создания.',
     showStreak: 'Показывать стрик',
     showStreakHint: 'Плашка с огоньком на главной. Выключите, если хотите меньше информационного шума.',
+    showStreakInfo: 'Как считается стрик',
+    showStreakHow: 'Как считается стрик',
+    showStreakRuleSameDay: 'День засчитывается, только если запись сделана в тот же календарный день.',
+    showStreakRuleBackdate: 'Запись задним числом стрик не увеличивает.',
+    showStreakRuleTimezone:
+      'Смена пояса не переписывает уже засчитанные дни. Если сегодня ещё нет записи, вчерашний стрик жив до полуночи.',
     keepHistoricalColors: 'Сохранять цвета на момент записи',
     keepHistoricalColorsHint:
       'Прошлые записи остаются в тех цветах настроения, тегов и целей, что были тогда. Выключите, чтобы везде показывать текущую палитру.',

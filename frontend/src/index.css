@@ -975,6 +975,83 @@ input {
   gap: 0.65rem;
 }
 
+.streak-display-setting {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.notification-master.streak-setting-card {
+  cursor: default;
+  align-items: center;
+}
+
+.streak-setting-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.streak-info-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid var(--chrome-border-default);
+  border-radius: var(--chrome-radius-pill);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-secondary);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-style: italic;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.streak-info-toggle:hover,
+.streak-info-toggle[aria-expanded='true'] {
+  color: var(--chrome-text-primary);
+  border-color: var(--chrome-border-strong);
+  background: color-mix(in oklab, #fb923c 12%, var(--chrome-surface));
+}
+
+.streak-rules {
+  margin: 0;
+  padding: 0.8rem 1rem 0.9rem;
+  border-radius: var(--chrome-radius-control);
+  border: 1px solid color-mix(in oklab, #fb923c 24%, var(--chrome-border-default));
+  background: color-mix(in oklab, #fb923c 9%, var(--chrome-surface));
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--chrome-text-secondary);
+}
+
+.streak-rules[hidden] {
+  display: none;
+}
+
+.streak-rules-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--chrome-text-primary);
+}
+
+.streak-rules ul {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.streak-rules li + li {
+  margin-top: 0.32rem;
+}
+
 .profile-section {
   margin-top: 2rem;
 }
