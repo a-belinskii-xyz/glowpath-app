@@ -26,6 +26,7 @@ from app.schemas.goal import (
     GoalReorderRequest,
     GoalStatsResponse,
 )
+from app.services.achievements.service import evaluate_user_achievements
 from app.services.goal_icon_service import (
     MAX_ICONS_PER_GOAL,
     GoalIconError,
@@ -191,6 +192,8 @@ def create_goal_endpoint(
     except GoalError as exc:
         _handle_error(exc)
         raise
+    evaluate_user_achievements(db, user=current_user, locale=locale)
+    db.commit()
     return _public_with_week_stats(db, current_user, goal, locale)
 
 

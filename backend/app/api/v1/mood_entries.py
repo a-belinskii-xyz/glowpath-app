@@ -380,6 +380,7 @@ async def create_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
     storage: ObjectStorage = Depends(get_storage_service),
+    locale: str = Depends(get_locale),
 ) -> AttachmentPublic:
     data = await file.read()
     original_name = file.filename or "file"
@@ -394,6 +395,7 @@ async def create_attachment(
             content_type=content_type,
             original_name=original_name,
             storage=storage,
+            locale=locale,
         )
     except MoodEntryError as exc:
         _handle_mood_error(exc)

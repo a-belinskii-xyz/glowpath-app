@@ -1066,6 +1066,7 @@ def upload_attachment(
     content_type: str,
     original_name: str,
     storage: ObjectStorage,
+    locale: str = "en",
 ) -> MoodEntryAttachment:
     entry = _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
     mime_type = content_type.split(";")[0].strip().lower()
@@ -1124,6 +1125,13 @@ def upload_attachment(
         position=position,
     )
     db.add(attachment)
+    db.flush()
+    _evaluate_achievements_payload(
+        db,
+        user_id=user_id,
+        locale=locale,
+        source_entry_id=entry_id,
+    )
     try:
         db.commit()
     except Exception:

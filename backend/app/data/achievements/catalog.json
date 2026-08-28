@@ -15,6 +15,219 @@
     "rewards": [{ "kind": "tokens", "amount": 10 }]
   },
   {
+    "slug": "first_note",
+    "category": "getting_started",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 50,
+    "labels": { "en": "First note", "ru": "Первая заметка" },
+    "descriptions": {
+      "en": "Add a note to an entry.",
+      "ru": "Добавь заметку к записи."
+    },
+    "icon": { "type": "emoji", "value": "📝" },
+    "criteria": { "type": "entries_with_note", "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 10 }]
+  },
+  {
+    "slug": "first_tag",
+    "category": "getting_started",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 60,
+    "labels": { "en": "First tag", "ru": "Первый тег" },
+    "descriptions": {
+      "en": "Add a tag to an entry.",
+      "ru": "Добавь тег к записи."
+    },
+    "icon": { "type": "emoji", "value": "🏷️" },
+    "criteria": { "type": "tagged_entry_count", "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 10 }]
+  },
+  {
+    "slug": "first_goal",
+    "category": "getting_started",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 70,
+    "labels": { "en": "First goal", "ru": "Первая цель" },
+    "descriptions": {
+      "en": "Create your first goal.",
+      "ru": "Создай свою первую цель."
+    },
+    "icon": { "type": "emoji", "value": "🎯" },
+    "criteria": { "type": "goal_created_count", "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 15 }]
+  },
+  {
+    "slug": "first_favorite",
+    "category": "getting_started",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 80,
+    "labels": { "en": "First favorite", "ru": "Первое избранное" },
+    "descriptions": {
+      "en": "Mark an entry as a favorite.",
+      "ru": "Добавь запись в избранное."
+    },
+    "icon": { "type": "emoji", "value": "⭐" },
+    "criteria": { "type": "favorite_count", "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 10 }]
+  },
+  {
+    "slug": "first_photo",
+    "category": "getting_started",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 90,
+    "labels": { "en": "First photo", "ru": "Первое фото" },
+    "descriptions": {
+      "en": "Add a photo to an entry.",
+      "ru": "Добавь фото к записи."
+    },
+    "icon": { "type": "emoji", "value": "📷" },
+    "criteria": { "type": "attachment_count", "kind": "photo", "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 15 }]
+  },
+  {
+    "slug": "hello_telegram",
+    "category": "getting_started",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 100,
+    "labels": { "en": "Hello, Telegram", "ru": "Привет, Telegram" },
+    "descriptions": {
+      "en": "Make an entry through Telegram.",
+      "ru": "Сделай запись через Telegram."
+    },
+    "icon": { "type": "emoji", "value": "✈️" },
+    "criteria": { "type": "source_prefix", "prefix": "telegram", "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 15 }]
+  },
+  {
+    "slug": "streak_3",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 110,
+    "labels": { "en": "Three days", "ru": "Три дня" },
+    "descriptions": {
+      "en": "Log an entry for 3 days in a row.",
+      "ru": "Делай запись 3 дня подряд."
+    },
+    "icon": { "type": "emoji", "value": "🌿" },
+    "criteria": { "type": "consecutive_days", "days": 3 },
+    "rewards": [{ "kind": "tokens", "amount": 25 }]
+  },
+  {
+    "slug": "consecutive_days_7",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 115,
+    "labels": { "en": "Seven days", "ru": "Семь дней" },
+    "descriptions": {
+      "en": "Check in every day for a week.",
+      "ru": "Отмечайся каждый день на протяжении недели."
+    },
+    "icon": { "type": "emoji", "value": "🔥" },
+    "criteria": { "type": "consecutive_days", "days": 7 },
+    "rewards": [
+      { "kind": "tokens", "amount": 50 },
+      { "kind": "icon_pack", "pack_slug": "random-pics" }
+    ]
+  },
+  {
+    "slug": "streak_14",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 120,
+    "labels": { "en": "Two weeks", "ru": "Две недели" },
+    "descriptions": {
+      "en": "Log an entry for 14 days in a row.",
+      "ru": "Делай запись 14 дней подряд."
+    },
+    "icon": { "type": "emoji", "value": "🌻" },
+    "criteria": { "type": "consecutive_days", "days": 14 },
+    "rewards": [{ "kind": "tokens", "amount": 35 }]
+  },
+  {
+    "slug": "streak_21",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 130,
+    "labels": { "en": "Three weeks", "ru": "Три недели" },
+    "descriptions": {
+      "en": "Log an entry for 21 days in a row.",
+      "ru": "Делай запись 21 день подряд."
+    },
+    "icon": { "type": "emoji", "value": "🪴" },
+    "criteria": { "type": "consecutive_days", "days": 21 },
+    "rewards": [{ "kind": "tokens", "amount": 40 }]
+  },
+  {
+    "slug": "streak_30",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 140,
+    "labels": { "en": "One month", "ru": "Целый месяц" },
+    "descriptions": {
+      "en": "Log an entry for 30 days in a row.",
+      "ru": "Делай запись 30 дней подряд."
+    },
+    "icon": { "type": "emoji", "value": "🌙" },
+    "criteria": { "type": "consecutive_days", "days": 30 },
+    "rewards": [{ "kind": "tokens", "amount": 55 }]
+  },
+  {
+    "slug": "streak_60",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 150,
+    "labels": { "en": "Two months", "ru": "Два месяца" },
+    "descriptions": {
+      "en": "Log an entry for 60 days in a row.",
+      "ru": "Делай запись 60 дней подряд."
+    },
+    "icon": { "type": "emoji", "value": "🌳" },
+    "criteria": { "type": "consecutive_days", "days": 60 },
+    "rewards": [{ "kind": "tokens", "amount": 70 }]
+  },
+  {
+    "slug": "streak_100",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 160,
+    "labels": { "en": "One hundred days", "ru": "Сто дней" },
+    "descriptions": {
+      "en": "Log an entry for 100 days in a row.",
+      "ru": "Делай запись 100 дней подряд."
+    },
+    "icon": { "type": "emoji", "value": "💯" },
+    "criteria": { "type": "consecutive_days", "days": 100 },
+    "rewards": [{ "kind": "tokens", "amount": 90 }]
+  },
+  {
+    "slug": "streak_365",
+    "category": "streaks",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 170,
+    "labels": { "en": "Full circle", "ru": "Полный круг" },
+    "descriptions": {
+      "en": "Log an entry for 365 days in a row.",
+      "ru": "Делай запись 365 дней подряд."
+    },
+    "icon": { "type": "emoji", "value": "🔄" },
+    "criteria": { "type": "consecutive_days", "days": 365 },
+    "rewards": [{ "kind": "tokens", "amount": 120 }]
+  },
+  {
     "slug": "entries_10",
     "category": "collection",
     "visibility": "visible",
@@ -30,22 +243,184 @@
     "rewards": [{ "kind": "tokens", "amount": 25 }]
   },
   {
-    "slug": "consecutive_days_7",
-    "category": "streaks",
+    "slug": "entries_25",
+    "category": "collection",
     "visibility": "visible",
     "status": "published",
-    "sort_order": 30,
-    "labels": { "en": "Seven days", "ru": "Семь дней" },
+    "sort_order": 180,
+    "labels": { "en": "Quarter century", "ru": "Четверть сотни" },
     "descriptions": {
-      "en": "Check in every day for a week.",
-      "ru": "Отмечайся каждый день на протяжении недели."
+      "en": "Make 25 mood entries.",
+      "ru": "Сделай 25 записей настроения."
     },
-    "icon": { "type": "emoji", "value": "🔥" },
-    "criteria": { "type": "consecutive_days", "days": 7 },
-    "rewards": [
-      { "kind": "tokens", "amount": 50 },
-      { "kind": "icon_pack", "pack_slug": "random-pics" }
-    ]
+    "icon": { "type": "emoji", "value": "📚" },
+    "criteria": { "type": "entry_count", "count": 25 },
+    "rewards": [{ "kind": "tokens", "amount": 35 }]
+  },
+  {
+    "slug": "entries_50",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 190,
+    "labels": { "en": "Half century", "ru": "Полсотни" },
+    "descriptions": {
+      "en": "Make 50 mood entries.",
+      "ru": "Сделай 50 записей настроения."
+    },
+    "icon": { "type": "emoji", "value": "🗂️" },
+    "criteria": { "type": "entry_count", "count": 50 },
+    "rewards": [{ "kind": "tokens", "amount": 55 }]
+  },
+  {
+    "slug": "entries_100",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 200,
+    "labels": { "en": "Century", "ru": "Сотня" },
+    "descriptions": {
+      "en": "Make 100 mood entries.",
+      "ru": "Сделай 100 записей настроения."
+    },
+    "icon": { "type": "emoji", "value": "🏅" },
+    "criteria": { "type": "entry_count", "count": 100 },
+    "rewards": [{ "kind": "tokens", "amount": 75 }]
+  },
+  {
+    "slug": "entries_365",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 210,
+    "labels": { "en": "Year in words", "ru": "Год в записях" },
+    "descriptions": {
+      "en": "Make 365 mood entries.",
+      "ru": "Сделай 365 записей настроения."
+    },
+    "icon": { "type": "emoji", "value": "📖" },
+    "criteria": { "type": "entry_count", "count": 365 },
+    "rewards": [{ "kind": "tokens", "amount": 110 }]
+  },
+  {
+    "slug": "paper_trail",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 220,
+    "labels": { "en": "Paper trail", "ru": "Бумажный след" },
+    "descriptions": {
+      "en": "Add a note to 10 entries.",
+      "ru": "Добавь заметку к 10 записям."
+    },
+    "icon": { "type": "emoji", "value": "✏️" },
+    "criteria": { "type": "entries_with_note", "count": 10 },
+    "rewards": [{ "kind": "tokens", "amount": 30 }]
+  },
+  {
+    "slug": "tag_tapestry",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 230,
+    "labels": { "en": "Tag tapestry", "ru": "Калейдоскоп тегов" },
+    "descriptions": {
+      "en": "Use 5 different tags on your entries.",
+      "ru": "Используй 5 разных тегов в записях."
+    },
+    "icon": { "type": "emoji", "value": "🧩" },
+    "criteria": { "type": "distinct_tags_used", "count": 5 },
+    "rewards": [{ "kind": "tokens", "amount": 30 }]
+  },
+  {
+    "slug": "tagged_journey",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 240,
+    "labels": { "en": "Tagged journey", "ru": "Путь с тегами" },
+    "descriptions": {
+      "en": "Add at least one tag to 25 entries.",
+      "ru": "Добавь хотя бы один тег к 25 записям."
+    },
+    "icon": { "type": "emoji", "value": "🧭" },
+    "criteria": { "type": "tagged_entry_count", "count": 25 },
+    "rewards": [{ "kind": "tokens", "amount": 45 }]
+  },
+  {
+    "slug": "photo_album",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 250,
+    "labels": { "en": "Little album", "ru": "Маленький альбом" },
+    "descriptions": {
+      "en": "Add 5 photos to your entries.",
+      "ru": "Добавь 5 фото к своим записям."
+    },
+    "icon": { "type": "emoji", "value": "🖼️" },
+    "criteria": { "type": "attachment_count", "kind": "photo", "count": 5 },
+    "rewards": [{ "kind": "tokens", "amount": 35 }]
+  },
+  {
+    "slug": "voice_notes",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 260,
+    "labels": { "en": "Voice trail", "ru": "Голосовой след" },
+    "descriptions": {
+      "en": "Add 3 voice recordings to your entries.",
+      "ru": "Добавь 3 голосовые записи к своим записям."
+    },
+    "icon": { "type": "emoji", "value": "🎙️" },
+    "criteria": { "type": "attachment_count", "kind": "audio", "count": 3 },
+    "rewards": [{ "kind": "tokens", "amount": 30 }]
+  },
+  {
+    "slug": "goal_set",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 270,
+    "labels": { "en": "Goal setter", "ru": "Целеустремлённый" },
+    "descriptions": {
+      "en": "Create 3 goals.",
+      "ru": "Создай 3 цели."
+    },
+    "icon": { "type": "emoji", "value": "🏁" },
+    "criteria": { "type": "goal_created_count", "count": 3 },
+    "rewards": [{ "kind": "tokens", "amount": 30 }]
+  },
+  {
+    "slug": "goal_rhythm",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 280,
+    "labels": { "en": "Goal rhythm", "ru": "Ритм целей" },
+    "descriptions": {
+      "en": "Check in on your goals 25 times.",
+      "ru": "Отметь цели в записях 25 раз."
+    },
+    "icon": { "type": "emoji", "value": "🔔" },
+    "criteria": { "type": "goal_checkin_count", "count": 25 },
+    "rewards": [{ "kind": "tokens", "amount": 40 }]
+  },
+  {
+    "slug": "five_shades",
+    "category": "collection",
+    "visibility": "visible",
+    "status": "published",
+    "sort_order": 290,
+    "labels": { "en": "Five shades", "ru": "Пять оттенков" },
+    "descriptions": {
+      "en": "Use all 5 mood scores at least once.",
+      "ru": "Поставь все 5 оценок настроения хотя бы раз."
+    },
+    "icon": { "type": "emoji", "value": "🎨" },
+    "criteria": { "type": "distinct_scores", "count": 5 },
+    "rewards": [{ "kind": "tokens", "amount": 45 }]
   },
   {
     "slug": "friday_the_13th",
@@ -64,5 +439,110 @@
       { "kind": "tokens", "amount": 30 },
       { "kind": "catalog_icon", "pack_slug": "demo-mocks", "icon_slug": "fox-happy" }
     ]
+  },
+  {
+    "slug": "new_year_day",
+    "category": "secrets",
+    "visibility": "secret",
+    "status": "published",
+    "sort_order": 300,
+    "labels": { "en": "New year note", "ru": "Новогодняя запись" },
+    "descriptions": {
+      "en": "Make an entry on January 1.",
+      "ru": "Сделай запись 1 января."
+    },
+    "icon": { "type": "emoji", "value": "🎆" },
+    "criteria": { "type": "calendar_match", "month": 1, "day": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 50 }]
+  },
+  {
+    "slug": "april_fool",
+    "category": "secrets",
+    "visibility": "secret",
+    "status": "published",
+    "sort_order": 310,
+    "labels": { "en": "April wink", "ru": "Апрельский подмиг" },
+    "descriptions": {
+      "en": "Make an entry on April 1.",
+      "ru": "Сделай запись 1 апреля."
+    },
+    "icon": { "type": "emoji", "value": "🤹" },
+    "criteria": { "type": "calendar_match", "month": 4, "day": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 40 }]
+  },
+  {
+    "slug": "halloween_entry",
+    "category": "secrets",
+    "visibility": "secret",
+    "status": "published",
+    "sort_order": 320,
+    "labels": { "en": "Spooky check-in", "ru": "Жуткая отметка" },
+    "descriptions": {
+      "en": "Make an entry on October 31.",
+      "ru": "Сделай запись 31 октября."
+    },
+    "icon": { "type": "emoji", "value": "🎃" },
+    "criteria": { "type": "calendar_match", "month": 10, "day": 31 },
+    "rewards": [{ "kind": "tokens", "amount": 50 }]
+  },
+  {
+    "slug": "leap_day",
+    "category": "secrets",
+    "visibility": "secret",
+    "status": "published",
+    "sort_order": 330,
+    "labels": { "en": "Leap day", "ru": "Високосный день" },
+    "descriptions": {
+      "en": "Make an entry on February 29.",
+      "ru": "Сделай запись 29 февраля."
+    },
+    "icon": { "type": "emoji", "value": "🐸" },
+    "criteria": { "type": "calendar_match", "month": 2, "day": 29 },
+    "rewards": [{ "kind": "tokens", "amount": 100 }]
+  },
+  {
+    "slug": "night_owl",
+    "category": "secrets",
+    "visibility": "secret",
+    "status": "published",
+    "sort_order": 340,
+    "labels": { "en": "Night owl", "ru": "Сова" },
+    "descriptions": {
+      "en": "Log an entry after 11pm.",
+      "ru": "Сделай запись после 23:00."
+    },
+    "icon": { "type": "emoji", "value": "🦉" },
+    "criteria": { "type": "local_hour_range", "hour_from": 23, "hour_to": 5, "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 40 }]
+  },
+  {
+    "slug": "early_bird",
+    "category": "secrets",
+    "visibility": "secret",
+    "status": "published",
+    "sort_order": 350,
+    "labels": { "en": "Early bird", "ru": "Жаворонок" },
+    "descriptions": {
+      "en": "Log an entry between 5am and 6am.",
+      "ru": "Сделай запись с 05:00 до 06:00."
+    },
+    "icon": { "type": "emoji", "value": "🐦" },
+    "criteria": { "type": "local_hour_range", "hour_from": 5, "hour_to": 6, "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 45 }]
+  },
+  {
+    "slug": "email_arrival",
+    "category": "secrets",
+    "visibility": "secret",
+    "status": "published",
+    "sort_order": 360,
+    "labels": { "en": "Letter arrived", "ru": "Письмо пришло" },
+    "descriptions": {
+      "en": "Make an entry through an email reminder.",
+      "ru": "Сделай запись через email-напоминание."
+    },
+    "icon": { "type": "emoji", "value": "✉️" },
+    "criteria": { "type": "source_prefix", "prefix": "email", "count": 1 },
+    "rewards": [{ "kind": "tokens", "amount": 40 }]
   }
 ]
