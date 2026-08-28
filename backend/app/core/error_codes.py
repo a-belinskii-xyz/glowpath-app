@@ -24,6 +24,9 @@ class ErrorCode(StrEnum):
     USER_NOT_FOUND = "user_not_found"
     ONBOARDING_ALREADY_COMPLETED = "onboarding_already_completed"
     INVALID_ONBOARDING_OPTIONS = "invalid_onboarding_options"
+    GUEST_IMPORT_NOT_ALLOWED = "guest_import_not_allowed"
+    GUEST_NOT_IN_TREATMENT = "guest_not_in_treatment"
+    GUEST_FEATURE_DISABLED = "guest_feature_disabled"
 
     # Google OAuth
     GOOGLE_OAUTH_NOT_CONFIGURED = "google_oauth_not_configured"

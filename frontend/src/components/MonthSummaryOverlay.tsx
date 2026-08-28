@@ -153,7 +153,7 @@ function placeOnRing<T extends { count: number; kind: RecapSatKind }>(
     ring,
     angle: phase + index * step,
     size: satSize(item.count, item.kind),
-  })) as RecapSatellite[]
+  })) as unknown as RecapSatellite[]
 }
 
 function persistVariant(variant: RecapVariant): void {

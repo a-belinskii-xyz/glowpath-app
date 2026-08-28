@@ -2,6 +2,7 @@ import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { CaptureAttribution } from './CaptureAttribution'
+import { GuestDataBanner } from './GuestDataBanner'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import {
   NavEntriesIcon,
@@ -13,7 +14,9 @@ import {
 } from './icons'
 import { useAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
+import { useGuestExperiment } from '../context/GuestExperimentContext'
 import { useLocale } from '../context/LocaleContext'
+import { isGuestDiaryMode } from '../lib/guestMode'
 
 function navClassName({ isActive }: { isActive: boolean }) {
   return `app-nav-link${isActive ? ' is-active' : ''}`
@@ -119,6 +122,7 @@ function ShellChrome({
           </nav>
         </header>
         <main className="app-main">
+          <GuestDataBanner />
           <Outlet />
         </main>
       </AppFrame>
@@ -148,6 +152,7 @@ function ShellChrome({
           </nav>
         </header>
         <main className="app-main">
+          <GuestDataBanner />
           <Outlet />
         </main>
       </AppFrame>
@@ -200,6 +205,7 @@ function ShellChrome({
         </nav>
       </aside>
       <main className="app-main">
+        <GuestDataBanner />
         <Outlet />
       </main>
       {hideBottomNav ? null : <BottomNav />}
@@ -209,22 +215,29 @@ function ShellChrome({
 
 export function Layout() {
   const { isAuthenticated, isLoading, user } = useAuth()
+  const { guestLocalDiary, guestOnboardingCompleted, isBootstrapLoading } = useGuestExperiment()
   const location = useLocation()
-  const needsOnboarding = Boolean(isAuthenticated && user && !user.onboarding_completed)
+  const guestShell = isGuestDiaryMode()
+  const needsOnboarding = Boolean(
+    (isAuthenticated && user && !user.onboarding_completed) ||
+      (guestShell && !guestOnboardingCompleted),
+  )
   const onboardingExempt =
     location.pathname === '/onboarding' ||
     location.pathname === '/reset-password' ||
     location.pathname === '/verify-email'
 
-  if (!isLoading && needsOnboarding && !onboardingExempt) {
+  if (!isLoading && !isBootstrapLoading && needsOnboarding && !onboardingExempt) {
     return <Navigate to="/onboarding" replace />
   }
 
+  const showSidebar = (isAuthenticated && !needsOnboarding) || (guestShell && !needsOnboarding)
+
   return (
     <ShellChrome
-      sidebar={isAuthenticated && !needsOnboarding}
+      sidebar={showSidebar}
       onboarding={needsOnboarding}
-      guestNav={!isLoading && !isAuthenticated}
+      guestNav={!isLoading && !isAuthenticated && !guestLocalDiary}
     />
   )
 }

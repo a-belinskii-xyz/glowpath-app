@@ -52,9 +52,7 @@ def onboarding_catalog(request: Request) -> OnboardingCatalogResponse:
 def onboarding_suggestions(
     body: OnboardingSuggestionsRequest,
     request: Request,
-    user: User = Depends(get_current_user),
 ) -> OnboardingSuggestionsResponse:
-    del user
     try:
         payload = get_onboarding_suggestions_payload(
             option_keys=body.option_keys,

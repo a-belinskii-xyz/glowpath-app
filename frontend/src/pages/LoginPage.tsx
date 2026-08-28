@@ -2,12 +2,14 @@ import { FormEvent, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { getGoogleLoginUrl } from '../api/auth'
+import { Alert } from '../components/Alert'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import { ApiError, formatApiError } from '../lib/errors'
 
 const AUTH_RETURN_TO_KEY = 'auth_return_to'
@@ -59,6 +61,9 @@ export function LoginPage() {
       <p className="muted">{t('auth.logInSubtitle')}</p>
 
       <PageErrorAlert error={error} />
+      {isGuestDiaryMode() ? (
+        <Alert variant="warning">{t('guest.loginWarning')}</Alert>
+      ) : null}
 
       <form className="form" onSubmit={handleSubmit}>
         <FormField

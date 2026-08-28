@@ -636,6 +636,39 @@ export const en = {
     openEntry: 'Go to entry',
     back: 'Back to gallery',
   },
+  guest: {
+    banner: {
+      message:
+        'No account — {count} entries live only in this browser and can be lost. Create an account to save them.',
+      createAccount: 'Create account',
+    },
+    attachmentsLocked: 'Photos and voice notes are available after you create an account.',
+    uploadIconsLocked: 'Custom icons are available after you create an account.',
+    insightsLocked: 'Pattern insights are available after you create an account.',
+    loginWarning:
+      'Signing in to an existing account will not upload your local guest diary. It stays in this browser until you register a new account.',
+    registerHint:
+      'After email verification and sign-in, your local entries will be saved to your new account.',
+    locked: {
+      common: 'Data in guest mode is stored only in this browser and may be lost.',
+      gallery: {
+        title: 'Gallery requires an account',
+        body: 'Photo attachments are saved when you register.',
+      },
+      market: {
+        title: 'Market requires an account',
+        body: 'Icon packs and tokens unlock after registration.',
+      },
+      achievements: {
+        title: 'Achievements require an account',
+        body: 'Unlock achievements and rewards after you sign up.',
+      },
+      profile: {
+        title: 'Profile requires an account',
+        body: 'Email, notifications, and Telegram linking need a registered account.',
+      },
+    },
+  },
   auth: {
     logInTitle: 'Log in',
     logInSubtitle: 'Use your email and password, or continue with Google.',
@@ -1572,6 +1605,39 @@ export const ru: DeepStringLeaves<typeof en> = {
     emptyHint: 'Снимки из записей появятся здесь — сначала новые.',
     openEntry: 'Перейти к записи',
     back: 'К галерее',
+  },
+  guest: {
+    banner: {
+      message:
+        'Нет аккаунта — {count} записей хранятся только в этом браузере и могут пропасть. Создайте аккаунт, чтобы сохранить их.',
+      createAccount: 'Создать аккаунт',
+    },
+    attachmentsLocked: 'Фото и голосовые заметки доступны после регистрации.',
+    uploadIconsLocked: 'Свои иконки доступны после регистрации.',
+    insightsLocked: 'Паттерны и инсайты доступны после регистрации.',
+    loginWarning:
+      'Вход в существующий аккаунт не загрузит локальный гостевой дневник. Он останется в этом браузере, пока вы не зарегистрируете новый аккаунт.',
+    registerHint:
+      'После подтверждения email и входа локальные записи сохранятся в новом аккаунте.',
+    locked: {
+      common: 'В гостевом режиме данные хранятся только в этом браузере и могут быть потеряны.',
+      gallery: {
+        title: 'Галерея доступна после регистрации',
+        body: 'Фото из записей сохраняются после создания аккаунта.',
+      },
+      market: {
+        title: 'Маркет доступен после регистрации',
+        body: 'Паки иконок и токены открываются после регистрации.',
+      },
+      achievements: {
+        title: 'Ачивки доступны после регистрации',
+        body: 'Открывайте ачивки и награды после регистрации.',
+      },
+      profile: {
+        title: 'Профиль доступен после регистрации',
+        body: 'Email, уведомления и Telegram нужен зарегистрированный аккаунт.',
+      },
+    },
   },
   auth: {
     logInTitle: 'Вход',

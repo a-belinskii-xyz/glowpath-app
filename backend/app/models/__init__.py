@@ -26,6 +26,8 @@ from app.models.user_mood_preferences import UserMoodPreferences
 from app.models.user_notification_settings import UserNotificationSettings
 from app.models.user_tag_icon import UserTagIcon
 from app.models.user_wallet import UserWallet
+from app.models.visitor import Visitor
+from app.models.guest_device import GuestDevice
 from app.models.wallet_ledger import WalletLedger
 
 __all__ = [
@@ -57,5 +59,7 @@ __all__ = [
     "UserNotificationSettings",
     "UserTagIcon",
     "UserWallet",
+    "Visitor",
+    "GuestDevice",
     "WalletLedger",
 ]

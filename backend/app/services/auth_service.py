@@ -35,6 +35,8 @@ from app.services.user_provisioning import (
     provision_mood_preferences,
     provision_notification_settings,
 )
+from app.models.guest_device import GuestAuthEvent
+from app.services.visitor_experiment_service import mark_visitor_converted
 
 
 class AuthError(AppError):
@@ -59,6 +61,7 @@ class GoogleProfile:
 class TokenPair:
     access_token: str
     refresh_token: str
+    user_created: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,10 +76,45 @@ class PasswordResetRequestResult:
     message: str
 
 
-def issue_token_pair(user_id: uuid.UUID) -> TokenPair:
+def issue_token_pair(user_id: uuid.UUID, *, user_created: bool = False) -> TokenPair:
     return TokenPair(
         access_token=create_access_token(user_id),
         refresh_token=create_refresh_token(user_id),
+        user_created=user_created,
+    )
+
+
+def _parse_visitor_id(raw: str | None) -> uuid.UUID | None:
+    if not raw:
+        return None
+    try:
+        return uuid.UUID(raw.strip())
+    except ValueError:
+        return None
+
+
+parse_visitor_id = _parse_visitor_id
+
+
+def _link_pending_guest_device(db: Session, *, user: User, visitor_id: uuid.UUID | None) -> None:
+    if visitor_id is None:
+        return
+    user.pending_guest_device_id = visitor_id
+
+
+def _mark_existing_login_skipped(
+    db: Session,
+    *,
+    user: User,
+    visitor_id: uuid.UUID | None,
+) -> None:
+    if visitor_id is None:
+        return
+    mark_visitor_converted(
+        db,
+        visitor_id=visitor_id,
+        user_id=user.id,
+        auth_event=GuestAuthEvent.EXISTING_LOGIN_SKIPPED,
     )
 
 
@@ -91,6 +129,7 @@ def register_user(
     password: str,
     timezone: str,
     email_service: EmailService,
+    visitor_id: uuid.UUID | None = None,
 ) -> User:
     normalized_email = normalize_email(email)
     try:
@@ -117,6 +156,7 @@ def register_user(
     provision_default_goals(db, user.id, starts_on=_local_today(timezone_name))
     provision_notification_settings(db, user.id)
     provision_mood_preferences(db, user.id)
+    _link_pending_guest_device(db, user=user, visitor_id=visitor_id)
     _create_auth_token(
         db,
         user_id=user.id,
@@ -129,7 +169,13 @@ def register_user(
     return user
 
 
-def login_user(db: Session, *, email: str, password: str) -> TokenPair:
+def login_user(
+    db: Session,
+    *,
+    email: str,
+    password: str,
+    visitor_id: uuid.UUID | None = None,
+) -> TokenPair:
     normalized_email = normalize_email(email)
     user = db.scalar(select(User).where(User.email == normalized_email))
     if user is None or user.password_hash is None:
@@ -142,6 +188,8 @@ def login_user(db: Session, *, email: str, password: str) -> TokenPair:
         )
     if user.email_verified_at is None:
         raise EmailNotVerifiedError()
+    _mark_existing_login_skipped(db, user=user, visitor_id=visitor_id)
+    db.commit()
     return issue_token_pair(user.id)
 
 
@@ -259,7 +307,12 @@ def reset_password(db: Session, *, token: str, new_password: str) -> None:
     db.commit()
 
 
-def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPair:
+def authenticate_google_profile(
+    db: Session,
+    profile: GoogleProfile,
+    *,
+    visitor_id: uuid.UUID | None = None,
+) -> TokenPair:
     if not profile.email:
         raise AuthError(
             "Google account has no email", code=ErrorCode.GOOGLE_NO_EMAIL, status_code=400
@@ -268,6 +321,8 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPai
     normalized_email = normalize_email(profile.email)
     user_by_google = db.scalar(select(User).where(User.google_sub == profile.sub))
     if user_by_google is not None:
+        _mark_existing_login_skipped(db, user=user_by_google, visitor_id=visitor_id)
+        db.commit()
         return issue_token_pair(user_by_google.id)
 
     user_by_email = db.scalar(select(User).where(User.email == normalized_email))
@@ -281,6 +336,7 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPai
         user_by_email.google_sub = profile.sub
         if profile.email_verified and user_by_email.email_verified_at is None:
             user_by_email.email_verified_at = datetime.now(UTC)
+        _mark_existing_login_skipped(db, user=user_by_email, visitor_id=visitor_id)
         db.commit()
         return issue_token_pair(user_by_email.id)
 
@@ -296,8 +352,9 @@ def authenticate_google_profile(db: Session, profile: GoogleProfile) -> TokenPai
     provision_default_goals(db, user.id, starts_on=_local_today(user.timezone))
     provision_notification_settings(db, user.id)
     provision_mood_preferences(db, user.id)
+    _link_pending_guest_device(db, user=user, visitor_id=visitor_id)
     db.commit()
-    return issue_token_pair(user.id)
+    return issue_token_pair(user.id, user_created=True)
 
 
 def verify_google_id_token(id_token: str) -> GoogleProfile:

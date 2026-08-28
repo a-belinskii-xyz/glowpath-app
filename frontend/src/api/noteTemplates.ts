@@ -1,5 +1,7 @@
 import { apiRequest } from './client'
 import { apiLocaleHeaders } from '../lib/locale'
+import { isGuestDiaryMode } from '../lib/guestMode'
+import * as guestStore from '../guest/store'
 import type {
   NoteTemplateListResponse,
   NoteTemplatePatch,
@@ -9,6 +11,9 @@ import type {
 } from '../types/noteTemplate'
 
 export function listNoteTemplates(): Promise<NoteTemplateListResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.listGuestNoteTemplates()
+  }
   return apiRequest<NoteTemplateListResponse>('/v1/note-templates', {
     auth: true,
     headers: apiLocaleHeaders(),

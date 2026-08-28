@@ -1,5 +1,7 @@
 import { apiRequest, getApiBaseUrl } from './client'
 import { apiLocaleHeaders } from '../lib/locale'
+import { isGuestDiaryMode } from '../lib/guestMode'
+import * as guestStore from '../guest/store'
 import { ApiError, parseApiError } from '../lib/errors'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/storage'
 import type { TokenResponse } from '../types/auth'
@@ -49,6 +51,9 @@ async function refreshTokensOnce(): Promise<boolean> {
 }
 
 export function listGoals(params?: { progressOn?: string }): Promise<GoalListResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.listGuestGoals(params)
+  }
   const query = new URLSearchParams()
   if (params?.progressOn) {
     query.set('progress_on', params.progressOn)
@@ -98,6 +103,9 @@ export function getGoalCalendar(params: {
   recorded_from: string
   recorded_to: string
 }): Promise<GoalCalendarResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.getGuestGoalCalendar(params)
+  }
   const query = new URLSearchParams({
     recorded_from: params.recorded_from,
     recorded_to: params.recorded_to,
@@ -112,6 +120,9 @@ export function getGoalStats(params: {
   recorded_from: string
   recorded_to: string
 }): Promise<GoalStatsResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.getGuestGoalStats(params)
+  }
   const query = new URLSearchParams({
     recorded_from: params.recorded_from,
     recorded_to: params.recorded_to,

@@ -1,5 +1,7 @@
 import { apiRequest, getApiBaseUrl } from './client'
-import { apiLocaleHeaders } from '../lib/locale'
+import { apiLocaleHeaders, getApiLocale } from '../lib/locale'
+import { isGuestDiaryMode } from '../lib/guestMode'
+import * as guestStore from '../guest/store'
 import { ApiError, parseApiError } from '../lib/errors'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/storage'
 import type { TokenResponse } from '../types/auth'
@@ -74,6 +76,9 @@ export type MoodIconCatalogResponse = {
 }
 
 export function getMoodPreferences(): Promise<MoodPreferencesPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.getGuestMoodPreferences(getApiLocale())
+  }
   return apiRequest<MoodPreferencesPublic>('/v1/mood-preferences', {
     auth: true,
     headers: apiLocaleHeaders(),

@@ -11,6 +11,7 @@ import {
 import { getMoodPreferences } from '../api/moodPreferences'
 import { useAuth } from './AuthContext'
 import { useLocale } from './LocaleContext'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import { defaultMoodPreferences, getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { MoodPreferencesPublic, MoodScoreStylePublic } from '../types/moodPreferences'
 
@@ -38,6 +39,19 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
 
   const refreshPreferences = useCallback(async () => {
+    if (isGuestDiaryMode()) {
+      setIsLoading(true)
+      try {
+        const preferences = await getMoodPreferences()
+        setScores(preferences.scores)
+        setUseHistoricalColors(preferences.use_historical_colors)
+        setShowStreak(preferences.show_streak ?? true)
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
+
     if (!user?.email_verified) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
@@ -67,6 +81,11 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (isGuestDiaryMode()) {
+      void refreshPreferences()
+      return
+    }
+
     if (!user?.email_verified) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)

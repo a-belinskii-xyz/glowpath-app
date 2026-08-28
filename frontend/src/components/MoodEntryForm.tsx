@@ -15,7 +15,7 @@ import { listTagGroups } from '../api/tagGroups'
 import { PageErrorAlert } from './PageErrorAlert'
 import { GoalIcon } from './GoalIcon'
 import { AudioRecorder } from './AudioRecorder'
-import { AudioIcon, PhotoIcon } from './icons'
+import { AudioIcon, BellIcon, PhotoIcon } from './icons'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { PhotoCollageEditor, type CollagePhotoDraft } from './PhotoCollageEditor'
@@ -23,6 +23,7 @@ import { SoftAudioPlayer } from './SoftAudioPlayer'
 import { StableButtonLabel } from './StableButtonLabel'
 import { TagIcon } from './TagIcon'
 import { useAuth } from '../context/AuthContext'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
@@ -602,6 +603,7 @@ export function MoodEntryForm({
 
   const photoCount = photoDrafts.length
   const hasAudio = existingAudio !== null || pendingAudio !== null
+  const attachmentsLocked = isGuestDiaryMode()
   const selectedMoodColor = moodScoreOptions.find((option) => option.score === score)?.color
 
   const collagePhotos: CollagePhotoDraft[] = photoDrafts.map((draft) => {
@@ -1015,144 +1017,192 @@ export function MoodEntryForm({
             </h2>
             <div className="attachments-section">
               <div className="attachment-inputs">
-                <label
-                  className={`attachment-upload${photoCount >= 5 ? ' is-disabled' : ''}`}
-                >
-                  <span className="attachment-upload-icon" aria-hidden="true">
-                    <PhotoIcon />
-                  </span>
-                  <span className="attachment-upload-body">
-                    <span className="attachment-upload-title">
-                      {t('entries.photos', { count: photoCount })}
+                {attachmentsLocked ? (
+                  <div
+                    className="attachment-upload is-disabled is-guest-locked"
+                    role="group"
+                    aria-label={t('guest.attachmentsLocked')}
+                  >
+                    <span className="attachment-guest-lock" aria-hidden="true">
+                      <BellIcon />
                     </span>
-                    <span className="attachment-upload-action">
-                      {photoCount >= 5
-                        ? t('entries.photosFull')
-                        : t('entries.addPhotos')}
+                    <span className="attachment-upload-icon" aria-hidden="true">
+                      <PhotoIcon />
                     </span>
-                    <span className="attachment-upload-hint">
-                      {t('entries.photosHint')}
+                    <span className="attachment-upload-body">
+                      <span className="attachment-upload-title">
+                        {t('entries.photos', { count: 0 })}
+                      </span>
+                      <span className="attachment-upload-action">{t('guest.attachmentsLocked')}</span>
+                      <span className="attachment-upload-hint">{t('entries.photosHint')}</span>
                     </span>
-                  </span>
-                  <input
-                    className="attachment-upload-input"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    multiple
-                    onChange={handlePhotoChange}
-                    disabled={photoCount >= 5}
-                  />
-                </label>
-                <div
-                  className={`attachment-upload attachment-audio-card${hasAudio ? ' is-disabled' : ''}${isRecordingAudio ? ' is-recording' : ''}`}
-                >
-                  <span className="attachment-upload-icon" aria-hidden="true">
-                    <AudioIcon />
-                  </span>
-                  <span className="attachment-upload-body">
-                    <span className="attachment-upload-title">
-                      {t('entries.audio', { count: hasAudio ? 1 : 0 })}
+                  </div>
+                ) : (
+                  <label
+                    className={`attachment-upload${photoCount >= 5 ? ' is-disabled' : ''}`}
+                  >
+                    <span className="attachment-upload-icon" aria-hidden="true">
+                      <PhotoIcon />
                     </span>
-                    {hasAudio ? (
-                      <>
-                        <span className="attachment-upload-action">
-                          {t('entries.audioFull')}
-                        </span>
-                        <span className="attachment-upload-hint">
-                          {t('entries.audioHint')}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="attachment-audio-actions">
-                          {isRecordingAudio ? null : (
-                            <label className="button button-small attachment-audio-action">
-                              {t('entries.addAudio')}
-                              <input
-                                className="visually-hidden"
-                                type="file"
-                                accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
-                                onChange={handleAudioChange}
-                              />
-                            </label>
-                          )}
-                          <AudioRecorder
-                            onRecorded={handleRecordedAudio}
-                            onError={setError}
-                            onBusyChange={setIsRecordingAudio}
-                          />
-                        </span>
-                        {isRecordingAudio ? null : (
+                    <span className="attachment-upload-body">
+                      <span className="attachment-upload-title">
+                        {t('entries.photos', { count: photoCount })}
+                      </span>
+                      <span className="attachment-upload-action">
+                        {photoCount >= 5
+                          ? t('entries.photosFull')
+                          : t('entries.addPhotos')}
+                      </span>
+                      <span className="attachment-upload-hint">
+                        {t('entries.photosHint')}
+                      </span>
+                    </span>
+                    <input
+                      className="attachment-upload-input"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      multiple
+                      onChange={handlePhotoChange}
+                      disabled={photoCount >= 5}
+                    />
+                  </label>
+                )}
+                {attachmentsLocked ? (
+                  <div
+                    className="attachment-upload attachment-audio-card is-disabled is-guest-locked"
+                    role="group"
+                    aria-label={t('guest.attachmentsLocked')}
+                  >
+                    <span className="attachment-guest-lock" aria-hidden="true">
+                      <BellIcon />
+                    </span>
+                    <span className="attachment-upload-icon" aria-hidden="true">
+                      <AudioIcon />
+                    </span>
+                    <span className="attachment-upload-body">
+                      <span className="attachment-upload-title">
+                        {t('entries.audio', { count: 0 })}
+                      </span>
+                      <span className="attachment-upload-action">{t('guest.attachmentsLocked')}</span>
+                      <span className="attachment-upload-hint">{t('entries.audioHint')}</span>
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    className={`attachment-upload attachment-audio-card${hasAudio ? ' is-disabled' : ''}${isRecordingAudio ? ' is-recording' : ''}`}
+                  >
+                    <span className="attachment-upload-icon" aria-hidden="true">
+                      <AudioIcon />
+                    </span>
+                    <span className="attachment-upload-body">
+                      <span className="attachment-upload-title">
+                        {t('entries.audio', { count: hasAudio ? 1 : 0 })}
+                      </span>
+                      {hasAudio ? (
+                        <>
+                          <span className="attachment-upload-action">
+                            {t('entries.audioFull')}
+                          </span>
                           <span className="attachment-upload-hint">
                             {t('entries.audioHint')}
                           </span>
-                        )}
-                      </>
-                    )}
-                  </span>
-                </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="attachment-audio-actions">
+                            {isRecordingAudio ? null : (
+                              <label className="button button-small attachment-audio-action">
+                                {t('entries.addAudio')}
+                                <input
+                                  className="visually-hidden"
+                                  type="file"
+                                  accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
+                                  onChange={handleAudioChange}
+                                />
+                              </label>
+                            )}
+                            <AudioRecorder
+                              onRecorded={handleRecordedAudio}
+                              onError={setError}
+                              onBusyChange={setIsRecordingAudio}
+                            />
+                          </span>
+                          {isRecordingAudio ? null : (
+                            <span className="attachment-upload-hint">
+                              {t('entries.audioHint')}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <PhotoCollageEditor
-                photos={collagePhotos}
-                onChange={(next) => {
-                  const byKey = new Map(photoDrafts.map((draft) => [draft.key, draft]))
-                  setPhotoDrafts(
-                    next
-                      .map((item) => byKey.get(item.key))
-                      .filter((draft): draft is PhotoDraftItem => draft != null),
-                  )
-                }}
-                onRemove={(key) => void removePhotoDraft(key)}
-              />
+              {!attachmentsLocked ? (
+                <>
+                  <PhotoCollageEditor
+                    photos={collagePhotos}
+                    onChange={(next) => {
+                      const byKey = new Map(photoDrafts.map((draft) => [draft.key, draft]))
+                      setPhotoDrafts(
+                        next
+                          .map((item) => byKey.get(item.key))
+                          .filter((draft): draft is PhotoDraftItem => draft != null),
+                      )
+                    }}
+                    onRemove={(key) => void removePhotoDraft(key)}
+                  />
 
-              {existingAudio || pendingAudio ? (
-                <ul className="attachment-list">
-                  {existingAudio ? (
-                    <li>
-                      <span>
-                        {t('entries.attachmentItem', {
-                          kind: kindLabel(existingAudio.kind),
-                          name: existingAudio.original_name,
-                        })}
-                      </span>
-                      {mode === 'edit' ? (
-                        <button
-                          type="button"
-                          className="link-button"
-                          onClick={() => void removeExistingAudio()}
-                        >
-                          {t('common.remove')}
-                        </button>
+                  {existingAudio || pendingAudio ? (
+                    <ul className="attachment-list">
+                      {existingAudio ? (
+                        <li>
+                          <span>
+                            {t('entries.attachmentItem', {
+                              kind: kindLabel(existingAudio.kind),
+                              name: existingAudio.original_name,
+                            })}
+                          </span>
+                          {mode === 'edit' ? (
+                            <button
+                              type="button"
+                              className="link-button"
+                              onClick={() => void removeExistingAudio()}
+                            >
+                              {t('common.remove')}
+                            </button>
+                          ) : null}
+                        </li>
                       ) : null}
-                    </li>
+                      {pendingAudio ? (
+                        <li className="attachment-audio-item">
+                          {pendingAudioUrl ? (
+                            <SoftAudioPlayer
+                              src={pendingAudioUrl}
+                              accentColor={selectedMoodColor}
+                              title={pendingAudio.name}
+                            />
+                          ) : (
+                            <span>
+                              {t('entries.attachmentItem', {
+                                kind: t('entries.kindAudio'),
+                                name: pendingAudio.name,
+                              })}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="link-button"
+                            onClick={() => setPendingAudio(null)}
+                          >
+                            {t('common.remove')}
+                          </button>
+                        </li>
+                      ) : null}
+                    </ul>
                   ) : null}
-                  {pendingAudio ? (
-                    <li className="attachment-audio-item">
-                      {pendingAudioUrl ? (
-                        <SoftAudioPlayer
-                          src={pendingAudioUrl}
-                          accentColor={selectedMoodColor}
-                          title={pendingAudio.name}
-                        />
-                      ) : (
-                        <span>
-                          {t('entries.attachmentItem', {
-                            kind: t('entries.kindAudio'),
-                            name: pendingAudio.name,
-                          })}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className="link-button"
-                        onClick={() => setPendingAudio(null)}
-                      >
-                        {t('common.remove')}
-                      </button>
-                    </li>
-                  ) : null}
-                </ul>
+                </>
               ) : null}
             </div>
           </section>

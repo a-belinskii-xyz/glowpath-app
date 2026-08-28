@@ -46,6 +46,7 @@ import {
   weekIntersectsMonth,
 } from '../lib/datetime'
 import { ApiError, formatApiError } from '../lib/errors'
+import { canUseDiaryFeatures } from '../lib/guestMode'
 import { buildGradientWashFromScores, motion } from '../design'
 import { useScrollAmbientGlow } from '../hooks/useScrollAmbientGlow'
 import { entryMoodColor } from '../lib/moodScale'
@@ -77,6 +78,7 @@ function mergeEntries(
 
 export function EntriesPage() {
   const { user } = useAuth()
+  const diaryAccess = canUseDiaryFeatures(user)
   const { locale, t } = useLocale()
   const { scores, showStreak } = useMoodPreferences()
   const location = useLocation()
@@ -86,7 +88,7 @@ export function EntriesPage() {
     const state = location.state as { unlockedAchievements?: AchievementPublic[] } | null
     return state?.unlockedAchievements ?? []
   })
-  const timeZone = user?.timezone ?? 'UTC'
+  const timeZone = user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC'
   const dateLocale = intlLocale(locale)
   const isNarrow = useMediaQuery('(max-width: 899px)')
   const monthShortLabels = useMemo(() => t('calendar.monthsShort').split('|'), [t])
@@ -316,7 +318,7 @@ export function EntriesPage() {
   }, [])
 
   const loadCalendar = useCallback(async () => {
-    if (!user?.email_verified) {
+    if (!diaryAccess) {
       setCalendarDays([])
       setGoalCalendarDays([])
       setGoalsById(new Map())
@@ -359,11 +361,11 @@ export function EntriesPage() {
     monthBounds.recorded_from,
     monthBounds.recorded_to,
     t,
-    user?.email_verified,
+    diaryAccess,
   ])
 
   const loadStats = useCallback(async () => {
-    if (!user?.email_verified) {
+    if (!diaryAccess) {
       setStats(null)
       setIsStatsLoading(false)
       return
@@ -384,10 +386,10 @@ export function EntriesPage() {
     } finally {
       setIsStatsLoading(false)
     }
-  }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, user?.email_verified])
+  }, [locale, monthBounds.recorded_from, monthBounds.recorded_to, t, diaryAccess])
 
   const loadStreak = useCallback(async () => {
-    if (!user?.email_verified || !showStreak) {
+    if (!diaryAccess || !showStreak) {
       setStreakDays(null)
       setStreakLoggedToday(false)
       return
@@ -401,11 +403,11 @@ export function EntriesPage() {
       setStreakDays(null)
       setStreakLoggedToday(false)
     }
-  }, [showStreak, user?.email_verified])
+  }, [showStreak, diaryAccess])
 
   const focusEntryId = searchParams.get('entry')
   const loadInsights = useCallback(async () => {
-    if (!user?.email_verified) {
+    if (!diaryAccess) {
       setInsights(null)
       setIsInsightsLoading(false)
       return
@@ -430,11 +432,11 @@ export function EntriesPage() {
     locale,
     monthBounds.recorded_from,
     monthBounds.recorded_to,
-    user?.email_verified,
+    diaryAccess,
   ])
 
   const loadGoalStats = useCallback(async () => {
-    if (!user?.email_verified || calendarMode !== 'goals') {
+    if (!diaryAccess || calendarMode !== 'goals') {
       setGoalStatsItems([])
       setIsGoalStatsLoading(false)
       return
@@ -462,12 +464,12 @@ export function EntriesPage() {
     goalStatsBounds.recorded_to,
     locale,
     t,
-    user?.email_verified,
+    diaryAccess,
   ])
 
   const loadPage = useCallback(
     async (pageOffset: number, replace: boolean) => {
-      if (!user?.email_verified) {
+      if (!diaryAccess) {
         setIsLoading(false)
         return
       }
@@ -515,13 +517,13 @@ export function EntriesPage() {
       monthBounds.recorded_from,
       monthBounds.recorded_to,
       t,
-      user?.email_verified,
+      diaryAccess,
     ],
   )
 
   const ensureEntriesFromDay = useCallback(
     async (date: string): Promise<boolean | null> => {
-      if (!user?.email_verified) {
+      if (!diaryAccess) {
         return false
       }
       if (dayLoadRef.current === date) {
@@ -571,7 +573,7 @@ export function EntriesPage() {
       monthBounds.recorded_to,
       t,
       timeZone,
-      user?.email_verified,
+      diaryAccess,
     ],
   )
 
@@ -624,7 +626,7 @@ export function EntriesPage() {
     if (!isSearchMode) {
       return
     }
-    if (!user?.email_verified) {
+    if (!diaryAccess) {
       setIsLoading(false)
       return
     }
@@ -669,7 +671,7 @@ export function EntriesPage() {
       cancelled = true
       loadingRef.current = false
     }
-  }, [isSearchMode, locale, searchQuery, t, user?.email_verified])
+  }, [isSearchMode, locale, searchQuery, t, diaryAccess])
 
   useEffect(() => {
     const node = loadMoreRef.current
@@ -1016,7 +1018,7 @@ export function EntriesPage() {
 
       <PageErrorAlert error={error} />
 
-      {user?.email_verified && !isSearchMode ? (
+      {diaryAccess && !isSearchMode ? (
         <div className={isCalendarLoading ? 'calendar-panel is-refreshing' : 'calendar-panel'}>
           <div
             className="segmented-control calendar-mode-tabs"
@@ -1062,7 +1064,7 @@ export function EntriesPage() {
         </div>
       ) : null}
 
-      {user?.email_verified && !isSearchMode ? (
+      {diaryAccess && !isSearchMode ? (
         calendarMode === 'goals' ? (
           isGoalStatsLoading && goalStatsItems.length === 0 ? (
             <p className="muted">{t('common.loadingGoalStats')}</p>
@@ -1111,7 +1113,7 @@ export function EntriesPage() {
         ) : null
       ) : null}
 
-      {user?.email_verified && !isSearchMode ? (
+      {diaryAccess && !isSearchMode ? (
         <PatternInsights
           insights={insights}
           isLoading={isInsightsLoading}
@@ -1135,7 +1137,7 @@ export function EntriesPage() {
 
       {isLoading ? (
         <p className="muted">{t('common.loadingEntries')}</p>
-      ) : user?.email_verified && entries.length === 0 && (isSearchMode || favoritesOnly || !stats) ? (
+      ) : diaryAccess && entries.length === 0 && (isSearchMode || favoritesOnly || !stats) ? (
         <div className="entry-feed">
           <section className="day-section">
             <p className="muted entry-feed-empty">
@@ -1208,7 +1210,7 @@ export function EntriesPage() {
       </div>
       )}
 
-      {!isSearchMode && hasMore && user?.email_verified ? (
+      {!isSearchMode && hasMore && diaryAccess ? (
         <div ref={loadMoreRef} className="load-more-sentinel">
           {isLoadingMore ? <p className="muted">{t('common.loadingMore')}</p> : null}
         </div>

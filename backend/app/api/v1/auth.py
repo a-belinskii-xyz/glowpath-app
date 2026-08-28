@@ -34,6 +34,7 @@ from app.services.auth_service import (
     authenticate_google_profile,
     forgot_password,
     login_user,
+    parse_visitor_id,
     refresh_access_token,
     register_user,
     resend_verification_email,
@@ -66,7 +67,11 @@ def _handle_auth_error(exc: AuthError) -> None:
 
 
 def _to_token_response(tokens: TokenPair) -> TokenResponse:
-    return TokenResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)
+    return TokenResponse(
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+        user_created=tokens.user_created or None,
+    )
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=MessageResponse)
@@ -82,6 +87,7 @@ def register(
             password=body.password,
             timezone=body.timezone,
             email_service=mailer,
+            visitor_id=parse_visitor_id(body.visitor_id),
         )
     except AuthError as exc:
         _handle_auth_error(exc)
@@ -116,7 +122,12 @@ def resend_verification_endpoint(
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     try:
-        tokens = login_user(db, email=body.email, password=body.password)
+        tokens = login_user(
+            db,
+            email=body.email,
+            password=body.password,
+            visitor_id=parse_visitor_id(body.visitor_id),
+        )
     except AuthError as exc:
         _handle_auth_error(exc)
     return _to_token_response(tokens)
@@ -221,12 +232,14 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> Re
         email_verified=bool(user_info.get("email_verified")),
     )
     try:
-        tokens = authenticate_google_profile(db, profile)
+        visitor_id = parse_visitor_id(request.cookies.get(settings.guest_visitor_cookie_name))
+        tokens = authenticate_google_profile(db, profile, visitor_id=visitor_id)
     except AuthError as exc:
         _handle_auth_error(exc)
+    user_created_param = "&user_created=1" if tokens.user_created else ""
     redirect_url = (
         f"{settings.frontend_url}/auth/google/callback"
-        f"#access_token={tokens.access_token}&refresh_token={tokens.refresh_token}"
+        f"#access_token={tokens.access_token}&refresh_token={tokens.refresh_token}{user_created_param}"
     )
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 
@@ -238,7 +251,11 @@ def google_id_token_login(
 ) -> TokenResponse:
     try:
         profile = verify_google_id_token(body.id_token)
-        tokens = authenticate_google_profile(db, profile)
+        tokens = authenticate_google_profile(
+            db,
+            profile,
+            visitor_id=parse_visitor_id(body.visitor_id),
+        )
     except AuthError as exc:
         _handle_auth_error(exc)
     return _to_token_response(tokens)

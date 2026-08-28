@@ -2,13 +2,13 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, String, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin
-from app.db.names import table_name
+from app.db.names import fk_column, table_name
 
 if TYPE_CHECKING:
     from app.models.auth_token import AuthToken
@@ -66,6 +66,13 @@ class User(TimestampMixin, Base):
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)
     telegram_linked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     telegram_locale: Mapped[str | None] = mapped_column(String(16))
+
+    pending_guest_device_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("visitors"), ondelete="SET NULL"),
+        nullable=True,
+    )
+    guest_imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     mood_entries: Mapped[list["MoodEntry"]] = relationship(back_populates="user")
     tag_groups: Mapped[list["TagGroup"]] = relationship(back_populates="user")

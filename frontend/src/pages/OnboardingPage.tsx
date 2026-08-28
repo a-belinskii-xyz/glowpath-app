@@ -10,7 +10,9 @@ import { MarkdownNote } from '../components/MarkdownNote'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useAuth } from '../context/AuthContext'
+import { useGuestExperiment } from '../context/GuestExperimentContext'
 import { useLocale } from '../context/LocaleContext'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import { formatApiError } from '../lib/errors'
 import type {
   OnboardingQuestion,
@@ -21,6 +23,7 @@ type Phase = 'questions' | 'suggestions'
 
 export function OnboardingPage() {
   const { user, refreshUser } = useAuth()
+  const { guestOnboardingCompleted, refreshGuestMeta } = useGuestExperiment()
   const { locale, t } = useLocale()
   const navigate = useNavigate()
   const [questions, setQuestions] = useState<OnboardingQuestion[]>([])
@@ -113,7 +116,7 @@ export function OnboardingPage() {
     })
   }, [current, currentSelected.length, t])
 
-  if (user?.onboarding_completed) {
+  if (user?.onboarding_completed || (isGuestDiaryMode() && guestOnboardingCompleted)) {
     return <Navigate to="/" replace />
   }
 
@@ -172,7 +175,11 @@ export function OnboardingPage() {
               note_template_slugs: selectedTemplateSlugs,
             },
       )
-      await refreshUser()
+      if (isGuestDiaryMode()) {
+        await refreshGuestMeta()
+      } else {
+        await refreshUser()
+      }
       navigate('/', { replace: true })
     } catch (err) {
       setError(formatApiError(err, t, 'errors.requestFailed'))

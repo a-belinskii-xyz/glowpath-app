@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { formatApiError } from '../lib/errors'
 
-function parseHashTokens(): { accessToken: string; refreshToken: string } | null {
+function parseHashTokens(): { accessToken: string; refreshToken: string; userCreated: boolean } | null {
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
   const accessToken = params.get('access_token')
   const refreshToken = params.get('refresh_token')
@@ -15,7 +15,11 @@ function parseHashTokens(): { accessToken: string; refreshToken: string } | null
     return null
   }
 
-  return { accessToken, refreshToken }
+  return {
+    accessToken,
+    refreshToken,
+    userCreated: params.get('user_created') === '1',
+  }
 }
 
 export function GoogleCallbackPage() {
@@ -33,7 +37,7 @@ export function GoogleCallbackPage() {
 
     const run = async () => {
       try {
-        await completeLogin(tokens.accessToken, tokens.refreshToken)
+        await completeLogin(tokens.accessToken, tokens.refreshToken, tokens.userCreated)
         const returnTo = sessionStorage.getItem('auth_return_to')
         sessionStorage.removeItem('auth_return_to')
         navigate(returnTo && returnTo !== '/login' ? returnTo : '/', { replace: true })

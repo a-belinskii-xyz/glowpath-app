@@ -1,6 +1,9 @@
 import { ApiError, parseApiError } from '../lib/errors'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/storage'
-import { apiLocaleHeaders } from '../lib/locale'
+import { apiLocaleHeaders, getApiLocale } from '../lib/locale'
+import { isGuestDiaryMode } from '../lib/guestMode'
+import * as guestStore from '../guest/store'
+import { guestInsightsUnavailable } from '../guest/moodAnalytics'
 import type { TokenResponse } from '../types/auth'
 import type {
   AttachmentKind,
@@ -74,6 +77,9 @@ function buildListQuery(params: ListMoodEntriesParams = {}): string {
 }
 
 export function listMoodEntries(params: ListMoodEntriesParams = {}): Promise<MoodEntryListResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.listGuestMoodEntries(params, getApiLocale())
+  }
   return apiRequest<MoodEntryListResponse>(`/v1/mood-entries${buildListQuery(params)}`, {
     auth: true,
     headers: moodHeaders(),
@@ -81,6 +87,9 @@ export function listMoodEntries(params: ListMoodEntriesParams = {}): Promise<Moo
 }
 
 export function listGalleryPhotos(params: { limit?: number; offset?: number } = {}): Promise<GalleryPhotoListResponse> {
+  if (isGuestDiaryMode()) {
+    return Promise.resolve({ items: [], limit: params.limit ?? 20, offset: params.offset ?? 0 })
+  }
   return apiRequest<GalleryPhotoListResponse>(`/v1/mood-entries/photos${buildListQuery(params)}`, {
     auth: true,
     headers: moodHeaders(),
@@ -90,6 +99,9 @@ export function listGalleryPhotos(params: { limit?: number; offset?: number } = 
 export function searchMoodEntries(
   params: SearchMoodEntriesParams,
 ): Promise<MoodEntryListResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.searchGuestMoodEntries(params, getApiLocale())
+  }
   const search = new URLSearchParams()
   search.set('q', params.q)
   if (params.limit !== undefined) {
@@ -105,6 +117,11 @@ export function getMoodEntryCalendar(params: {
   recorded_from: string
   recorded_to: string
 }): Promise<MoodEntryCalendarResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.getGuestMeta().then((meta) =>
+      guestStore.getGuestMoodEntryCalendar(params, meta?.timezone ?? 'UTC', getApiLocale()),
+    )
+  }
   return apiRequest<MoodEntryCalendarResponse>(`/v1/mood-entries/calendar${buildListQuery(params)}`, {
     auth: true,
     headers: moodHeaders(),
@@ -112,6 +129,11 @@ export function getMoodEntryCalendar(params: {
 }
 
 export function getMoodEntryStreak(): Promise<MoodEntryStreakResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.getGuestMeta().then((meta) =>
+      guestStore.getGuestMoodEntryStreak(meta?.timezone ?? 'UTC', getApiLocale()),
+    )
+  }
   return apiRequest<MoodEntryStreakResponse>('/v1/mood-entries/streak', {
     auth: true,
     headers: moodHeaders(),
@@ -122,6 +144,11 @@ export function getMoodEntryStats(params: {
   recorded_from: string
   recorded_to: string
 }): Promise<MoodEntryStatsResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.getGuestMeta().then((meta) =>
+      guestStore.getGuestMoodEntryStats(params, meta?.timezone ?? 'UTC', getApiLocale()),
+    )
+  }
   return apiRequest<MoodEntryStatsResponse>(`/v1/mood-entries/stats${buildListQuery(params)}`, {
     auth: true,
     headers: moodHeaders(),
@@ -134,6 +161,9 @@ export function getMoodInsights(params: {
   limit?: number
   focus_entry_id?: string
 } = {}): Promise<MoodInsightsResponse> {
+  if (isGuestDiaryMode()) {
+    return Promise.resolve(guestInsightsUnavailable())
+  }
   const search = new URLSearchParams()
   if (params.recorded_from) {
     search.set('recorded_from', params.recorded_from)
@@ -158,6 +188,9 @@ export function getMoodInsights(params: {
 }
 
 export function getMoodEntry(entryId: string): Promise<MoodEntryPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.getGuestMoodEntry(entryId, getApiLocale())
+  }
   return apiRequest<MoodEntryPublic>(`/v1/mood-entries/${entryId}`, {
     auth: true,
     headers: moodHeaders(),
@@ -165,6 +198,9 @@ export function getMoodEntry(entryId: string): Promise<MoodEntryPublic> {
 }
 
 export function createMoodEntry(body: MoodEntryCreate): Promise<MoodEntryPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.createGuestMoodEntry(body, getApiLocale())
+  }
   return apiRequest<MoodEntryPublic>('/v1/mood-entries', {
     method: 'POST',
     body,
@@ -174,6 +210,9 @@ export function createMoodEntry(body: MoodEntryCreate): Promise<MoodEntryPublic>
 }
 
 export function patchMoodEntry(entryId: string, body: MoodEntryPatch): Promise<MoodEntryPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.patchGuestMoodEntry(entryId, body, getApiLocale())
+  }
   return apiRequest<MoodEntryPublic>(`/v1/mood-entries/${entryId}`, {
     method: 'PATCH',
     body,
@@ -183,6 +222,9 @@ export function patchMoodEntry(entryId: string, body: MoodEntryPatch): Promise<M
 }
 
 export function deleteMoodEntry(entryId: string): Promise<void> {
+  if (isGuestDiaryMode()) {
+    return guestStore.deleteGuestMoodEntry(entryId)
+  }
   return apiRequest<void>(`/v1/mood-entries/${entryId}`, {
     method: 'DELETE',
     auth: true,
@@ -207,6 +249,9 @@ export function uploadMoodEntryAttachment(
   kind: AttachmentKind,
   file: File,
 ): Promise<AttachmentPublic> {
+  if (isGuestDiaryMode()) {
+    return Promise.reject(new Error('Guest attachments disabled'))
+  }
   return uploadAttachment(`/v1/mood-entries/${entryId}/attachments`, kind, file)
 }
 

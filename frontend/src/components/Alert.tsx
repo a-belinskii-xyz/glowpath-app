@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 type AlertProps = {
-  variant?: 'error' | 'success' | 'info'
+  variant?: 'error' | 'success' | 'info' | 'warning'
   children: ReactNode
 }
 

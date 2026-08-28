@@ -1,5 +1,7 @@
 import { apiRequest, getApiBaseUrl } from './client'
 import { apiLocaleHeaders } from '../lib/locale'
+import { isGuestDiaryMode } from '../lib/guestMode'
+import * as guestStore from '../guest/store'
 import { ApiError, parseApiError } from '../lib/errors'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/storage'
 import type { TokenResponse } from '../types/auth'
@@ -50,6 +52,9 @@ async function refreshTokensOnce(): Promise<boolean> {
 }
 
 export function listTagGroups(): Promise<TagGroupListResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.listGuestTagGroups()
+  }
   return apiRequest<TagGroupListResponse>('/v1/tag-groups', {
     auth: true,
     headers: apiLocaleHeaders(),

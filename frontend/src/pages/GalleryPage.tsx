@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { GuestLockedPage } from '../components/GuestLockedPage'
 import { listGalleryPhotos } from '../api/moodEntries'
 import { AttachmentImage } from '../components/AttachmentImage'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -8,6 +9,7 @@ import { PhotoLightbox } from '../components/PhotoLightbox'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import { intlLocale } from '../i18n/t'
 import { formatMonthHeading, monthKey } from '../lib/datetime'
 import { ApiError, formatApiError } from '../lib/errors'
@@ -47,6 +49,11 @@ function groupPhotosByMonth(
 export function GalleryPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
+
+  if (isGuestDiaryMode()) {
+    return <GuestLockedPage feature="gallery" />
+  }
+
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
 

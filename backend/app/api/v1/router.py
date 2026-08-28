@@ -3,7 +3,9 @@ from fastapi import APIRouter
 from app.api.v1 import (
     achievements,
     auth,
+    features,
     goals,
+    guest,
     health,
     marketplace,
     mood_entries,
@@ -19,6 +21,8 @@ from app.config import settings
 
 api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
+api_v1_router.include_router(features.router, prefix="/features")
+api_v1_router.include_router(guest.router, prefix="/guest")
 api_v1_router.include_router(auth.router, prefix="/auth")
 api_v1_router.include_router(onboarding.router, prefix="/onboarding")
 api_v1_router.include_router(mood_entries.router, prefix="/mood-entries")

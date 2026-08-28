@@ -90,7 +90,7 @@ function keepElementViewportTop(element: HTMLElement, top: number) {
     if (scroller === window) {
       window.scrollBy(0, delta)
     } else {
-      scroller.scrollTop += delta
+      ;(scroller as HTMLElement).scrollTop += delta
     }
   }
 }

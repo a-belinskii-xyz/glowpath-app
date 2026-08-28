@@ -14,6 +14,7 @@ export type TokenResponse = {
   access_token: string
   refresh_token: string
   token_type: string
+  user_created?: boolean
 }
 
 export type MessageResponse = {
@@ -42,11 +43,13 @@ export type RegisterRequest = {
   password: string
   password_confirm: string
   timezone: string
+  visitor_id?: string
 }
 
 export type LoginRequest = {
   email: string
   password: string
+  visitor_id?: string
 }
 
 export type ResetPasswordRequest = {

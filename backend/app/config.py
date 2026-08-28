@@ -174,6 +174,36 @@ class Settings(BaseSettings):
         validation_alias="FEATURE_ACHIEVEMENTS_USER_IDS",
     )
 
+    # Guest local diary experiment (default off — login wall unchanged).
+    feature_guest_local_diary: bool = Field(
+        default=False,
+        validation_alias="FEATURE_GUEST_LOCAL_DIARY",
+    )
+    feature_guest_local_diary_percent: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        validation_alias="FEATURE_GUEST_LOCAL_DIARY_PERCENT",
+    )
+    feature_guest_local_diary_visitor_ids: str = Field(
+        default="",
+        validation_alias="FEATURE_GUEST_LOCAL_DIARY_VISITOR_IDS",
+    )
+    guest_experiment_secret: str = Field(
+        default="dev-only-guest-experiment-secret-change-me",
+        validation_alias="GUEST_EXPERIMENT_SECRET",
+    )
+    guest_visitor_cookie_name: str = Field(
+        default="mt_vid",
+        validation_alias="GUEST_VISITOR_COOKIE_NAME",
+    )
+    guest_visitor_cookie_max_age_days: int = Field(
+        default=400,
+        ge=1,
+        le=730,
+        validation_alias="GUEST_VISITOR_COOKIE_MAX_AGE_DAYS",
+    )
+
     # Telegram bot integration (notifier + bot service auth)
     telegram_bot_token: str = Field(default="", validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_bot_username: str = Field(default="", validation_alias="TELEGRAM_BOT_USERNAME")

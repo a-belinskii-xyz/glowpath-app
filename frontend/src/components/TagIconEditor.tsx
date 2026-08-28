@@ -17,6 +17,7 @@ import { ImageCropModal } from './ImageCropModal'
 import { TagIcon } from './TagIcon'
 import { CatalogIconPicker } from './CatalogIconPicker'
 import { useAuth } from '../context/AuthContext'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { formatApiError } from '../lib/errors'
@@ -531,6 +532,7 @@ export function TagIconEditor({
           >
             {t('moodPreferences.iconTypeEmoji')}
           </button>
+          {!isGuestDiaryMode() ? (
           <button
             type="button"
             className={`segmented-control-option${sourceUi === 'upload' ? ' is-active' : ''}`}
@@ -539,7 +541,8 @@ export function TagIconEditor({
           >
             {t('moodPreferences.iconTypeUpload')}
           </button>
-          {marketplaceEnabled || tag?.icon_type === 'catalog' || pendingCatalogIconId ? (
+          ) : null}
+          {!isGuestDiaryMode() && (marketplaceEnabled || tag?.icon_type === 'catalog' || pendingCatalogIconId) ? (
             <button
               type="button"
               className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}`}
@@ -550,6 +553,7 @@ export function TagIconEditor({
             </button>
           ) : null}
         </div>
+        {isGuestDiaryMode() ? <p className="muted">{t('guest.uploadIconsLocked')}</p> : null}
 
         <div className="mood-preferences-icon-panel">
           {sourceUi === 'emoji' ? (

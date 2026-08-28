@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Alert } from '../components/Alert'
@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { detectTimezone } from '../lib/timezones'
 import { formatApiError } from '../lib/errors'
+import { getGuestLocalEntryCount } from '../lib/guestImport'
+import { isGuestDiaryMode } from '../lib/guestMode'
 
 export function RegisterPage() {
   const { register } = useAuth()
@@ -21,6 +23,12 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [localEntryCount, setLocalEntryCount] = useState(0)
+
+  useEffect(() => {
+    if (!isGuestDiaryMode()) return
+    void getGuestLocalEntryCount().then(setLocalEntryCount)
+  }, [])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -51,6 +59,9 @@ export function RegisterPage() {
 
       <PageErrorAlert error={error} />
       {success ? <Alert variant="success">{success}</Alert> : null}
+      {isGuestDiaryMode() && localEntryCount > 0 ? (
+        <Alert variant="info">{t('guest.registerHint')}</Alert>
+      ) : null}
 
       <form className="form" onSubmit={handleSubmit}>
         <FormField

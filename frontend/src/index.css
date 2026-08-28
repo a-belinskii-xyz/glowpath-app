@@ -790,6 +790,36 @@ input {
   border: 1px solid #bfdbfe;
 }
 
+.alert-warning {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.guest-data-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.guest-data-banner__cta {
+  font-weight: 600;
+  color: inherit;
+}
+
+.guest-locked-page {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .alert .link-button {
   color: inherit;
   font: inherit;
@@ -4935,6 +4965,47 @@ code {
   opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+.attachment-upload.is-guest-locked {
+  opacity: 0.72;
+  filter: grayscale(0.45);
+  border-color: var(--chrome-border);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 62%, var(--chrome-surface));
+  color: var(--chrome-text-secondary);
+}
+
+.attachment-upload.is-guest-locked:hover,
+.attachment-upload.is-guest-locked:focus-within {
+  border-color: var(--chrome-border);
+  color: var(--chrome-text-secondary);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 62%, var(--chrome-surface));
+  box-shadow: none;
+}
+
+.attachment-upload.is-guest-locked .attachment-upload-icon {
+  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, transparent);
+}
+
+.attachment-guest-lock {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--chrome-surface) 92%, transparent);
+  color: var(--chrome-text-secondary);
+  box-shadow: 0 0 0 1px var(--chrome-border);
+}
+
+.attachment-guest-lock svg {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 .attachment-upload-icon {

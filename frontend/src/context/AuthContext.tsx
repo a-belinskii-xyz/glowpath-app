@@ -10,6 +10,8 @@ import {
 
 import * as authApi from '../api/auth'
 import { clearTokens, getAccessToken, setTokens } from '../lib/storage'
+import { getVisitorId } from '../lib/guestMode'
+import { tryImportGuestDiaryAfterAuth } from '../lib/guestImport'
 import type { LoginRequest, RegisterRequest, UserPublic } from '../types/auth'
 
 type AuthContextValue = {
@@ -21,7 +23,7 @@ type AuthContextValue = {
   logout: () => void
   refreshUser: () => Promise<void>
   updateTimezone: (timezone: string) => Promise<void>
-  completeLogin: (accessToken: string, refreshToken: string) => Promise<void>
+  completeLogin: (accessToken: string, refreshToken: string, userCreated?: boolean) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -40,22 +42,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile)
   }, [])
 
-  const completeLogin = useCallback(async (accessToken: string, refreshToken: string) => {
+  const completeLogin = useCallback(async (accessToken: string, refreshToken: string, userCreated?: boolean) => {
     setTokens(accessToken, refreshToken)
     const profile = await authApi.getMe()
     setUser(profile)
+    await tryImportGuestDiaryAfterAuth(userCreated)
   }, [])
 
   const login = useCallback(
     async (body: LoginRequest) => {
-      const tokens = await authApi.login(body)
-      await completeLogin(tokens.access_token, tokens.refresh_token)
+      const tokens = await authApi.login({
+        ...body,
+        visitor_id: getVisitorId() ?? undefined,
+      })
+      await completeLogin(tokens.access_token, tokens.refresh_token, tokens.user_created ?? false)
     },
     [completeLogin],
   )
 
   const register = useCallback(async (body: RegisterRequest) => {
-    const response = await authApi.register(body)
+    const response = await authApi.register({
+      ...body,
+      visitor_id: getVisitorId() ?? undefined,
+    })
     return response.message
   }, [])
 
