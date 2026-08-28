@@ -15,7 +15,8 @@ import { listTagGroups } from '../api/tagGroups'
 import { PageErrorAlert } from './PageErrorAlert'
 import { GoalIcon } from './GoalIcon'
 import { AudioRecorder } from './AudioRecorder'
-import { AudioIcon, BellIcon, PhotoIcon } from './icons'
+import { AudioIcon, PhotoIcon } from './icons'
+import { GuestLockBadge } from './GuestRegistrationLock'
 import { MarkdownNoteEditor } from './MarkdownNoteEditor'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { PhotoCollageEditor, type CollagePhotoDraft } from './PhotoCollageEditor'
@@ -1023,9 +1024,7 @@ export function MoodEntryForm({
                     role="group"
                     aria-label={t('guest.attachmentsLocked')}
                   >
-                    <span className="attachment-guest-lock" aria-hidden="true">
-                      <BellIcon />
-                    </span>
+                    <GuestLockBadge />
                     <span className="attachment-upload-icon" aria-hidden="true">
                       <PhotoIcon />
                     </span>
@@ -1033,8 +1032,9 @@ export function MoodEntryForm({
                       <span className="attachment-upload-title">
                         {t('entries.photos', { count: 0 })}
                       </span>
-                      <span className="attachment-upload-action">{t('guest.attachmentsLocked')}</span>
+                      <span className="attachment-upload-action">{t('entries.addPhotos')}</span>
                       <span className="attachment-upload-hint">{t('entries.photosHint')}</span>
+                      <span className="attachment-upload-hint">{t('guest.attachmentsLocked')}</span>
                     </span>
                   </div>
                 ) : (
@@ -1067,76 +1067,68 @@ export function MoodEntryForm({
                     />
                   </label>
                 )}
-                {attachmentsLocked ? (
-                  <div
-                    className="attachment-upload attachment-audio-card is-disabled is-guest-locked"
-                    role="group"
-                    aria-label={t('guest.attachmentsLocked')}
-                  >
-                    <span className="attachment-guest-lock" aria-hidden="true">
-                      <BellIcon />
+                <div
+                  className={`attachment-upload attachment-audio-card${!attachmentsLocked && hasAudio ? ' is-disabled' : ''}${!attachmentsLocked && isRecordingAudio ? ' is-recording' : ''}${attachmentsLocked ? ' is-disabled is-guest-locked' : ''}`}
+                  role={attachmentsLocked ? 'group' : undefined}
+                  aria-label={attachmentsLocked ? t('guest.attachmentsLocked') : undefined}
+                >
+                  {attachmentsLocked ? <GuestLockBadge /> : null}
+                  <span className="attachment-upload-icon" aria-hidden="true">
+                    <AudioIcon />
+                  </span>
+                  <span className="attachment-upload-body">
+                    <span className="attachment-upload-title">
+                      {t('entries.audio', { count: attachmentsLocked ? 0 : hasAudio ? 1 : 0 })}
                     </span>
-                    <span className="attachment-upload-icon" aria-hidden="true">
-                      <AudioIcon />
-                    </span>
-                    <span className="attachment-upload-body">
-                      <span className="attachment-upload-title">
-                        {t('entries.audio', { count: 0 })}
-                      </span>
-                      <span className="attachment-upload-action">{t('guest.attachmentsLocked')}</span>
-                      <span className="attachment-upload-hint">{t('entries.audioHint')}</span>
-                    </span>
-                  </div>
-                ) : (
-                  <div
-                    className={`attachment-upload attachment-audio-card${hasAudio ? ' is-disabled' : ''}${isRecordingAudio ? ' is-recording' : ''}`}
-                  >
-                    <span className="attachment-upload-icon" aria-hidden="true">
-                      <AudioIcon />
-                    </span>
-                    <span className="attachment-upload-body">
-                      <span className="attachment-upload-title">
-                        {t('entries.audio', { count: hasAudio ? 1 : 0 })}
-                      </span>
-                      {hasAudio ? (
-                        <>
-                          <span className="attachment-upload-action">
-                            {t('entries.audioFull')}
+                    {attachmentsLocked ? (
+                      <>
+                        <span className="attachment-audio-actions">
+                          <span className="button button-small attachment-audio-action" aria-disabled="true">
+                            {t('entries.addAudio')}
                           </span>
+                          <AudioRecorder disabled onRecorded={() => undefined} onError={setError} />
+                        </span>
+                        <span className="attachment-upload-hint">{t('entries.audioHint')}</span>
+                        <span className="attachment-upload-hint">{t('guest.attachmentsLocked')}</span>
+                      </>
+                    ) : hasAudio ? (
+                      <>
+                        <span className="attachment-upload-action">
+                          {t('entries.audioFull')}
+                        </span>
+                        <span className="attachment-upload-hint">
+                          {t('entries.audioHint')}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="attachment-audio-actions">
+                          {isRecordingAudio ? null : (
+                            <label className="button button-small attachment-audio-action">
+                              {t('entries.addAudio')}
+                              <input
+                                className="visually-hidden"
+                                type="file"
+                                accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
+                                onChange={handleAudioChange}
+                              />
+                            </label>
+                          )}
+                          <AudioRecorder
+                            onRecorded={handleRecordedAudio}
+                            onError={setError}
+                            onBusyChange={setIsRecordingAudio}
+                          />
+                        </span>
+                        {isRecordingAudio ? null : (
                           <span className="attachment-upload-hint">
                             {t('entries.audioHint')}
                           </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="attachment-audio-actions">
-                            {isRecordingAudio ? null : (
-                              <label className="button button-small attachment-audio-action">
-                                {t('entries.addAudio')}
-                                <input
-                                  className="visually-hidden"
-                                  type="file"
-                                  accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm,audio/aac"
-                                  onChange={handleAudioChange}
-                                />
-                              </label>
-                            )}
-                            <AudioRecorder
-                              onRecorded={handleRecordedAudio}
-                              onError={setError}
-                              onBusyChange={setIsRecordingAudio}
-                            />
-                          </span>
-                          {isRecordingAudio ? null : (
-                            <span className="attachment-upload-hint">
-                              {t('entries.audioHint')}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  </div>
-                )}
+                        )}
+                      </>
+                    )}
+                  </span>
+                </div>
               </div>
 
               {!attachmentsLocked ? (

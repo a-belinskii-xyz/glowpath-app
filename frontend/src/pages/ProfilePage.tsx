@@ -4,6 +4,7 @@ import { forgotPassword } from '../api/auth'
 import { getAchievementsSummary } from '../api/achievements'
 import { getWallet } from '../api/wallet'
 import { Alert } from '../components/Alert'
+import { GuestProfilePreview } from '../components/GuestAccountPreviews'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
 import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, TrophyIcon } from '../components/icons'
@@ -19,6 +20,7 @@ import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
 import { formatApiError } from '../lib/errors'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import { TrackerSettingsContent } from './TrackerSettingsPage'
 import { Link } from 'react-router-dom'
 
@@ -254,6 +256,17 @@ export function ProfilePage() {
       cancelled = true
     }
   }, [user, achievementsEnabled])
+
+  if (isGuestDiaryMode()) {
+    return (
+      <section className="page page-profile">
+        <header className="page-header">
+          <h1>{t('profile.title')}</h1>
+        </header>
+        <GuestProfilePreview />
+      </section>
+    )
+  }
 
   if (!user) {
     return null

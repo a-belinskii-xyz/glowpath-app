@@ -10,6 +10,7 @@ import { getWallet } from '../api/wallet'
 import { CatalogIconPreview } from '../components/CatalogIconPreview'
 import { CatalogIconThumb } from '../components/CatalogIconThumb'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { GuestMarketPreview } from '../components/GuestAccountPreviews'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -19,6 +20,7 @@ import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { catalogIconMatchesQuery, groupCatalogIconsByPack, pickRandomSample } from '../lib/catalogIcons'
 import { ApiError, formatApiError } from '../lib/errors'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import type {
   CatalogIconWithPackPublic,
   PackCardPublic,
@@ -163,6 +165,14 @@ export function MarketPage() {
     balance === null
       ? '—'
       : new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : 'en-US').format(balance)
+
+  if (isGuestDiaryMode()) {
+    return (
+      <section className="page page-market">
+        <GuestMarketPreview />
+      </section>
+    )
+  }
 
   if (!marketplaceEnabled) {
     return (

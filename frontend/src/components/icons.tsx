@@ -443,6 +443,30 @@ export function BellIcon(props: IconProps) {
   )
 }
 
+export function LockIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <rect
+        x="5.5"
+        y="10"
+        width="13"
+        height="10"
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M8 10V8a4 4 0 0 1 8 0v2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
 export function PaletteIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>

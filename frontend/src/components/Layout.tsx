@@ -43,7 +43,8 @@ function BottomNav() {
   const { user } = useAuth()
   const location = useLocation()
   const accountActive = isAccountSection(location.pathname)
-  const showMarket = Boolean(user?.features?.icon_marketplace)
+  const guestShell = isGuestDiaryMode()
+  const showMarket = Boolean(user?.features?.icon_marketplace) || guestShell
 
   return (
     <nav className="app-bottom-nav" aria-label={t('nav.menu')}>
@@ -105,8 +106,9 @@ function ShellChrome({
   const { logout, user } = useAuth()
   const location = useLocation()
   const hideBottomNav = isFocusedEntryFlow(location.pathname)
-  const showMarket = Boolean(user?.features?.icon_marketplace)
-  const showAchievements = Boolean(user?.features?.achievements)
+  const guestShell = isGuestDiaryMode()
+  const showMarket = Boolean(user?.features?.icon_marketplace) || guestShell
+  const showAchievements = Boolean(user?.features?.achievements) || guestShell
 
   if (onboarding) {
     return (

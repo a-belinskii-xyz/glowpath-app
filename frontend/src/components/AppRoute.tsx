@@ -32,16 +32,21 @@ export function AppRoute() {
 
 export function AccountRoute() {
   const { isAuthenticated, isLoading } = useAuth()
+  const { guestLocalDiary, isBootstrapLoading } = useGuestExperiment()
   const { t } = useLocale()
   const location = useLocation()
 
-  if (isLoading) {
+  if (isLoading || isBootstrapLoading) {
     return <p className="muted">{t('common.loading')}</p>
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />
+  if (isAuthenticated) {
+    return <Outlet />
   }
 
-  return <Outlet />
+  if (guestLocalDiary) {
+    return <Outlet />
+  }
+
+  return <Navigate to="/login" replace state={{ from: location }} />
 }

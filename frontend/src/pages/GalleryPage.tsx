@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { GuestLockedPage } from '../components/GuestLockedPage'
 import { listGalleryPhotos } from '../api/moodEntries'
 import { AttachmentImage } from '../components/AttachmentImage'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
+import { GuestGalleryCallout } from '../components/GuestAccountPreviews'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { PhotoLightbox } from '../components/PhotoLightbox'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
@@ -49,18 +49,15 @@ function groupPhotosByMonth(
 export function GalleryPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
-
-  if (isGuestDiaryMode()) {
-    return <GuestLockedPage feature="gallery" />
-  }
-
-  const timeZone = user?.timezone ?? 'UTC'
+  const guestLocked = isGuestDiaryMode()
+  const timeZone =
+    user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC'
   const dateLocale = intlLocale(locale)
 
   const [photos, setPhotos] = useState<GalleryPhotoPublic[]>([])
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(!guestLocked)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -72,7 +69,7 @@ export function GalleryPage() {
 
   const loadPage = useCallback(
     async (pageOffset: number, replace: boolean) => {
-      if (!user?.email_verified || loadingRef.current) {
+      if (guestLocked || !user?.email_verified || loadingRef.current) {
         return
       }
       loadingRef.current = true
@@ -103,11 +100,11 @@ export function GalleryPage() {
         setIsLoadingMore(false)
       }
     },
-    [t, user?.email_verified],
+    [guestLocked, t, user?.email_verified],
   )
 
   useEffect(() => {
-    if (!user?.email_verified) {
+    if (guestLocked || !user?.email_verified) {
       setPhotos([])
       setOffset(0)
       setHasMore(false)
@@ -117,11 +114,11 @@ export function GalleryPage() {
     setOffset(0)
     setHasMore(true)
     void loadPage(0, true)
-  }, [loadPage, user?.email_verified])
+  }, [guestLocked, loadPage, user?.email_verified])
 
   useEffect(() => {
     const node = loadMoreRef.current
-    if (!node || !hasMore || isLoading || isLoadingMore) {
+    if (guestLocked || !node || !hasMore || isLoading || isLoadingMore) {
       return
     }
     const observer = new IntersectionObserver(
@@ -134,7 +131,7 @@ export function GalleryPage() {
     )
     observer.observe(node)
     return () => observer.disconnect()
-  }, [hasMore, isLoading, isLoadingMore, loadPage, offset])
+  }, [guestLocked, hasMore, isLoading, isLoadingMore, loadPage, offset])
 
   const monthGroups = useMemo(
     () => groupPhotosByMonth(photos, timeZone),
@@ -148,6 +145,8 @@ export function GalleryPage() {
       <header className="page-header">
         <h1>{t('gallery.title')}</h1>
       </header>
+
+      {guestLocked ? <GuestGalleryCallout /> : null}
 
       <PageErrorAlert error={error} />
 

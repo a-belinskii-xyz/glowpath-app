@@ -5,6 +5,7 @@ import { listAchievements, markAchievementSeen } from '../api/achievements'
 import { Alert } from '../components/Alert'
 import { CatalogIconThumb } from '../components/CatalogIconThumb'
 import { EditorDrawer } from '../components/EditorDrawer'
+import { GuestAchievementsPreview } from '../components/GuestAccountPreviews'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
@@ -12,6 +13,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { intlLocale } from '../i18n/t'
 import { formatApiError } from '../lib/errors'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import type { AchievementPublic, AchievementRewardPublic } from '../types/achievement'
 
 type FilterId = 'all' | 'in_progress' | 'unlocked'
@@ -406,6 +408,17 @@ export function AchievementsPage() {
         // non-blocking
       }
     }
+  }
+
+  if (isGuestDiaryMode()) {
+    return (
+      <section className="page page-achievements">
+        <header className="page-header achievements-header">
+          <h1>{t('achievements.title')}</h1>
+        </header>
+        <GuestAchievementsPreview />
+      </section>
+    )
   }
 
   if (!achievementsEnabled) {

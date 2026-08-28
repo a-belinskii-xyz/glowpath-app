@@ -820,6 +820,108 @@ input {
   gap: 0.75rem;
 }
 
+.guest-registration-callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.85rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.guest-registration-callout__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #64748b;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+.guest-registration-callout__icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.guest-registration-callout__text {
+  flex: 1 1 12rem;
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.guest-registration-callout__cta {
+  font-weight: 600;
+  color: var(--chrome-action-primary);
+  text-decoration: none;
+}
+
+.guest-registration-callout__cta:hover,
+.guest-registration-callout__cta:focus-visible {
+  text-decoration: underline;
+}
+
+.guest-locked-preview {
+  display: grid;
+  gap: 0;
+}
+
+.guest-locked-preview__body {
+  pointer-events: none;
+  user-select: none;
+  filter: grayscale(0.35);
+  opacity: 0.82;
+}
+
+.guest-lock-badge {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--chrome-surface) 92%, transparent);
+  color: var(--chrome-text-secondary);
+  box-shadow: 0 0 0 1px var(--chrome-border);
+}
+
+.guest-lock-badge svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.guest-lock-badge--inline {
+  position: static;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+  box-shadow: none;
+  background: transparent;
+}
+
+.guest-lock-badge--inline svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.segmented-control-option.is-guest-locked-tab {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
 .alert .link-button {
   color: inherit;
   font: inherit;

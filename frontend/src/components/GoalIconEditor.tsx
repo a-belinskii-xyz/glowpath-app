@@ -16,6 +16,7 @@ import { EmojiPicker } from './EmojiPicker'
 import { GoalIcon } from './GoalIcon'
 import { ImageCropModal } from './ImageCropModal'
 import { CatalogIconPicker } from './CatalogIconPicker'
+import { GuestLockBadge, GuestRegistrationCallout } from './GuestRegistrationLock'
 import { useAuth } from '../context/AuthContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import { useLocale } from '../context/LocaleContext'
@@ -524,28 +525,35 @@ export function GoalIconEditor({
           >
             {t('moodPreferences.iconTypeEmoji')}
           </button>
-          {!isGuestDiaryMode() ? (
           <button
             type="button"
-            className={`segmented-control-option${sourceUi === 'upload' ? ' is-active' : ''}`}
+            className={`segmented-control-option${sourceUi === 'upload' ? ' is-active' : ''}${isGuestDiaryMode() ? ' is-guest-locked-tab' : ''}`}
             aria-pressed={sourceUi === 'upload'}
+            disabled={isGuestDiaryMode() || busy}
             onClick={() => void handleSourceChange('upload')}
           >
             {t('moodPreferences.iconTypeUpload')}
+            {isGuestDiaryMode() ? <GuestLockBadge inline /> : null}
           </button>
-          ) : null}
-          {!isGuestDiaryMode() && (marketplaceEnabled || goal?.icon_type === 'catalog' || pendingCatalogIconId) ? (
+          {isGuestDiaryMode() ||
+          marketplaceEnabled ||
+          goal?.icon_type === 'catalog' ||
+          pendingCatalogIconId ? (
             <button
               type="button"
-              className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}`}
+              className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}${isGuestDiaryMode() ? ' is-guest-locked-tab' : ''}`}
               aria-pressed={sourceUi === 'catalog'}
+              disabled={isGuestDiaryMode() || busy}
               onClick={() => void handleSourceChange('catalog')}
             >
               {t('moodPreferences.iconTypeCatalog')}
+              {isGuestDiaryMode() ? <GuestLockBadge inline /> : null}
             </button>
           ) : null}
         </div>
-        {isGuestDiaryMode() ? <p className="muted">{t('guest.uploadIconsLocked')}</p> : null}
+        {isGuestDiaryMode() ? (
+          <GuestRegistrationCallout message={t('guest.uploadIconsLocked')} />
+        ) : null}
 
         <div className="mood-preferences-icon-panel">
           {sourceUi === 'emoji' ? (
