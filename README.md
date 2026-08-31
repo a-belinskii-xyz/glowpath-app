@@ -24,6 +24,7 @@ Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-
 | Email reminders | Opt-in daily mood + weekly goal reminders via email (time + channels in settings) |
 | Telegram bot | Link from Profile; reminders; `/log` mood wizard (+ voice); webhook on `:8081` |
 | Multi-user isolation | Each user’s entries, tags, templates, and files are private |
+| Guest local diary (experiment) | Optional treatment cohort: diary in IndexedDB without account; sync only on **new** registration — see [`docs/guest-local-diary-experiment.md`](docs/guest-local-diary-experiment.md) |
 | Dev seed data | Deterministic demo users/entries/attachments for local UI work (`make seed`) |
 
 ## Prerequisites

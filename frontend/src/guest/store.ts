@@ -76,6 +76,22 @@ export async function getGuestEntryCount(): Promise<number> {
   return entries.length
 }
 
+const guestEntryCountListeners = new Set<(count: number) => void>()
+
+export function subscribeGuestEntryCount(listener: (count: number) => void): () => void {
+  guestEntryCountListeners.add(listener)
+  return () => {
+    guestEntryCountListeners.delete(listener)
+  }
+}
+
+async function notifyGuestEntryCountListeners(): Promise<void> {
+  const count = await getGuestEntryCount()
+  for (const listener of guestEntryCountListeners) {
+    listener(count)
+  }
+}
+
 export async function guestHeartbeatSync(): Promise<void> {
   const meta = await getGuestMeta()
   if (!meta) return
@@ -92,6 +108,7 @@ export async function guestHeartbeatSync(): Promise<void> {
   } catch {
     // telemetry is best-effort
   }
+  await notifyGuestEntryCountListeners()
 }
 
 export async function completeGuestOnboarding(params: {
@@ -490,4 +507,7 @@ export async function buildGuestImportPayload(): Promise<Record<string, unknown>
 export async function clearGuestDiary(): Promise<void> {
   const { guestDbDeleteDatabase } = await import('./db')
   await guestDbDeleteDatabase()
+  for (const listener of guestEntryCountListeners) {
+    listener(0)
+  }
 }

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 
 import { useGuestExperiment } from '../context/GuestExperimentContext'
 import { useLocale } from '../context/LocaleContext'
-import { getGuestEntryCount } from '../guest/store'
+import { getGuestEntryCount, subscribeGuestEntryCount } from '../guest/store'
 import { isGuestDiaryMode } from '../lib/guestMode'
 
 export function GuestDataBanner() {
@@ -12,8 +12,11 @@ export function GuestDataBanner() {
   const [entryCount, setEntryCount] = useState(0)
 
   useEffect(() => {
-    if (!isGuestDiaryMode()) return
+    if (!isGuestDiaryMode()) {
+      return
+    }
     void getGuestEntryCount().then(setEntryCount)
+    return subscribeGuestEntryCount(setEntryCount)
   }, [guestLocalDiary])
 
   if (!isGuestDiaryMode()) {
