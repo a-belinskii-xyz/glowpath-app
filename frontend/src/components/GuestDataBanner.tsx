@@ -8,7 +8,7 @@ import { isGuestDiaryMode } from '../lib/guestMode'
 
 export function GuestDataBanner() {
   const { t } = useLocale()
-  const { guestLocalDiary } = useGuestExperiment()
+  const { guestLocalDiary, guestOnboardingCompleted } = useGuestExperiment()
   const [entryCount, setEntryCount] = useState(0)
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function GuestDataBanner() {
     return subscribeGuestEntryCount(setEntryCount)
   }, [guestLocalDiary])
 
-  if (!isGuestDiaryMode()) {
+  if (!isGuestDiaryMode() || !guestOnboardingCompleted) {
     return null
   }
 

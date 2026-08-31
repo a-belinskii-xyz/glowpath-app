@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import { apiLocaleHeaders } from '../lib/locale'
+import { apiLocaleHeaders, getApiLocale } from '../lib/locale'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import * as guestStore from '../guest/store'
 import type {
@@ -21,6 +21,9 @@ export function listNoteTemplates(): Promise<NoteTemplateListResponse> {
 }
 
 export function createNoteTemplate(body: NoteTemplateWrite): Promise<NoteTemplatePublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.createGuestNoteTemplate(body, getApiLocale())
+  }
   return apiRequest<NoteTemplatePublic>('/v1/note-templates', {
     method: 'POST',
     auth: true,
@@ -33,6 +36,9 @@ export function patchNoteTemplate(
   templateId: string,
   body: NoteTemplatePatch,
 ): Promise<NoteTemplatePublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.patchGuestNoteTemplate(templateId, body, getApiLocale())
+  }
   return apiRequest<NoteTemplatePublic>(`/v1/note-templates/${templateId}`, {
     method: 'PATCH',
     auth: true,
@@ -42,6 +48,9 @@ export function patchNoteTemplate(
 }
 
 export function deleteNoteTemplate(templateId: string): Promise<void> {
+  if (isGuestDiaryMode()) {
+    return guestStore.deleteGuestNoteTemplate(templateId)
+  }
   return apiRequest<void>(`/v1/note-templates/${templateId}`, {
     method: 'DELETE',
     auth: true,
@@ -51,6 +60,9 @@ export function deleteNoteTemplate(templateId: string): Promise<void> {
 export function reorderNoteTemplates(
   body: NoteTemplateReorderRequest,
 ): Promise<NoteTemplateListResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.reorderGuestNoteTemplates(body.ordered_ids)
+  }
   return apiRequest<NoteTemplateListResponse>('/v1/note-templates/reorder', {
     method: 'PUT',
     auth: true,

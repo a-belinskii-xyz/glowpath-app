@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom'
-
 import { GuestLockedPreview, GuestRegistrationCallout } from './GuestRegistrationLock'
 import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, TrophyIcon } from './icons'
 import { useLocale } from '../context/LocaleContext'
@@ -56,7 +54,7 @@ export function GuestProfilePreview() {
         </div>
       </div>
       <div className="profile-shortcuts">
-        <Link to="/achievements" className="profile-shortcut" tabIndex={-1}>
+        <div className="profile-shortcut" aria-hidden="true">
           <span className="profile-shortcut-icon" aria-hidden="true">
             <TrophyIcon />
           </span>
@@ -65,7 +63,7 @@ export function GuestProfilePreview() {
             <span className="profile-shortcut-lead">{t('profile.achievementsLink')}</span>
           </span>
           <ChevronRightIcon className="profile-shortcut-chevron" />
-        </Link>
+        </div>
         <div className="profile-shortcut">
           <span className="profile-shortcut-icon" aria-hidden="true">
             <SettingsIcon />

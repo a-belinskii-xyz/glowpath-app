@@ -118,9 +118,16 @@ function ShellChrome({
           <span className="brand">{t('brand')}</span>
           <nav className="nav-links">
             <LanguageSwitcher id="onboarding-language" compact />
-            <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
-              {t('nav.logOut')}
-            </button>
+            {guestShell ? (
+              <>
+                <Link to="/login">{t('nav.logIn')}</Link>
+                <Link to="/register">{t('nav.register')}</Link>
+              </>
+            ) : (
+              <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
+                {t('nav.logOut')}
+              </button>
+            )}
           </nav>
         </header>
         <main className="app-main">
@@ -201,9 +208,15 @@ function ShellChrome({
           <NavLink to="/profile" className={navClassName}>
             {t('nav.profile')}
           </NavLink>
-          <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
-            {t('nav.logOut')}
-          </button>
+          {guestShell ? (
+            <Link to="/register" className="app-nav-link">
+              {t('guest.banner.createAccount')}
+            </Link>
+          ) : (
+            <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
+              {t('nav.logOut')}
+            </button>
+          )}
         </nav>
       </aside>
       <main className="app-main">

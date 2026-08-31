@@ -1,5 +1,5 @@
 import { apiRequest, getApiBaseUrl } from './client'
-import { apiLocaleHeaders } from '../lib/locale'
+import { apiLocaleHeaders, getApiLocale } from '../lib/locale'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import * as guestStore from '../guest/store'
 import { ApiError, parseApiError } from '../lib/errors'
@@ -62,6 +62,9 @@ export function listTagGroups(): Promise<TagGroupListResponse> {
 }
 
 export function createTagGroup(body: TagGroupWrite): Promise<TagGroupPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.createGuestTagGroup(body, getApiLocale())
+  }
   return apiRequest<TagGroupPublic>('/v1/tag-groups', {
     method: 'POST',
     auth: true,
@@ -71,6 +74,9 @@ export function createTagGroup(body: TagGroupWrite): Promise<TagGroupPublic> {
 }
 
 export function patchTagGroup(groupId: string, body: TagGroupPatch): Promise<TagGroupPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.patchGuestTagGroup(groupId, body, getApiLocale())
+  }
   return apiRequest<TagGroupPublic>(`/v1/tag-groups/${groupId}`, {
     method: 'PATCH',
     auth: true,
@@ -80,6 +86,9 @@ export function patchTagGroup(groupId: string, body: TagGroupPatch): Promise<Tag
 }
 
 export function deleteTagGroup(groupId: string): Promise<void> {
+  if (isGuestDiaryMode()) {
+    return guestStore.deleteGuestTagGroup(groupId)
+  }
   return apiRequest<void>(`/v1/tag-groups/${groupId}`, {
     method: 'DELETE',
     auth: true,
@@ -87,6 +96,9 @@ export function deleteTagGroup(groupId: string): Promise<void> {
 }
 
 export function reorderTagGroups(body: ReorderRequest): Promise<TagGroupListResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.reorderGuestTagGroups(body.ordered_ids)
+  }
   return apiRequest<TagGroupListResponse>('/v1/tag-groups/reorder', {
     method: 'PUT',
     auth: true,
@@ -96,6 +108,9 @@ export function reorderTagGroups(body: ReorderRequest): Promise<TagGroupListResp
 }
 
 export function createTag(groupId: string, body: TagWrite): Promise<TagPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.createGuestTag(groupId, body, getApiLocale())
+  }
   return apiRequest<TagPublic>(`/v1/tag-groups/${groupId}/tags`, {
     method: 'POST',
     auth: true,
@@ -105,6 +120,9 @@ export function createTag(groupId: string, body: TagWrite): Promise<TagPublic> {
 }
 
 export function patchTag(groupId: string, tagId: string, body: TagPatch): Promise<TagPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.patchGuestTag(groupId, tagId, body, getApiLocale())
+  }
   return apiRequest<TagPublic>(`/v1/tag-groups/${groupId}/tags/${tagId}`, {
     method: 'PATCH',
     auth: true,
@@ -114,6 +132,9 @@ export function patchTag(groupId: string, tagId: string, body: TagPatch): Promis
 }
 
 export function deleteTag(groupId: string, tagId: string): Promise<void> {
+  if (isGuestDiaryMode()) {
+    return guestStore.deleteGuestTag(groupId, tagId)
+  }
   return apiRequest<void>(`/v1/tag-groups/${groupId}/tags/${tagId}`, {
     method: 'DELETE',
     auth: true,
@@ -121,6 +142,9 @@ export function deleteTag(groupId: string, tagId: string): Promise<void> {
 }
 
 export function reorderTags(groupId: string, body: ReorderRequest): Promise<TagGroupPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.reorderGuestTags(groupId, body.ordered_ids)
+  }
   return apiRequest<TagGroupPublic>(`/v1/tag-groups/${groupId}/tags/reorder`, {
     method: 'PUT',
     auth: true,

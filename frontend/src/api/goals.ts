@@ -1,5 +1,5 @@
 import { apiRequest, getApiBaseUrl } from './client'
-import { apiLocaleHeaders } from '../lib/locale'
+import { apiLocaleHeaders, getApiLocale } from '../lib/locale'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import * as guestStore from '../guest/store'
 import { ApiError, parseApiError } from '../lib/errors'
@@ -66,6 +66,9 @@ export function listGoals(params?: { progressOn?: string }): Promise<GoalListRes
 }
 
 export function createGoal(body: GoalWrite): Promise<GoalPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.createGuestGoal(body, getApiLocale())
+  }
   return apiRequest<GoalPublic>('/v1/goals', {
     method: 'POST',
     auth: true,
@@ -75,6 +78,9 @@ export function createGoal(body: GoalWrite): Promise<GoalPublic> {
 }
 
 export function patchGoal(goalId: string, body: GoalPatch): Promise<GoalPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.patchGuestGoal(goalId, body, getApiLocale())
+  }
   return apiRequest<GoalPublic>(`/v1/goals/${goalId}`, {
     method: 'PATCH',
     auth: true,
@@ -84,6 +90,9 @@ export function patchGoal(goalId: string, body: GoalPatch): Promise<GoalPublic> 
 }
 
 export function deleteGoal(goalId: string): Promise<void> {
+  if (isGuestDiaryMode()) {
+    return guestStore.deleteGuestGoal(goalId)
+  }
   return apiRequest<void>(`/v1/goals/${goalId}`, {
     method: 'DELETE',
     auth: true,
@@ -91,6 +100,9 @@ export function deleteGoal(goalId: string): Promise<void> {
 }
 
 export function reorderGoals(body: GoalReorderRequest): Promise<GoalListResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.reorderGuestGoals(body.ordered_ids)
+  }
   return apiRequest<GoalListResponse>('/v1/goals/reorder', {
     method: 'PUT',
     auth: true,

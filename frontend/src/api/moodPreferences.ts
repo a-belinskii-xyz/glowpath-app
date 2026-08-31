@@ -88,6 +88,9 @@ export function getMoodPreferences(): Promise<MoodPreferencesPublic> {
 export function patchMoodPreferences(
   body: MoodPreferencesUpdate,
 ): Promise<MoodPreferencesPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.patchGuestMoodPreferences(body, getApiLocale())
+  }
   return apiRequest<MoodPreferencesPublic>('/v1/mood-preferences', {
     method: 'PATCH',
     auth: true,

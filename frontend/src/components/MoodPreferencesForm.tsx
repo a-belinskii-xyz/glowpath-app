@@ -19,12 +19,14 @@ import { IconButton } from './IconButton'
 import { EditIcon } from './icons'
 import { ImageCropModal } from './ImageCropModal'
 import { CatalogIconPicker } from './CatalogIconPicker'
+import { GuestLockBadge, GuestRegistrationCallout } from './GuestRegistrationLock'
 import { MoodScoreIcon } from './MoodScoreIcon'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
 import { ApiError, formatApiError } from '../lib/errors'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import {
   blobToNamedFile,
   readMoodIconBlobForCrop,
@@ -91,6 +93,7 @@ export function MoodPreferencesForm() {
   const { user } = useAuth()
   const { scores, isLoading, refreshPreferences, setPreferences } = useMoodPreferences()
   const marketplaceEnabled = Boolean(user?.features?.icon_marketplace)
+  const guestLocked = isGuestDiaryMode()
   const moodScoreOptions = getMoodScoreOptions(locale, scores)
 
   const [draftColors, setDraftColors] = useState<Record<number, string>>({})
@@ -151,6 +154,11 @@ export function MoodPreferencesForm() {
   }, [pendingCrop])
 
   const refreshUploadedIcons = useCallback(async () => {
+    if (isGuestDiaryMode()) {
+      setUploadedIcons({})
+      setMaxUploadsPerScore(MAX_UPLOADS_PER_SCORE)
+      return
+    }
     const response = await getMoodIcons()
     setUploadedIcons(groupIconsByScore(response.items))
     setMaxUploadsPerScore(response.max_per_score)
@@ -400,6 +408,9 @@ export function MoodPreferencesForm() {
   }
 
   const handleIconSourceChange = async (score: number, iconType: IconSourceUi) => {
+    if (guestLocked && iconType !== 'emoji') {
+      return
+    }
     setSourceUiByScore((current) => ({ ...current, [score]: iconType }))
     if (iconType === 'emoji') {
       await patchIconStyle(score, {
@@ -727,8 +738,9 @@ export function MoodPreferencesForm() {
       color: draftColors[option.score] ?? option.color,
     }
     const iconBusy = iconBusyScore === option.score
-    const sourceUi =
-      sourceUiByScore[option.score] ?? resolveIconSourceUi(currentStyle.icon_type)
+    const sourceUi = guestLocked
+      ? 'emoji'
+      : sourceUiByScore[option.score] ?? resolveIconSourceUi(currentStyle.icon_type)
     const scoreUploads = uploadedIcons[option.score] ?? []
     const uploadFull = scoreUploads.length >= maxUploadsPerScore
     const label = draftLabels[option.score] ?? option.label
@@ -817,23 +829,30 @@ export function MoodPreferencesForm() {
             </button>
             <button
               type="button"
-              className={`segmented-control-option${sourceUi === 'upload' ? ' is-active' : ''}`}
+              className={`segmented-control-option${sourceUi === 'upload' ? ' is-active' : ''}${guestLocked ? ' is-guest-locked-tab' : ''}`}
               aria-pressed={sourceUi === 'upload'}
+              disabled={guestLocked || iconBusy}
               onClick={() => void handleIconSourceChange(option.score, 'upload')}
             >
               {t('moodPreferences.iconTypeUpload')}
+              {guestLocked ? <GuestLockBadge inline /> : null}
             </button>
-            {marketplaceEnabled || currentStyle.icon_type === 'catalog' ? (
+            {guestLocked ||
+            marketplaceEnabled ||
+            currentStyle.icon_type === 'catalog' ? (
               <button
                 type="button"
-                className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}`}
+                className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}${guestLocked ? ' is-guest-locked-tab' : ''}`}
                 aria-pressed={sourceUi === 'catalog'}
+                disabled={guestLocked || iconBusy}
                 onClick={() => void handleIconSourceChange(option.score, 'catalog')}
               >
                 {t('moodPreferences.iconTypeCatalog')}
+                {guestLocked ? <GuestLockBadge inline /> : null}
               </button>
             ) : null}
           </div>
+          {guestLocked ? <GuestRegistrationCallout message={t('guest.uploadIconsLocked')} /> : null}
 
           <div className="mood-preferences-icon-panel">
             {sourceUi === 'emoji' ? (

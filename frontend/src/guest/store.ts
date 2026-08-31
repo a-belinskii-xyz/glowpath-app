@@ -1,6 +1,6 @@
 import type { ApiLocale } from '../lib/locale'
-import { defaultMoodScoreStyle, resolveMoodPreferences } from '../lib/moodScale'
-import type { GoalPublic } from '../types/goal'
+import { defaultMoodScoreStyle, defaultMoodScoreLabel, resolveMoodPreferences } from '../lib/moodScale'
+import type { GoalCalendarResponse, GoalListResponse, GoalPatch, GoalPublic, GoalStatsResponse, GoalWrite } from '../types/goal'
 import type {
   CalendarDayPublic,
   ListMoodEntriesParams,
@@ -12,11 +12,15 @@ import type {
   MoodEntryStreakResponse,
   SearchMoodEntriesParams,
 } from '../types/mood'
-import type { MoodPreferencesPublic } from '../types/moodPreferences'
+import type { MoodPreferencesPublic, MoodPreferencesUpdate } from '../types/moodPreferences'
 import type { OnboardingSuggestions } from '../types/onboarding'
-import type { NoteTemplateListResponse, NoteTemplatePublic } from '../types/noteTemplate'
-import type { TagGroupPublic, TagPublic } from '../types/tag'
-import type { GoalCalendarResponse, GoalStatsResponse } from '../types/goal'
+import type {
+  NoteTemplateListResponse,
+  NoteTemplatePatch,
+  NoteTemplatePublic,
+  NoteTemplateWrite,
+} from '../types/noteTemplate'
+import type { TagGroupListResponse, TagGroupPublic, TagGroupPatch, TagGroupWrite, TagPatch, TagPublic, TagWrite } from '../types/tag'
 import { computeGuestGoalCalendar, computeGuestGoalStats, enrichGuestGoalsWithProgress } from './goalAnalytics'
 import { guestDbGet, guestDbSet } from './db'
 import { computeGuestCalendar, computeGuestStats, computeGuestStreak } from './moodAnalytics'
@@ -153,6 +157,359 @@ export async function listGuestGoals(params?: { progressOn?: string }): Promise<
     ? enrichGuestGoalsWithProgress(items, entries, params.progressOn, timezone)
     : items
   return { items: enriched, entry_visible_goal_limit: 3, stats_visible_goal_limit: 5 }
+}
+
+function guestSlug(prefix = 'item'): string {
+  return `${prefix}_${newId().slice(0, 8)}`
+}
+
+function labelFrom(labels: Record<string, string>, locale: ApiLocale = 'en'): string {
+  return labels[locale] ?? labels.en ?? Object.values(labels)[0] ?? ''
+}
+
+async function saveGuestTagGroups(groups: TagGroupPublic[]): Promise<void> {
+  await guestDbSet(KEYS.tagGroups, groups)
+  await guestHeartbeatSync()
+}
+
+async function saveGuestGoals(goals: GoalPublic[]): Promise<void> {
+  await guestDbSet(KEYS.goals, goals)
+  await guestHeartbeatSync()
+}
+
+async function saveGuestNoteTemplates(templates: NoteTemplatePublic[]): Promise<void> {
+  await guestDbSet(KEYS.noteTemplates, templates)
+  await guestHeartbeatSync()
+}
+
+export async function createGuestTagGroup(body: TagGroupWrite, locale: ApiLocale = 'en'): Promise<TagGroupPublic> {
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  const group: TagGroupPublic = {
+    id: newId(),
+    slug: body.slug ?? guestSlug('group'),
+    label: labelFrom(body.labels, locale),
+    labels: body.labels,
+    sort_order: body.sort_order ?? groups.length,
+    show_on_entry: body.show_on_entry ?? true,
+    tags: [],
+  }
+  groups.push(group)
+  await saveGuestTagGroups(groups)
+  return group
+}
+
+export async function patchGuestTagGroup(
+  groupId: string,
+  body: TagGroupPatch,
+  locale: ApiLocale = 'en',
+): Promise<TagGroupPublic> {
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  const index = groups.findIndex((group) => group.id === groupId)
+  if (index < 0) {
+    throw new Error('Tag group not found')
+  }
+  const current = groups[index]
+  const next: TagGroupPublic = {
+    ...current,
+    slug: body.slug ?? current.slug,
+    labels: body.labels ?? current.labels,
+    label: body.labels ? labelFrom(body.labels, locale) : current.label,
+    sort_order: body.sort_order ?? current.sort_order,
+    show_on_entry: body.show_on_entry ?? current.show_on_entry,
+  }
+  groups[index] = next
+  await saveGuestTagGroups(groups)
+  return next
+}
+
+export async function deleteGuestTagGroup(groupId: string): Promise<void> {
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  await saveGuestTagGroups(groups.filter((group) => group.id !== groupId))
+}
+
+export async function reorderGuestTagGroups(orderedIds: string[]): Promise<TagGroupListResponse> {
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  const byId = new Map(groups.map((group) => [group.id, group]))
+  const reordered = orderedIds
+    .map((id, sortOrder) => {
+      const group = byId.get(id)
+      return group ? { ...group, sort_order: sortOrder } : null
+    })
+    .filter(Boolean) as TagGroupPublic[]
+  await saveGuestTagGroups(reordered)
+  return listGuestTagGroups()
+}
+
+export async function createGuestTag(
+  groupId: string,
+  body: TagWrite,
+  locale: ApiLocale = 'en',
+): Promise<TagPublic> {
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  const index = groups.findIndex((group) => group.id === groupId)
+  if (index < 0) {
+    throw new Error('Tag group not found')
+  }
+  const group = groups[index]
+  const tag: TagPublic = {
+    id: newId(),
+    slug: body.slug ?? guestSlug('tag'),
+    label: labelFrom(body.labels, locale),
+    labels: body.labels,
+    group_id: groupId,
+    sort_order: body.sort_order ?? group.tags.length,
+    color: body.color ?? '#94a3b8',
+    icon_type: body.icon_type ?? 'emoji',
+    icon: body.icon ?? '🏷',
+  }
+  groups[index] = { ...group, tags: [...group.tags, tag] }
+  await saveGuestTagGroups(groups)
+  return tag
+}
+
+export async function patchGuestTag(
+  groupId: string,
+  tagId: string,
+  body: TagPatch,
+  locale: ApiLocale = 'en',
+): Promise<TagPublic> {
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  const groupIndex = groups.findIndex((group) => group.id === groupId)
+  if (groupIndex < 0) {
+    throw new Error('Tag group not found')
+  }
+  const group = groups[groupIndex]
+  const tagIndex = group.tags.findIndex((tag) => tag.id === tagId)
+  if (tagIndex < 0) {
+    throw new Error('Tag not found')
+  }
+  const current = group.tags[tagIndex]
+  const next: TagPublic = {
+    ...current,
+    slug: body.slug ?? current.slug,
+    labels: body.labels ?? current.labels,
+    label: body.labels ? labelFrom(body.labels, locale) : current.label,
+    sort_order: body.sort_order ?? current.sort_order,
+    color: body.color ?? current.color,
+    icon_type: body.icon_type ?? current.icon_type,
+    icon: body.icon ?? current.icon,
+  }
+  const tags = [...group.tags]
+  tags[tagIndex] = next
+  groups[groupIndex] = { ...group, tags }
+  await saveGuestTagGroups(groups)
+  return next
+}
+
+export async function deleteGuestTag(groupId: string, tagId: string): Promise<void> {
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  const groupIndex = groups.findIndex((group) => group.id === groupId)
+  if (groupIndex < 0) {
+    throw new Error('Tag group not found')
+  }
+  const group = groups[groupIndex]
+  groups[groupIndex] = { ...group, tags: group.tags.filter((tag) => tag.id !== tagId) }
+  await saveGuestTagGroups(groups)
+}
+
+export async function reorderGuestTags(groupId: string, orderedIds: string[]): Promise<TagGroupPublic> {
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  const groupIndex = groups.findIndex((group) => group.id === groupId)
+  if (groupIndex < 0) {
+    throw new Error('Tag group not found')
+  }
+  const group = groups[groupIndex]
+  const byId = new Map(group.tags.map((tag) => [tag.id, tag]))
+  const tags = orderedIds
+    .map((id, sortOrder) => {
+      const tag = byId.get(id)
+      return tag ? { ...tag, sort_order: sortOrder } : null
+    })
+    .filter(Boolean) as TagPublic[]
+  const next = { ...group, tags }
+  groups[groupIndex] = next
+  await saveGuestTagGroups(groups)
+  return next
+}
+
+export async function createGuestGoal(body: GoalWrite, locale: ApiLocale = 'en'): Promise<GoalPublic> {
+  const goals = (await guestDbGet<GoalPublic[]>(KEYS.goals)) ?? []
+  const goal: GoalPublic = {
+    id: newId(),
+    slug: body.slug ?? guestSlug('goal'),
+    label: labelFrom(body.labels, locale),
+    labels: body.labels,
+    times_per_week: body.times_per_week,
+    tracking_kind: body.tracking_kind ?? 'binary',
+    target_amount: body.target_amount ?? null,
+    unit: body.unit ?? null,
+    starts_on: body.starts_on,
+    ends_on: body.ends_on ?? null,
+    sort_order: body.sort_order ?? goals.length,
+    show_on_entry: body.show_on_entry ?? true,
+    show_in_stats: body.show_in_stats ?? true,
+    color: body.color ?? '#60a5fa',
+    icon_type: body.icon_type ?? 'emoji',
+    icon: body.icon ?? '🎯',
+    completed_this_week: 0,
+    day_amount: 0,
+  }
+  goals.push(goal)
+  await saveGuestGoals(goals)
+  return goal
+}
+
+export async function patchGuestGoal(
+  goalId: string,
+  body: GoalPatch,
+  locale: ApiLocale = 'en',
+): Promise<GoalPublic> {
+  const goals = (await guestDbGet<GoalPublic[]>(KEYS.goals)) ?? []
+  const index = goals.findIndex((goal) => goal.id === goalId)
+  if (index < 0) {
+    throw new Error('Goal not found')
+  }
+  const current = goals[index]
+  const next: GoalPublic = {
+    ...current,
+    slug: body.slug ?? current.slug,
+    labels: body.labels ?? current.labels,
+    label: body.labels ? labelFrom(body.labels, locale) : current.label,
+    times_per_week: body.times_per_week ?? current.times_per_week,
+    tracking_kind: body.tracking_kind ?? current.tracking_kind,
+    target_amount: body.target_amount === undefined ? current.target_amount : body.target_amount,
+    unit: body.unit === undefined ? current.unit : body.unit,
+    starts_on: body.starts_on ?? current.starts_on,
+    ends_on: body.ends_on === undefined ? current.ends_on : body.ends_on,
+    sort_order: body.sort_order ?? current.sort_order,
+    show_on_entry: body.show_on_entry ?? current.show_on_entry,
+    show_in_stats: body.show_in_stats ?? current.show_in_stats,
+    color: body.color ?? current.color,
+    icon_type: body.icon_type ?? current.icon_type,
+    icon: body.icon ?? current.icon,
+  }
+  goals[index] = next
+  await saveGuestGoals(goals)
+  return next
+}
+
+export async function deleteGuestGoal(goalId: string): Promise<void> {
+  const goals = (await guestDbGet<GoalPublic[]>(KEYS.goals)) ?? []
+  await saveGuestGoals(goals.filter((goal) => goal.id !== goalId))
+}
+
+export async function reorderGuestGoals(orderedIds: string[]): Promise<GoalListResponse> {
+  const goals = (await guestDbGet<GoalPublic[]>(KEYS.goals)) ?? []
+  const byId = new Map(goals.map((goal) => [goal.id, goal]))
+  const reordered = orderedIds
+    .map((id, sortOrder) => {
+      const goal = byId.get(id)
+      return goal ? { ...goal, sort_order: sortOrder } : null
+    })
+    .filter(Boolean) as GoalPublic[]
+  await saveGuestGoals(reordered)
+  return listGuestGoals()
+}
+
+export async function patchGuestMoodPreferences(
+  body: MoodPreferencesUpdate,
+  locale: ApiLocale = 'en',
+): Promise<MoodPreferencesPublic> {
+  const current = await getGuestMoodPreferences(locale)
+  const next: MoodPreferencesPublic = {
+    ...current,
+    use_historical_colors: body.use_historical_colors ?? current.use_historical_colors,
+    show_streak: body.show_streak ?? current.show_streak,
+    scores: { ...current.scores },
+  }
+  if (body.scores) {
+    for (const [scoreKey, update] of Object.entries(body.scores)) {
+      const existing = next.scores[scoreKey]
+      if (!existing) continue
+      next.scores[scoreKey] = {
+        ...existing,
+        ...(update.color !== undefined ? { color: update.color } : {}),
+        ...(update.icon_type !== undefined ? { icon_type: update.icon_type } : {}),
+        ...(update.icon !== undefined ? { icon: update.icon } : {}),
+        ...(update.label !== undefined
+          ? {
+              label:
+                update.label === ''
+                  ? defaultMoodScoreLabel(Number(scoreKey), locale)
+                  : update.label,
+            }
+          : {}),
+      }
+    }
+  }
+  await guestDbSet(KEYS.moodPreferences, next)
+  await guestHeartbeatSync()
+  return next
+}
+
+export async function createGuestNoteTemplate(
+  body: NoteTemplateWrite,
+  locale: ApiLocale = 'en',
+): Promise<NoteTemplatePublic> {
+  const templates = (await guestDbGet<NoteTemplatePublic[]>(KEYS.noteTemplates)) ?? []
+  const template: NoteTemplatePublic = {
+    id: newId(),
+    slug: body.slug ?? guestSlug('template'),
+    label: labelFrom(body.labels, locale),
+    labels: body.labels,
+    bodies: body.bodies,
+    body: body.bodies[locale] ?? body.bodies.en ?? Object.values(body.bodies)[0] ?? '',
+    sort_order: body.sort_order ?? templates.length,
+  }
+  templates.push(template)
+  await saveGuestNoteTemplates(templates)
+  return template
+}
+
+export async function patchGuestNoteTemplate(
+  templateId: string,
+  body: NoteTemplatePatch,
+  locale: ApiLocale = 'en',
+): Promise<NoteTemplatePublic> {
+  const templates = (await guestDbGet<NoteTemplatePublic[]>(KEYS.noteTemplates)) ?? []
+  const index = templates.findIndex((template) => template.id === templateId)
+  if (index < 0) {
+    throw new Error('Template not found')
+  }
+  const current = templates[index]
+  const bodies = body.bodies ?? current.bodies
+  const next: NoteTemplatePublic = {
+    ...current,
+    slug: body.slug ?? current.slug,
+    labels: body.labels ?? current.labels,
+    label: body.labels ? labelFrom(body.labels, locale) : current.label,
+    bodies,
+    body: bodies[locale] ?? bodies.en ?? Object.values(bodies)[0] ?? '',
+    sort_order: body.sort_order ?? current.sort_order,
+  }
+  templates[index] = next
+  await saveGuestNoteTemplates(templates)
+  return next
+}
+
+export async function deleteGuestNoteTemplate(templateId: string): Promise<void> {
+  const templates = (await guestDbGet<NoteTemplatePublic[]>(KEYS.noteTemplates)) ?? []
+  await saveGuestNoteTemplates(templates.filter((template) => template.id !== templateId))
+}
+
+export async function reorderGuestNoteTemplates(
+  orderedIds: string[],
+): Promise<NoteTemplateListResponse> {
+  const templates = (await guestDbGet<NoteTemplatePublic[]>(KEYS.noteTemplates)) ?? []
+  const byId = new Map(templates.map((template) => [template.id, template]))
+  const reordered = orderedIds
+    .map((id, sortOrder) => {
+      const template = byId.get(id)
+      return template ? { ...template, sort_order: sortOrder } : null
+    })
+    .filter(Boolean) as NoteTemplatePublic[]
+  await saveGuestNoteTemplates(reordered)
+  return listGuestNoteTemplates()
 }
 
 export async function listGuestNoteTemplates(): Promise<NoteTemplateListResponse> {
