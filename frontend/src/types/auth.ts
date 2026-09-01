@@ -8,6 +8,8 @@ export type UserPublic = {
   onboarding_completed_at: string | null
   has_password: boolean
   features: Record<string, boolean>
+  plan: string
+  entitlements: string[]
 }
 
 export type TokenResponse = {

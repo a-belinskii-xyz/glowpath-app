@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from app.models.icon_pack_unlock import IconPackUnlock
     from app.models.mood_entry import MoodEntry
     from app.models.note_template import NoteTemplate
+    from app.models.payment import Payment
     from app.models.tag_group import TagGroup
     from app.models.telegram_link_code import TelegramLinkCode
     from app.models.user_achievement import UserAchievement
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from app.models.user_mood_icon import UserMoodIcon
     from app.models.user_mood_preferences import UserMoodPreferences
     from app.models.user_notification_settings import UserNotificationSettings
+    from app.models.user_subscription import UserSubscription
     from app.models.user_tag_icon import UserTagIcon
     from app.models.user_wallet import UserWallet
 from app.models.user_mood_preferences import UserMoodPreferences
@@ -97,6 +99,11 @@ class User(TimestampMixin, Base):
         back_populates="user",
         uselist=False,
     )
+    subscription: Mapped["UserSubscription | None"] = relationship(
+        back_populates="user",
+        uselist=False,
+    )
+    payments: Mapped[list["Payment"]] = relationship(back_populates="user")
     authored_icon_packs: Mapped[list["IconPack"]] = relationship(
         back_populates="author",
         foreign_keys="IconPack.author_id",

@@ -14,6 +14,8 @@ class UserPublic(BaseModel):
     onboarding_completed_at: datetime | None
     has_password: bool
     features: dict[str, bool] = Field(default_factory=dict)
+    plan: str = "free"
+    entitlements: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

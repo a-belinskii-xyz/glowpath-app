@@ -39,6 +39,8 @@ export async function completeOnboarding(body: OnboardingCompleteRequest): Promi
       onboarding_completed_at: new Date().toISOString(),
       has_password: false,
       features: {},
+      plan: 'free',
+      entitlements: [],
     }
   }
   return apiRequest<UserPublic>('/v1/onboarding/complete', {

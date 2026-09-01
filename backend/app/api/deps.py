@@ -34,6 +34,19 @@ def get_locale(
     return parse_accept_language(accept_language)
 
 
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if credentials is None:
+        return None
+    try:
+        user_id = decode_access_token(credentials.credentials)
+    except jwt.PyJWTError:
+        return None
+    return get_user_by_id(db, user_id)
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
     db: Session = Depends(get_db),

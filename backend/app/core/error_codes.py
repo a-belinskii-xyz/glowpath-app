@@ -177,3 +177,18 @@ class ErrorCode(StrEnum):
     ACHIEVEMENTS_DISABLED = "achievements_disabled"
     ACHIEVEMENT_NOT_FOUND = "achievement_not_found"
     ACHIEVEMENT_NOT_UNLOCKED = "achievement_not_unlocked"
+
+    # Billing / subscriptions
+    PLAN_NOT_FOUND = "plan_not_found"
+    PLAN_NOT_PURCHASABLE = "plan_not_purchasable"
+    PLAN_PRICE_UNAVAILABLE = "plan_price_unavailable"
+    ALREADY_ON_PLAN = "already_on_plan"
+    NO_ACTIVE_SUBSCRIPTION = "no_active_subscription"
+    SUBSCRIPTION_NOT_CANCELABLE = "subscription_not_cancelable"
+    PAYMENT_PROVIDER_UNKNOWN = "payment_provider_unknown"
+    PAYMENT_PROVIDER_DISABLED = "payment_provider_disabled"
+    PAYMENT_PROVIDER_NOT_CONFIGURED = "payment_provider_not_configured"
+    PAYMENT_PROVIDER_NOT_READY = "payment_provider_not_ready"
+    PAYMENT_WEBHOOK_INVALID = "payment_webhook_invalid"
+    PAYMENT_NOT_FOUND = "payment_not_found"
+    INVALID_BILLING_INTERVAL = "invalid_billing_interval"

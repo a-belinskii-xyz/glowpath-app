@@ -1,5 +1,5 @@
 import { GuestLockedPreview, GuestRegistrationCallout } from './GuestRegistrationLock'
-import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, TrophyIcon } from './icons'
+import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, SparkleIcon, TrophyIcon } from './icons'
 import { useLocale } from '../context/LocaleContext'
 import { LOCALE_OPTIONS } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
@@ -61,6 +61,16 @@ export function GuestProfilePreview() {
           <span className="profile-shortcut-copy">
             <span className="profile-shortcut-title">{t('nav.achievements')}</span>
             <span className="profile-shortcut-lead">{t('profile.achievementsLink')}</span>
+          </span>
+          <ChevronRightIcon className="profile-shortcut-chevron" />
+        </div>
+        <div className="profile-shortcut" aria-hidden="true">
+          <span className="profile-shortcut-icon" aria-hidden="true">
+            <SparkleIcon />
+          </span>
+          <span className="profile-shortcut-copy">
+            <span className="profile-shortcut-title">{t('nav.plans')}</span>
+            <span className="profile-shortcut-lead">{t('profile.plansLink')}</span>
           </span>
           <ChevronRightIcon className="profile-shortcut-chevron" />
         </div>

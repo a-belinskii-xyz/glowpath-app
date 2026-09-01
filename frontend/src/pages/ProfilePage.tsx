@@ -7,7 +7,7 @@ import { Alert } from '../components/Alert'
 import { GuestProfilePreview } from '../components/GuestAccountPreviews'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
-import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, TrophyIcon } from '../components/icons'
+import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, SparkleIcon, TrophyIcon } from '../components/icons'
 import { NotificationSettingsForm } from '../components/NotificationSettingsForm'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -443,6 +443,22 @@ export function ProfilePage() {
             <ChevronRightIcon className="profile-shortcut-chevron" />
           </Link>
         ) : null}
+        <Link to="/plans" className="profile-shortcut">
+          <span className="profile-shortcut-icon" aria-hidden="true">
+            <SparkleIcon />
+          </span>
+          <span className="profile-shortcut-copy">
+            <span className="profile-shortcut-title">{t('nav.plans')}</span>
+            <span className="profile-shortcut-lead">
+              {user.plan && user.plan !== 'free'
+                ? t('plans.youAreOn', {
+                    plan: t(`plans.${user.plan}.name` as 'plans.plus.name'),
+                  })
+                : t('profile.plansLink')}
+            </span>
+          </span>
+          <ChevronRightIcon className="profile-shortcut-chevron" />
+        </Link>
         <ProfileSettingsPanel
           id="tracker"
           icon={<SettingsIcon />}

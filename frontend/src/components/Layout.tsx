@@ -30,7 +30,8 @@ function isAccountSection(pathname: string) {
   return (
     pathname.startsWith('/profile') ||
     pathname.startsWith('/tracker-settings') ||
-    pathname.startsWith('/achievements')
+    pathname.startsWith('/achievements') ||
+    pathname.startsWith('/plans')
   )
 }
 
@@ -156,6 +157,7 @@ function ShellChrome({
                 {location.pathname !== '/register' ? (
                   <Link to="/register">{t('nav.register')}</Link>
                 ) : null}
+                {location.pathname !== '/plans' ? <Link to="/plans">{t('nav.plans')}</Link> : null}
               </>
             ) : null}
           </nav>
@@ -205,6 +207,9 @@ function ShellChrome({
               {t('nav.achievements')}
             </NavLink>
           ) : null}
+          <NavLink to="/plans" className={navClassName}>
+            {t('nav.plans')}
+          </NavLink>
           <NavLink to="/profile" className={navClassName}>
             {t('nav.profile')}
           </NavLink>

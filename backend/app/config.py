@@ -218,6 +218,21 @@ class Settings(BaseSettings):
         validation_alias="TELEGRAM_LINK_CODE_EXPIRE_MINUTES",
     )
 
+    # Billing / subscriptions (fake provider is the local default).
+    billing_currency: str = Field(default="RUB", validation_alias="BILLING_CURRENCY")
+    billing_default_provider: str = Field(
+        default="fake",
+        validation_alias="BILLING_DEFAULT_PROVIDER",
+    )
+    billing_enabled_providers: str = Field(
+        default="fake",
+        validation_alias="BILLING_ENABLED_PROVIDERS",
+    )
+    stripe_secret_key: str = Field(default="", validation_alias="STRIPE_SECRET_KEY")
+    stripe_webhook_secret: str = Field(default="", validation_alias="STRIPE_WEBHOOK_SECRET")
+    sber_username: str = Field(default="", validation_alias="SBER_USERNAME")
+    sber_password: str = Field(default="", validation_alias="SBER_PASSWORD")
+
     # Local semantic search (fastembed + pgvector)
     embedding_enabled: bool = Field(default=True, validation_alias="EMBEDDING_ENABLED")
     embedding_model: str = Field(

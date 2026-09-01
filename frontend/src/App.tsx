@@ -26,6 +26,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { TagsPage } from './pages/TagsPage'
 import { MarketPage } from './pages/MarketPage'
 import { AchievementsPage } from './pages/AchievementsPage'
+import { PlansPage } from './pages/PlansPage'
 import { TemplatesRedirect, TrackerSettingsPage } from './pages/TrackerSettingsPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
@@ -40,6 +41,7 @@ function App() {
                 <Routes>
                   <Route element={<Layout />}>
                     <Route index element={<HomePage />} />
+                    <Route path="plans" element={<PlansPage />} />
                     <Route path="verify-email" element={<VerifyEmailPage />} />
                     <Route path="auth/google/callback" element={<GoogleCallbackPage />} />
 

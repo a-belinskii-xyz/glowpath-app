@@ -544,3 +544,18 @@ export function SparkleIcon(props: IconProps) {
     </BaseIcon>
   )
 }
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M5.5 12.5 9.5 16.5 18.5 7.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </BaseIcon>
+  )
+}

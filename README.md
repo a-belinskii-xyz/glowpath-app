@@ -25,6 +25,7 @@ Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-
 | Telegram bot | Link from Profile; reminders; `/log` mood wizard (+ voice); webhook on `:8081` |
 | Multi-user isolation | Each user’s entries, tags, templates, and files are private |
 | Guest local diary (experiment) | Optional treatment cohort: diary in IndexedDB without account; sync only on **new** registration — see [`docs/guest-local-diary-experiment.md`](docs/guest-local-diary-experiment.md) |
+| Freemium plans | Spark (free) / Glow / Radiant catalog, subscriptions, payment-provider adapters (`fake` locally; Stripe and Sber scaffolds) |
 | Dev seed data | Deterministic demo users/entries/attachments for local UI work (`make seed`) |
 
 ## Prerequisites
@@ -104,6 +105,7 @@ React app with routing wired to the API.
 | `/tags` | Manage tag groups and tags |
 | `/templates` | Manage note templates |
 | `/profile` | Current user (`GET /v1/auth/me`), language switch |
+| `/plans` | Freemium plans (Spark / Glow / Radiant) and checkout |
 | `/verify-email?token=…` | Email verification (link from MailHog) |
 | `/resend-verification` | Resend verification email |
 | `/forgot-password` | Request password reset |

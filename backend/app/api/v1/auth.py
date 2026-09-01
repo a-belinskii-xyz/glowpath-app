@@ -8,7 +8,6 @@ from app.api.deps import get_current_user, get_email_service
 from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error, structured_detail
-from app.core.feature_flags import features_for_user
 from app.core.google_oauth import oauth
 from app.db.session import get_db
 from app.models.user import User
@@ -44,22 +43,13 @@ from app.services.auth_service import (
     verify_google_id_token,
 )
 from app.services.email_service import EmailService
+from app.services.user_public import to_user_public
 
 router = APIRouter(tags=["auth"])
 
 
 def _to_user_public(user: User) -> UserPublic:
-    return UserPublic(
-        id=user.id,
-        email=user.email,
-        timezone=user.timezone,
-        email_verified=user.email_verified_at is not None,
-        email_verified_at=user.email_verified_at,
-        onboarding_completed=user.onboarding_completed_at is not None,
-        onboarding_completed_at=user.onboarding_completed_at,
-        has_password=user.password_hash is not None,
-        features=features_for_user(user),
-    )
+    return to_user_public(user)
 
 
 def _handle_auth_error(exc: AuthError) -> None:
