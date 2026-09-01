@@ -1,4 +1,4 @@
-import type { ApiLocale } from '../lib/locale'
+import { getApiLocale, type ApiLocale } from '../lib/locale'
 import { defaultMoodScoreStyle, defaultMoodScoreLabel, resolveMoodPreferences } from '../lib/moodScale'
 import type { GoalCalendarResponse, GoalListResponse, GoalPatch, GoalPublic, GoalStatsResponse, GoalWrite } from '../types/goal'
 import type {
@@ -63,7 +63,7 @@ export async function ensureGuestMeta(visitorId: string): Promise<GuestMeta> {
     visitor_id: visitorId,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     onboarding_completed: false,
-    locale: 'en',
+    locale: getApiLocale(),
   }
   await guestDbSet(KEYS.meta, meta)
   return meta

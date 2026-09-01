@@ -915,6 +915,12 @@ input {
   opacity: 0.82;
 }
 
+.guest-profile-locked-field {
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.72;
+}
+
 .guest-lock-badge {
   position: absolute;
   top: 0.55rem;

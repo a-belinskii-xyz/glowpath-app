@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from 'react'
 
+import { guestHeartbeatSync, setGuestLocale } from '../guest/store'
 import { t as translate, tp as translatePlural } from '../i18n/t'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import {
   getApiLocale,
   setApiLocale as persistApiLocale,
@@ -37,6 +39,9 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const setLocale = useCallback((next: ApiLocale) => {
     persistApiLocale(next)
     setLocaleState(next)
+    if (isGuestDiaryMode()) {
+      void setGuestLocale(next).then(() => guestHeartbeatSync())
+    }
   }, [])
 
   useEffect(() => {

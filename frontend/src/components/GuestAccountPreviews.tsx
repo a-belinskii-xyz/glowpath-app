@@ -1,7 +1,7 @@
 import { GuestLockedPreview, GuestRegistrationCallout } from './GuestRegistrationLock'
 import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, SparkleIcon, TrophyIcon } from './icons'
 import { useLocale } from '../context/LocaleContext'
-import { LOCALE_OPTIONS } from '../lib/locale'
+import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
 
 type GuestFeatureKey = 'gallery' | 'market' | 'achievements' | 'profile'
@@ -11,48 +11,62 @@ export function guestFeatureMessage(t: (key: string) => string, feature: GuestFe
 }
 
 export function GuestProfilePreview() {
-  const { t, locale } = useLocale()
+  const { t, locale, setLocale } = useLocale()
   const timezoneOptions = timezoneSelectOptions(locale)
 
   return (
-    <GuestLockedPreview message={guestFeatureMessage(t, 'profile')}>
-      <div className="card profile-account">
-        <div className="profile-account-row">
-          <div className="profile-account-email">
-            <span className="profile-account-label">{t('common.email')}</span>
-            <div className="profile-account-email-value">
-              <span className="profile-account-email-text">user@example.com</span>
-              <span className="status-pill status-pill--warn">{t('profile.emailUnverifiedShort')}</span>
+    <GuestLockedPreview
+      message={guestFeatureMessage(t, 'profile')}
+      unlocked={
+        <div className="card profile-account">
+          <div className="profile-account-row guest-profile-locked-field">
+            <div className="profile-account-email">
+              <span className="profile-account-label">{t('common.email')}</span>
+              <div className="profile-account-email-value">
+                <span className="profile-account-email-text">user@example.com</span>
+                <span className="status-pill status-pill--warn">{t('profile.emailUnverifiedShort')}</span>
+              </div>
+            </div>
+          </div>
+          <div className="profile-account-grid">
+            <div className="guest-profile-locked-field">
+              <label className="profile-account-label" htmlFor="guest-profile-timezone">
+                {t('common.timezone')}
+              </label>
+              <select
+                id="guest-profile-timezone"
+                className="form-input profile-locale-select"
+                defaultValue={timezoneOptions[0]}
+                disabled
+              >
+                {timezoneOptions.slice(0, 8).map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="profile-account-label" htmlFor="guest-profile-locale">
+                {t('common.language')}
+              </label>
+              <select
+                id="guest-profile-locale"
+                className="form-input profile-locale-select"
+                value={locale}
+                onChange={(event) => setLocale(event.target.value as ApiLocale)}
+              >
+                {LOCALE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
-        <div className="profile-account-grid">
-          <div>
-            <label className="profile-account-label" htmlFor="guest-profile-timezone">
-              {t('common.timezone')}
-            </label>
-            <select id="guest-profile-timezone" className="form-input profile-locale-select" defaultValue={timezoneOptions[0]} disabled>
-              {timezoneOptions.slice(0, 8).map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="profile-account-label" htmlFor="guest-profile-locale">
-              {t('common.language')}
-            </label>
-            <select id="guest-profile-locale" className="form-input profile-locale-select" defaultValue={locale} disabled>
-              {LOCALE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      }
+    >
       <div className="profile-shortcuts">
         <div className="profile-shortcut" aria-hidden="true">
           <span className="profile-shortcut-icon" aria-hidden="true">

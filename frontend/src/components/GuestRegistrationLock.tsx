@@ -41,14 +41,17 @@ export function GuestRegistrationCallout({ message }: GuestRegistrationCalloutPr
 
 type GuestLockedPreviewProps = {
   message: string
+  /** Controls that stay interactive (e.g. language). Rendered outside the locked body. */
+  unlocked?: ReactNode
   children: ReactNode
 }
 
 /** Full UI preview with registration callout; interactive content is non-operational. */
-export function GuestLockedPreview({ message, children }: GuestLockedPreviewProps) {
+export function GuestLockedPreview({ message, unlocked, children }: GuestLockedPreviewProps) {
   return (
     <div className="guest-locked-preview">
       <GuestRegistrationCallout message={message} />
+      {unlocked}
       <div className="guest-locked-preview__body">{children}</div>
     </div>
   )
