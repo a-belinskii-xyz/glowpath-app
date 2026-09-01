@@ -810,9 +810,43 @@ input {
   color: #92400e;
 }
 
+.guest-data-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .guest-data-banner__cta {
   font-weight: 600;
   color: inherit;
+}
+
+.guest-data-banner__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.guest-data-banner__dismiss:hover {
+  opacity: 1;
+  background: rgb(146 64 14 / 8%);
+}
+
+.guest-data-banner__dismiss:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 
 .guest-locked-page {

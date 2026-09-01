@@ -641,6 +641,7 @@ export const en = {
       message:
         'No account — {count} entries live only in this browser and can be lost. Create an account to save them.',
       createAccount: 'Create account',
+      dismiss: 'Dismiss',
     },
     attachmentsLocked: 'Photos and voice notes are available after you create an account.',
     uploadIconsLocked: 'Custom icons are available after you create an account.',
@@ -1611,6 +1612,7 @@ export const ru: DeepStringLeaves<typeof en> = {
       message:
         'Нет аккаунта — {count} записей хранятся только в этом браузере и могут пропасть. Создайте аккаунт, чтобы сохранить их.',
       createAccount: 'Создать аккаунт',
+      dismiss: 'Скрыть',
     },
     attachmentsLocked: 'Фото и голосовые заметки доступны после регистрации.',
     uploadIconsLocked: 'Свои иконки доступны после регистрации.',
