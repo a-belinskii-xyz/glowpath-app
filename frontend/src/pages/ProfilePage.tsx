@@ -5,6 +5,7 @@ import { getAchievementsSummary } from '../api/achievements'
 import { getWallet } from '../api/wallet'
 import { Alert } from '../components/Alert'
 import { GuestProfilePreview } from '../components/GuestAccountPreviews'
+import { AttachEmailForm } from '../components/AttachEmailForm'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
 import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, SparkleIcon, TrophyIcon } from '../components/icons'
@@ -437,6 +438,12 @@ export function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {!user.email ? (
+        <div className="card">
+          <AttachEmailForm />
+        </div>
+      ) : null}
 
       <div className="profile-shortcuts" role="region" aria-label={t('profile.settingsMenu')}>
         {achievementsEnabled ? (

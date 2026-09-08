@@ -18,6 +18,7 @@ class ErrorCode(StrEnum):
     INVALID_RESET_TOKEN = "invalid_reset_token"
     INVALID_OR_EXPIRED_TOKEN = "invalid_or_expired_token"
     EMAIL_ALREADY_REGISTERED = "email_already_registered"
+    EMAIL_ALREADY_ATTACHED = "email_already_attached"
     EMAIL_NOT_VERIFIED = "email_not_verified"
     EMAIL_LINKED_OTHER_GOOGLE = "email_linked_other_google"
     INVALID_TIMEZONE = "invalid_timezone"

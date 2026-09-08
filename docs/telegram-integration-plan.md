@@ -1,8 +1,9 @@
-# Telegram integration — план
+# Telegram integration — план (bot-MVP, исторический)
 
-**Статус:** этапы 0–2 ✅ · далее этап 3 (catalog + entries API)  
-**Дата:** 2026-07-18  
-**Решения:** webhook · bot-facing API в том же FastAPI · бот — отдельный контейнер
+**Статус:** исторический bot-MVP (чат-визард `/log`). Актуальный продукт — **Telegram Mini App**: бот открывает те же экраны SPA, wizard выключен. См. README, этапы Telegram-first в текущей реализации.
+
+**Дата исходного плана:** 2026-07-18  
+**Решения того этапа:** webhook · bot-facing API в том же FastAPI · бот — отдельный контейнер
 
 ---
 

@@ -22,6 +22,11 @@ class TelegramLinkPublic(BaseModel):
     can_unlink: bool = False
 
 
+class TelegramEntryPointPublic(BaseModel):
+    bot_username: str | None = None
+    bot_url: str | None = None
+
+
 class TelegramLinkCodeCreateResponse(BaseModel):
     code: str
     expires_at: datetime

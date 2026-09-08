@@ -29,6 +29,19 @@ def _service_headers() -> dict[str, str]:
     return {SERVICE_HEADER: "test-service-token"}
 
 
+def test_telegram_entry_point_is_public(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "telegram_bot_username", "glowpath_bot")
+    response = client.get("/v1/telegram/entry-point")
+    assert response.status_code == 200
+    assert response.json() == {
+        "bot_username": "glowpath_bot",
+        "bot_url": "https://t.me/glowpath_bot",
+    }
+
+
 def test_get_link_status_unlinked(
     auth_client: TestClient,
     mailer: FakeEmailService,

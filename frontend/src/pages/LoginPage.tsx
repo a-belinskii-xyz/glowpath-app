@@ -7,6 +7,7 @@ import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { StableButtonLabel } from '../components/StableButtonLabel'
+import { TelegramOpenCta } from '../components/TelegramOpenCta'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
@@ -58,6 +59,8 @@ export function LoginPage() {
   return (
     <>
       <h1>{t('auth.logInTitle')}</h1>
+      <p className="muted">{t('auth.telegramPrimary')}</p>
+      <TelegramOpenCta />
       <p className="muted">{t('auth.logInSubtitle')}</p>
 
       <PageErrorAlert error={error} />

@@ -12,6 +12,7 @@ from app.core.google_oauth import oauth
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
+    AttachEmailRequest,
     EmailRequest,
     GoogleIdTokenRequest,
     LoginRequest,
@@ -31,6 +32,7 @@ from app.services.auth_service import (
     AuthError,
     GoogleProfile,
     TokenPair,
+    attach_email,
     authenticate_google_profile,
     forgot_password,
     login_user,
@@ -84,6 +86,26 @@ def register(
     except AuthError as exc:
         _handle_auth_error(exc)
     return MessageResponse(message="Check your email to verify your account")
+
+
+@router.post("/attach-email", response_model=UserPublic)
+def attach_email_endpoint(
+    body: AttachEmailRequest,
+    db: Session = Depends(get_db),
+    mailer: EmailService = Depends(get_email_service),
+    current_user: User = Depends(get_current_user),
+) -> UserPublic:
+    try:
+        user = attach_email(
+            db,
+            user=current_user,
+            email=body.email,
+            password=body.password,
+            email_service=mailer,
+        )
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    return _to_user_public(user)
 
 
 @router.get("/verify-email", response_model=MessageResponse)

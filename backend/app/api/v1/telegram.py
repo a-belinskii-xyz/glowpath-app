@@ -22,6 +22,7 @@ from app.schemas.telegram import (
     TelegramBotSessionPublic,
     TelegramBotSessionUpsert,
     TelegramBotUnlinkRequest,
+    TelegramEntryPointPublic,
     TelegramLinkCodeCreateResponse,
     TelegramLinkPublic,
 )
@@ -47,6 +48,7 @@ from app.services.telegram_link_service import (
     create_link_code,
     get_user_by_telegram_id,
     link_telegram_account,
+    serialize_entry_point,
     serialize_link_status,
     unlink_by_telegram_user_id,
     unlink_telegram_account,
@@ -83,6 +85,11 @@ def _bot_me_public(user: User | None) -> TelegramBotMePublic:
         locale=user.telegram_locale,
         onboarding_completed=user.onboarding_completed_at is not None,
     )
+
+
+@router.get("/entry-point", response_model=TelegramEntryPointPublic)
+def telegram_entry_point() -> TelegramEntryPointPublic:
+    return TelegramEntryPointPublic.model_validate(serialize_entry_point())
 
 
 @router.get("/link", response_model=TelegramLinkPublic)

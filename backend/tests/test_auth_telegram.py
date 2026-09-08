@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from tests.conftest import FakeEmailService, extract_token_from_email, register_verify_and_login
 from tests.test_telegram_init_data import BOT_TOKEN, build_init_data
 
 
@@ -145,3 +146,73 @@ def test_telegram_only_user_cannot_unlink(
     )
     assert unlink.status_code == 409
     assert unlink.json()["detail"]["code"] == "telegram_unlink_not_allowed"
+
+
+def test_attach_email_then_verify_allows_unlink(
+    auth_client: TestClient,
+    db: Session,
+    mailer: FakeEmailService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "telegram_bot_token", BOT_TOKEN)
+    monkeypatch.setattr(settings, "telegram_bot_username", "glowpath_bot")
+    init_data = build_init_data(user={"id": 900_010, "first_name": "Mila"})
+    login = auth_client.post("/v1/auth/telegram", json={"init_data": init_data})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    email = f"attach-{uuid.uuid4()}@example.com"
+
+    attached = auth_client.post(
+        "/v1/auth/attach-email",
+        headers=headers,
+        json={
+            "email": email,
+            "password": "password123",
+            "password_confirm": "password123",
+        },
+    )
+    assert attached.status_code == 200
+    body = attached.json()
+    assert body["email"] == email
+    assert body["email_verified"] is False
+    assert body["has_password"] is True
+    assert body["can_unlink_telegram"] is False
+    assert mailer.outbox
+
+    still_blocked = auth_client.delete("/v1/telegram/link", headers=headers)
+    assert still_blocked.status_code == 409
+
+    verify_token = extract_token_from_email(mailer.outbox[-1].body)
+    verified = auth_client.get(f"/v1/auth/verify-email?token={verify_token}")
+    assert verified.status_code == 200
+
+    me = auth_client.get("/v1/auth/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["email_verified"] is True
+    assert me.json()["can_unlink_telegram"] is True
+
+
+def test_attach_email_rejects_existing_address(
+    auth_client: TestClient,
+    db: Session,
+    mailer: FakeEmailService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "telegram_bot_token", BOT_TOKEN)
+    existing_email = f"taken-{uuid.uuid4()}@example.com"
+    register_verify_and_login(auth_client, mailer, existing_email)
+
+    init_data = build_init_data(user={"id": 900_011, "first_name": "Leo"})
+    login = auth_client.post("/v1/auth/telegram", json={"init_data": init_data})
+    token = login.json()["access_token"]
+    response = auth_client.post(
+        "/v1/auth/attach-email",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "email": existing_email,
+            "password": "password123",
+            "password_confirm": "password123",
+        },
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "email_already_registered"

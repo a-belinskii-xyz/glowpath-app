@@ -1,6 +1,6 @@
 # GlowPath
 
-Multi-user mood logging app (**GlowPath**, mark `glowpath:\`): FastAPI backend + React frontend, PostgreSQL, and Docker Compose.
+Telegram-first mood tracker (**GlowPath**, mark `glowpath:\`): Mini App is the primary UI, the bot is entry and reminders, FastAPI is the source of truth. A standalone website remains available as a secondary surface.
 
 Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-naming-plan.md).
 
@@ -8,7 +8,9 @@ Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-
 
 | Feature | What it does |
 |---------|----------------|
-| Email registration & login | Create an account with email/password; JWT access + refresh tokens |
+| Telegram Mini App | Primary product: same screens as the website, opened from the bot (`/start` → Open App → onboarding) |
+| Telegram bot | Entry, `/log` deep link, reminders with Mini App buttons; webhook on `:8081` |
+| Email registration & login | Optional website account (email/password or Google); Telegram users can attach email later |
 | Email verification | Confirm email via link (MailHog in local Docker); resend if needed |
 | Password reset | Request a reset email and set a new password |
 | Google OAuth | Sign in with Google (browser redirect or ID token for API clients) |
@@ -22,7 +24,6 @@ Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-
 | Mood stats | Month mood index and month-over-month comparison (bar chart on home) |
 | Profile & locale | View account info; switch UI language (`en` / `ru`); IANA timezone on the user |
 | Reminders | Opt-in daily mood + weekly goal reminders (email and/or Telegram Mini App buttons; time + channels in settings) |
-| Telegram bot | Mini App is the UI; bot is entry, `/log` deep link, reminders; webhook on `:8081` |
 | Multi-user isolation | Each user’s entries, tags, templates, and files are private |
 | Guest local diary (experiment) | Optional treatment cohort: diary in IndexedDB without account; sync only on **new** registration — see [`docs/guest-local-diary-experiment.md`](docs/guest-local-diary-experiment.md) |
 | Freemium plans | Spark (free) / Glow / Radiant catalog, subscriptions, payment-provider adapters (`fake` locally; Stripe and Sber scaffolds) |
@@ -70,7 +71,7 @@ make frontend-install   # first time only
 make frontend-dev
 ```
 
-Open http://localhost:5173 — register, log in, view profile, verify email, reset password.
+Open http://localhost:5173 — guests are pointed to the Telegram bot when `TELEGRAM_BOT_USERNAME` is set; website login/register remain available.
 
 Ensure `backend/.env` includes `FRONTEND_URL=http://localhost:5173` and `CORS_ORIGINS` covering the UI origin (see `backend/.env.example`). `localhost` and `127.0.0.1` are different CORS origins; the API adds loopback aliases automatically. Email links and Google OAuth redirect use `FRONTEND_URL`.
 
@@ -348,6 +349,7 @@ The standalone website is optional:
 1. Find the bot and send **`/start`**.
 2. Tap **Open App**. The Mini App signs the user in from Telegram `initData` and opens **`/onboarding`**.
 3. Finish or skip setup. After that, `/start` shows **Log mood** + **Open App**.
+4. Optional: in Profile, **Add email** so you can also sign in on the website and unlink Telegram later.
 
 If setup was left unfinished, `/start` opens the same onboarding screen again.
 

@@ -742,6 +742,35 @@ html.is-telegram .month-recap-stage {
   margin: 0 auto;
 }
 
+.telegram-open-cta {
+  margin: 0.75rem 0 1rem;
+}
+
+.telegram-first-landing {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 26rem;
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+}
+
+.telegram-first-landing h1 {
+  margin-bottom: 0;
+}
+
+.telegram-first-or {
+  margin: 0.35rem 0 0;
+  text-align: center;
+}
+
+.telegram-first-web {
+  justify-content: center;
+}
+
+.profile-attach-email {
+  gap: 0.85rem;
+}
+
 .auth-card h1,
 .page h1 {
   margin: 0 0 0.5rem;

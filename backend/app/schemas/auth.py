@@ -64,6 +64,18 @@ class TelegramAuthRequest(BaseModel):
     timezone: str = Field(default="Europe/Minsk", max_length=64)
 
 
+class AttachEmailRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    password_confirm: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "AttachEmailRequest":
+        if self.password != self.password_confirm:
+            raise ValueError("Passwords do not match")
+        return self
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(min_length=1)
 

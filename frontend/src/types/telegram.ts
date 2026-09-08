@@ -12,3 +12,8 @@ export type TelegramLinkCodeCreateResponse = {
   expires_at: string
   deep_link: string
 }
+
+export type TelegramEntryPointPublic = {
+  bot_username: string | null
+  bot_url: string | null
+}

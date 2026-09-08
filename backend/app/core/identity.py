@@ -32,4 +32,7 @@ def user_has_verified_identity(user: IdentityUser) -> bool:
 
 
 def telegram_is_only_auth_method(user: IdentityUser) -> bool:
-    return user.password_hash is None and user.google_sub is None
+    """True when unlinking Telegram would leave no usable website sign-in."""
+    return user.google_sub is None and (
+        user.email_verified_at is None or user.password_hash is None
+    )

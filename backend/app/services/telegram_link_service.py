@@ -27,6 +27,14 @@ def bot_is_configured() -> bool:
     return bool(settings.telegram_bot_token.strip() and settings.telegram_bot_username.strip())
 
 
+def serialize_entry_point() -> dict[str, str | None]:
+    username = settings.telegram_bot_username.strip() or None
+    return {
+        "bot_username": username,
+        "bot_url": f"https://t.me/{username}" if username else None,
+    }
+
+
 def serialize_link_status(user: User) -> dict[str, object]:
     username = settings.telegram_bot_username.strip() or None
     return {

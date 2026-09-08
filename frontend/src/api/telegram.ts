@@ -1,6 +1,7 @@
 import { apiRequest } from './client'
 import { apiLocaleHeaders } from '../lib/locale'
 import type {
+  TelegramEntryPointPublic,
   TelegramLinkCodeCreateResponse,
   TelegramLinkPublic,
 } from '../types/telegram'
@@ -26,4 +27,8 @@ export function unlinkTelegram(): Promise<TelegramLinkPublic> {
     auth: true,
     headers: apiLocaleHeaders(),
   })
+}
+
+export function getTelegramEntryPoint(): Promise<TelegramEntryPointPublic> {
+  return apiRequest<TelegramEntryPointPublic>('/v1/telegram/entry-point')
 }

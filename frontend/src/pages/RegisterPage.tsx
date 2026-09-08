@@ -6,6 +6,7 @@ import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { StableButtonLabel } from '../components/StableButtonLabel'
+import { TelegramOpenCta } from '../components/TelegramOpenCta'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { detectTimezone } from '../lib/timezones'
@@ -55,6 +56,8 @@ export function RegisterPage() {
   return (
     <>
       <h1>{t('auth.createAccountTitle')}</h1>
+      <p className="muted">{t('auth.telegramPrimary')}</p>
+      <TelegramOpenCta />
       <p className="muted">{t('auth.createAccountSubtitle')}</p>
 
       <PageErrorAlert error={error} />

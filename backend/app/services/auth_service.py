@@ -170,6 +170,42 @@ def register_user(
     return user
 
 
+def attach_email(
+    db: Session,
+    *,
+    user: User,
+    email: str,
+    password: str,
+    email_service: EmailService,
+) -> User:
+    """Add optional email/password sign-in to a Telegram-native account."""
+    if user.email is not None:
+        raise AuthError(
+            "Email is already attached to this account",
+            code=ErrorCode.EMAIL_ALREADY_ATTACHED,
+            status_code=409,
+        )
+
+    normalized_email = normalize_email(email)
+    existing = db.scalar(select(User).where(User.email == normalized_email))
+    if existing is not None:
+        raise AuthError(
+            "Email is already registered", code=ErrorCode.EMAIL_ALREADY_REGISTERED, status_code=409
+        )
+
+    user.email = normalized_email
+    user.password_hash = hash_password(password)
+    _create_auth_token(
+        db,
+        user_id=user.id,
+        purpose=AuthTokenPurpose.EMAIL_VERIFY,
+        email_service=email_service,
+    )
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def login_user(
     db: Session,
     *,

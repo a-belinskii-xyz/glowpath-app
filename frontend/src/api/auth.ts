@@ -62,6 +62,18 @@ export function updateMe(body: { timezone: string }): Promise<UserPublic> {
   })
 }
 
+export function attachEmail(body: {
+  email: string
+  password: string
+  password_confirm: string
+}): Promise<UserPublic> {
+  return apiRequest<UserPublic>('/v1/auth/attach-email', {
+    method: 'POST',
+    body,
+    auth: true,
+  })
+}
+
 export function loginTelegram(body: {
   init_data: string
   timezone: string
