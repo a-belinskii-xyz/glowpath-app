@@ -24,6 +24,31 @@ export type TelegramWebAppUser = {
   photo_url?: string
 }
 
+export type TelegramMainButton = {
+  text: string
+  color: string
+  textColor: string
+  isVisible: boolean
+  isActive: boolean
+  isProgressVisible: boolean
+  setText: (text: string) => void
+  onClick: (callback: () => void) => void
+  offClick: (callback: () => void) => void
+  show: () => void
+  hide: () => void
+  enable: () => void
+  disable: () => void
+  showProgress: (leaveActive?: boolean) => void
+  hideProgress: () => void
+  setParams: (params: {
+    text?: string
+    color?: string
+    text_color?: string
+    is_active?: boolean
+    is_visible?: boolean
+  }) => void
+}
+
 export type TelegramBackButton = {
   isVisible: boolean
   show: () => void
@@ -65,6 +90,7 @@ export type TelegramWebApp = {
   backgroundColor: string
   isClosingConfirmationEnabled: boolean
   BackButton: TelegramBackButton
+  MainButton?: TelegramMainButton
   HapticFeedback?: TelegramHapticFeedback
   safeAreaInset?: TelegramSafeAreaInset
   contentSafeAreaInset?: TelegramSafeAreaInset
@@ -223,5 +249,53 @@ export function hapticNotification(type: 'error' | 'success' | 'warning'): void 
     getTelegramWebApp()?.HapticFeedback?.notificationOccurred(type)
   } catch {
     // Older clients omit haptic APIs.
+  }
+}
+
+const MAIN_BUTTON_SPACE = '4.25rem'
+
+export function setTelegramMainButton(options: {
+  text: string
+  visible: boolean
+  enabled: boolean
+  progress?: boolean
+  onClick: () => void
+}): () => void {
+  const webApp = getTelegramWebApp()
+  const button = webApp?.MainButton
+  const root = document.documentElement
+  if (!button) {
+    root.classList.remove('has-tg-main-button')
+    root.style.setProperty('--tg-main-button-space', '0px')
+    return () => undefined
+  }
+  if (!options.visible) {
+    button.hide()
+    root.classList.remove('has-tg-main-button')
+    root.style.setProperty('--tg-main-button-space', '0px')
+    return () => undefined
+  }
+  button.setText(options.text)
+  if (options.enabled) {
+    button.enable()
+  } else {
+    button.disable()
+  }
+  if (options.progress) {
+    button.showProgress(false)
+  } else {
+    button.hideProgress()
+  }
+  button.show()
+  root.classList.add('has-tg-main-button')
+  root.style.setProperty('--tg-main-button-space', MAIN_BUTTON_SPACE)
+  const onClick = options.onClick
+  button.onClick(onClick)
+  return () => {
+    button.offClick(onClick)
+    button.hideProgress()
+    button.hide()
+    root.classList.remove('has-tg-main-button')
+    root.style.setProperty('--tg-main-button-space', '0px')
   }
 }

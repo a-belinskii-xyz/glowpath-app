@@ -391,6 +391,18 @@ def test_daily_mood_reminder_message_telegram_is_plain() -> None:
     assert "log your mood" in message.body.lower()
 
 
+def test_daily_mood_reminder_telegram_uses_mini_app_startapp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.config import settings
+    from app.services.notifications.messages import daily_mood_reminder_message
+
+    monkeypatch.setattr(settings, "telegram_bot_username", "glowpath_bot")
+    message = daily_mood_reminder_message(channel=NotificationChannel.TELEGRAM)
+    assert "https://t.me/glowpath_bot?startapp=create_daily" in message.body
+    assert "start=log" not in message.body
+
+
 def test_process_due_reminders_sends_telegram(
     db: Session,
     monkeypatch: pytest.MonkeyPatch,

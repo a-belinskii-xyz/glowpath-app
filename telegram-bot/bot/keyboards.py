@@ -1,101 +1,61 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from bot.i18n import t
+
+START_CREATE = "create"
+START_CREATE_DAILY = "create_daily"
+START_GOALS = "goals"
 
 
 def inline_keyboard(rows: list[list[dict[str, Any]]]) -> dict[str, Any]:
     return {"inline_keyboard": rows}
 
 
-def mini_app_keyboard(*, locale: str | None, url: str) -> dict[str, Any]:
-    return inline_keyboard([[{"text": t(locale, "open_app"), "web_app": {"url": url}}]])
+def with_start_param(url: str, start: str | None) -> str:
+    if not start:
+        return url
+    parts = urlparse(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query["tgWebAppStartParam"] = start
+    return urlunparse(parts._replace(query=urlencode(query)))
 
 
-def score_keyboard(scores: list[dict[str, Any]]) -> dict[str, Any]:
-    row = [
-        {
-            "text": f"{item.get('emoji', '')} {item['score']}".strip(),
-            "callback_data": f"w:score:{item['score']}",
-        }
-        for item in scores
-    ]
-    return inline_keyboard([row])
-
-
-def tags_keyboard(
-    tags: list[dict[str, Any]],
-    selected_ids: set[str],
+def mini_app_keyboard(
     *,
     locale: str | None,
+    url: str,
+    start: str | None = None,
+    button_key: str = "open_app",
 ) -> dict[str, Any]:
-    rows: list[list[dict[str, str]]] = []
-    for tag in tags:
-        tag_id = str(tag["id"])
-        mark = "✓ " if tag_id in selected_ids else ""
-        rows.append(
-            [
-                {
-                    "text": f"{mark}{tag['label']}",
-                    "callback_data": f"w:tag:{tag_id}",
-                }
-            ]
-        )
-    rows.append([{"text": t(locale, "next"), "callback_data": "w:next"}])
-    return inline_keyboard(rows)
-
-
-def goals_keyboard(
-    goals: list[dict[str, Any]],
-    selected_ids: set[str],
-    *,
-    locale: str | None,
-) -> dict[str, Any]:
-    rows: list[list[dict[str, str]]] = []
-    for goal in goals:
-        goal_id = str(goal["id"])
-        mark = "✓ " if goal_id in selected_ids else ""
-        icon = goal.get("icon") if goal.get("icon_type") == "emoji" else ""
-        label = f"{icon} {goal['label']}".strip() if icon else goal["label"]
-        rows.append(
-            [
-                {
-                    "text": f"{mark}{label}",
-                    "callback_data": f"w:goal:{goal_id}",
-                }
-            ]
-        )
-    rows.append(
-        [
-            {"text": t(locale, "skip"), "callback_data": "w:skip"},
-            {"text": t(locale, "next"), "callback_data": "w:next"},
-        ]
-    )
-    return inline_keyboard(rows)
-
-
-def skip_keyboard(*, locale: str | None) -> dict[str, Any]:
-    return inline_keyboard([[{"text": t(locale, "skip"), "callback_data": "w:skip"}]])
-
-
-def note_keyboard(*, locale: str | None) -> dict[str, Any]:
     return inline_keyboard(
         [
             [
-                {"text": t(locale, "skip"), "callback_data": "w:skip"},
-                {"text": t(locale, "next"), "callback_data": "w:next"},
+                {
+                    "text": t(locale, button_key),
+                    "web_app": {"url": with_start_param(url, start)},
+                }
             ]
         ]
     )
 
 
-def confirm_keyboard(*, locale: str | None) -> dict[str, Any]:
+def linked_home_keyboard(*, locale: str | None, url: str) -> dict[str, Any]:
     return inline_keyboard(
         [
             [
-                {"text": t(locale, "confirm_yes"), "callback_data": "w:confirm"},
-                {"text": t(locale, "confirm_no"), "callback_data": "w:cancel"},
-            ]
+                {
+                    "text": t(locale, "log_mood"),
+                    "web_app": {"url": with_start_param(url, START_CREATE)},
+                }
+            ],
+            [
+                {
+                    "text": t(locale, "open_app"),
+                    "web_app": {"url": url},
+                }
+            ],
         ]
     )

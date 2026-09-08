@@ -41,6 +41,50 @@ async def set_webhook() -> None:
         logger.info("Telegram webhook registered: %s", payload["url"])
 
 
+BOT_COMMANDS = {
+    "": [
+        {"command": "start", "description": "Open GlowPath"},
+        {"command": "log", "description": "Log your mood"},
+        {"command": "help", "description": "How to use the bot"},
+        {"command": "unlink", "description": "Disconnect Telegram"},
+    ],
+    "ru": [
+        {"command": "start", "description": "Открыть GlowPath"},
+        {"command": "log", "description": "Записать настроение"},
+        {"command": "help", "description": "Как пользоваться ботом"},
+        {"command": "unlink", "description": "Отвязать Telegram"},
+    ],
+}
+
+
+async def set_my_commands() -> None:
+    if not settings.telegram_bot_token:
+        return
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for language_code, commands in BOT_COMMANDS.items():
+            payload: dict[str, Any] = {"commands": commands}
+            if language_code:
+                payload["language_code"] = language_code
+            response = await client.post(_bot_url("setMyCommands"), json=payload)
+            if response.status_code >= 400:
+                logger.error(
+                    "setMyCommands failed language=%s status=%s body=%s",
+                    language_code or "default",
+                    response.status_code,
+                    response.text,
+                )
+                continue
+            data = response.json()
+            if not data.get("ok"):
+                logger.error(
+                    "setMyCommands rejected language=%s: %s",
+                    language_code or "default",
+                    data,
+                )
+                continue
+        logger.info("Telegram bot commands registered")
+
+
 async def delete_webhook() -> None:
     if not settings.telegram_bot_token:
         return

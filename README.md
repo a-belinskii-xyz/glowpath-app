@@ -22,7 +22,7 @@ Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-
 | Mood stats | Month mood index and month-over-month comparison (bar chart on home) |
 | Profile & locale | View account info; switch UI language (`en` / `ru`); IANA timezone on the user |
 | Email reminders | Opt-in daily mood + weekly goal reminders via email (time + channels in settings) |
-| Telegram bot | Link from Profile; reminders; `/log` mood wizard (+ voice); webhook on `:8081` |
+| Telegram bot | Mini App is the UI; bot is entry, `/log` deep link, reminders; webhook on `:8081` |
 | Multi-user isolation | Each user’s entries, tags, templates, and files are private |
 | Guest local diary (experiment) | Optional treatment cohort: diary in IndexedDB without account; sync only on **new** registration — see [`docs/guest-local-diary-experiment.md`](docs/guest-local-diary-experiment.md) |
 | Freemium plans | Spark (free) / Glow / Radiant catalog, subscriptions, payment-provider adapters (`fake` locally; Stripe and Sber scaffolds) |
@@ -350,13 +350,13 @@ Use the printed HTTPS URL as `TELEGRAM_WEBHOOK_URL` the same way.
 
 #### 4. Log mood from the bot
 
-After linking:
+The chat wizard is retired. Mood is logged in the Mini App:
 
-1. Send **`/log`** (or open a reminder link with `?start=log`).
-2. Pick a score → optional tags/goals → add any mix of **text / voice / photos** → **Next** → confirm.
-3. **`/cancel`** aborts the wizard without saving.
+1. Send **`/log`**, or tap **Log mood** under `/start`. That opens create (`startapp=create`).
+2. Daily reminders use `https://t.me/<bot>?startapp=create_daily` (same create screen, with reminder attribution).
+3. Save with Telegram **Main Button**. Back Button returns to the dashboard.
 
-On the content step you can combine a text note, one voice message, and up to 5 photos; only **Next** moves on (Skip clears content and continues). Voice/photos are stored as entry attachments. Bot replies use the locale from your Telegram link (`en` / `ru`).
+Old reminder links with `?start=log` still work: they open the Mini App create screen instead of the chat wizard.
 
 Check webhook registration:
 

@@ -206,6 +206,18 @@ html.is-telegram .entry-save-row .button-secondary {
   display: none;
 }
 
+html.is-telegram.has-tg-main-button .entry-save-row {
+  display: none;
+}
+
+html.is-telegram.has-tg-main-button .entry-form-footer {
+  bottom: var(--tg-main-button-space, 0px);
+}
+
+html.is-telegram.has-tg-main-button .entry-journey {
+  padding-bottom: calc(4.5rem + var(--tg-safe-bottom) + var(--tg-main-button-space, 0px));
+}
+
 html.is-telegram .page-header {
   margin-bottom: 0.85rem;
 }

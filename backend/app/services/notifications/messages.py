@@ -20,7 +20,7 @@ def daily_mood_reminder_message(
         kind=MoodEntryAttributionKind.DAILY_MOOD_REMINDER,
     )
     log_url = f"{settings.frontend_url.rstrip('/')}/entries/new?{urlencode({'from': source})}"
-    bot_url = _telegram_bot_deep_link(start="log")
+    bot_url = _telegram_mini_app_deep_link(startapp="create_daily")
     subject = daily_reminder_subject(hour=hour, locale=locale)
     intro = daily_reminder_intro(hour=hour, locale=locale)
 
@@ -34,9 +34,9 @@ def daily_mood_reminder_message(
         ]
         if bot_url:
             or_bot = (
-                f"Or continue in the bot: {bot_url}"
+                f"Or open in Telegram: {bot_url}"
                 if locale != "ru"
-                else f"Или продолжить в боте: {bot_url}"
+                else f"Или открыть в Telegram: {bot_url}"
             )
             lines.extend(["", or_bot])
         body = "\n".join(lines)
@@ -99,7 +99,7 @@ def goal_reminder_message(
         kind=MoodEntryAttributionKind.GOAL_REMINDER,
     )
     home_url = f"{settings.frontend_url.rstrip('/')}/?{urlencode({'from': source})}"
-    bot_url = _telegram_bot_deep_link(start="log")
+    bot_url = _telegram_mini_app_deep_link(startapp="goals")
     bullet_lines = "\n".join(f"  • {label}" for label in goal_labels)
     subject = "Your weekly goals need attention"
 
@@ -112,7 +112,7 @@ def goal_reminder_message(
             f"Open GlowPath: {home_url}",
         ]
         if bot_url:
-            lines.extend(["", f"Or continue in the bot: {bot_url}"])
+            lines.extend(["", f"Or open in Telegram: {bot_url}"])
         body = "\n".join(lines)
         return NotificationMessage(
             subject=subject,
@@ -154,8 +154,8 @@ def goal_reminder_message(
     )
 
 
-def _telegram_bot_deep_link(*, start: str) -> str | None:
+def _telegram_mini_app_deep_link(*, startapp: str) -> str | None:
     username = settings.telegram_bot_username.strip()
     if not username:
         return None
-    return f"https://t.me/{username}?start={start}"
+    return f"https://t.me/{username}?startapp={startapp}"

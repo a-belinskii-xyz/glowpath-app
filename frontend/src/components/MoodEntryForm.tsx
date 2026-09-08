@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -59,7 +59,8 @@ import {
 } from '../lib/moodEntryDraft'
 import { MAX_AUDIO_BYTES } from '../lib/audioRecorder'
 import { getStoredMoodEntrySource } from '../lib/moodEntrySource'
-import { hapticNotification, hapticSelection } from '../platform/telegram'
+import { hapticNotification, hapticSelection, isTelegramMiniApp } from '../platform/telegram'
+import { useTelegramMainButton } from '../platform/useTelegramMainButton'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic, TagPublic } from '../types/tag'
 
@@ -103,6 +104,7 @@ export function MoodEntryForm({
   const contextSearchId = useId()
   const noteSectionRef = useRef<HTMLElement>(null)
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set())
+  const formRef = useRef<HTMLFormElement>(null)
   const draftHydratedRef = useRef(mode !== 'create')
   const [noteScrollToken, setNoteScrollToken] = useState(0)
   const [draftHydrated, setDraftHydrated] = useState(mode !== 'create')
@@ -809,8 +811,24 @@ export function MoodEntryForm({
   const kindLabel = (kind: string) =>
     kind === 'photo' ? t('entries.kindPhoto') : kind === 'audio' ? t('entries.kindAudio') : kind
 
+  const submitViaMainButton = useCallback(() => {
+    formRef.current?.requestSubmit()
+  }, [])
+  const canSubmit = !isSubmitting && !isRecordingAudio && (moodPicked || mode !== 'create')
+  useTelegramMainButton({
+    visible: isTelegramMiniApp(),
+    text: isSubmitting
+      ? t('common.saving')
+      : mode === 'create'
+        ? t('entries.createEntry')
+        : t('entries.saveChanges'),
+    enabled: canSubmit,
+    progress: isSubmitting,
+    onClick: submitViaMainButton,
+  })
+
   return (
-    <form className="form mood-entry-form entry-journey" onSubmit={handleSubmit}>
+    <form ref={formRef} className="form mood-entry-form entry-journey" onSubmit={handleSubmit}>
       <PageErrorAlert error={error} />
 
       <section className="entry-mood-hero" aria-labelledby="entry-mood-question">

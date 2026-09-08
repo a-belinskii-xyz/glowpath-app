@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from bot.keyboards import mini_app_keyboard
+from bot.keyboards import (
+    START_CREATE,
+    linked_home_keyboard,
+    mini_app_keyboard,
+    with_start_param,
+)
 from bot.wizard import (
     MAX_PENDING_PHOTOS,
     SOURCE_BOT,
@@ -22,12 +27,43 @@ from bot.wizard import (
 )
 
 
+def test_with_start_param_appends_query() -> None:
+    assert with_start_param("https://example.com", None) == "https://example.com"
+    assert (
+        with_start_param("https://example.com/app", "create")
+        == "https://example.com/app?tgWebAppStartParam=create"
+    )
+    assert (
+        with_start_param("https://example.com/app?x=1", "create")
+        == "https://example.com/app?x=1&tgWebAppStartParam=create"
+    )
+
+
 def test_mini_app_keyboard_uses_web_app_button() -> None:
     markup = mini_app_keyboard(locale="en", url="https://example.com")
     button = markup["inline_keyboard"][0][0]
     assert button["text"] == "Open App"
     assert button["web_app"] == {"url": "https://example.com"}
 
+
+def test_mini_app_keyboard_log_mood_includes_start_param() -> None:
+    markup = mini_app_keyboard(
+        locale="en",
+        url="https://example.com",
+        start=START_CREATE,
+        button_key="log_mood",
+    )
+    button = markup["inline_keyboard"][0][0]
+    assert button["text"] == "Log mood"
+    assert button["web_app"] == {"url": "https://example.com?tgWebAppStartParam=create"}
+
+
+def test_linked_home_keyboard_has_log_and_open() -> None:
+    markup = linked_home_keyboard(locale="en", url="https://example.com")
+    rows = markup["inline_keyboard"]
+    assert rows[0][0]["text"] == "Log mood"
+    assert rows[0][0]["web_app"]["url"].endswith("tgWebAppStartParam=create")
+    assert rows[1][0]["web_app"] == {"url": "https://example.com"}
 
 
 def _catalog(*, tags: bool = True, goals: bool = True, frequent: bool = False) -> dict:

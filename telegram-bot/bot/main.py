@@ -8,7 +8,7 @@ from fastapi import FastAPI, Header, HTTPException, Request, status
 
 from bot.config import settings
 from bot.handlers import handle_update
-from bot.telegram_api import set_webhook
+from bot.telegram_api import set_my_commands, set_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,10 @@ async def lifespan(_app: FastAPI):
         await set_webhook()
     except Exception:
         logger.exception("Failed to register Telegram webhook on startup")
+    try:
+        await set_my_commands()
+    except Exception:
+        logger.exception("Failed to register Telegram bot commands on startup")
     yield
 
 
