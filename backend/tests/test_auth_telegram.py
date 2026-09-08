@@ -43,6 +43,7 @@ def test_telegram_auth_creates_user_without_email(
     assert profile["telegram_linked"] is True
     assert profile["can_unlink_telegram"] is False
     assert profile["has_password"] is False
+    assert profile["onboarding_completed"] is False
 
     user = db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
     assert user is not None

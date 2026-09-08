@@ -58,6 +58,18 @@ def test_mini_app_keyboard_log_mood_includes_start_param() -> None:
     assert button["web_app"] == {"url": "https://example.com?tgWebAppStartParam=create"}
 
 
+def test_mini_app_keyboard_onboarding_start_param() -> None:
+    from bot.keyboards import START_ONBOARDING
+
+    markup = mini_app_keyboard(
+        locale="en",
+        url="https://example.com",
+        start=START_ONBOARDING,
+    )
+    button = markup["inline_keyboard"][0][0]
+    assert button["web_app"]["url"].endswith("tgWebAppStartParam=onboarding")
+
+
 def test_linked_home_keyboard_has_log_and_open() -> None:
     markup = linked_home_keyboard(locale="en", url="https://example.com")
     rows = markup["inline_keyboard"]

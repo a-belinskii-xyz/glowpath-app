@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
 import {
@@ -14,6 +14,8 @@ import { useGuestExperiment } from '../context/GuestExperimentContext'
 import { useLocale } from '../context/LocaleContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import { formatApiError } from '../lib/errors'
+import { hapticSelection, isTelegramMiniApp } from '../platform/telegram'
+import { useTelegramMainButton } from '../platform/useTelegramMainButton'
 import type {
   OnboardingQuestion,
   OnboardingSuggestions,
@@ -116,6 +118,117 @@ export function OnboardingPage() {
     })
   }, [current, currentSelected.length, t])
 
+  const ensureCurrentAnswer = useCallback((): boolean => {
+    if (currentHasAnswer) {
+      return true
+    }
+    setError(t('onboarding.selectAtLeastOne'))
+    return false
+  }, [currentHasAnswer, t])
+
+  const goNextQuestion = useCallback(() => {
+    if (!ensureCurrentAnswer()) {
+      return
+    }
+    setStepIndex((value) => value + 1)
+  }, [ensureCurrentAnswer])
+
+  const goToSuggestions = useCallback(() => {
+    if (!ensureCurrentAnswer()) {
+      return
+    }
+    const unanswered = questions.find((question) => (selected[question.block_id] ?? []).length === 0)
+    if (unanswered) {
+      const unansweredIndex = questions.findIndex(
+        (question) => question.block_id === unanswered.block_id,
+      )
+      setStepIndex(Math.max(0, unansweredIndex))
+      setError(t('onboarding.selectAtLeastOne'))
+      return
+    }
+    setSelectedGroupSlugs([])
+    setSelectedTemplateSlugs([])
+    setSuggestions(null)
+    setPhase('suggestions')
+  }, [ensureCurrentAnswer, questions, selected, t])
+
+  const finish = useCallback(
+    async (skip: boolean) => {
+      setIsSubmitting(true)
+      setError(null)
+      try {
+        await completeOnboarding(
+          skip
+            ? { skip: true, option_keys: [], tag_group_slugs: [], note_template_slugs: [] }
+            : {
+                skip: false,
+                option_keys: optionKeys,
+                tag_group_slugs: selectedGroupSlugs,
+                note_template_slugs: selectedTemplateSlugs,
+              },
+        )
+        if (isGuestDiaryMode()) {
+          await refreshGuestMeta()
+        } else {
+          await refreshUser()
+        }
+        navigate('/', { replace: true })
+      } catch (err) {
+        setError(formatApiError(err, t, 'errors.requestFailed'))
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [
+      navigate,
+      optionKeys,
+      refreshGuestMeta,
+      refreshUser,
+      selectedGroupSlugs,
+      selectedTemplateSlugs,
+      t,
+    ],
+  )
+
+  const onMainButton = useCallback(() => {
+    if (phase === 'suggestions') {
+      void finish(false)
+      return
+    }
+    if (isLastQuestion) {
+      goToSuggestions()
+      return
+    }
+    goNextQuestion()
+  }, [finish, goNextQuestion, goToSuggestions, isLastQuestion, phase])
+
+  const mainButtonVisible =
+    isTelegramMiniApp() &&
+    !isLoading &&
+    !user?.onboarding_completed &&
+    !(isGuestDiaryMode() && guestOnboardingCompleted) &&
+    ((phase === 'questions' && Boolean(current)) || phase === 'suggestions')
+  const mainButtonEnabled =
+    !isSubmitting &&
+    !isLoadingSuggestions &&
+    (phase === 'suggestions' ? Boolean(suggestions) : currentHasAnswer)
+  const mainButtonText =
+    phase === 'suggestions'
+      ? isSubmitting
+        ? t('onboarding.finishing')
+        : t('onboarding.finish')
+      : isLastQuestion && isLoadingSuggestions
+        ? t('common.loading')
+        : t('common.next')
+
+  useTelegramMainButton({
+    visible: mainButtonVisible,
+    text: mainButtonText,
+    enabled: mainButtonEnabled,
+    progress: isSubmitting || (phase === 'questions' && isLastQuestion && isLoadingSuggestions),
+    onClick: onMainButton,
+  })
+
   if (user?.onboarding_completed || (isGuestDiaryMode() && guestOnboardingCompleted)) {
     return <Navigate to="/" replace />
   }
@@ -125,28 +238,15 @@ export function OnboardingPage() {
     setSelected((prev) => {
       const currentKeys = prev[blockId] ?? []
       if (currentKeys.includes(key)) {
+        hapticSelection()
         return { ...prev, [blockId]: currentKeys.filter((item) => item !== key) }
       }
       if (currentKeys.length >= maxSelections) {
         return prev
       }
+      hapticSelection()
       return { ...prev, [blockId]: [...currentKeys, key] }
     })
-  }
-
-  const ensureCurrentAnswer = (): boolean => {
-    if (currentHasAnswer) {
-      return true
-    }
-    setError(t('onboarding.selectAtLeastOne'))
-    return false
-  }
-
-  const goNextQuestion = () => {
-    if (!ensureCurrentAnswer()) {
-      return
-    }
-    setStepIndex((value) => value + 1)
   }
 
   const toggleSlug = (
@@ -154,55 +254,12 @@ export function OnboardingPage() {
     selectedSlugs: string[],
     setSelectedSlugs: (next: string[]) => void,
   ) => {
+    hapticSelection()
     setSelectedSlugs(
       selectedSlugs.includes(slug)
         ? selectedSlugs.filter((item) => item !== slug)
         : [...selectedSlugs, slug],
     )
-  }
-
-  const finish = async (skip: boolean) => {
-    setIsSubmitting(true)
-    setError(null)
-    try {
-      await completeOnboarding(
-        skip
-          ? { skip: true, option_keys: [], tag_group_slugs: [], note_template_slugs: [] }
-          : {
-              skip: false,
-              option_keys: optionKeys,
-              tag_group_slugs: selectedGroupSlugs,
-              note_template_slugs: selectedTemplateSlugs,
-            },
-      )
-      if (isGuestDiaryMode()) {
-        await refreshGuestMeta()
-      } else {
-        await refreshUser()
-      }
-      navigate('/', { replace: true })
-    } catch (err) {
-      setError(formatApiError(err, t, 'errors.requestFailed'))
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const goToSuggestions = () => {
-    if (!ensureCurrentAnswer()) {
-      return
-    }
-    const unanswered = questions.find((question) => (selected[question.block_id] ?? []).length === 0)
-    if (unanswered) {
-      const unansweredIndex = questions.findIndex((question) => question.block_id === unanswered.block_id)
-      setStepIndex(Math.max(0, unansweredIndex))
-      setError(t('onboarding.selectAtLeastOne'))
-      return
-    }
-    setSelectedGroupSlugs([])
-    setSelectedTemplateSlugs([])
-    setSuggestions(null)
-    setPhase('suggestions')
   }
 
   const suggestionCount =

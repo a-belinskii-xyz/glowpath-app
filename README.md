@@ -341,14 +341,24 @@ npx localtunnel --port 8081
 
 Use the printed HTTPS URL as `TELEGRAM_WEBHOOK_URL` the same way.
 
-#### 3. Link an account
+#### 3. New user in Telegram
+
+The standalone website is optional:
+
+1. Find the bot and send **`/start`**.
+2. Tap **Open App**. The Mini App signs the user in from Telegram `initData` and opens **`/onboarding`**.
+3. Finish or skip setup. After that, `/start` shows **Log mood** + **Open App**.
+
+If setup was left unfinished, `/start` opens the same onboarding screen again.
+
+#### 4. Link an existing website account
 
 1. Open Profile → **Connect Telegram** (creates a one-time code + `t.me/…?start=…` link).
 2. Open the link in Telegram (or send `/start <code>` to the bot).
 3. You should get a confirmation message; Profile should show the account as linked.
 4. Enable the **Telegram** channel under notification settings if you want reminders in chat.
 
-#### 4. Log mood from the bot
+#### 5. Log mood from the bot
 
 The chat wizard is retired. Mood is logged in the Mini App:
 

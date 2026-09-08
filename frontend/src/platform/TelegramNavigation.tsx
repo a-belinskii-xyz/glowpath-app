@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import { useAuth } from '../context/AuthContext'
 import { getTelegramStartParam, getTelegramWebApp, isTelegramMiniApp } from './telegram'
 import { routeForStartParam } from './startParam'
 
@@ -18,23 +19,40 @@ function isTelegramDashboard(pathname: string, search: string): boolean {
 export function TelegramNavigation() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { user, isLoading } = useAuth()
+  const onboarding = location.pathname === '/onboarding'
 
   useEffect(() => {
-    if (!isTelegramMiniApp() || startParamApplied) {
+    if (!isTelegramMiniApp() || isLoading) {
+      return
+    }
+    if (user && !user.onboarding_completed) {
+      if (!onboarding) {
+        navigate('/onboarding', { replace: true })
+      }
+      return
+    }
+    if (startParamApplied) {
       return
     }
     const param = getTelegramStartParam()
-    if (!param) {
-      startParamApplied = true
+    startParamApplied = true
+    if (!param || param === 'onboarding') {
       return
     }
     const route = routeForStartParam(param)
-    startParamApplied = true
     if (route && route !== `${location.pathname}${location.search}`) {
       // Push so Telegram Back returns to the dashboard instead of leaving the Mini App.
       navigate(route)
     }
-  }, [location.pathname, location.search, navigate])
+  }, [
+    isLoading,
+    location.pathname,
+    location.search,
+    navigate,
+    onboarding,
+    user,
+  ])
 
   useEffect(() => {
     const webApp = getTelegramWebApp()
@@ -42,7 +60,7 @@ export function TelegramNavigation() {
       return
     }
     const back = webApp.BackButton
-    if (isTelegramDashboard(location.pathname, location.search)) {
+    if (onboarding || isTelegramDashboard(location.pathname, location.search)) {
       back.hide()
       return
     }
@@ -59,7 +77,7 @@ export function TelegramNavigation() {
     return () => {
       back.offClick(onBack)
     }
-  }, [location.pathname, location.search, navigate])
+  }, [location.pathname, location.search, navigate, onboarding])
 
   return null
 }

@@ -8,6 +8,7 @@ from bot.i18n import t
 START_CREATE = "create"
 START_CREATE_DAILY = "create_daily"
 START_GOALS = "goals"
+START_ONBOARDING = "onboarding"
 
 
 def inline_keyboard(rows: list[list[dict[str, Any]]]) -> dict[str, Any]:

@@ -9,7 +9,8 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
     "en": {
         "help": (
             "GlowPath bot\n\n"
-            "Open the app from the menu or the buttons below.\n\n"
+            "Open the app from the menu or the button below. New users set up "
+            "the tracker in the app — the website is optional.\n\n"
             "Commands:\n"
             "/log — log your mood in the app\n"
             "/start <code> — link a website account\n"
@@ -25,7 +26,11 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
             "To link an existing website account, open Profile on the site "
             "and tap Connect Telegram."
         ),
-        "welcome": "Welcome to GlowPath. Open the app to start tracking your mood.",
+        "welcome": (
+            "Welcome to GlowPath. Open the app to set up your tracker — "
+            "no website needed."
+        ),
+        "continue_onboarding": "Finish setup in the app to start tracking.",
         "open_app": "Open App",
         "log_mood": "Log mood",
         "log_prompt": "Log your mood in GlowPath.",
@@ -73,7 +78,8 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
     "ru": {
         "help": (
             "Бот GlowPath\n\n"
-            "Откройте приложение из меню или кнопками ниже.\n\n"
+            "Откройте приложение из меню или кнопкой ниже. Новые пользователи "
+            "настраивают трекер в приложении — сайт не обязателен.\n\n"
             "Команды:\n"
             "/log — записать настроение в приложении\n"
             "/start <код> — привязать аккаунт с сайта\n"
@@ -89,7 +95,11 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
             "Чтобы связать уже существующий аккаунт с сайта, "
             "откройте профиль и нажмите «Подключить Telegram»."
         ),
-        "welcome": "Добро пожаловать в GlowPath. Откройте приложение, чтобы начать.",
+        "welcome": (
+            "Добро пожаловать в GlowPath. Откройте приложение, чтобы настроить "
+            "трекер — сайт не нужен."
+        ),
+        "continue_onboarding": "Завершите настройку в приложении, чтобы начать.",
         "open_app": "Открыть приложение",
         "log_mood": "Записать настроение",
         "log_prompt": "Запиши настроение в GlowPath.",

@@ -9,6 +9,7 @@ from bot.i18n import normalize_bot_locale, t
 from bot.keyboards import (
     START_CREATE,
     START_CREATE_DAILY,
+    START_ONBOARDING,
     linked_home_keyboard,
     mini_app_keyboard,
 )
@@ -101,6 +102,18 @@ def _log_markup(locale: str | None, *, start: str) -> dict[str, Any] | None:
     return mini_app_keyboard(locale=locale, url=url, start=start, button_key="log_mood")
 
 
+def _onboarding_markup(locale: str | None) -> dict[str, Any] | None:
+    url = _mini_app_url()
+    if not url:
+        return None
+    return mini_app_keyboard(
+        locale=locale,
+        url=url,
+        start=START_ONBOARDING,
+        button_key="open_app",
+    )
+
+
 async def send_app_message(
     *,
     chat_id: int,
@@ -111,6 +124,14 @@ async def send_app_message(
     markup = reply_markup
     if markup is None:
         markup = _home_markup(locale)
+    await send_message(chat_id=chat_id, text=text, reply_markup=markup)
+
+
+async def _open_onboarding(*, chat_id: int, locale: str | None, text: str) -> None:
+    markup = _onboarding_markup(locale)
+    if markup is None:
+        await send_message(chat_id=chat_id, text=t(locale, "mini_app_not_configured"))
+        return
     await send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
 
@@ -143,14 +164,26 @@ async def _handle_start(
         await _open_log(chat_id=chat_id, locale=locale, start=start)
         return
 
+    if payload == START_ONBOARDING:
+        await _open_onboarding(
+            chat_id=chat_id,
+            locale=locale,
+            text=t(locale, "welcome"),
+        )
+        return
+
     if not payload:
         try:
             me = await api_client.me(telegram_user_id=telegram_user_id)
         except ApiClientError as exc:
             logger.warning("me failed: %s", exc.message)
-            await send_app_message(chat_id=chat_id, locale=locale, text=t(locale, "welcome"))
+            await _open_onboarding(
+                chat_id=chat_id,
+                locale=locale,
+                text=t(locale, "welcome"),
+            )
             return
-        if me.get("linked"):
+        if me.get("linked") and me.get("onboarding_completed"):
             linked_locale = normalize_bot_locale(me.get("locale") or locale)
             await send_app_message(
                 chat_id=chat_id,
@@ -158,7 +191,19 @@ async def _handle_start(
                 text=t(linked_locale, "already_linked"),
             )
             return
-        await send_app_message(chat_id=chat_id, locale=locale, text=t(locale, "welcome"))
+        if me.get("linked"):
+            linked_locale = normalize_bot_locale(me.get("locale") or locale)
+            await _open_onboarding(
+                chat_id=chat_id,
+                locale=linked_locale,
+                text=t(linked_locale, "continue_onboarding"),
+            )
+            return
+        await _open_onboarding(
+            chat_id=chat_id,
+            locale=locale,
+            text=t(locale, "welcome"),
+        )
         return
 
     try:
@@ -176,7 +221,14 @@ async def _handle_start(
         return
 
     linked_locale = normalize_bot_locale(me.get("locale") or locale)
-    await send_app_message(
+    if me.get("onboarding_completed"):
+        await send_app_message(
+            chat_id=chat_id,
+            locale=linked_locale,
+            text=t(linked_locale, "linked_ok"),
+        )
+        return
+    await _open_onboarding(
         chat_id=chat_id,
         locale=linked_locale,
         text=t(linked_locale, "linked_ok"),

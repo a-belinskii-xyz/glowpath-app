@@ -45,6 +45,7 @@ class TelegramBotMePublic(BaseModel):
     email: str | None = None
     timezone: str | None = None
     locale: str | None = None
+    onboarding_completed: bool = False
 
 
 class TelegramBotCatalogScore(BaseModel):

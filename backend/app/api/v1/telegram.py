@@ -72,6 +72,19 @@ def _handle_storage_error(exc: StorageError) -> None:
     raise_http_error(exc)
 
 
+def _bot_me_public(user: User | None) -> TelegramBotMePublic:
+    if user is None:
+        return TelegramBotMePublic(linked=False)
+    return TelegramBotMePublic(
+        linked=True,
+        user_id=str(user.id),
+        email=user.email,
+        timezone=user.timezone,
+        locale=user.telegram_locale,
+        onboarding_completed=user.onboarding_completed_at is not None,
+    )
+
+
 @router.get("/link", response_model=TelegramLinkPublic)
 def get_telegram_link(
     current_user: User = Depends(get_current_verified_user),
@@ -122,13 +135,7 @@ def bot_link_telegram(
         )
     except TelegramLinkError as exc:
         raise_http_error(exc)
-    return TelegramBotMePublic(
-        linked=True,
-        user_id=str(user.id),
-        email=user.email,
-        timezone=user.timezone,
-        locale=user.telegram_locale,
-    )
+    return _bot_me_public(user)
 
 
 @bot_router.post("/unlink", response_model=TelegramBotMePublic)
@@ -140,7 +147,7 @@ def bot_unlink_telegram(
         unlink_by_telegram_user_id(db, telegram_user_id=body.telegram_user_id)
     except TelegramLinkError as exc:
         raise_http_error(exc)
-    return TelegramBotMePublic(linked=False)
+    return _bot_me_public(None)
 
 
 @bot_router.get("/me", response_model=TelegramBotMePublic)
@@ -149,15 +156,7 @@ def bot_me(
     db: Session = Depends(get_db),
 ) -> TelegramBotMePublic:
     user = get_user_by_telegram_id(db, telegram_user_id=telegram_user_id)
-    if user is None:
-        return TelegramBotMePublic(linked=False)
-    return TelegramBotMePublic(
-        linked=True,
-        user_id=str(user.id),
-        email=user.email,
-        timezone=user.timezone,
-        locale=user.telegram_locale,
-    )
+    return _bot_me_public(user)
 
 
 @bot_router.get("/catalog", response_model=TelegramBotCatalogPublic)

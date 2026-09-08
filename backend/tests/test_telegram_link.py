@@ -120,6 +120,7 @@ def test_link_and_unlink_flow(
     )
     assert me.status_code == 200
     assert me.json()["linked"] is True
+    assert me.json()["onboarding_completed"] is False
 
     unlinked = auth_client.delete("/v1/telegram/link", headers=_auth_headers(token))
     assert unlinked.status_code == 200
