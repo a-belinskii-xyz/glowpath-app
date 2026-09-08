@@ -1,12 +1,14 @@
 export type UserPublic = {
   id: string
-  email: string
+  email: string | null
   timezone: string
   email_verified: boolean
   email_verified_at: string | null
   onboarding_completed: boolean
   onboarding_completed_at: string | null
   has_password: boolean
+  telegram_linked: boolean
+  can_unlink_telegram: boolean
   features: Record<string, boolean>
   plan: string
   entitlements: string[]

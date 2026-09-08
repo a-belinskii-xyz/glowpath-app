@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     )
     # Public HTTPS URL for setWebhook (empty = skip registration on startup)
     telegram_webhook_url: str = Field(default="", validation_alias="TELEGRAM_WEBHOOK_URL")
+    telegram_mini_app_url: str = Field(default="", validation_alias="TELEGRAM_MINI_APP_URL")
     host: str = Field(default="0.0.0.0", validation_alias="BOT_HOST")
     port: int = Field(default=8081, validation_alias="BOT_PORT")
 

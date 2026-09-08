@@ -9,21 +9,25 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
     "en": {
         "help": (
             "GlowPath bot\n\n"
+            "Open the app from the menu or the button below.\n\n"
             "Commands:\n"
-            "/log — log your mood\n"
+            "/log — log your mood (chat)\n"
             "/cancel — cancel the current log\n"
-            "/start <code> — link your account (from Profile)\n"
+            "/start <code> — link a website account\n"
             "/unlink — disconnect Telegram\n"
             "/help — show this message"
         ),
         "already_linked": (
             "Your Telegram is already linked to GlowPath.\n"
-            "Use /log to check in, or /unlink to disconnect."
+            "Open the app, or use /log to check in from chat."
         ),
         "need_link": (
-            "To link your account, open Profile in GlowPath, "
-            "tap Connect Telegram, then open the link from there."
+            "Open GlowPath in Telegram with the button below.\n"
+            "To link an existing website account, open Profile on the site "
+            "and tap Connect Telegram."
         ),
+        "welcome": "Welcome to GlowPath. Open the app to start tracking your mood.",
+        "open_app": "Open App",
         "linked_ok": (
             "Telegram is linked to your GlowPath account.\n"
             "Use /log anytime, or wait for reminders in this chat."
@@ -66,21 +70,25 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
     "ru": {
         "help": (
             "Бот GlowPath\n\n"
+            "Откройте приложение из меню или кнопкой ниже.\n\n"
             "Команды:\n"
-            "/log — записать настроение\n"
+            "/log — записать настроение в чате\n"
             "/cancel — отменить текущую запись\n"
-            "/start <код> — привязать аккаунт (из профиля)\n"
+            "/start <код> — привязать аккаунт с сайта\n"
             "/unlink — отвязать Telegram\n"
             "/help — эта справка"
         ),
         "already_linked": (
             "Telegram уже привязан к GlowPath.\n"
-            "Команда /log — запись, /unlink — отвязать."
+            "Откройте приложение или /log — запись в чате."
         ),
         "need_link": (
-            "Чтобы привязать аккаунт, откройте профиль в GlowPath, "
-            "нажмите «Подключить Telegram» и перейдите по ссылке."
+            "Откройте GlowPath кнопкой ниже.\n"
+            "Чтобы связать уже существующий аккаунт с сайта, "
+            "откройте профиль и нажмите «Подключить Telegram»."
         ),
+        "welcome": "Добро пожаловать в GlowPath. Откройте приложение, чтобы начать.",
+        "open_app": "Открыть приложение",
         "linked_ok": (
             "Telegram привязан к аккаунту GlowPath.\n"
             "Пишите /log или ждите напоминания в этом чате."

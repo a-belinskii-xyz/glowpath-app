@@ -53,6 +53,12 @@ class NotificationDispatcher:
 
     def _recipient_for(self, user: User, channel: NotificationChannel) -> str:
         if channel is NotificationChannel.EMAIL:
+            if not user.email:
+                raise NotificationError(
+                    "Email recipient is empty",
+                    code=ErrorCode.EMAIL_RECIPIENT_EMPTY,
+                    status_code=400,
+                )
             return user.email
         if channel is NotificationChannel.TELEGRAM:
             if user.telegram_chat_id is None:

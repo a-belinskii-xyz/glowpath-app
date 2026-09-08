@@ -59,6 +59,11 @@ class GoogleIdTokenRequest(BaseModel):
     visitor_id: str | None = Field(default=None, max_length=36)
 
 
+class TelegramAuthRequest(BaseModel):
+    init_data: str = Field(min_length=1, max_length=8192)
+    timezone: str = Field(default="Europe/Minsk", max_length=64)
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(min_length=1)
 

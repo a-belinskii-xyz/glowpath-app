@@ -11,6 +11,7 @@ from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.i18n import normalize_locale
+from app.core.identity import telegram_is_only_auth_method
 from app.core.security import hash_token
 from app.models.telegram_link_code import TelegramLinkCode
 from app.models.user import User
@@ -34,6 +35,7 @@ def serialize_link_status(user: User) -> dict[str, object]:
         "telegram_linked_at": user.telegram_linked_at,
         "bot_username": username,
         "bot_configured": bot_is_configured(),
+        "can_unlink": user.telegram_linked and not telegram_is_only_auth_method(user),
     }
 
 
@@ -147,6 +149,12 @@ def unlink_telegram_account(db: Session, *, user: User) -> User:
     if not user.telegram_linked:
         raise TelegramLinkError(
             "Telegram is not linked", code=ErrorCode.TELEGRAM_NOT_LINKED, status_code=404
+        )
+    if telegram_is_only_auth_method(user):
+        raise TelegramLinkError(
+            "Telegram is the only sign-in method for this account",
+            code=ErrorCode.TELEGRAM_UNLINK_NOT_ALLOWED,
+            status_code=409,
         )
 
     user.telegram_user_id = None

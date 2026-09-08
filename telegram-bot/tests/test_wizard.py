@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bot.keyboards import mini_app_keyboard
 from bot.wizard import (
     MAX_PENDING_PHOTOS,
     SOURCE_BOT,
@@ -19,6 +20,14 @@ from bot.wizard import (
     parse_callback,
     toggle_id,
 )
+
+
+def test_mini_app_keyboard_uses_web_app_button() -> None:
+    markup = mini_app_keyboard(locale="en", url="https://example.com")
+    button = markup["inline_keyboard"][0][0]
+    assert button["text"] == "Open App"
+    assert button["web_app"] == {"url": "https://example.com"}
+
 
 
 def _catalog(*, tags: bool = True, goals: bool = True, frequent: bool = False) -> dict:

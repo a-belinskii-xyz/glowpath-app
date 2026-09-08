@@ -130,7 +130,7 @@ export function TelegramLinkForm() {
         </span>
       </div>
 
-      {linked ? (
+          {linked ? (
         <div className="button-row">
           <button
             type="button"
@@ -140,6 +140,9 @@ export function TelegramLinkForm() {
           >
             {t('common.refresh')}
           </button>
+          {status?.can_unlink === false ? (
+            <p className="form-hint">{t('profile.telegramUnlinkDisabled')}</p>
+          ) : (
             <button
               type="button"
               className="button button-danger"
@@ -151,6 +154,7 @@ export function TelegramLinkForm() {
                 labels={[t('profile.telegramUnlink'), t('common.saving')]}
               />
             </button>
+          )}
         </div>
       ) : (
         <>

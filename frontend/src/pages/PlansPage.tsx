@@ -218,7 +218,7 @@ export function PlansPage() {
       <PageErrorAlert error={error} />
       {notice ? <Alert variant="success">{notice}</Alert> : null}
 
-      {isAuthenticated && user && !user.email_verified ? (
+      {isAuthenticated && user && user.email && !user.email_verified ? (
         <Alert variant="warning">{t('plans.verifyToSubscribe')}</Alert>
       ) : null}
 

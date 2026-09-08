@@ -4,10 +4,12 @@ import logging
 from typing import Any
 
 from bot.api_client import ApiClientError, api_client
+from bot.config import settings
 from bot.i18n import companion_t, normalize_bot_locale, t
 from bot.keyboards import (
     confirm_keyboard,
     goals_keyboard,
+    mini_app_keyboard,
     note_keyboard,
     score_keyboard,
     tags_keyboard,
@@ -80,7 +82,11 @@ async def handle_update(update: dict[str, Any]) -> None:
             await _handle_unlink(chat_id=chat_id, telegram_user_id=telegram_user_id, locale=locale)
             return
         if command == "/help":
-            await send_message(chat_id=chat_id, text=t(locale, "help"))
+            await send_message(
+                chat_id=chat_id,
+                text=t(locale, "help"),
+                reply_markup=_mini_app_markup(locale),
+            )
             return
         if command == "/log":
             await _start_wizard(
@@ -315,6 +321,13 @@ async def _handle_callback(callback: dict[str, Any]) -> None:
         )
 
 
+def _mini_app_markup(locale: str | None) -> dict[str, Any] | None:
+    url = settings.telegram_mini_app_url.strip()
+    if not url:
+        return None
+    return mini_app_keyboard(locale=locale, url=url)
+
+
 async def _handle_start(
     *,
     chat_id: int,
@@ -336,15 +349,24 @@ async def _handle_start(
             me = await api_client.me(telegram_user_id=telegram_user_id)
         except ApiClientError as exc:
             logger.warning("me failed: %s", exc.message)
-            await send_message(chat_id=chat_id, text=t(locale, "help"))
+            await send_message(
+                chat_id=chat_id,
+                text=t(locale, "welcome"),
+                reply_markup=_mini_app_markup(locale),
+            )
             return
         if me.get("linked"):
             linked_locale = normalize_bot_locale(me.get("locale") or locale)
-            await send_message(chat_id=chat_id, text=t(linked_locale, "already_linked"))
+            await send_message(
+                chat_id=chat_id,
+                text=t(linked_locale, "already_linked"),
+                reply_markup=_mini_app_markup(linked_locale),
+            )
             return
         await send_message(
             chat_id=chat_id,
-            text=f"{t(locale, 'need_link')}\n\n{t(locale, 'help')}",
+            text=t(locale, "welcome"),
+            reply_markup=_mini_app_markup(locale),
         )
         return
 
@@ -363,7 +385,11 @@ async def _handle_start(
         return
 
     linked_locale = normalize_bot_locale(me.get("locale") or locale)
-    await send_message(chat_id=chat_id, text=t(linked_locale, "linked_ok"))
+    await send_message(
+        chat_id=chat_id,
+        text=t(linked_locale, "linked_ok"),
+        reply_markup=_mini_app_markup(linked_locale),
+    )
 
 
 async def _handle_unlink(*, chat_id: int, telegram_user_id: int, locale: str | None) -> None:

@@ -306,6 +306,9 @@ export function ProfilePage() {
   }
 
   const handleResetPassword = async () => {
+    if (!user.email) {
+      return
+    }
     setResetError(null)
     setResetMessage(null)
     setIsResettingPassword(true)
@@ -336,14 +339,20 @@ export function ProfilePage() {
           <div className="profile-account-email">
             <span className="profile-account-label">{t('common.email')}</span>
             <div className="profile-account-email-value">
-              <span className="profile-account-email-text">{user.email}</span>
-              <span
-                className={`status-pill${user.email_verified ? ' status-pill--ok' : ' status-pill--warn'}`}
-              >
-                {user.email_verified
-                  ? t('profile.emailVerifiedShort')
-                  : t('profile.emailUnverifiedShort')}
+              <span className="profile-account-email-text">
+                {user.email ?? t('profile.signedInWithTelegram')}
               </span>
+              {user.email ? (
+                <span
+                  className={`status-pill${user.email_verified ? ' status-pill--ok' : ' status-pill--warn'}`}
+                >
+                  {user.email_verified
+                    ? t('profile.emailVerifiedShort')
+                    : t('profile.emailUnverifiedShort')}
+                </span>
+              ) : (
+                <span className="status-pill status-pill--ok">{t('profile.telegramLinkedShort')}</span>
+              )}
             </div>
           </div>
           {user.has_password ? (

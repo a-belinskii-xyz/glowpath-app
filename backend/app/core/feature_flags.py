@@ -26,7 +26,7 @@ from app.config import settings
 
 class FeatureUser(Protocol):
     id: uuid.UUID
-    email: str
+    email: str | None
 
 
 class FeatureFlag(StrEnum):
@@ -107,12 +107,13 @@ def is_feature_enabled(
     flag: FeatureFlag,
     *,
     user_id: uuid.UUID,
-    email: str,
+    email: str | None,
 ) -> bool:
     rule = targeting_for(flag)
     if not rule.enabled:
         return False
-    if email.lower() in rule.emails or user_id in rule.user_ids:
+    normalized_email = (email or "").strip().lower()
+    if normalized_email in rule.emails or user_id in rule.user_ids:
         return True
     if rule.percent <= 0:
         return False

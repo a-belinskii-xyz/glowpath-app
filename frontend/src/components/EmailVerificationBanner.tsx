@@ -13,16 +13,20 @@ export function EmailVerificationBanner() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  if (!user || user.email_verified) {
+  if (!user || user.email_verified || !user.email) {
     return null
   }
 
   const handleResend = async () => {
+    if (!user.email) {
+      return
+    }
+    const email = user.email
     setError(null)
     setMessage(null)
     setIsSending(true)
     try {
-      const response = await resendVerification(user.email)
+      const response = await resendVerification(email)
       if (response.status === 'already_verified') {
         await refreshUser()
         return

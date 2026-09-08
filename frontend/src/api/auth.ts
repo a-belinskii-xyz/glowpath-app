@@ -62,6 +62,13 @@ export function updateMe(body: { timezone: string }): Promise<UserPublic> {
   })
 }
 
+export function loginTelegram(body: {
+  init_data: string
+  timezone: string
+}): Promise<TokenResponse> {
+  return apiRequest<TokenResponse>('/v1/auth/telegram', { method: 'POST', body })
+}
+
 export function getGoogleLoginUrl(): string {
   return `${getApiBaseUrl()}/v1/auth/google/login`
 }

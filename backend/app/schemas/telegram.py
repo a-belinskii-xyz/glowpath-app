@@ -19,6 +19,7 @@ class TelegramLinkPublic(BaseModel):
     telegram_linked_at: datetime | None = None
     bot_username: str | None = None
     bot_configured: bool = False
+    can_unlink: bool = False
 
 
 class TelegramLinkCodeCreateResponse(BaseModel):

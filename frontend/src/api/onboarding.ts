@@ -38,6 +38,8 @@ export async function completeOnboarding(body: OnboardingCompleteRequest): Promi
       onboarding_completed: true,
       onboarding_completed_at: new Date().toISOString(),
       has_password: false,
+      telegram_linked: false,
+      can_unlink_telegram: false,
       features: {},
       plan: 'free',
       entitlements: [],

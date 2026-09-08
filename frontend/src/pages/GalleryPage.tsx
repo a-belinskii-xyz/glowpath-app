@@ -10,6 +10,7 @@ import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
+import { hasAppAccess } from '../lib/authAccess'
 import { intlLocale } from '../i18n/t'
 import { formatMonthHeading, monthKey } from '../lib/datetime'
 import { ApiError, formatApiError } from '../lib/errors'
@@ -69,7 +70,7 @@ export function GalleryPage() {
 
   const loadPage = useCallback(
     async (pageOffset: number, replace: boolean) => {
-      if (guestLocked || !user?.email_verified || loadingRef.current) {
+      if (guestLocked || !hasAppAccess(user) || loadingRef.current) {
         return
       }
       loadingRef.current = true
@@ -100,11 +101,11 @@ export function GalleryPage() {
         setIsLoadingMore(false)
       }
     },
-    [guestLocked, t, user?.email_verified],
+    [guestLocked, t, user],
   )
 
   useEffect(() => {
-    if (guestLocked || !user?.email_verified) {
+    if (guestLocked || !hasAppAccess(user)) {
       setPhotos([])
       setOffset(0)
       setHasMore(false)
@@ -114,7 +115,7 @@ export function GalleryPage() {
     setOffset(0)
     setHasMore(true)
     void loadPage(0, true)
-  }, [guestLocked, loadPage, user?.email_verified])
+  }, [guestLocked, loadPage, user])
 
   useEffect(() => {
     const node = loadMoreRef.current
@@ -188,7 +189,7 @@ export function GalleryPage() {
         </div>
       ) : null}
 
-      {hasMore && user?.email_verified ? (
+      {hasMore && hasAppAccess(user) ? (
         <div ref={loadMoreRef} className="load-more-sentinel">
           {isLoadingMore ? <p className="muted">{t('common.loadingMore')}</p> : null}
         </div>

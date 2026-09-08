@@ -141,6 +141,9 @@ class ErrorCode(StrEnum):
     TELEGRAM_ACCOUNT_LINKED_OTHER_USER = "telegram_account_linked_other_user"
     ACCOUNT_LINKED_OTHER_TELEGRAM = "account_linked_other_telegram"
     TELEGRAM_NOT_LINKED = "telegram_not_linked"
+    INVALID_TELEGRAM_INIT_DATA = "invalid_telegram_init_data"
+    TELEGRAM_INIT_DATA_EXPIRED = "telegram_init_data_expired"
+    TELEGRAM_UNLINK_NOT_ALLOWED = "telegram_unlink_not_allowed"
 
     # Storage
     STORAGE_BUCKET_FAILED = "storage_bucket_failed"

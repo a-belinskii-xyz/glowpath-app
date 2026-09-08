@@ -106,6 +106,23 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  telegram-bot:
+    build: ./telegram-bot
+    env_file:
+      - backend/.env
+    environment:
+      API_BASE_URL: http://app:8000
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 8081
+      TELEGRAM_MINI_APP_URL: ${PUBLIC_URL:-http://localhost:8080}
+    ports:
+      - "${TELEGRAM_BOT_PORT:-8081}:8081"
+    depends_on:
+      app:
+        condition: service_started
+    command: uvicorn bot.main:app --host 0.0.0.0 --port 8081
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   minio_data:

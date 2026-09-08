@@ -36,7 +36,7 @@ class User(TimestampMixin, Base):
     __tablename__ = table_name("users")
     __table_args__ = (
         CheckConstraint(
-            "password_hash IS NOT NULL OR google_sub IS NOT NULL",
+            "password_hash IS NOT NULL OR google_sub IS NOT NULL OR telegram_user_id IS NOT NULL",
             name="auth_method_present",
         ),
         CheckConstraint(
@@ -56,7 +56,7 @@ class User(TimestampMixin, Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    email: Mapped[str] = mapped_column(String(320), unique=True)
+    email: Mapped[str | None] = mapped_column(String(320), unique=True)
     password_hash: Mapped[str | None] = mapped_column(String(255))
     google_sub: Mapped[str | None] = mapped_column(String(255), unique=True)
     timezone: Mapped[str] = mapped_column(String(64), server_default="Europe/Minsk")

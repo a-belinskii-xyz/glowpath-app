@@ -16,6 +16,7 @@ import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { PatternInsights } from '../components/PatternInsights'
 import { TagIcon } from '../components/TagIcon'
 import { useAuth } from '../context/AuthContext'
+import { hasAppAccess } from '../lib/authAccess'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
@@ -85,7 +86,7 @@ export function EntryDetailPage() {
   }, [id, locale, t])
 
   useEffect(() => {
-    if (!id || !user?.email_verified) {
+    if (!id || !hasAppAccess(user)) {
       setInsights(null)
       return
     }
@@ -110,7 +111,7 @@ export function EntryDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, locale, user?.email_verified])
+  }, [id, locale, user])
 
   const handleDelete = async () => {
     if (!entry) {
@@ -346,7 +347,7 @@ export function EntryDetailPage() {
         </article>
       ) : null}
 
-      {entry && user?.email_verified ? (
+      {entry && hasAppAccess(user) ? (
         <PatternInsights insights={insights} isLoading={isInsightsLoading} compact />
       ) : null}
     </section>

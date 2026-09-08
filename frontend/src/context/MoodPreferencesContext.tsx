@@ -12,6 +12,7 @@ import { getMoodPreferences } from '../api/moodPreferences'
 import { useAuth } from './AuthContext'
 import { useLocale } from './LocaleContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
+import { hasAppAccess } from '../lib/authAccess'
 import { defaultMoodPreferences, getMoodScoreColor, getMoodScoreStyle } from '../lib/moodScale'
 import type { MoodPreferencesPublic, MoodScoreStylePublic } from '../types/moodPreferences'
 
@@ -52,7 +53,7 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    if (!user?.email_verified) {
+    if (!hasAppAccess(user)) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
       setShowStreak(true)
@@ -72,7 +73,7 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [user?.email_verified, locale])
+  }, [user, locale])
 
   const setPreferences = useCallback((preferences: MoodPreferencesPublic) => {
     setScores(preferences.scores)
@@ -86,7 +87,7 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    if (!user?.email_verified) {
+    if (!hasAppAccess(user)) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
       setShowStreak(true)
@@ -95,7 +96,7 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
     }
 
     void refreshPreferences()
-  }, [user?.email_verified, refreshPreferences, locale])
+  }, [user, refreshPreferences, locale])
 
   const value = useMemo(
     () => ({

@@ -4,8 +4,11 @@ import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/
 import type { TokenResponse } from '../types/auth'
 
 // Dev: hit API on :8000. Prod / nginx image: same-origin (empty) so /v1 is proxied.
+const configured = import.meta.env.VITE_API_BASE_URL
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')
+  configured === ''
+    ? ''
+    : configured || (import.meta.env.DEV ? 'http://localhost:8000' : '')
 
 type RequestOptions = {
   method?: string

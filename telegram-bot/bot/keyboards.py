@@ -5,8 +5,12 @@ from typing import Any
 from bot.i18n import t
 
 
-def inline_keyboard(rows: list[list[dict[str, str]]]) -> dict[str, Any]:
+def inline_keyboard(rows: list[list[dict[str, Any]]]) -> dict[str, Any]:
     return {"inline_keyboard": rows}
+
+
+def mini_app_keyboard(*, locale: str | None, url: str) -> dict[str, Any]:
+    return inline_keyboard([[{"text": t(locale, "open_app"), "web_app": {"url": url}}]])
 
 
 def score_keyboard(scores: list[dict[str, Any]]) -> dict[str, Any]:

@@ -217,6 +217,12 @@ class Settings(BaseSettings):
         le=120,
         validation_alias="TELEGRAM_LINK_CODE_EXPIRE_MINUTES",
     )
+    telegram_init_data_max_age_seconds: int = Field(
+        default=86400,
+        ge=60,
+        le=7 * 24 * 3600,
+        validation_alias="TELEGRAM_INIT_DATA_MAX_AGE_SECONDS",
+    )
 
     # Billing / subscriptions (fake provider is the local default).
     billing_currency: str = Field(default="RUB", validation_alias="BILLING_CURRENCY")

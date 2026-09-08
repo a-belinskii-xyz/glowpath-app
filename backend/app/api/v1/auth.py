@@ -21,6 +21,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     RegisterRequest,
     ResetPasswordRequest,
+    TelegramAuthRequest,
     TokenResponse,
     VerificationResendResponse,
     VerificationResendStatus,
@@ -43,6 +44,7 @@ from app.services.auth_service import (
     verify_google_id_token,
 )
 from app.services.email_service import EmailService
+from app.services.telegram_auth_service import authenticate_telegram_init_data
 from app.services.user_public import to_user_public
 
 router = APIRouter(tags=["auth"])
@@ -245,6 +247,22 @@ def google_id_token_login(
             db,
             profile,
             visitor_id=parse_visitor_id(body.visitor_id),
+        )
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    return _to_token_response(tokens)
+
+
+@router.post("/telegram", response_model=TokenResponse)
+def telegram_mini_app_login(
+    body: TelegramAuthRequest,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    try:
+        tokens = authenticate_telegram_init_data(
+            db,
+            init_data=body.init_data,
+            timezone=body.timezone,
         )
     except AuthError as exc:
         _handle_auth_error(exc)

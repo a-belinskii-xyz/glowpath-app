@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.core.i18n import DEFAULT_LOCALE, normalize_locale, resolve_label
+from app.core.identity import user_has_verified_identity
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.user import User
@@ -64,7 +65,7 @@ def process_due_reminders(
             continue
 
         user = prefs.user
-        if user.email_verified_at is None:
+        if not user_has_verified_identity(user):
             stats.skipped += 1
             continue
 

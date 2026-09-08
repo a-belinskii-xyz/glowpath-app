@@ -104,7 +104,7 @@ function ShellChrome({
   guestNav: boolean
 }) {
   const { t } = useLocale()
-  const { logout, user } = useAuth()
+  const { logout, user, isTelegram } = useAuth()
   const location = useLocation()
   const hideBottomNav = isFocusedEntryFlow(location.pathname)
   const guestShell = isGuestDiaryMode()
@@ -119,7 +119,7 @@ function ShellChrome({
           <span className="brand">{t('brand')}</span>
           <nav className="nav-links">
             <LanguageSwitcher id="onboarding-language" compact />
-            {guestShell ? (
+            {isTelegram ? null : guestShell ? (
               <>
                 <Link to="/login">{t('nav.logIn')}</Link>
                 <Link to="/register">{t('nav.register')}</Link>
@@ -217,7 +217,7 @@ function ShellChrome({
             <Link to="/register" className="app-nav-link">
               {t('guest.banner.createAccount')}
             </Link>
-          ) : (
+          ) : isTelegram ? null : (
             <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
               {t('nav.logOut')}
             </button>
@@ -234,9 +234,10 @@ function ShellChrome({
 }
 
 export function Layout() {
-  const { isAuthenticated, isLoading, user } = useAuth()
+  const { isAuthenticated, isLoading, user, isTelegram, telegramAuthError } = useAuth()
   const { guestLocalDiary, guestOnboardingCompleted, isBootstrapLoading } = useGuestExperiment()
   const location = useLocation()
+  const { t } = useLocale()
   const guestShell = isGuestDiaryMode()
   const needsOnboarding = Boolean(
     (isAuthenticated && user && !user.onboarding_completed) ||
@@ -246,6 +247,30 @@ export function Layout() {
     location.pathname === '/onboarding' ||
     location.pathname === '/reset-password' ||
     location.pathname === '/verify-email'
+
+  if (isTelegram && isLoading) {
+    return (
+      <AppFrame className="app-shell">
+        <main className="app-main">
+          <p className="muted">{t('common.loading')}</p>
+        </main>
+      </AppFrame>
+    )
+  }
+
+  if (isTelegram && !isAuthenticated) {
+    return (
+      <AppFrame className="app-shell">
+        <main className="app-main">
+          <section className="page">
+            <h1>{t('telegramApp.authFailedTitle')}</h1>
+            <p className="muted">{t('telegramApp.reopen')}</p>
+            {telegramAuthError ? <p className="muted">{t('telegramApp.authFailed')}</p> : null}
+          </section>
+        </main>
+      </AppFrame>
+    )
+  }
 
   if (!isLoading && !isBootstrapLoading && needsOnboarding && !onboardingExempt) {
     return <Navigate to="/onboarding" replace />
@@ -257,7 +282,7 @@ export function Layout() {
     <ShellChrome
       sidebar={showSidebar}
       onboarding={needsOnboarding}
-      guestNav={!isLoading && !isAuthenticated && !guestLocalDiary}
+      guestNav={!isLoading && !isAuthenticated && !guestLocalDiary && !isTelegram}
     />
   )
 }

@@ -14,6 +14,7 @@ from app.config import settings
 from app.core.auth_token_purpose import AuthTokenPurpose
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
+from app.core.identity import user_has_verified_identity
 from app.core.security import (
     auth_token_expires_at,
     create_access_token,
@@ -26,6 +27,7 @@ from app.core.security import (
 )
 from app.core.timezones import normalize_timezone
 from app.models.auth_token import AuthToken
+from app.models.guest_device import GuestAuthEvent
 from app.models.user import User
 from app.services.email_service import EmailService
 from app.services.user_provisioning import (
@@ -35,7 +37,6 @@ from app.services.user_provisioning import (
     provision_mood_preferences,
     provision_notification_settings,
 )
-from app.models.guest_device import GuestAuthEvent
 from app.services.visitor_experiment_service import mark_visitor_converted
 
 
@@ -210,7 +211,7 @@ def refresh_access_token(db: Session, *, refresh_token: str) -> TokenPair:
             code=ErrorCode.INVALID_REFRESH_TOKEN,
             status_code=401,
         )
-    if user.email_verified_at is None:
+    if not user_has_verified_identity(user):
         raise EmailNotVerifiedError()
     return issue_token_pair(user.id)
 
@@ -435,7 +436,7 @@ def _create_auth_token(
     db.flush()
 
     user = db.get(User, user_id)
-    if user is None:
+    if user is None or user.email is None:
         raise AuthError("User not found", code=ErrorCode.USER_NOT_FOUND, status_code=500)
 
     if purpose is AuthTokenPurpose.EMAIL_VERIFY:

@@ -263,7 +263,7 @@ def create_checkout(
     session = provider.create_checkout(
         CheckoutRequest(
             user_id=user.id,
-            customer_email=user.email,
+            customer_email=user.email or "",
             plan_slug=plan.slug.value,
             interval=billing_interval,
             amount_minor=price.amount_minor,

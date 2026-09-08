@@ -12,12 +12,20 @@ import * as authApi from '../api/auth'
 import { clearTokens, getAccessToken, setTokens } from '../lib/storage'
 import { getVisitorId } from '../lib/guestMode'
 import { tryImportGuestDiaryAfterAuth } from '../lib/guestImport'
+import {
+  applyTelegramChrome,
+  isTelegramMiniApp,
+  getTelegramWebApp,
+  subscribeTelegramTheme,
+} from '../platform/telegram'
 import type { LoginRequest, RegisterRequest, UserPublic } from '../types/auth'
 
 type AuthContextValue = {
   user: UserPublic | null
   isLoading: boolean
   isAuthenticated: boolean
+  isTelegram: boolean
+  telegramAuthError: string | null
   login: (body: LoginRequest) => Promise<void>
   register: (body: RegisterRequest) => Promise<string>
   logout: () => void
@@ -28,9 +36,19 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Minsk'
+  } catch {
+    return 'Europe/Minsk'
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserPublic | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [telegramAuthError, setTelegramAuthError] = useState<string | null>(null)
+  const isTelegram = isTelegramMiniApp()
 
   const refreshUser = useCallback(async () => {
     if (!getAccessToken()) {
@@ -81,8 +99,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const bootstrap = async () => {
       try {
+        if (isTelegramMiniApp()) {
+          applyTelegramChrome()
+          const webApp = getTelegramWebApp()
+          if (!webApp) {
+            setTelegramAuthError('missing_init_data')
+            return
+          }
+          const tokens = await authApi.loginTelegram({
+            init_data: webApp.initData,
+            timezone: browserTimezone(),
+          })
+          await completeLogin(tokens.access_token, tokens.refresh_token, tokens.user_created ?? false)
+          setTelegramAuthError(null)
+          return
+        }
         await refreshUser()
       } catch {
+        if (isTelegramMiniApp()) {
+          setTelegramAuthError('auth_failed')
+        }
         clearTokens()
         setUser(null)
       } finally {
@@ -91,13 +127,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     void bootstrap()
-  }, [refreshUser])
+  }, [completeLogin, refreshUser])
+
+  useEffect(() => {
+    if (!isTelegramMiniApp()) {
+      return
+    }
+    return subscribeTelegramTheme(() => undefined)
+  }, [])
 
   const value = useMemo(
     () => ({
       user,
       isLoading,
       isAuthenticated: user !== null,
+      isTelegram,
+      telegramAuthError,
       login,
       register,
       logout,
@@ -105,7 +150,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateTimezone,
       completeLogin,
     }),
-    [user, isLoading, login, register, logout, refreshUser, updateTimezone, completeLogin],
+    [
+      user,
+      isLoading,
+      isTelegram,
+      telegramAuthError,
+      login,
+      register,
+      logout,
+      refreshUser,
+      updateTimezone,
+      completeLogin,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -114,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
 }

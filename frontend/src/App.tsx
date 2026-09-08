@@ -29,6 +29,7 @@ import { AchievementsPage } from './pages/AchievementsPage'
 import { PlansPage } from './pages/PlansPage'
 import { TemplatesRedirect, TrackerSettingsPage } from './pages/TrackerSettingsPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
+import { TelegramNavigation } from './platform/TelegramNavigation'
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
           <MoodPreferencesProvider>
             <AmbientGlowProvider>
               <BrowserRouter>
+                <TelegramNavigation />
                 <Routes>
                   <Route element={<Layout />}>
                     <Route index element={<HomePage />} />

@@ -7,6 +7,7 @@ from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import structured_detail
 from app.core.i18n import normalize_locale, parse_accept_language
+from app.core.identity import user_has_verified_identity
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
@@ -75,15 +76,15 @@ def get_current_user(
 
 
 def get_current_verified_user(user: User = Depends(get_current_user)) -> User:
-    if user.email_verified_at is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=structured_detail(
-                code=ErrorCode.EMAIL_NOT_VERIFIED,
-                message="Email address is not verified",
-            ),
-        )
-    return user
+    if user_has_verified_identity(user):
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=structured_detail(
+            code=ErrorCode.EMAIL_NOT_VERIFIED,
+            message="Email address is not verified",
+        ),
+    )
 
 
 def require_telegram_bot_service(

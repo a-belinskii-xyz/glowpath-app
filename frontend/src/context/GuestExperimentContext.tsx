@@ -13,6 +13,7 @@ import { collectGuestFingerprint } from '../lib/guestFingerprint'
 import { setGuestExperimentState } from '../lib/guestMode'
 import { getAccessToken } from '../lib/storage'
 import { ensureGuestMeta, getGuestMeta, guestHeartbeatSync } from '../guest/store'
+import { isTelegramMiniApp } from '../platform/telegram'
 
 type GuestExperimentContextValue = {
   isBootstrapLoading: boolean
@@ -40,7 +41,7 @@ export function GuestExperimentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
     const run = async () => {
-      if (getAccessToken()) {
+      if (isTelegramMiniApp() || getAccessToken()) {
         setGuestExperimentState(false, null)
         if (!cancelled) {
           setGuestLocalDiary(false)

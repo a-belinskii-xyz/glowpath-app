@@ -1,4 +1,5 @@
 from app.core.feature_flags import features_for_user
+from app.core.identity import telegram_is_only_auth_method
 from app.models.user import User
 from app.schemas.user import UserPublic
 from app.services.billing_service import plan_state_for_user
@@ -15,6 +16,8 @@ def to_user_public(user: User) -> UserPublic:
         onboarding_completed=user.onboarding_completed_at is not None,
         onboarding_completed_at=user.onboarding_completed_at,
         has_password=user.password_hash is not None,
+        telegram_linked=user.telegram_linked,
+        can_unlink_telegram=user.telegram_linked and not telegram_is_only_auth_method(user),
         features=features_for_user(user),
         plan=state.slug,
         entitlements=sorted(state.entitlements),

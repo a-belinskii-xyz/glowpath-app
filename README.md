@@ -180,6 +180,8 @@ Environment variables in `backend/.env` (see `backend/.env.example`):
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` — BotFather token and bot username (without `@`)
 - `TELEGRAM_BOT_SERVICE_TOKEN` — shared secret for `telegram-bot` → API (`/v1/telegram/bot/*`)
 - `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_WEBHOOK_PATH`, `TELEGRAM_WEBHOOK_URL` — webhook auth and public HTTPS base URL (see [Telegram bot](#telegram-bot-local-webhook))
+- `TELEGRAM_MINI_APP_URL` — public HTTPS origin of the Mini App (BotFather Main Mini App / Open App button)
+- `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS` — Mini App `initData` replay window (default `86400`)
 - `TELEGRAM_LINK_CODE_EXPIRE_MINUTES` — one-time Profile link code TTL (default `15`)
 - `ENTRY_VISIBLE_TAG_GROUP_LIMIT` — max tag groups pinned to the entry form (default `6`; rest under “Other”)
 - `ENTRY_VISIBLE_GOAL_LIMIT` — max goals pinned to the entry form (default `3`)
@@ -294,9 +296,15 @@ TELEGRAM_WEBHOOK_SECRET=dev-telegram-webhook-secret
 TELEGRAM_WEBHOOK_PATH=/telegram/webhook
 # Set after you start a tunnel (step 2):
 TELEGRAM_WEBHOOK_URL=
+# Public HTTPS origin of the frontend Mini App (BotFather + Open App button):
+TELEGRAM_MINI_APP_URL=
 ```
 
 `TELEGRAM_WEBHOOK_URL` is the tunnel **base** URL only (no path). On startup the bot calls `setWebhook` for `{TELEGRAM_WEBHOOK_URL}{TELEGRAM_WEBHOOK_PATH}`.
+
+Mini App: in [@BotFather](https://t.me/BotFather) set **Menu Button** and **Main Mini App** to `TELEGRAM_MINI_APP_URL` (HTTPS). New users open the app there and are signed in with Telegram — no website account required.
+
+For local Mini App testing you need a **second HTTPS tunnel to the frontend** (Vite `:5173` or prod nginx). Set `frontend/.env` to `VITE_API_BASE_URL=` (empty) so the WebView calls `/v1` on the same origin; Vite proxies `/v1` to the API. Put that frontend HTTPS origin in `TELEGRAM_MINI_APP_URL` and `CORS_ORIGINS`.
 
 #### 2. Expose localhost:8081 with a tunnel
 

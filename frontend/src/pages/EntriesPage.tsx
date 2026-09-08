@@ -19,6 +19,7 @@ import { MonthSummaryOverlay } from '../components/MonthSummaryOverlay'
 import { StreakBadge } from '../components/StreakBadge'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useAuth } from '../context/AuthContext'
+import { hasAppAccess } from '../lib/authAccess'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { intlLocale } from '../i18n/t'
@@ -180,7 +181,7 @@ export function EntriesPage() {
   const hasMonthEntries = (stats?.total_entries ?? 0) > 0
   const summarySeen = viewedSummaries.has(monthKey)
   const canPlaySummary =
-    Boolean(user?.email_verified) &&
+    Boolean(hasAppAccess(user)) &&
     !isSearchMode &&
     !isCurrentMonthView &&
     hasMonthEntries &&

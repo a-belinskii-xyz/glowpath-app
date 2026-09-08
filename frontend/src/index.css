@@ -134,6 +134,48 @@ input {
   initial-value: 0;
 }
 
+html.is-telegram {
+  --chrome-bg-app: var(--tg-theme-bg-color, var(--chrome-bg-app));
+  --chrome-text-primary: var(--tg-theme-text-color, var(--chrome-text-primary));
+  --chrome-text-secondary: var(--tg-theme-hint-color, var(--chrome-text-secondary));
+  --chrome-surface: var(--tg-theme-secondary-bg-color, var(--chrome-surface));
+  --chrome-action-primary: var(--tg-theme-button-color, var(--chrome-action-primary));
+}
+
+html.is-telegram,
+html.is-telegram body {
+  min-height: 100%;
+  min-height: var(--tg-viewport-stable-height, 100dvh);
+  background: var(--chrome-bg-app);
+}
+
+html.is-telegram .app-root {
+  min-height: var(--tg-viewport-stable-height, 100dvh);
+}
+
+html.is-telegram .app-shell--sidebar .app-sidebar {
+  display: none;
+}
+
+html.is-telegram .app-shell--sidebar {
+  --app-bottom-nav-space: calc(4.65rem + env(safe-area-inset-bottom, 0px));
+  padding: 0;
+  gap: 0;
+}
+
+html.is-telegram .app-shell--no-bottom-nav {
+  --app-bottom-nav-space: 0px;
+}
+
+html.is-telegram .app-shell--sidebar .app-main {
+  padding: 0.85rem 0.9rem calc(0.9rem + var(--app-bottom-nav-space));
+  min-width: 0;
+}
+
+html.is-telegram .app-bottom-nav {
+  display: flex;
+}
+
 .app-root {
   min-height: 100vh;
   background: var(--chrome-bg-app);
