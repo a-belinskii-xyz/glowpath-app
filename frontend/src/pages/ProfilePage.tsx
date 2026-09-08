@@ -36,6 +36,12 @@ const NotificationSettingsPanelBody = memo(function NotificationSettingsPanelBod
   timezone: string
 }) {
   const { t } = useLocale()
+  const { user, isTelegram } = useAuth()
+  const telegramLead = isTelegram
+    ? t('profile.telegramLeadMiniApp')
+    : user?.telegram_linked
+      ? t('profile.telegramLeadConnected')
+      : t('profile.telegramLead')
 
   return (
     <>
@@ -43,7 +49,7 @@ const NotificationSettingsPanelBody = memo(function NotificationSettingsPanelBod
         <h2 id="profile-telegram-heading" className="profile-settings-subheading">
           {t('profile.telegramTitle')}
         </h2>
-        <p className="profile-section-lead">{t('profile.telegramLead')}</p>
+        <p className="profile-section-lead">{telegramLead}</p>
         <TelegramLinkForm />
       </section>
       <NotificationSettingsForm timezone={timezone} />
@@ -177,7 +183,7 @@ function ProfileSettingsPanel({
 }
 
 export function ProfilePage() {
-  const { user, logout, updateTimezone } = useAuth()
+  const { user, logout, updateTimezone, isTelegram } = useAuth()
   const { locale, setLocale, t } = useLocale()
   const { scores } = useMoodPreferences()
   usePageAmbientGlow(Object.values(scores).map((style) => style.color))
@@ -500,12 +506,14 @@ export function ProfilePage() {
         </ProfileSettingsPanel>
       </div>
 
-      <div className="profile-logout">
-        <button type="button" className="button button-secondary profile-logout-button" onClick={logout}>
-          {t('nav.logOut')}
-        </button>
-        <p className="profile-field-hint">{t('profile.logOutHint')}</p>
-      </div>
+      {isTelegram ? null : (
+        <div className="profile-logout">
+          <button type="button" className="button button-secondary profile-logout-button" onClick={logout}>
+            {t('nav.logOut')}
+          </button>
+          <p className="profile-field-hint">{t('profile.logOutHint')}</p>
+        </div>
+      )}
     </section>
   )
 }

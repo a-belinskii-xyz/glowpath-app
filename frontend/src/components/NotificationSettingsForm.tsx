@@ -7,6 +7,7 @@ import {
 import { getTelegramLink } from '../api/telegram'
 import { PageErrorAlert } from './PageErrorAlert'
 import { FormField } from './FormField'
+import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { ApiError, formatApiError } from '../lib/errors'
 import type { NotificationChannel, NotificationSettingsPublic } from '../types/notificationSettings'
@@ -62,6 +63,8 @@ type NotificationSettingsFormProps = {
 
 export function NotificationSettingsForm({ timezone }: NotificationSettingsFormProps) {
   const { t } = useLocale()
+  const { user } = useAuth()
+  const showEmailChannel = Boolean(user?.email)
 
   const [enabled, setEnabled] = useState(false)
   const [dailyMood, setDailyMood] = useState(false)
@@ -157,7 +160,10 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
             return
           }
 
-          const channels: NotificationChannel[] = ['email']
+          const channels: NotificationChannel[] = []
+          if (user?.email) {
+            channels.push('email')
+          }
           if (draft.telegramChannel && telegramLinkedRef.current) {
             channels.push('telegram')
           }
@@ -263,12 +269,14 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
 
       <fieldset className="notification-group" disabled={!enabled}>
         <legend className="notification-group-title">{t('profile.notificationChannels')}</legend>
-        <div className="notification-channel-row">
-          <span>{t('profile.channelEmail')}</span>
-          <span className="status-pill status-pill--ok status-pill--sm">
-            {t('profile.channelAlwaysOn')}
-          </span>
-        </div>
+        {showEmailChannel ? (
+          <div className="notification-channel-row">
+            <span>{t('profile.channelEmail')}</span>
+            <span className="status-pill status-pill--ok status-pill--sm">
+              {t('profile.channelAlwaysOn')}
+            </span>
+          </div>
+        ) : null}
         <label
           className={
             telegramLinked

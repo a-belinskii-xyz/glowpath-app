@@ -10,6 +10,7 @@ import {
   isGuestBannerVisible,
 } from '../lib/guestBannerDismiss'
 import { isGuestDiaryMode } from '../lib/guestMode'
+import { isTelegramMiniApp } from '../platform/telegram'
 
 export function GuestDataBanner() {
   const { t } = useLocale()
@@ -22,7 +23,7 @@ export function GuestDataBanner() {
   }, [])
 
   useEffect(() => {
-    if (!isGuestDiaryMode()) {
+    if (isTelegramMiniApp() || !isGuestDiaryMode()) {
       return
     }
     void getGuestEntryCount().then((count) => {
@@ -57,7 +58,7 @@ export function GuestDataBanner() {
     setVisible(false)
   }
 
-  if (!isGuestDiaryMode() || !guestOnboardingCompleted || !visible) {
+  if (isTelegramMiniApp() || !isGuestDiaryMode() || !guestOnboardingCompleted || !visible) {
     return null
   }
 

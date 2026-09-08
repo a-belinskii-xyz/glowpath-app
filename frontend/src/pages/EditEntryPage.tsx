@@ -68,7 +68,7 @@ export function EditEntryPage() {
     <section className="page page-entry-create">
       <EmailVerificationBanner />
       <header className="page-header page-header-compact">
-        <Link className="button button-secondary button-small" to={backToEntries}>
+        <Link className="button button-secondary button-small web-back-link" to={backToEntries}>
           {t('common.backToEntries')}
         </Link>
         <h1 className="visually-hidden">{t('entries.editMoodEntry')}</h1>

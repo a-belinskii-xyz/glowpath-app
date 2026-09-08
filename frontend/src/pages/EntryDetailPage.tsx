@@ -210,7 +210,7 @@ export function EntryDetailPage() {
               </IconButton>
             </div>
           ) : null}
-          <Link className="button button-secondary" to={backHref}>
+          <Link className="button button-secondary web-back-link" to={backHref}>
             {backLabel}
           </Link>
         </div>

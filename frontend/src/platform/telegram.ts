@@ -32,6 +32,19 @@ export type TelegramBackButton = {
   offClick: (callback: () => void) => void
 }
 
+export type TelegramSafeAreaInset = {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+export type TelegramHapticFeedback = {
+  impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void
+  notificationOccurred: (type: 'error' | 'success' | 'warning') => void
+  selectionChanged: () => void
+}
+
 export type TelegramWebApp = {
   initData: string
   initDataUnsafe: {
@@ -52,6 +65,9 @@ export type TelegramWebApp = {
   backgroundColor: string
   isClosingConfirmationEnabled: boolean
   BackButton: TelegramBackButton
+  HapticFeedback?: TelegramHapticFeedback
+  safeAreaInset?: TelegramSafeAreaInset
+  contentSafeAreaInset?: TelegramSafeAreaInset
   ready: () => void
   expand: () => void
   close: () => void
@@ -108,6 +124,26 @@ export function getTelegramStartParam(): string | null {
   return fromQuery?.trim() || null
 }
 
+function cssPx(value: number | undefined): string {
+  return `${Math.max(0, value ?? 0)}px`
+}
+
+function applyTelegramSafeArea(webApp: TelegramWebApp): void {
+  const root = document.documentElement
+  const safe = webApp.safeAreaInset
+  const content = webApp.contentSafeAreaInset
+  if (safe) {
+    root.style.setProperty('--tg-safe-top', cssPx(safe.top))
+    root.style.setProperty('--tg-safe-bottom', cssPx(safe.bottom))
+    root.style.setProperty('--tg-safe-left', cssPx(safe.left))
+    root.style.setProperty('--tg-safe-right', cssPx(safe.right))
+  }
+  if (content) {
+    root.style.setProperty('--tg-content-safe-top', cssPx(content.top))
+    root.style.setProperty('--tg-content-safe-bottom', cssPx(content.bottom))
+  }
+}
+
 export function applyTelegramChrome(): void {
   const webApp = getTelegramWebApp()
   if (!webApp) {
@@ -128,6 +164,7 @@ export function applyTelegramTheme(webApp?: TelegramWebApp | null): void {
   const root = document.documentElement
   root.dataset.tgColorScheme = instance.colorScheme
   root.style.setProperty('--tg-viewport-stable-height', `${instance.viewportStableHeight}px`)
+  applyTelegramSafeArea(instance)
   for (const [key, cssVar] of Object.entries(THEME_VAR_MAP)) {
     const value = instance.themeParams[key as keyof TelegramThemeParams]
     if (value) {
@@ -163,8 +200,28 @@ export function subscribeTelegramTheme(onChange: () => void): () => void {
   }
   webApp.onEvent('themeChanged', handler)
   webApp.onEvent('viewportChanged', handler)
+  webApp.onEvent('safeAreaChanged', handler)
+  webApp.onEvent('contentSafeAreaChanged', handler)
   return () => {
     webApp.offEvent('themeChanged', handler)
     webApp.offEvent('viewportChanged', handler)
+    webApp.offEvent('safeAreaChanged', handler)
+    webApp.offEvent('contentSafeAreaChanged', handler)
+  }
+}
+
+export function hapticSelection(): void {
+  try {
+    getTelegramWebApp()?.HapticFeedback?.selectionChanged()
+  } catch {
+    // Older clients omit haptic APIs.
+  }
+}
+
+export function hapticNotification(type: 'error' | 'success' | 'warning'): void {
+  try {
+    getTelegramWebApp()?.HapticFeedback?.notificationOccurred(type)
+  } catch {
+    // Older clients omit haptic APIs.
   }
 }

@@ -134,6 +134,15 @@ input {
   initial-value: 0;
 }
 
+html {
+  --tg-safe-top: env(safe-area-inset-top, 0px);
+  --tg-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tg-safe-left: env(safe-area-inset-left, 0px);
+  --tg-safe-right: env(safe-area-inset-right, 0px);
+  --tg-content-safe-top: 0px;
+  --tg-content-safe-bottom: 0px;
+}
+
 html.is-telegram {
   --chrome-bg-app: var(--tg-theme-bg-color, var(--chrome-bg-app));
   --chrome-text-primary: var(--tg-theme-text-color, var(--chrome-text-primary));
@@ -147,6 +156,7 @@ html.is-telegram body {
   min-height: 100%;
   min-height: var(--tg-viewport-stable-height, 100dvh);
   background: var(--chrome-bg-app);
+  overflow-x: clip;
 }
 
 html.is-telegram .app-root {
@@ -157,8 +167,12 @@ html.is-telegram .app-shell--sidebar .app-sidebar {
   display: none;
 }
 
+html.is-telegram .app-header .brand {
+  display: none;
+}
+
 html.is-telegram .app-shell--sidebar {
-  --app-bottom-nav-space: calc(4.65rem + env(safe-area-inset-bottom, 0px));
+  --app-bottom-nav-space: calc(4.35rem + var(--tg-safe-bottom));
   padding: 0;
   gap: 0;
 }
@@ -167,13 +181,74 @@ html.is-telegram .app-shell--no-bottom-nav {
   --app-bottom-nav-space: 0px;
 }
 
-html.is-telegram .app-shell--sidebar .app-main {
-  padding: 0.85rem 0.9rem calc(0.9rem + var(--app-bottom-nav-space));
+html.is-telegram .app-shell--sidebar .app-main,
+html.is-telegram .app-shell .app-main {
+  padding: max(0.7rem, var(--tg-content-safe-top)) max(0.85rem, var(--tg-safe-right))
+    calc(0.75rem + var(--app-bottom-nav-space, 0px)) max(0.85rem, var(--tg-safe-left));
   min-width: 0;
 }
 
+html.is-telegram .app-shell:has(> .app-header) .app-main {
+  padding-top: 0.55rem;
+}
+
 html.is-telegram .app-bottom-nav {
-  display: flex;
+  display: grid;
+  padding: 0.3rem max(0.35rem, var(--tg-safe-right)) calc(0.3rem + var(--tg-safe-bottom))
+    max(0.35rem, var(--tg-safe-left));
+}
+
+html.is-telegram .page-entry-create .page-header-compact,
+html.is-telegram .web-back-link,
+html.is-telegram .page-back-link,
+html.is-telegram .profile-logout,
+html.is-telegram .entry-save-row .button-secondary {
+  display: none;
+}
+
+html.is-telegram .page-header {
+  margin-bottom: 0.85rem;
+}
+
+html.is-telegram .page h1 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+html.is-telegram .entry-form-footer,
+html.is-telegram .onboarding-sticky-bar {
+  padding-left: max(1rem, var(--tg-safe-left));
+  padding-right: max(1rem, var(--tg-safe-right));
+  padding-bottom: max(0.85rem, var(--tg-safe-bottom));
+}
+
+html.is-telegram .entry-sheet {
+  padding-bottom: max(1.35rem, var(--tg-safe-bottom));
+}
+
+html.is-telegram .editor-drawer {
+  max-height: min(var(--tg-viewport-stable-height, 90dvh), 42rem);
+  padding-bottom: max(1.25rem, var(--tg-safe-bottom));
+}
+
+html.is-telegram .confirm-dialog-backdrop {
+  padding: max(1rem, var(--tg-content-safe-top)) max(1rem, var(--tg-safe-right))
+    max(1rem, var(--tg-safe-bottom)) max(1rem, var(--tg-safe-left));
+}
+
+html.is-telegram .entry-journey {
+  padding-bottom: calc(7.5rem + var(--tg-safe-bottom));
+}
+
+html.is-telegram .app-header {
+  padding-left: max(0.75rem, var(--tg-safe-left));
+  padding-right: max(0.75rem, var(--tg-safe-right));
+  padding-top: max(0.55rem, var(--tg-content-safe-top));
+}
+
+html.is-telegram .month-recap-stage {
+  padding: max(0.85rem, var(--tg-content-safe-top), var(--tg-safe-top))
+    max(1rem, var(--tg-safe-right)) max(1rem, var(--tg-safe-bottom)) max(1rem, var(--tg-safe-left));
 }
 
 .app-root {

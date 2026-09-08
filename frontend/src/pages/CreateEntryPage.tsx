@@ -39,7 +39,7 @@ export function CreateEntryPage() {
     <section className="page page-entry-create">
       <EmailVerificationBanner />
       <header className="page-header page-header-compact">
-        <Link className="button button-secondary button-small" to="/">
+        <Link className="button button-secondary button-small web-back-link" to="/">
           {t('common.backToEntries')}
         </Link>
         <h1 className="visually-hidden">{t('entries.newMoodEntry')}</h1>

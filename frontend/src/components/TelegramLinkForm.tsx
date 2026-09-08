@@ -130,19 +130,19 @@ export function TelegramLinkForm() {
         </span>
       </div>
 
-          {linked ? (
-        <div className="button-row">
-          <button
-            type="button"
-            className="button button-secondary"
-            disabled={isBusy}
-            onClick={() => void handleRefresh()}
-          >
-            {t('common.refresh')}
-          </button>
-          {status?.can_unlink === false ? (
-            <p className="form-hint">{t('profile.telegramUnlinkDisabled')}</p>
-          ) : (
+      {linked ? (
+        status?.can_unlink === false ? (
+          <p className="form-hint">{t('profile.telegramUnlinkDisabled')}</p>
+        ) : (
+          <div className="button-row">
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={isBusy}
+              onClick={() => void handleRefresh()}
+            >
+              {t('common.refresh')}
+            </button>
             <button
               type="button"
               className="button button-danger"
@@ -154,8 +154,8 @@ export function TelegramLinkForm() {
                 labels={[t('profile.telegramUnlink'), t('common.saving')]}
               />
             </button>
-          )}
-        </div>
+          </div>
+        )
       ) : (
         <>
           {!status?.bot_configured ? (

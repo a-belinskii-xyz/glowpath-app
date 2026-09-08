@@ -1,27 +1,38 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { getTelegramStartParam, getTelegramWebApp, isTelegramMiniApp } from './telegram'
 import { routeForStartParam } from './startParam'
 
+let startParamApplied = false
+
+function isTelegramDashboard(pathname: string, search: string): boolean {
+  if (pathname !== '/') {
+    return false
+  }
+  const params = new URLSearchParams(search)
+  params.delete('tgWebAppStartParam')
+  return [...params.keys()].length === 0
+}
+
 export function TelegramNavigation() {
   const location = useLocation()
   const navigate = useNavigate()
-  const appliedStart = useRef(false)
 
   useEffect(() => {
-    if (!isTelegramMiniApp() || appliedStart.current) {
+    if (!isTelegramMiniApp() || startParamApplied) {
       return
     }
     const param = getTelegramStartParam()
     if (!param) {
-      appliedStart.current = true
+      startParamApplied = true
       return
     }
     const route = routeForStartParam(param)
-    appliedStart.current = true
+    startParamApplied = true
     if (route && route !== `${location.pathname}${location.search}`) {
-      navigate(route, { replace: true })
+      // Push so Telegram Back returns to the dashboard instead of leaving the Mini App.
+      navigate(route)
     }
   }, [location.pathname, location.search, navigate])
 
@@ -31,14 +42,18 @@ export function TelegramNavigation() {
       return
     }
     const back = webApp.BackButton
-    const isRoot = location.pathname === '/' && !location.search
-    if (isRoot) {
+    if (isTelegramDashboard(location.pathname, location.search)) {
       back.hide()
       return
     }
     back.show()
     const onBack = () => {
-      navigate(-1)
+      const historyIndex = window.history.state?.idx
+      if (typeof historyIndex === 'number' && historyIndex > 0) {
+        navigate(-1)
+        return
+      }
+      navigate('/', { replace: true })
     }
     back.onClick(onBack)
     return () => {

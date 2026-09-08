@@ -524,6 +524,10 @@ export const en = {
     telegramTitle: 'Telegram',
     telegramLead:
       'Link Telegram to get reminders in the bot and log moods from chat. Open the bot with a one-time code from this page.',
+    telegramLeadConnected:
+      'Telegram is connected. GlowPath reminders arrive in the bot.',
+    telegramLeadMiniApp:
+      'You are in the GlowPath Mini App. Reminders arrive in this chat.',
     telegramNotLinked: 'Not linked',
     telegramLinkedShort: 'Linked',
     telegramLinked: 'Linked to Telegram user {id}.',
@@ -1587,6 +1591,10 @@ export const ru: DeepStringLeaves<typeof en> = {
     telegramTitle: 'Telegram',
     telegramLead:
       'Привяжите Telegram, чтобы получать напоминания в боте и отмечать настроение из чата. Код одноразовый — откройте бота со этой страницы.',
+    telegramLeadConnected:
+      'Telegram подключён. Напоминания GlowPath приходят в бот.',
+    telegramLeadMiniApp:
+      'Вы в Mini App GlowPath. Напоминания приходят в этот чат.',
     telegramNotLinked: 'Не привязан',
     telegramLinkedShort: 'Привязан',
     telegramLinked: 'Привязан Telegram-пользователь {id}.',

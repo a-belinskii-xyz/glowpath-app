@@ -59,6 +59,7 @@ import {
 } from '../lib/moodEntryDraft'
 import { MAX_AUDIO_BYTES } from '../lib/audioRecorder'
 import { getStoredMoodEntrySource } from '../lib/moodEntrySource'
+import { hapticNotification, hapticSelection } from '../platform/telegram'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic, TagPublic } from '../types/tag'
 
@@ -462,6 +463,7 @@ export function MoodEntryForm({
     setScore(nextScore)
     setMoodPicked(true)
     setNoteScrollToken((token) => token + 1)
+    hapticSelection()
   }
 
   const moodPhrase = (scoreValue: number) =>
@@ -791,7 +793,9 @@ export function MoodEntryForm({
       navigate(entriesListPathForInstant(payload.recorded_at, timeZone, savedId), {
         state: unlocked.length > 0 ? { unlockedAchievements: unlocked } : undefined,
       })
+      hapticNotification('success')
     } catch (err) {
+      hapticNotification('error')
       if (err instanceof ApiError && err.status === 403) {
         setError(t('errors.verifyToSaveEntries'))
       } else {
