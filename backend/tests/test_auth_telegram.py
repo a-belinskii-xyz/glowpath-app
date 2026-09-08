@@ -50,6 +50,13 @@ def test_telegram_auth_creates_user_without_email(
     assert user.telegram_chat_id == telegram_user_id
     assert count_user_tag_groups(db, user.id) == len(DEFAULT_TAG_GROUPS)
 
+    settings_response = auth_client.get(
+        "/v1/notification-settings",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert settings_response.status_code == 200
+    assert settings_response.json()["channels"] == ["telegram"]
+
     entries = auth_client.get(
         "/v1/mood-entries",
         headers={"Authorization": f"Bearer {token}"},

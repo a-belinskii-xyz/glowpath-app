@@ -223,6 +223,7 @@ class Settings(BaseSettings):
         le=7 * 24 * 3600,
         validation_alias="TELEGRAM_INIT_DATA_MAX_AGE_SECONDS",
     )
+    telegram_mini_app_url: str = Field(default="", validation_alias="TELEGRAM_MINI_APP_URL")
 
     # Billing / subscriptions (fake provider is the local default).
     billing_currency: str = Field(default="RUB", validation_alias="BILLING_CURRENCY")

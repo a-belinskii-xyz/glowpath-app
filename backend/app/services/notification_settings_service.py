@@ -27,6 +27,9 @@ def get_or_create_settings(db: Session, *, user_id: uuid.UUID) -> UserNotificati
         select(UserNotificationSettings).where(UserNotificationSettings.user_id == user_id)
     )
     if settings_row is not None:
+        if _heal_telegram_native_channels(db, settings_row, user_id=user_id):
+            db.commit()
+            db.refresh(settings_row)
         return settings_row
     provision_notification_settings(db, user_id)
     db.commit()
@@ -143,6 +146,23 @@ def _validate_prefs(
             "daily_mood_reminder_time is required when mood or goal reminders are enabled",
             code=ErrorCode.REMINDER_TIME_REQUIRED,
         )
+
+
+def _heal_telegram_native_channels(
+    db: Session,
+    prefs: UserNotificationSettings,
+    *,
+    user_id: uuid.UUID,
+) -> bool:
+    """Telegram-only accounts should not keep an undeliverable email channel."""
+    user = db.get(User, user_id)
+    if user is None or user.email or not user.telegram_linked:
+        return False
+    desired = [NotificationChannel.TELEGRAM.value]
+    if list(prefs.channels or []) == desired:
+        return False
+    prefs.channels = desired
+    return True
 
 
 def _require_telegram_linked(db: Session, *, user_id: uuid.UUID) -> None:

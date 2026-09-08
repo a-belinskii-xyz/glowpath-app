@@ -138,6 +138,7 @@ def link_telegram_account(
     user.telegram_linked_at = now
     if locale:
         user.telegram_locale = normalize_locale(locale)
+    _ensure_telegram_channel(db, user_id=user.id)
 
     row.used_at = now
     db.commit()
@@ -178,6 +179,19 @@ def unlink_by_telegram_user_id(db: Session, *, telegram_user_id: int) -> User:
 
 def get_user_by_telegram_id(db: Session, *, telegram_user_id: int) -> User | None:
     return db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
+
+
+def _ensure_telegram_channel(db: Session, *, user_id: uuid.UUID) -> None:
+    prefs = db.scalar(
+        select(UserNotificationSettings).where(UserNotificationSettings.user_id == user_id)
+    )
+    if prefs is None:
+        return
+    channel = NotificationChannel.TELEGRAM.value
+    current = list(prefs.channels or [])
+    if channel in current:
+        return
+    prefs.channels = [*current, channel]
 
 
 def _remove_telegram_channel(db: Session, *, user_id: uuid.UUID) -> None:

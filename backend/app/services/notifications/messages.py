@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from urllib.parse import urlencode
+from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from app.config import settings
 from app.core.companion import daily_reminder_intro, daily_reminder_subject
 from app.core.i18n import DEFAULT_LOCALE
 from app.core.mood_entry_source import MoodEntryAttributionKind, format_mood_entry_source
 from app.services.notifications.base import NotificationChannel, NotificationMessage
+
+STARTAPP_CREATE_DAILY = "create_daily"
+STARTAPP_GOAL_REMINDER = "goal_reminder"
 
 
 def daily_mood_reminder_message(
@@ -20,34 +24,24 @@ def daily_mood_reminder_message(
         kind=MoodEntryAttributionKind.DAILY_MOOD_REMINDER,
     )
     log_url = f"{settings.frontend_url.rstrip('/')}/entries/new?{urlencode({'from': source})}"
-    bot_url = _telegram_mini_app_deep_link(startapp="create_daily")
     subject = daily_reminder_subject(hour=hour, locale=locale)
     intro = daily_reminder_intro(hour=hour, locale=locale)
 
     if channel is NotificationChannel.TELEGRAM:
-        lines = [
-            intro,
-            "",
-            "Log your mood in GlowPath." if locale != "ru" else "Запиши настроение в GlowPath.",
-            "",
-            f"Open the app: {log_url}" if locale != "ru" else f"Открыть приложение: {log_url}",
-        ]
-        if bot_url:
-            or_bot = (
-                f"Or open in Telegram: {bot_url}"
-                if locale != "ru"
-                else f"Или открыть в Telegram: {bot_url}"
-            )
-            lines.extend(["", or_bot])
-        body = "\n".join(lines)
+        prompt = (
+            "Log your mood in GlowPath." if locale != "ru" else "Запиши настроение в GlowPath."
+        )
+        button = "Log mood" if locale != "ru" else "Записать настроение"
+        markup = _telegram_open_markup(startapp=STARTAPP_CREATE_DAILY, button_text=button)
         return NotificationMessage(
             subject=subject,
-            body=body,
+            body=f"{intro}\n\n{prompt}",
             html_body=None,
             metadata={
                 "type": MoodEntryAttributionKind.DAILY_MOOD_REMINDER.value,
                 "channel": channel.value,
                 "source": source,
+                "telegram_reply_markup": markup,
             },
         )
 
@@ -93,27 +87,29 @@ def goal_reminder_message(
     *,
     channel: NotificationChannel,
     goal_labels: list[str],
+    locale: str = DEFAULT_LOCALE,
 ) -> NotificationMessage:
     source = format_mood_entry_source(
         channel=channel.value,
         kind=MoodEntryAttributionKind.GOAL_REMINDER,
     )
-    home_url = f"{settings.frontend_url.rstrip('/')}/?{urlencode({'from': source})}"
-    bot_url = _telegram_mini_app_deep_link(startapp="goals")
+    goals_url = f"{settings.frontend_url.rstrip('/')}/goals?{urlencode({'from': source})}"
     bullet_lines = "\n".join(f"  • {label}" for label in goal_labels)
-    subject = "Your weekly goals need attention"
+    subject = (
+        "Your weekly goals need attention"
+        if locale != "ru"
+        else "Цели на неделю отстают"
+    )
 
     if channel is NotificationChannel.TELEGRAM:
-        lines = [
-            "Some weekly goals are still behind:",
-            "",
-            bullet_lines,
-            "",
-            f"Open GlowPath: {home_url}",
-        ]
-        if bot_url:
-            lines.extend(["", f"Or open in Telegram: {bot_url}"])
-        body = "\n".join(lines)
+        heading = (
+            "Some weekly goals are still behind:"
+            if locale != "ru"
+            else "Некоторые цели на неделю ещё отстают:"
+        )
+        button = "Open goals" if locale != "ru" else "Открыть цели"
+        markup = _telegram_open_markup(startapp=STARTAPP_GOAL_REMINDER, button_text=button)
+        body = f"{heading}\n\n{bullet_lines}"
         return NotificationMessage(
             subject=subject,
             body=body,
@@ -123,6 +119,7 @@ def goal_reminder_message(
                 "channel": channel.value,
                 "source": source,
                 "goals": goal_labels,
+                "telegram_reply_markup": markup,
             },
         )
 
@@ -130,7 +127,7 @@ def goal_reminder_message(
         "Hi,\n\n"
         "Some of your GlowPath goals are still behind for this week:\n\n"
         f"{bullet_lines}\n\n"
-        f"Review your goals: {home_url}\n\n"
+        f"Review your goals: {goals_url}\n\n"
         "You can turn goal reminders off in notification settings.\n"
     )
     items = "".join(f"<li>{label}</li>" for label in goal_labels)
@@ -138,7 +135,7 @@ def goal_reminder_message(
         "<p>Hi,</p>"
         "<p>Some of your GlowPath goals are still behind for this week:</p>"
         f"<ul>{items}</ul>"
-        f'<p><a href="{home_url}">Open GlowPath</a></p>'
+        f'<p><a href="{goals_url}">Review your goals</a></p>'
         "<p>You can turn goal reminders off in notification settings.</p>"
     )
     return NotificationMessage(
@@ -152,6 +149,27 @@ def goal_reminder_message(
             "goals": goal_labels,
         },
     )
+
+
+def _telegram_open_markup(*, startapp: str, button_text: str) -> dict[str, Any] | None:
+    mini = settings.telegram_mini_app_url.strip()
+    if mini:
+        return {
+            "inline_keyboard": [
+                [{"text": button_text, "web_app": {"url": _with_start_param(mini, startapp)}}]
+            ]
+        }
+    deep = _telegram_mini_app_deep_link(startapp=startapp)
+    if deep:
+        return {"inline_keyboard": [[{"text": button_text, "url": deep}]]}
+    return None
+
+
+def _with_start_param(url: str, start: str) -> str:
+    parts = urlparse(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query["tgWebAppStartParam"] = start
+    return urlunparse(parts._replace(query=urlencode(query)))
 
 
 def _telegram_mini_app_deep_link(*, startapp: str) -> str | None:

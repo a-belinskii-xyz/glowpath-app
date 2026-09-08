@@ -65,6 +65,7 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
   const { t } = useLocale()
   const { user } = useAuth()
   const showEmailChannel = Boolean(user?.email)
+  const telegramRequired = Boolean(user?.telegram_linked && !user.email)
 
   const [enabled, setEnabled] = useState(false)
   const [dailyMood, setDailyMood] = useState(false)
@@ -164,7 +165,9 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
           if (user?.email) {
             channels.push('email')
           }
-          if (draft.telegramChannel && telegramLinkedRef.current) {
+          const telegramOn =
+            Boolean(user?.telegram_linked) && (draft.telegramChannel || !user?.email)
+          if (telegramOn || (telegramLinkedRef.current && draft.telegramChannel)) {
             channels.push('telegram')
           }
 
@@ -286,8 +289,8 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
         >
           <input
             type="checkbox"
-            checked={telegramLinked && telegramChannel}
-            disabled={!telegramLinked}
+            checked={telegramLinked && (telegramChannel || telegramRequired)}
+            disabled={!telegramLinked || telegramRequired}
             onChange={(event) => commitDraft({ telegramChannel: event.target.checked })}
           />
           <span>

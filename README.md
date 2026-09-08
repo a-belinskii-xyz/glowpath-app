@@ -21,7 +21,7 @@ Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-
 | Month calendar | Calendar of days with entries; jump to a day in the list |
 | Mood stats | Month mood index and month-over-month comparison (bar chart on home) |
 | Profile & locale | View account info; switch UI language (`en` / `ru`); IANA timezone on the user |
-| Email reminders | Opt-in daily mood + weekly goal reminders via email (time + channels in settings) |
+| Reminders | Opt-in daily mood + weekly goal reminders (email and/or Telegram Mini App buttons; time + channels in settings) |
 | Telegram bot | Mini App is the UI; bot is entry, `/log` deep link, reminders; webhook on `:8081` |
 | Multi-user isolation | Each user’s entries, tags, templates, and files are private |
 | Guest local diary (experiment) | Optional treatment cohort: diary in IndexedDB without account; sync only on **new** registration — see [`docs/guest-local-diary-experiment.md`](docs/guest-local-diary-experiment.md) |
@@ -251,18 +251,18 @@ curl -s -X POST http://localhost:8000/v1/auth/forgot-password \
 #   -d '{"token":"PASTE_TOKEN_HERE","new_password":"newpassword99","password_confirm":"newpassword99"}'
 ```
 
-### Email notifications (reminders)
+### Notifications (reminders)
 
 Users must **opt in** via `GET` / `PATCH /v1/notification-settings`:
 
 - `enabled` — master switch
-- `channels` — delivery channels (`email`, and `telegram` after the account is linked)
+- `channels` — delivery channels (`email` on the website; Telegram-native accounts default to `telegram`)
 - `daily_mood_reminder_enabled` + `daily_mood_reminder_time` — local time (user timezone) for the daily “log your mood” reminder
 - `goal_reminders_enabled` — nudge when weekly goals are behind (same local time)
 
-The Compose `reminders` service (or `python -m app.jobs.reminders`) polls every `NOTIFICATIONS_POLL_INTERVAL_SECONDS` and sends only inside `NOTIFICATIONS_MATCH_WINDOW_MINUTES` after the chosen time. SMTP uses the same `SMTP_*` / `EMAIL_FROM` settings as auth mail; Telegram uses `TELEGRAM_BOT_TOKEN`. Links use `FRONTEND_URL`.
+The Compose `reminders` service (or `python -m app.jobs.reminders`) polls every `NOTIFICATIONS_POLL_INTERVAL_SECONDS` and sends only inside `NOTIFICATIONS_MATCH_WINDOW_MINUTES` after the chosen time. SMTP uses the same `SMTP_*` / `EMAIL_FROM` settings as auth mail; Telegram uses `TELEGRAM_BOT_TOKEN`.
 
-Daily mood emails link to `/entries/new?from=email:daily_mood_reminder`. When the user saves an entry from that URL, the API stores `source` as `{channel}:{kind}` (e.g. `email:daily_mood_reminder`, `telegram:daily_mood_reminder`) for analytics — not returned in public entry JSON / not shown in UI.
+Daily mood emails link to `/entries/new?from=email:daily_mood_reminder`. Telegram reminders include a Mini App button (`startapp=create_daily` or `goal_reminder`) so the tap opens the matching screen. When the user saves an entry from that flow, the API stores `source` as `{channel}:{kind}` (e.g. `email:daily_mood_reminder`, `telegram:daily_mood_reminder`) for analytics — not returned in public entry JSON / not shown in UI.
 
 ```bash
 # Enable daily mood + goal reminders at 20:30 local time (email + Telegram if linked)

@@ -98,6 +98,10 @@ def test_link_and_unlink_flow(
     assert status.json()["linked"] is True
     assert status.json()["telegram_user_id"] == 424242
 
+    prefs = auth_client.get("/v1/notification-settings", headers=_auth_headers(token))
+    assert prefs.status_code == 200
+    assert "telegram" in prefs.json()["channels"]
+
     reuse = auth_client.post(
         "/v1/telegram/bot/link",
         headers=_service_headers(),

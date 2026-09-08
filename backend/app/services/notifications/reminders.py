@@ -152,7 +152,11 @@ def _process_user_reminders(
                 dispatcher.send(
                     user=user,
                     channels=[channel],
-                    message=goal_reminder_message(channel=channel, goal_labels=labels),
+                    message=goal_reminder_message(
+                        channel=channel,
+                        goal_labels=labels,
+                        locale=locale,
+                    ),
                 )
             prefs.last_goal_reminder_on = local_day
             stats.goal_reminders_sent += 1
@@ -179,10 +183,19 @@ def _deliverable_channels(
     """Drop channels that cannot be delivered for this user right now."""
     deliverable: list[NotificationChannel] = []
     for channel in channels:
+        if channel is NotificationChannel.EMAIL and not user.email:
+            continue
         if channel is NotificationChannel.TELEGRAM and not user.telegram_linked:
             continue
-        deliverable.append(channel)
-    return deliverable
+        if channel not in deliverable:
+            deliverable.append(channel)
+    if deliverable:
+        return deliverable
+    if user.telegram_linked:
+        return [NotificationChannel.TELEGRAM]
+    if user.email:
+        return [NotificationChannel.EMAIL]
+    return []
 
 
 def _is_within_reminder_window(

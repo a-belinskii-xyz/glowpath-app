@@ -20,6 +20,9 @@ export function routeForStartParam(param: string): string | null {
   if (value === 'goals') {
     return '/goals'
   }
+  if (value === 'goal_reminder') {
+    return '/goals?from=telegram:goal_reminder'
+  }
   if (value === 'profile') {
     return '/profile'
   }

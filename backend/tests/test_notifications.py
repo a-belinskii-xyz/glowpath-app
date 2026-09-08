@@ -114,6 +114,7 @@ def test_goal_reminder_message_includes_attribution_query() -> None:
     assert "from=email%3Agoal_reminder" in message.body or (
         "from=email:goal_reminder" in message.body
     )
+    assert "/goals" in message.body
     assert message.html_body is not None
     assert "goal_reminder" in message.html_body
     assert message.metadata["source"] == "email:goal_reminder"
@@ -382,6 +383,39 @@ def test_telegram_notifier_calls_bot_api(monkeypatch: pytest.MonkeyPatch) -> Non
     assert "bottest-token/sendMessage" in str(calls[0]["url"])
 
 
+def test_telegram_notifier_sends_web_app_keyboard(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.notifications.telegram import TelegramNotifier
+
+    calls: list[dict[str, object]] = []
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"ok": True, "result": {}}
+
+    def fake_post(url: str, **kwargs: object) -> FakeResponse:
+        calls.append({"url": url, **kwargs})
+        return FakeResponse()
+
+    monkeypatch.setattr("app.services.notifications.telegram.httpx.post", fake_post)
+    notifier = TelegramNotifier(bot_token="test-token")
+    markup = {"inline_keyboard": [[{"text": "Log mood", "web_app": {"url": "https://app.example"}}]]}
+    notifier.send(
+        recipient="999",
+        message=NotificationMessage(
+            subject="Subj",
+            body="Body text",
+            metadata={"telegram_reply_markup": markup},
+        ),
+    )
+    payload = calls[0]["json"]
+    assert isinstance(payload, dict)
+    assert payload["reply_markup"] == markup
+    assert payload["disable_web_page_preview"] is True
+
+
 def test_daily_mood_reminder_message_telegram_is_plain() -> None:
     from app.services.notifications.messages import daily_mood_reminder_message
 
@@ -389,18 +423,91 @@ def test_daily_mood_reminder_message_telegram_is_plain() -> None:
     assert message.html_body is None
     assert (message.metadata or {}).get("source") == "telegram:daily_mood_reminder"
     assert "log your mood" in message.body.lower()
+    assert "http://" not in message.body
+    assert "https://" not in message.body
 
 
-def test_daily_mood_reminder_telegram_uses_mini_app_startapp(
+def test_daily_mood_reminder_telegram_uses_web_app_button(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.config import settings
     from app.services.notifications.messages import daily_mood_reminder_message
 
+    monkeypatch.setattr(settings, "telegram_mini_app_url", "https://app.example")
     monkeypatch.setattr(settings, "telegram_bot_username", "glowpath_bot")
     message = daily_mood_reminder_message(channel=NotificationChannel.TELEGRAM)
-    assert "https://t.me/glowpath_bot?startapp=create_daily" in message.body
+    markup = (message.metadata or {}).get("telegram_reply_markup")
+    assert isinstance(markup, dict)
+    button = markup["inline_keyboard"][0][0]
+    assert button["text"] == "Log mood"
+    assert button["web_app"] == {
+        "url": "https://app.example?tgWebAppStartParam=create_daily",
+    }
     assert "start=log" not in message.body
+
+
+def test_daily_mood_reminder_telegram_falls_back_to_startapp_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.config import settings
+    from app.services.notifications.messages import daily_mood_reminder_message
+
+    monkeypatch.setattr(settings, "telegram_mini_app_url", "")
+    monkeypatch.setattr(settings, "telegram_bot_username", "glowpath_bot")
+    message = daily_mood_reminder_message(channel=NotificationChannel.TELEGRAM)
+    markup = (message.metadata or {}).get("telegram_reply_markup")
+    assert isinstance(markup, dict)
+    button = markup["inline_keyboard"][0][0]
+    assert button["url"] == "https://t.me/glowpath_bot?startapp=create_daily"
+
+
+def test_goal_reminder_telegram_opens_goals_screen(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.config import settings
+    from app.services.notifications.messages import goal_reminder_message
+
+    monkeypatch.setattr(settings, "telegram_mini_app_url", "https://app.example")
+    message = goal_reminder_message(
+        channel=NotificationChannel.TELEGRAM,
+        goal_labels=["Walk"],
+        locale="ru",
+    )
+    markup = (message.metadata or {}).get("telegram_reply_markup")
+    assert isinstance(markup, dict)
+    button = markup["inline_keyboard"][0][0]
+    assert button["text"] == "Открыть цели"
+    assert button["web_app"]["url"].endswith("tgWebAppStartParam=goal_reminder")
+    assert "Walk" in message.body
+
+
+def test_deliverable_channels_skips_email_without_address() -> None:
+    from app.services.notifications.reminders import _deliverable_channels
+
+    user = User(
+        email=None,
+        telegram_user_id=1,
+        telegram_chat_id=1,
+        telegram_linked_at=datetime.now(UTC),
+    )
+    result = _deliverable_channels(
+        user,
+        [NotificationChannel.EMAIL, NotificationChannel.TELEGRAM],
+    )
+    assert result == [NotificationChannel.TELEGRAM]
+
+
+def test_deliverable_channels_falls_back_when_email_undeliverable() -> None:
+    from app.services.notifications.reminders import _deliverable_channels
+
+    user = User(
+        email=None,
+        telegram_user_id=1,
+        telegram_chat_id=1,
+        telegram_linked_at=datetime.now(UTC),
+    )
+    result = _deliverable_channels(user, [NotificationChannel.EMAIL])
+    assert result == [NotificationChannel.TELEGRAM]
 
 
 def test_process_due_reminders_sends_telegram(

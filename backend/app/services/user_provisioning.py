@@ -13,6 +13,7 @@ from app.models.goal import Goal
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
+from app.models.user import User
 from app.models.user_mood_preferences import UserMoodPreferences
 from app.models.user_notification_settings import UserNotificationSettings
 from app.services.notifications.base import NotificationChannel
@@ -228,12 +229,19 @@ def provision_notification_settings(db: Session, user_id: uuid.UUID) -> None:
         UserNotificationSettings(
             user_id=user_id,
             enabled=False,
-            channels=[NotificationChannel.EMAIL.value],
+            channels=_default_notification_channels(db, user_id),
             daily_mood_reminder_enabled=False,
             daily_mood_reminder_time=None,
             goal_reminders_enabled=False,
         )
     )
+
+
+def _default_notification_channels(db: Session, user_id: uuid.UUID) -> list[str]:
+    user = db.get(User, user_id)
+    if user is not None and user.telegram_linked:
+        return [NotificationChannel.TELEGRAM.value]
+    return [NotificationChannel.EMAIL.value]
 
 
 def provision_mood_preferences(db: Session, user_id: uuid.UUID) -> None:

@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 
 from app.core.default_goals import DEFAULT_GOALS
 from app.core.default_note_templates import DEFAULT_NOTE_TEMPLATES
@@ -8,6 +8,7 @@ from app.models.goal import Goal
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.user import User
+from app.models.user_notification_settings import UserNotificationSettings
 from app.services.user_provisioning import (
     count_user_goals,
     count_user_mood_preferences,
@@ -88,6 +89,27 @@ def test_provision_notification_settings(db: Session) -> None:
     db.flush()
 
     assert count_user_notification_settings(db, user.id) == 1
+    prefs = db.get(UserNotificationSettings, user.id)
+    assert prefs is not None
+    assert prefs.channels == ["email"]
+
+
+def test_provision_notification_settings_telegram_native(db: Session) -> None:
+    user = User(
+        email=None,
+        telegram_user_id=701,
+        telegram_chat_id=701,
+        telegram_linked_at=datetime.now(UTC),
+    )
+    db.add(user)
+    db.flush()
+
+    provision_notification_settings(db, user.id)
+    db.flush()
+
+    prefs = db.get(UserNotificationSettings, user.id)
+    assert prefs is not None
+    assert prefs.channels == ["telegram"]
 
 
 def test_provision_mood_preferences(db: Session) -> None:

@@ -42,10 +42,18 @@ class TelegramNotifier(BaseNotifier):
 
         text = message.body.strip() or message.subject
         url = f"{TELEGRAM_API}/bot{self._bot_token}/sendMessage"
+        payload: dict[str, object] = {
+            "chat_id": recipient,
+            "text": text,
+            "disable_web_page_preview": True,
+        }
+        markup = (message.metadata or {}).get("telegram_reply_markup")
+        if isinstance(markup, dict):
+            payload["reply_markup"] = markup
         try:
             response = httpx.post(
                 url,
-                json={"chat_id": recipient, "text": text, "disable_web_page_preview": False},
+                json=payload,
                 timeout=30.0,
             )
             response.raise_for_status()
