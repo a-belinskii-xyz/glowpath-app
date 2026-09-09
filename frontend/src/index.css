@@ -143,23 +143,27 @@ html {
   --tg-content-safe-bottom: 0px;
 }
 
-html.is-telegram {
-  --chrome-bg-app: var(--tg-theme-bg-color, var(--chrome-bg-app));
-  --chrome-text-primary: var(--tg-theme-text-color, var(--chrome-text-primary));
-  --chrome-text-secondary: var(--tg-theme-hint-color, var(--chrome-text-secondary));
-  --chrome-surface: var(--tg-theme-secondary-bg-color, var(--chrome-surface));
-  --chrome-action-primary: var(--tg-theme-button-color, var(--chrome-action-primary));
-}
-
 html.is-telegram,
 html.is-telegram body {
   min-height: 100%;
+  min-height: 100dvh;
   min-height: var(--tg-viewport-stable-height, 100dvh);
   background: var(--chrome-bg-app);
+  color: var(--chrome-text-primary);
   overflow-x: clip;
+  color-scheme: inherit;
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] {
+  color-scheme: dark;
+}
+
+html.is-telegram[data-tg-color-scheme='light'] {
+  color-scheme: light;
 }
 
 html.is-telegram .app-root {
+  min-height: 100dvh;
   min-height: var(--tg-viewport-stable-height, 100dvh);
 }
 
@@ -270,6 +274,24 @@ html.is-telegram .app-header {
 html.is-telegram .month-recap-stage {
   padding: max(0.85rem, var(--tg-content-safe-top), var(--tg-safe-top))
     max(1rem, var(--tg-safe-right)) max(1rem, var(--tg-safe-bottom)) max(1rem, var(--tg-safe-left));
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .app-nav-link:hover {
+  background: color-mix(in oklab, var(--chrome-text-primary) 10%, transparent);
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .button-secondary:hover:not(:disabled),
+html.is-telegram[data-tg-color-scheme='dark'] .icon-button:hover:not(:disabled),
+html.is-telegram[data-tg-color-scheme='dark'] .entry-icon-button:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--chrome-text-primary) 10%, var(--chrome-surface));
+  color: var(--chrome-text-primary);
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .editor-drawer,
+html.is-telegram[data-tg-color-scheme='dark'] .confirm-dialog {
+  background: var(--chrome-surface-elevated);
+  border-color: var(--chrome-border-default);
+  box-shadow: var(--chrome-shadow-soft);
 }
 
 .app-root {
@@ -720,7 +742,7 @@ html.is-telegram .month-recap-stage {
 }
 
 .lead {
-  color: #4b5563;
+  color: var(--chrome-text-secondary);
   margin-bottom: 1.5rem;
 }
 
@@ -797,7 +819,9 @@ html.is-telegram .month-recap-stage {
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--chrome-border-strong);
   border-radius: var(--chrome-radius-control);
-  background: var(--chrome-surface);
+  background: var(--chrome-surface-inset);
+  color: var(--chrome-text-primary);
+  color-scheme: inherit;
 }
 
 .form-input:focus {
@@ -1415,7 +1439,7 @@ html.is-telegram .month-recap-stage {
 .profile-settings-panel {
   border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
-  border: 1px solid rgb(255 255 255 / 70%);
+  border: 1px solid var(--chrome-border-default);
   box-shadow: var(--chrome-shadow-soft);
   overflow: hidden;
   overflow-anchor: none;
@@ -1803,7 +1827,7 @@ code {
 .calendar-panel {
   margin-bottom: 1.75rem;
   padding: 0.85rem 1.15rem 1.25rem;
-  border: 1px solid rgb(255 255 255 / 70%);
+  border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
   box-shadow: var(--chrome-shadow-soft);
@@ -1820,8 +1844,8 @@ code {
   margin: 0 0 0.85rem;
   padding: 0.25rem;
   border-radius: var(--chrome-radius-pill);
-  background: rgb(255 255 255 / 55%);
-  border: 1px solid rgb(255 255 255 / 65%);
+  background: var(--chrome-surface-inset);
+  border: 1px solid var(--chrome-border-default);
 }
 
 .calendar-mode-toggle .button {
@@ -1916,12 +1940,12 @@ code {
 .month-calendar-day {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--chrome-text-primary);
   line-height: 1.2;
 }
 
 .month-calendar-cell-future .month-calendar-day {
-  color: #9ca3af;
+  color: var(--chrome-text-secondary);
 }
 
 .month-calendar-emojis {
@@ -1991,7 +2015,7 @@ code {
 .emotion-stats {
   margin-bottom: 1.75rem;
   padding: 1rem 1rem 1.15rem;
-  border: 1px solid rgb(255 255 255 / 70%);
+  border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
   box-shadow: var(--chrome-shadow-soft);
@@ -2028,7 +2052,7 @@ code {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--chrome-text-primary);
 }
 
 .emotion-stats-summary {
@@ -2052,7 +2076,7 @@ code {
 }
 
 .emotion-stats-comparison-similar {
-  color: #374151;
+  color: var(--chrome-text-primary);
 }
 
 .emotion-stats-comparison-muted {
@@ -2091,7 +2115,7 @@ code {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--chrome-text-primary);
 }
 
 .pattern-insights-empty {
@@ -2243,7 +2267,7 @@ code {
 .emotion-stats-empty-mood:focus-visible .emotion-stats-empty-cue {
   opacity: 1;
   transform: translateY(0);
-  color: #111827;
+  color: var(--chrome-text-primary);
 }
 
 .emotion-stats-empty-track {
@@ -2335,14 +2359,14 @@ code {
 
 .emotion-stats-bar-col-link:hover .emotion-stats-count,
 .emotion-stats-bar-col-link:focus-visible .emotion-stats-count {
-  color: #111827;
+  color: var(--chrome-text-primary);
 }
 
 .emotion-stats-count {
   min-height: 1.1rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--chrome-text-secondary);
   line-height: 1.1;
 }
 
@@ -2398,7 +2422,7 @@ code {
 .goal-week-stats {
   margin-bottom: 1.75rem;
   padding: 1rem 1rem 1.15rem;
-  border: 1px solid rgb(255 255 255 / 70%);
+  border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
   box-shadow: var(--chrome-shadow-soft);
@@ -2429,7 +2453,7 @@ code {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--chrome-text-primary);
 }
 
 .goal-week-stats-totals {
@@ -2488,7 +2512,7 @@ code {
   min-width: 0;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #111827;
+  color: var(--chrome-text-primary);
 }
 
 .goal-week-stats-icon {
@@ -2522,7 +2546,7 @@ code {
   flex-shrink: 0;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--chrome-text-secondary);
 }
 
 .goal-week-stats-track {
@@ -2587,7 +2611,7 @@ code {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--chrome-text-primary);
   text-align: center;
   line-height: 1.3;
   transition: opacity var(--motion-selection-duration) var(--motion-selection-easing);
@@ -2651,7 +2675,7 @@ code {
 .day-heading {
   margin: 0;
   font-size: 1rem;
-  color: #374151;
+  color: var(--chrome-text-secondary);
 }
 
 .day-section-footer {
@@ -2846,8 +2870,8 @@ code {
 }
 
 .entry-icon-button:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
-  color: #111827;
+  background: color-mix(in oklab, var(--chrome-surface-inset) 70%, var(--chrome-surface));
+  color: var(--chrome-text-primary);
   border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
   box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
@@ -3019,7 +3043,7 @@ code {
 .entry-overflow-trigger:hover,
 .entry-overflow-trigger[aria-expanded='true'] {
   background: var(--chrome-border-default);
-  color: #111827;
+  color: var(--chrome-text-primary);
 }
 
 .entry-overflow-menu {
@@ -4731,7 +4755,7 @@ code {
   border: 1px solid var(--chrome-border-strong);
   border-radius: 6px;
   background: var(--chrome-surface);
-  color: #374151;
+  color: var(--chrome-text-primary);
   font: inherit;
   font-size: 0.8rem;
   line-height: 1.2;
@@ -6627,8 +6651,8 @@ code {
 }
 
 .icon-button:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
-  color: #111827;
+  background: color-mix(in oklab, var(--chrome-surface-inset) 70%, var(--chrome-surface));
+  color: var(--chrome-text-primary);
   border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
 }
 
@@ -6654,7 +6678,7 @@ code {
 .icon-button-ghost:hover:not(:disabled),
 .icon-button-ghost[aria-expanded='true'] {
   background: var(--chrome-border-default);
-  color: #111827;
+  color: var(--chrome-text-primary);
 }
 
 .icon-button-danger {
@@ -6861,8 +6885,8 @@ code {
   gap: 0.35rem;
   padding: 0.2rem;
   border-radius: var(--chrome-radius-pill);
-  background: rgb(255 255 255 / 55%);
-  border: 1px solid rgb(255 255 255 / 65%);
+  background: var(--chrome-surface-glass);
+  border: 1px solid var(--chrome-border-default);
 }
 
 .month-control-main .icon-button {
@@ -7777,7 +7801,7 @@ code {
     gap: 0.15rem;
     padding: 0.35rem 0.4rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
     background: color-mix(in oklab, var(--chrome-surface) 88%, transparent);
-    border-top: 1px solid rgb(255 255 255 / 55%);
+    border-top: 1px solid var(--chrome-border-default);
     box-shadow: 0 -8px 28px rgb(15 23 42 / 8%);
     backdrop-filter: blur(18px) saturate(1.35);
     -webkit-backdrop-filter: blur(18px) saturate(1.35);
@@ -8930,6 +8954,7 @@ code {
   gap: 0.35rem;
   font-size: 1.15rem;
   font-weight: 700;
+  color: var(--chrome-text-primary);
 }
 
 .market-balance-unit {
