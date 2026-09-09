@@ -230,7 +230,8 @@ html.is-telegram .entry-save-row .button-secondary {
   display: none;
 }
 
-html.is-telegram.has-tg-main-button .entry-save-row {
+html.is-telegram.has-tg-main-button .entry-save-row,
+html.is-telegram.has-tg-main-button .entry-form-footer {
   display: none;
 }
 
@@ -238,13 +239,12 @@ html.is-telegram.has-tg-main-button .onboarding-actions .button:not(.button-seco
   display: none;
 }
 
-html.is-telegram.has-tg-main-button .entry-form-footer,
 html.is-telegram.has-tg-main-button .onboarding-sticky-bar {
   bottom: var(--tg-main-button-space, 0px);
 }
 
 html.is-telegram.has-tg-main-button .entry-journey {
-  padding-bottom: calc(4.5rem + var(--tg-safe-bottom) + var(--tg-main-button-space, 0px));
+  padding-bottom: calc(1.5rem + var(--tg-safe-bottom));
 }
 
 html.is-telegram.has-tg-main-button .onboarding-page {
@@ -6032,6 +6032,8 @@ code {
 }
 
 .mood-entry-form {
+  display: flex;
+  flex-direction: column;
   margin-top: 0.25rem;
   gap: 0;
 }
@@ -6343,6 +6345,7 @@ code {
 
 .entry-context-section {
   margin: 0;
+  min-inline-size: 0;
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-control);
@@ -6352,9 +6355,10 @@ code {
 }
 
 .entry-context-section-label {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.4rem;
+  margin: 0;
   padding: 0;
   font-size: 0.82rem;
   font-weight: 700;
@@ -6437,12 +6441,16 @@ code {
 
 .entry-form-footer {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  inset: auto 0 0 0;
   z-index: 40;
   display: grid;
-  gap: 0.75rem;
+  gap: 0.35rem;
+  width: auto;
+  height: auto;
+  max-height: none;
+  align-self: end;
+  justify-self: stretch;
+  pointer-events: none;
   padding: 0.85rem max(1rem, env(safe-area-inset-right))
     max(0.85rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   background:
@@ -6459,6 +6467,7 @@ code {
 .entry-form-footer > * {
   width: min(48rem, 100%);
   margin-inline: auto;
+  pointer-events: auto;
 }
 
 @media (min-width: 900px) {
@@ -6486,6 +6495,8 @@ code {
   align-items: center;
   justify-content: center;
   gap: 0.45rem 0.65rem;
+  margin: 0.85rem 0 0.25rem;
+  padding: 0.15rem 0;
   font-size: 0.8rem;
 }
 

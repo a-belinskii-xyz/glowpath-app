@@ -453,6 +453,7 @@ def test_favorite_toggle_and_list_filter(
     assert favorite.status_code == 201
     assert favorite.json()["is_favorite"] is False
     favorite_id = favorite.json()["id"]
+    original_updated_at = favorite.json()["updated_at"]
 
     plain = _create_entry(auth_client, token, note="skip")
     assert plain.status_code == 201
@@ -465,6 +466,7 @@ def test_favorite_toggle_and_list_filter(
     )
     assert patched.status_code == 200
     assert patched.json()["is_favorite"] is True
+    assert patched.json()["updated_at"] == original_updated_at
 
     favorites_only = auth_client.get(
         "/v1/mood-entries",
@@ -491,6 +493,7 @@ def test_favorite_toggle_and_list_filter(
     )
     assert cleared.status_code == 200
     assert cleared.json()["is_favorite"] is False
+    assert cleared.json()["updated_at"] == original_updated_at
 
 
 def test_list_filter_isolated_between_users(

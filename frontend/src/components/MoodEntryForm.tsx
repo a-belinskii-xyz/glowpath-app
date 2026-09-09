@@ -104,6 +104,7 @@ export function MoodEntryForm({
   const moodScoreOptions = getMoodScoreOptions(locale, scores)
   const templateSheetTitleId = useId()
   const contextSearchId = useId()
+  const frequentTagsHeadingId = useId()
   const noteSectionRef = useRef<HTMLElement>(null)
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set())
   const formRef = useRef<HTMLFormElement>(null)
@@ -510,18 +511,24 @@ export function MoodEntryForm({
 
   const renderTagGroup = (group: TagGroupPublic) => {
     const groupEmoji = emojiForGroupSlug(group.slug)
+    const labelId = `entry-tag-group-${group.id}`
     return (
-      <fieldset key={group.id} className="entry-context-section">
-        <legend className="entry-context-section-label">
+      <div
+        key={group.id}
+        className="entry-context-section"
+        role="group"
+        aria-labelledby={labelId}
+      >
+        <p id={labelId} className="entry-context-section-label">
           {groupEmoji ? (
             <span className="entry-context-section-emoji" aria-hidden="true">
               {groupEmoji}
             </span>
           ) : null}
           {group.label}
-        </legend>
+        </p>
         <div className="tag-chips">{group.tags.map(renderTagChip)}</div>
-      </fieldset>
+      </div>
     )
   }
 
@@ -530,15 +537,19 @@ export function MoodEntryForm({
       return null
     }
     return (
-      <fieldset className="entry-context-section entry-context-section-frequent">
-        <legend className="entry-context-section-label">
+      <div
+        className="entry-context-section entry-context-section-frequent"
+        role="group"
+        aria-labelledby={frequentTagsHeadingId}
+      >
+        <p id={frequentTagsHeadingId} className="entry-context-section-label">
           <span className="entry-context-section-emoji" aria-hidden="true">
             ⏱
           </span>
           {t('entries.frequentTagsThisWeek')}
-        </legend>
+        </p>
         <div className="tag-chips">{visibleFrequentTags.map(renderTagChip)}</div>
-      </fieldset>
+      </div>
     )
   }
 
@@ -1226,6 +1237,14 @@ export function MoodEntryForm({
         </div>
       ) : null}
 
+      <nav className="entry-configure" aria-label={t('entries.configure')}>
+        <Link to="/tags">{t('common.tags')}</Link>
+        <span aria-hidden="true">·</span>
+        <Link to="/goals">{t('common.goals')}</Link>
+        <span aria-hidden="true">·</span>
+        <Link to="/tracker-settings?tab=templates">{t('entries.templatesLink')}</Link>
+      </nav>
+
       <div className="entry-form-footer">
         <div className="button-row entry-save-row">
           <button
@@ -1266,13 +1285,6 @@ export function MoodEntryForm({
             {t('common.cancel')}
           </button>
         </div>
-        <nav className="entry-configure" aria-label={t('entries.configure')}>
-          <Link to="/tags">{t('common.tags')}</Link>
-          <span aria-hidden="true">·</span>
-          <Link to="/goals">{t('common.goals')}</Link>
-          <span aria-hidden="true">·</span>
-          <Link to="/tracker-settings?tab=templates">{t('entries.templatesLink')}</Link>
-        </nav>
       </div>
 
       {showTemplateSheet

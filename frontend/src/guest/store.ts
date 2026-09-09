@@ -712,6 +712,13 @@ export async function patchGuestMoodEntry(
     throw new Error('Entry not found')
   }
   const current = entries[index]
+  const contentChanged =
+    body.score !== undefined ||
+    body.recorded_at !== undefined ||
+    body.note !== undefined ||
+    body.tag_ids !== undefined ||
+    body.goal_ids !== undefined ||
+    body.goal_progress !== undefined
   const style = defaultMoodScoreStyle(body.score ?? current.score, locale)
   const tagsById = new Map<string, TagPublic>()
   for (const group of tagGroups) {
@@ -755,7 +762,7 @@ export async function patchGuestMoodEntry(
               }
             })
             .filter(Boolean) as MoodEntryPublic['goals']),
-    updated_at: nowIso(),
+    updated_at: contentChanged ? nowIso() : current.updated_at,
   }
   entries[index] = next
   await guestDbSet(KEYS.entries, entries)

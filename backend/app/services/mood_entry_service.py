@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import and_, case, exists, func, or_, select
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.config import settings
@@ -58,6 +59,10 @@ _LIKE_ESCAPE = "\\"
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_AUDIO_BYTES = 10 * 1024 * 1024
+# Favorite is metadata, not an edit; these fields still bump updated_at.
+_CONTENT_PATCH_FIELDS = frozenset(
+    {"score", "recorded_at", "note", "tag_ids", "goal_ids", "goal_progress"}
+)
 
 ALLOWED_PHOTO_MIME_TYPES = frozenset(
     {
@@ -990,7 +995,10 @@ def patch_mood_entry(
     locale: str = "en",
 ) -> tuple[MoodEntry, list[dict[str, Any]]]:
     entry = _get_owned_entry(db, user_id=user_id, entry_id=entry_id)
+    original_updated_at = entry.updated_at
     note_changed = "note" in fields
+    content_changed = bool(_CONTENT_PATCH_FIELDS.intersection(fields))
+    favorite_changed = False
 
     if "score" in fields and fields["score"] is not None:
         next_score = int(fields["score"])
@@ -1022,7 +1030,14 @@ def patch_mood_entry(
         )
         _replace_entry_goals(db, entry, goals, amounts)
     if "is_favorite" in fields and fields["is_favorite"] is not None:
-        entry.is_favorite = fields["is_favorite"]
+        next_favorite = bool(fields["is_favorite"])
+        favorite_changed = entry.is_favorite != next_favorite
+        entry.is_favorite = next_favorite
+
+    if favorite_changed and not content_changed:
+        # TimestampMixin.onupdate would otherwise treat favorite as an edit.
+        entry.updated_at = original_updated_at
+        flag_modified(entry, "updated_at")
 
     if note_changed:
         upsert_entry_embedding(db, entry)
