@@ -6,7 +6,7 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed seed-marketplace seed-achievements reindex-embeddings wallet
+.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed seed-marketplace seed-achievements reindex-embeddings wallet telegram-up telegram-down
 
 FRONTEND := frontend
 
@@ -62,6 +62,14 @@ up-no-cache:
 
 down:
 	docker compose down
+
+# Quick Cloudflare tunnels for local Telegram (bot :8081 + Vite :5173).
+# Patches backend/.env and recreates app + telegram-bot. Vite must already be running.
+telegram-up:
+	./scripts/dev-telegram-up.sh
+
+telegram-down:
+	./scripts/dev-telegram-up.sh --stop
 
 # Prod-shaped stack (nginx UI + API, no Vite / --reload). Uses .env.prod.
 # `--profile mail` starts MailHog for local email smoke; omit on a real VPS.

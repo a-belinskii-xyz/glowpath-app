@@ -309,7 +309,15 @@ For local Mini App testing you need a **second HTTPS tunnel to the frontend** (V
 
 #### 2. Expose localhost:8081 with a tunnel
 
-**cloudflared** (recommended; often works where ngrok needs a VPN):
+Recommended: Vite already running (`make frontend-dev`), then one command for both tunnels (bot `:8081` + Mini App `:5173`), `.env` patch, and container recreate:
+
+```bash
+make telegram-up     # stop later with make telegram-down
+```
+
+Quick tunnel URLs change every run — set BotFather **Menu Button / Main Mini App** to the printed Mini App URL. Restart Vite if it was already running so it picks up empty `VITE_API_BASE_URL`.
+
+**cloudflared** by hand (often works where ngrok needs a VPN):
 
 ```bash
 # Install (Ubuntu/WSL amd64)

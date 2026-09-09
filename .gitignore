@@ -226,3 +226,6 @@ frontend/dist-ssr/
 
 # UI review
 .ui-review/
+
+# Local helper state (trycloudflare pids/logs)
+.local/
