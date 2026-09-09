@@ -1,4 +1,5 @@
-import { moodSubtleFill } from '../design'
+import { moodChipStyle } from '../design'
+import { useColorScheme } from '../hooks/useColorScheme'
 import { useLocale } from '../context/LocaleContext'
 import type { MoodInsightPublic, MoodInsightsResponse } from '../types/mood'
 import { TagIcon } from './TagIcon'
@@ -78,6 +79,8 @@ function PatternInsightCard({
 }) {
   const tag = item.subjects.find((subject) => subject.type === 'tag' && subject.color)
   const accent = tag?.color ?? null
+  const colorScheme = useColorScheme()
+  const chip = tag?.color ? moodChipStyle(tag.color, colorScheme) : null
 
   return (
     <article
@@ -89,14 +92,11 @@ function PatternInsightCard({
       {tag?.color && tag.icon_type && tag.icon ? (
         <span
           className="pattern-insight-tag"
-          style={{
-            background: moodSubtleFill(tag.color),
-            color: tag.color,
-          }}
+          style={chip ?? undefined}
         >
           <TagIcon
             style={{
-              color: tag.color,
+              color: chip?.color ?? tag.color,
               icon_type: tag.icon_type,
               icon: tag.icon,
             }}

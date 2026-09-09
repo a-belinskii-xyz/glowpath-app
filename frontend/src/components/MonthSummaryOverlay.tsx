@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
+import { useColorScheme } from '../hooks/useColorScheme'
 import {
   buildGradientWash,
   motion,
@@ -36,6 +37,14 @@ const COVER_WASH: GradientRecipe = {
   orderPower: 1.12,
   angleDeg: 158,
   midStopMinColors: 3,
+  targetL: 1,
+}
+
+const COVER_WASH_DARK: GradientRecipe = {
+  ...COVER_WASH,
+  washStrength: 0.62,
+  chromaScale: 0.7,
+  targetL: 0.28,
 }
 
 type LitDay = {
@@ -333,6 +342,7 @@ export function MonthSummaryOverlay({
 }: MonthSummaryOverlayProps) {
   const { t, tp } = useLocale()
   const { getScoreColor, getScoreStyle } = useMoodPreferences()
+  const colorScheme = useColorScheme()
   const titleId = useId()
   const closeRef = useRef<HTMLButtonElement>(null)
   const openStatsRef = useRef<HTMLButtonElement>(null)
@@ -356,8 +366,10 @@ export function MonthSummaryOverlay({
   const featuredTags = (stats.tags ?? []).slice(0, 3)
   const coverWash = useMemo(() => {
     const colors = sampleColors(litDays)
-    return colors.length > 0 ? buildGradientWash(colors, COVER_WASH) : null
-  }, [litDays])
+    return colors.length > 0
+      ? buildGradientWash(colors, colorScheme === 'dark' ? COVER_WASH_DARK : COVER_WASH)
+      : null
+  }, [colorScheme, litDays])
   const auroraColors = useMemo(() => {
     const used = sampleColors(litDays, 4)
     const fallback = ['#60a5fa', '#34d399', '#94a3b8', '#f59e0b']

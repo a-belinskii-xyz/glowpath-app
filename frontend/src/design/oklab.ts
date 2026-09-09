@@ -57,16 +57,21 @@ export function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value))
 }
 
-/** Soft pastel wash: high lightness, reduced chroma. */
+/**
+ * Soft wash toward a surface lightness.
+ * `targetL` 1 = pastel on light chrome; ~0.22 = tinted dark surface.
+ */
 export function washOklab(
   color: Oklab,
   washStrength: number,
   chromaScale: number,
+  targetL = 1,
 ): Oklab {
   const t = clamp01(washStrength)
   const chroma = Math.max(0, chromaScale)
+  const target = clamp01(targetL)
   return {
-    L: color.L + (1 - color.L) * t,
+    L: color.L + (target - color.L) * t,
     a: color.a * chroma * (1 - t * 0.35),
     b: color.b * chroma * (1 - t * 0.35),
   }

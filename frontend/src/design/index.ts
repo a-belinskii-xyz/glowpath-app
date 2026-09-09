@@ -7,9 +7,11 @@
 
 export { chrome, chromeCssVars, type ChromeTokens } from './chrome'
 export { motion, motionCssVars, motionCss, type MotionTokens } from './motion'
+export { getColorScheme, subscribeColorScheme, type ColorScheme } from './colorScheme'
 export {
   buildMoodTheme,
   impactToGlowLevel,
+  moodChipStyle,
   moodGlowBoxShadow,
   moodGlowFilter,
   moodGlowForImpact,
@@ -17,11 +19,13 @@ export {
   GLOW_LEVELS,
   type BuildMoodThemeOptions,
   type GlowLevel,
+  type MoodChipStyle,
   type MoodIntensity,
   type MoodSurfaceStep,
   type MoodTheme,
 } from './moodTheme'
 export {
+  dayWashRecipe,
   gradientRecipes,
   type GradientRecipe,
   type GradientRecipeName,

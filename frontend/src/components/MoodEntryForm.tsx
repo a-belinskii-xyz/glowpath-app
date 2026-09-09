@@ -27,7 +27,8 @@ import { useAuth } from '../context/AuthContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
-import { moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
+import { moodChipStyle, moodGlowBoxShadow, moodGlowFilter, moodSubtleFill } from '../design'
+import { useColorScheme } from '../hooks/useColorScheme'
 import {
   companionDaypartForHour,
   companionLine,
@@ -98,6 +99,7 @@ export function MoodEntryForm({
   const { user } = useAuth()
   const { locale, t } = useLocale()
   const { scores } = useMoodPreferences()
+  const colorScheme = useColorScheme()
   const timeZone = user?.timezone ?? 'UTC'
   const moodScoreOptions = getMoodScoreOptions(locale, scores)
   const templateSheetTitleId = useId()
@@ -475,6 +477,7 @@ export function MoodEntryForm({
 
   const renderTagChip = (tag: TagPublic) => {
     const selected = selectedTagIds.includes(tag.id)
+    const chip = moodChipStyle(tag.color, colorScheme)
     return (
       <button
         key={tag.id}
@@ -483,9 +486,9 @@ export function MoodEntryForm({
         style={
           selected
             ? {
-                background: moodSubtleFill(tag.color),
+                background: chip.background,
                 borderColor: tag.color,
-                color: tag.color,
+                color: chip.color,
               }
             : undefined
         }
@@ -494,7 +497,7 @@ export function MoodEntryForm({
       >
         <TagIcon
           style={{
-            color: tag.color,
+            color: selected ? chip.color : tag.color,
             icon_type: tag.icon_type,
             icon: tag.icon,
           }}
@@ -894,8 +897,8 @@ export function MoodEntryForm({
                   style={{
                     ['--mood-picker-color' as string]: option.color,
                     borderColor: isSelected ? option.color : undefined,
-                    background: isSelected ? moodSubtleFill(option.color) : undefined,
-                    boxShadow: isSelected ? moodGlowBoxShadow(option.color, 'sm') : undefined,
+                    background: isSelected ? moodSubtleFill(option.color, 'moderate', colorScheme) : undefined,
+                    boxShadow: isSelected ? moodGlowBoxShadow(option.color, 'sm', 'moderate', colorScheme) : undefined,
                   }}
                   onClick={() => pickMood(option.score)}
                   aria-pressed={isSelected}

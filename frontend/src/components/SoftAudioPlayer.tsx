@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { useLocale } from '../context/LocaleContext'
-import { buildMoodTheme } from '../design'
+import { buildMoodTheme, type ColorScheme } from '../design'
+import { useColorScheme } from '../hooks/useColorScheme'
 import { formatAudioClock } from '../lib/audioRecorder'
 
 type SoftAudioPlayerProps = {
@@ -24,8 +25,8 @@ type SoftAudioTheme = {
 const FALLBACK_ACCENT = '#60a5fa'
 
 /** Maps Mood Theme Builder tokens onto the audio player CSS vars. */
-function softAudioTheme(hex?: string): SoftAudioTheme {
-  const theme = buildMoodTheme(hex || FALLBACK_ACCENT, { fallback: FALLBACK_ACCENT })
+function softAudioTheme(hex: string | undefined, scheme: ColorScheme): SoftAudioTheme {
+  const theme = buildMoodTheme(hex || FALLBACK_ACCENT, { fallback: FALLBACK_ACCENT, scheme })
   return {
     '--audio-surface': theme.cssVars['--mood-surface'],
     '--audio-surface-edge': theme.cssVars['--mood-surface-edge'],
@@ -61,6 +62,7 @@ export function SoftAudioPlayer({
   children,
 }: SoftAudioPlayerProps) {
   const { t } = useLocale()
+  const colorScheme = useColorScheme()
   const progressId = useId()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -73,7 +75,7 @@ export function SoftAudioPlayer({
     setDuration(0)
   }, [src])
 
-  const theme = softAudioTheme(accentColor)
+  const theme = softAudioTheme(accentColor, colorScheme)
   const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0
 
   const togglePlayback = () => {

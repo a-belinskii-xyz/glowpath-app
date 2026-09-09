@@ -47,7 +47,9 @@ export function buildGradientWash(
   for (const hex of hexColorsChronological) {
     const lab = hexToOklab(hex)
     if (lab) {
-      washed.push(washOklab(lab, params.washStrength, params.chromaScale))
+      washed.push(
+        washOklab(lab, params.washStrength, params.chromaScale, params.targetL ?? 1),
+      )
     }
   }
   if (washed.length === 0) {

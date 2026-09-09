@@ -20,7 +20,8 @@ import { hasAppAccess } from '../lib/authAccess'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
-import { moodGlowFilter, moodSubtleFill } from '../design'
+import { moodChipStyle, moodGlowFilter } from '../design'
+import { useColorScheme } from '../hooks/useColorScheme'
 import { intlLocale } from '../i18n/t'
 import { ApiError, formatApiError } from '../lib/errors'
 import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/datetime'
@@ -38,6 +39,7 @@ export function EntryDetailPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
   const { scores } = useMoodPreferences()
+  const colorScheme = useColorScheme()
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
 
@@ -286,18 +288,17 @@ export function EntryDetailPage() {
             <div className="entry-detail-block entry-detail-footer">
               {entry.tags.length > 0 ? (
                 <div className="entry-tags">
-                  {entry.tags.map((tag) => (
+                  {entry.tags.map((tag) => {
+                    const chip = moodChipStyle(tag.color, colorScheme)
+                    return (
                     <span
                       key={tag.id}
                       className="entry-tag"
-                      style={{
-                        background: moodSubtleFill(tag.color),
-                        color: tag.color,
-                      }}
+                      style={chip}
                     >
                       <TagIcon
                         style={{
-                          color: tag.color,
+                          color: chip.color,
                           icon_type: tag.icon_type,
                           icon: tag.icon,
                         }}
@@ -305,17 +306,20 @@ export function EntryDetailPage() {
                       />
                       {tag.label}
                     </span>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : null}
 
               {entry.goals.length > 0 ? (
                 <div className="entry-tags entry-goals">
-                  {entry.goals.map((goal) => (
-                    <span key={goal.id} className="entry-tag entry-goal">
+                  {entry.goals.map((goal) => {
+                    const chip = moodChipStyle(goal.color, colorScheme)
+                    return (
+                    <span key={goal.id} className="entry-tag entry-goal" style={chip}>
                       <GoalIcon
                         style={{
-                          color: goal.color,
+                          color: chip.color,
                           icon_type: goal.icon_type,
                           icon: goal.icon,
                         }}
@@ -323,7 +327,8 @@ export function EntryDetailPage() {
                       />
                       {goal.label}
                     </span>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : null}
 

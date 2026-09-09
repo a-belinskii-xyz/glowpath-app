@@ -5,6 +5,7 @@
  * and CSS vars so components never re-implement wash / glow / audio tint.
  */
 
+import { getColorScheme, type ColorScheme } from './colorScheme'
 import {
   clamp01,
   hexToOklab,
@@ -22,20 +23,30 @@ export type GlowLevel = 'xs' | 'sm' | 'md' | 'lg'
 /** Surface steps — Tailwind-like scale generated from one mood color. */
 export type MoodSurfaceStep = 50 | 100 | 200 | 300
 
-type WashStep = { washStrength: number; chromaScale: number }
+type WashStep = { washStrength: number; chromaScale: number; targetL?: number }
 
 /**
  * Base wash steps before intensity adjustment.
  * Tuned to match historical day / audio / week-strip looks.
  */
 const SURFACE_STEPS: Record<MoodSurfaceStep, WashStep> = {
-  50: { washStrength: 0.9, chromaScale: 0.42 },
-  100: { washStrength: 0.82, chromaScale: 0.48 },
-  200: { washStrength: 0.78, chromaScale: 0.55 },
-  300: { washStrength: 0.55, chromaScale: 0.72 },
+  50: { washStrength: 0.9, chromaScale: 0.42, targetL: 1 },
+  100: { washStrength: 0.82, chromaScale: 0.48, targetL: 1 },
+  200: { washStrength: 0.78, chromaScale: 0.55, targetL: 1 },
+  300: { washStrength: 0.55, chromaScale: 0.72, targetL: 1 },
 }
 
-const ACCENT_STEP: WashStep = { washStrength: 0.22, chromaScale: 0.92 }
+const ACCENT_STEP: WashStep = { washStrength: 0.22, chromaScale: 0.92, targetL: 1 }
+
+/** Dark chrome: stay in dusk range so washes read as tint, not pastel paper. */
+const DARK_SURFACE_STEPS: Record<MoodSurfaceStep, WashStep> = {
+  50: { washStrength: 0.9, chromaScale: 0.32, targetL: 0.18 },
+  100: { washStrength: 0.84, chromaScale: 0.4, targetL: 0.22 },
+  200: { washStrength: 0.76, chromaScale: 0.48, targetL: 0.26 },
+  300: { washStrength: 0.68, chromaScale: 0.56, targetL: 0.3 },
+}
+
+const DARK_ACCENT_STEP: WashStep = { washStrength: 0.32, chromaScale: 0.88, targetL: 0.76 }
 
 const INTENSITY: Record<
   MoodIntensity,
@@ -67,6 +78,7 @@ const FALLBACK_HEX = '#60a5fa'
 export type MoodTheme = {
   raw: string
   intensity: MoodIntensity
+  scheme: ColorScheme
 
   /** Alias of surface100 — default soft wash. */
   wash: string
@@ -79,7 +91,7 @@ export type MoodTheme = {
   accent: string
   /** Soft outline / focus tint (~35% alpha). */
   outline: string
-  /** Selected fill (~10% alpha), e.g. score picker. */
+  /** Selected fill (~10% alpha on light; opaque dusk wash on dark). */
   subtle: string
   /** Soft colored elevation shadow. */
   shadow: string
@@ -109,6 +121,7 @@ export type MoodTheme = {
 
 export type BuildMoodThemeOptions = {
   intensity?: MoodIntensity
+  scheme?: ColorScheme
   /** Fallback when hex is invalid. */
   fallback?: string
 }
@@ -118,12 +131,42 @@ function applyIntensity(step: WashStep, intensity: MoodIntensity): WashStep {
   return {
     washStrength: Math.min(1, Math.max(0, step.washStrength + adj.washDelta)),
     chromaScale: Math.max(0, step.chromaScale * adj.chromaScale),
+    targetL: step.targetL,
   }
 }
 
 function washHex(lab: Oklab, step: WashStep, intensity: MoodIntensity): string {
   const tuned = applyIntensity(step, intensity)
-  return oklabToHex(washOklab(lab, tuned.washStrength, tuned.chromaScale))
+  return oklabToHex(washOklab(lab, tuned.washStrength, tuned.chromaScale, step.targetL ?? 1))
+}
+
+function inkForScheme(lab: Oklab, scheme: ColorScheme): { text: string; muted: string } {
+  if (scheme === 'dark') {
+    return {
+      text: oklabToHex({
+        L: Math.max(0.78, Math.min(0.92, 0.8 + lab.L * 0.1)),
+        a: lab.a * 0.42,
+        b: lab.b * 0.42,
+      }),
+      muted: oklabToHex({
+        L: 0.7,
+        a: lab.a * 0.28,
+        b: lab.b * 0.28,
+      }),
+    }
+  }
+  return {
+    text: oklabToHex({
+      L: Math.min(0.42, lab.L * 0.55),
+      a: lab.a * 0.55,
+      b: lab.b * 0.55,
+    }),
+    muted: oklabToHex({
+      L: Math.min(0.58, lab.L * 0.7 + 0.12),
+      a: lab.a * 0.28,
+      b: lab.b * 0.28,
+    }),
+  }
 }
 
 function scaledGlowAlpha(baseAlpha: number, intensity: MoodIntensity): number {
@@ -175,8 +218,13 @@ export function impactToGlowLevel(impact: number): GlowLevel | null {
 
 const themeCache = new Map<string, MoodTheme>()
 
-function themeCacheKey(hex: string, intensity: MoodIntensity, fallback: string): string {
-  return `${hex.trim()}|${intensity}|${fallback}`
+function themeCacheKey(
+  hex: string,
+  intensity: MoodIntensity,
+  fallback: string,
+  scheme: ColorScheme,
+): string {
+  return `${hex.trim()}|${intensity}|${fallback}|${scheme}`
 }
 
 /**
@@ -189,31 +237,30 @@ export function buildMoodTheme(
 ): MoodTheme {
   const intensity = options.intensity ?? 'moderate'
   const fallback = options.fallback ?? FALLBACK_HEX
-  const cacheKey = themeCacheKey(hex, intensity, fallback)
+  const scheme = options.scheme ?? getColorScheme()
+  const cacheKey = themeCacheKey(hex, intensity, fallback, scheme)
   const cached = themeCache.get(cacheKey)
   if (cached) {
     return cached
   }
   const raw = hexToOklab(hex) ? hex.trim() : fallback
   const lab = hexToOklab(raw) ?? hexToOklab(fallback)!
+  const surfaces = scheme === 'dark' ? DARK_SURFACE_STEPS : SURFACE_STEPS
+  const accentStep = scheme === 'dark' ? DARK_ACCENT_STEP : ACCENT_STEP
 
-  const surface50 = washHex(lab, SURFACE_STEPS[50], intensity)
-  const surface100 = washHex(lab, SURFACE_STEPS[100], intensity)
-  const surface200 = washHex(lab, SURFACE_STEPS[200], intensity)
-  const surface300 = washHex(lab, SURFACE_STEPS[300], intensity)
-  const accent = washHex(lab, ACCENT_STEP, intensity)
-
-  const text = oklabToHex({
-    L: Math.min(0.42, lab.L * 0.55),
-    a: lab.a * 0.55,
-    b: lab.b * 0.55,
-  })
-  const muted = oklabToHex({
-    L: Math.min(0.58, lab.L * 0.7 + 0.12),
-    a: lab.a * 0.28,
-    b: lab.b * 0.28,
-  })
-  const track = washHex(lab, { washStrength: 0.86, chromaScale: 0.28 }, intensity)
+  const surface50 = washHex(lab, surfaces[50], intensity)
+  const surface100 = washHex(lab, surfaces[100], intensity)
+  const surface200 = washHex(lab, surfaces[200], intensity)
+  const surface300 = washHex(lab, surfaces[300], intensity)
+  const accent = washHex(lab, accentStep, intensity)
+  const { text, muted } = inkForScheme(lab, scheme)
+  const track = washHex(
+    lab,
+    scheme === 'dark'
+      ? { washStrength: 0.82, chromaScale: 0.22, targetL: 0.2 }
+      : { washStrength: 0.86, chromaScale: 0.28, targetL: 1 },
+    intensity,
+  )
 
   const glow = buildGlowFilters(raw, intensity)
   const glowBox = buildGlowBoxShadows(raw, intensity)
@@ -221,14 +268,15 @@ export function buildMoodTheme(
   const theme: MoodTheme = {
     raw,
     intensity,
+    scheme,
     wash: surface100,
     surface50,
     surface100,
     surface200,
     surface300,
     accent,
-    outline: withHexAlpha(raw, 0x59),
-    subtle: withHexAlpha(raw, 0x1a),
+    outline: withHexAlpha(raw, scheme === 'dark' ? 0x73 : 0x59),
+    subtle: scheme === 'dark' ? surface200 : withHexAlpha(raw, 0x1a),
     shadow: softShadow(accent),
     text,
     muted,
@@ -254,8 +302,9 @@ export function moodGlowFilter(
   hex: string,
   level: GlowLevel = 'sm',
   intensity: MoodIntensity = 'moderate',
+  scheme?: ColorScheme,
 ): string {
-  return buildMoodTheme(hex, { intensity }).glow[level]
+  return buildMoodTheme(hex, { intensity, scheme }).glow[level]
 }
 
 /**
@@ -266,8 +315,9 @@ export function moodGlowBoxShadow(
   hex: string,
   level: GlowLevel = 'sm',
   intensity: MoodIntensity = 'moderate',
+  scheme?: ColorScheme,
 ): string {
-  return buildMoodTheme(hex, { intensity }).glowBox[level]
+  return buildMoodTheme(hex, { intensity, scheme }).glowBox[level]
 }
 
 /**
@@ -278,12 +328,13 @@ export function moodGlowForImpact(
   hex: string,
   impact: number,
   intensity: MoodIntensity = 'moderate',
+  scheme?: ColorScheme,
 ): { filter: string; boxShadow: string; level: GlowLevel } | undefined {
   const level = impactToGlowLevel(impact)
   if (!level) {
     return undefined
   }
-  const theme = buildMoodTheme(hex, { intensity })
+  const theme = buildMoodTheme(hex, { intensity, scheme })
   return {
     level,
     filter: theme.glow[level],
@@ -291,7 +342,25 @@ export function moodGlowForImpact(
   }
 }
 
-/** Selected-option tint (`${color}1a` historically). */
-export function moodSubtleFill(hex: string, intensity: MoodIntensity = 'moderate'): string {
-  return buildMoodTheme(hex, { intensity }).subtle
+/** Selected-option tint (`${color}1a` historically; opaque dusk wash in dark). */
+export function moodSubtleFill(
+  hex: string,
+  intensity: MoodIntensity = 'moderate',
+  scheme?: ColorScheme,
+): string {
+  return buildMoodTheme(hex, { intensity, scheme }).subtle
+}
+
+export type MoodChipStyle = {
+  background: string
+  color: string
+}
+
+/** Tag/goal chip fill + readable ink for the active chrome scheme. */
+export function moodChipStyle(hex: string, scheme?: ColorScheme): MoodChipStyle {
+  const theme = buildMoodTheme(hex, { scheme })
+  return {
+    background: theme.subtle,
+    color: theme.scheme === 'dark' ? theme.text : theme.raw,
+  }
 }

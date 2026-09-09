@@ -17,6 +17,7 @@ import { MonthCalendar, type CalendarMode } from '../components/MonthCalendar'
 import { MonthControl } from '../components/MonthControl'
 import { MonthSummaryOverlay } from '../components/MonthSummaryOverlay'
 import { StreakBadge } from '../components/StreakBadge'
+import { useColorScheme } from '../hooks/useColorScheme'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useAuth } from '../context/AuthContext'
 import { hasAppAccess } from '../lib/authAccess'
@@ -48,7 +49,7 @@ import {
 } from '../lib/datetime'
 import { ApiError, formatApiError } from '../lib/errors'
 import { canUseDiaryFeatures } from '../lib/guestMode'
-import { buildGradientWashFromScores, motion } from '../design'
+import { buildGradientWashFromScores, dayWashRecipe, motion } from '../design'
 import { useScrollAmbientGlow } from '../hooks/useScrollAmbientGlow'
 import { entryMoodColor } from '../lib/moodScale'
 import type { GoalCalendarDayPublic, GoalPeriodStatPublic, GoalPublic } from '../types/goal'
@@ -82,6 +83,7 @@ export function EntriesPage() {
   const diaryAccess = canUseDiaryFeatures(user)
   const { locale, t } = useLocale()
   const { scores, showStreak } = useMoodPreferences()
+  const colorScheme = useColorScheme()
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1175,8 +1177,10 @@ export function EntriesPage() {
       ) : (
       <div className="entry-feed">
         {groupedEntries.map(([key, dayEntries]) => {
-          const dayWash = buildGradientWashFromScores(dayEntries, (_score, entry) =>
-            entryMoodColor(entry, scores),
+          const dayWash = buildGradientWashFromScores(
+            dayEntries,
+            (_score, entry) => entryMoodColor(entry, scores),
+            dayWashRecipe(colorScheme),
           )
           return (
             <section

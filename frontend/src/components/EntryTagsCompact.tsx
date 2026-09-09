@@ -1,4 +1,5 @@
-import { moodSubtleFill } from '../design'
+import { moodChipStyle } from '../design'
+import { useColorScheme } from '../hooks/useColorScheme'
 import type { MoodEntryGoal, MoodEntryTag } from '../types/mood'
 import { GoalIcon } from './GoalIcon'
 import { TagIcon } from './TagIcon'
@@ -16,26 +17,25 @@ function CompactChips({
   items: MoodEntryTag[] | MoodEntryGoal[]
   kind: 'tag' | 'goal'
 }) {
+  const colorScheme = useColorScheme()
   return (
     <>
-      {items.map((item) => (
+      {items.map((item) => {
+        const chip = moodChipStyle(item.color, colorScheme)
+        return (
         <span
           key={item.id}
           className={`entry-tag entry-tag-compact${kind === 'goal' ? ' entry-goal' : ''}`}
-          style={
-            kind === 'tag'
-              ? { background: moodSubtleFill(item.color), color: item.color }
-              : undefined
-          }
+          style={chip}
         >
           {kind === 'tag' ? (
             <TagIcon
-              style={{ color: item.color, icon_type: item.icon_type, icon: item.icon }}
+              style={{ color: chip.color, icon_type: item.icon_type, icon: item.icon }}
               className="entry-tag-icon"
             />
           ) : (
             <GoalIcon
-              style={{ color: item.color, icon_type: item.icon_type, icon: item.icon }}
+              style={{ color: chip.color, icon_type: item.icon_type, icon: item.icon }}
               className="entry-goal-icon"
             />
           )}
@@ -46,7 +46,8 @@ function CompactChips({
               : ''}
           </span>
         </span>
-      ))}
+        )
+      })}
     </>
   )
 }

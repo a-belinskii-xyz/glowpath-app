@@ -287,6 +287,56 @@ html.is-telegram[data-tg-color-scheme='dark'] .entry-icon-button:hover:not(:disa
   color: var(--chrome-text-primary);
 }
 
+html.is-telegram[data-tg-color-scheme='dark'] .entry-row:hover {
+  background: color-mix(in oklab, var(--chrome-text-primary) 8%, var(--chrome-surface));
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .markdown-note blockquote {
+  color: var(--chrome-text-secondary);
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .day-section {
+  border-color: color-mix(in oklab, var(--chrome-text-primary) 12%, transparent);
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .entry-tag {
+  background: color-mix(in oklab, var(--chrome-action-primary) 18%, var(--chrome-surface));
+  color: color-mix(in oklab, var(--chrome-action-primary) 40%, white);
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .entry-goal {
+  background: color-mix(in oklab, var(--chrome-action-success) 20%, var(--chrome-surface));
+  color: color-mix(in oklab, var(--chrome-action-success) 45%, white);
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .entry-overflow-item {
+  color: var(--chrome-text-primary);
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .entry-overflow-item-danger {
+  color: #fca5a5;
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .entry-overflow-item-danger:hover {
+  background: color-mix(in oklab, #b91c1c 22%, var(--chrome-surface));
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .entry-audio-badge {
+  background: color-mix(in oklab, var(--chrome-border-default) 70%, var(--chrome-surface));
+}
+
+html.is-telegram[data-tg-color-scheme='dark'] .entry-audio-player {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in oklab, var(--audio-surface) 88%, var(--chrome-surface)) 0%,
+      var(--audio-surface) 55%,
+      color-mix(in oklab, var(--audio-surface-edge) 70%, var(--chrome-bg-app)) 100%
+    );
+  border: 1px solid color-mix(in oklab, var(--audio-surface-edge) 40%, var(--chrome-border-default));
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--chrome-text-primary) 8%, transparent);
+}
+
 html.is-telegram[data-tg-color-scheme='dark'] .editor-drawer,
 html.is-telegram[data-tg-color-scheme='dark'] .confirm-dialog {
   background: var(--chrome-surface-elevated);
@@ -2941,7 +2991,7 @@ code {
 
 .entry-detail-note {
   margin: 0;
-  color: #374151;
+  color: var(--chrome-text-secondary);
 }
 
 .entry-score {
@@ -3095,7 +3145,7 @@ code {
 
 .entry-note {
   margin: 0;
-  color: #374151;
+  color: var(--chrome-text-secondary);
 }
 
 .entry-tags {

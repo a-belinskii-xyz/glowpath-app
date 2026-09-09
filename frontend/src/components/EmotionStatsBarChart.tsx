@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { buildMoodTheme, moodGlowForImpact } from '../design'
+import { useColorScheme } from '../hooks/useColorScheme'
 import type { MoodEntryStatsResponse, MoodMonthComparisonPublic } from '../types/mood'
 import { MoodScoreIcon } from './MoodScoreIcon'
 
@@ -55,6 +56,7 @@ export function EmotionStatsBarChart({
 }: EmotionStatsBarChartProps) {
   const { t, tp } = useLocale()
   const { getScoreColor, getScoreStyle } = useMoodPreferences()
+  const colorScheme = useColorScheme()
   const { scores, total_entries: totalEntries, month_index: monthIndex, comparison } = stats
   const maxCount = Math.max(1, ...scores.map((item) => item.count))
   const currentLabel = formatIndex(comparison.current_index ?? monthIndex)
@@ -99,8 +101,8 @@ export function EmotionStatsBarChart({
               {scores.map((item, index) => {
                 const scoreStyle = getScoreStyle(item.score)
                 const color = getScoreColor(item.score)
-                const theme = buildMoodTheme(color)
-                const previewGlow = moodGlowForImpact(color, 0.28)
+                const theme = buildMoodTheme(color, { scheme: colorScheme })
+                const previewGlow = moodGlowForImpact(color, 0.28, 'moderate', colorScheme)
 
                 return (
                   <Link
@@ -174,9 +176,9 @@ export function EmotionStatsBarChart({
               const heightPercent = (item.count / maxCount) * 100
               const scoreStyle = getScoreStyle(item.score)
               const color = getScoreColor(item.score)
-              const theme = buildMoodTheme(color)
+              const theme = buildMoodTheme(color, { scheme: colorScheme })
               const impact = item.count / totalEntries
-              const glow = moodGlowForImpact(color, impact)
+              const glow = moodGlowForImpact(color, impact, 'moderate', colorScheme)
               const columnStyle = {
                 ['--emotion-empty-bar' as string]: theme.chart,
                 ['--emotion-empty-wash' as string]: theme.wash,
