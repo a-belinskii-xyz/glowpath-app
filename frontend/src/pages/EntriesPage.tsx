@@ -1165,6 +1165,7 @@ export function EntriesPage() {
                     <EntryRow
                       entry={entry}
                       timeLabel={`${formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ${formatTime(entry.recorded_at, timeZone, dateLocale)}`}
+                      timeZone={timeZone}
                       onDelete={handleDelete}
                       onToggleFavorite={handleToggleFavorite}
                     />
@@ -1198,6 +1199,7 @@ export function EntriesPage() {
                     <EntryRow
                       entry={entry}
                       timeLabel={formatTime(entry.recorded_at, timeZone, dateLocale)}
+                      timeZone={timeZone}
                       onDelete={handleDelete}
                       onToggleFavorite={handleToggleFavorite}
                     />

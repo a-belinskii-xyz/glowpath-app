@@ -27,6 +27,13 @@ export const motion = {
     durationMs: 120,
     easing: 'ease',
   },
+  /** Vertical entry reader: snap between notes. */
+  pager: {
+    durationMs: 340,
+    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    /** Ignore a new wheel/swipe commit for this long after a snap. */
+    lockMs: 420,
+  },
   /** Ambient shell glow color crossfade while scrolling moods. */
   ambient: {
     durationMs: 1100,

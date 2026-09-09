@@ -192,6 +192,26 @@ html.is-telegram .app-shell .app-main {
   min-width: 0;
 }
 
+html.is-telegram .app-shell--sidebar .app-main:has(.page-entry-reader) {
+  padding: 0;
+}
+
+html.is-telegram .page-entry-reader {
+  height: var(--tg-viewport-stable-height, 100dvh);
+}
+
+html.is-telegram .entry-reader-chrome {
+  padding-top: max(0.35rem, var(--tg-content-safe-top));
+  padding-left: max(0.55rem, var(--tg-safe-left));
+  padding-right: max(0.55rem, var(--tg-safe-right));
+}
+
+html.is-telegram .entry-reader-slide {
+  padding-left: max(0.85rem, var(--tg-safe-left));
+  padding-right: max(0.85rem, var(--tg-safe-right));
+  padding-bottom: max(1.25rem, var(--tg-safe-bottom));
+}
+
 html.is-telegram .app-shell:has(> .app-header) .app-main {
   padding-top: 0.55rem;
 }
@@ -534,6 +554,11 @@ html.is-telegram[data-tg-color-scheme='dark'] .confirm-dialog {
   flex: 1;
 }
 
+.app-shell--sidebar .app-main:has(.page-entry-reader) {
+  padding: 0;
+  min-height: 0;
+}
+
 @media (min-width: 900px) {
   .app-shell--sidebar {
     display: grid;
@@ -541,6 +566,11 @@ html.is-telegram[data-tg-color-scheme='dark'] .confirm-dialog {
     align-items: start;
     gap: 1rem;
     padding: 1.1rem;
+  }
+
+  .app-shell--sidebar .app-main:has(.page-entry-reader) {
+    height: calc(100vh - 2.2rem);
+    align-self: stretch;
   }
 
   .app-sidebar {
@@ -2969,8 +2999,27 @@ code {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
   font-size: 2.5rem;
   line-height: 1;
+}
+
+.entry-detail-emoji-glow {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.mood-score-icon-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 1.05rem;
+  min-height: 1.05rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--chrome-border-default) 70%, transparent);
 }
 
 .entry-detail-heading {
@@ -4716,6 +4765,11 @@ code {
   width: 2.5rem;
   height: 2.5rem;
   object-fit: contain;
+}
+
+.entry-detail-emoji .mood-score-icon-placeholder {
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .entry-detail-emoji.mood-score-icon-upload img {
@@ -6975,6 +7029,153 @@ code {
   max-width: min(64rem, 100%);
 }
 
+.page-entry-reader {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  height: 100%;
+  min-height: 28rem;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.entry-reader-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.55rem 0.45rem;
+  min-height: 2.75rem;
+  background: color-mix(in oklab, var(--chrome-bg-app) 78%, transparent);
+}
+
+.entry-reader-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.entry-reader-chrome-spacer {
+  width: 2.25rem;
+  flex-shrink: 0;
+}
+
+.entry-reader-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.entry-reader-viewport {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.entry-reader-edge-hint {
+  position: absolute;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--chrome-radius-pill);
+  background: color-mix(in oklab, var(--chrome-surface) 88%, transparent);
+  border: 1px solid var(--chrome-border-default);
+  color: var(--chrome-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 180ms var(--motion-reveal-easing);
+}
+
+.entry-reader-edge-hint.is-visible {
+  opacity: 1;
+}
+
+.entry-reader-edge-hint.is-start {
+  top: 0.75rem;
+}
+
+.entry-reader-edge-hint.is-end {
+  bottom: 0.85rem;
+}
+
+.entry-reader-edge-hint svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.entry-reader-track {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.entry-reader-track.is-snapping {
+  transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-reader-track.is-snapping {
+    transition: none;
+  }
+}
+
+.entry-reader-slide {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0.85rem 1.25rem;
+}
+
+.entry-reader-slide.is-prev {
+  transform: translateY(-100%);
+}
+
+.entry-reader-slide.is-next {
+  transform: translateY(100%);
+}
+
+.entry-reader-slide-body {
+  max-width: min(40rem, 100%);
+  margin: 0 auto;
+  padding-bottom: 2rem;
+}
+
+.entry-reader-slide-body .pattern-insights {
+  margin-top: 0.35rem;
+}
+
+.entry-reader-desktop-nav {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transform: translateY(-50%);
+}
+
+.entry-reader-stage:has(.entry-reader-desktop-nav) .entry-reader-slide {
+  padding-right: 3.6rem;
+}
+
+.page-entry-reader .entry-detail {
+  padding: 0.65rem;
+}
+
 .page-entry-detail .entry-audio-player {
   max-width: min(22rem, 100%);
 }
@@ -7474,6 +7675,16 @@ code {
 
   .app-shell--no-bottom-nav {
     --app-bottom-nav-space: 0px;
+  }
+
+  .page-entry-reader {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  .app-root:has(.page-entry-reader) {
+    overflow: hidden;
+    height: 100dvh;
   }
 
   .app-shell--sidebar .app-sidebar {

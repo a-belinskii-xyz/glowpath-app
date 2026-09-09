@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { moodGlowFilter } from '../design'
+import { entriesListPathForInstant } from '../lib/datetime'
 import { entryMoodColor, entryMoodStyle } from '../lib/moodScale'
 import type { MoodEntryPublic } from '../types/mood'
 import { EntryActionMenu } from './EntryActionMenu'
@@ -16,6 +17,7 @@ import { MoodScoreIcon } from './MoodScoreIcon'
 type EntryRowProps = {
   entry: MoodEntryPublic
   timeLabel: string
+  timeZone: string
   onDelete: (entryId: string) => void | Promise<void>
   onToggleFavorite: (entryId: string, isFavorite: boolean) => void
 }
@@ -29,7 +31,7 @@ function isCompactEntry(entry: MoodEntryPublic): boolean {
   )
 }
 
-export function EntryRow({ entry, timeLabel, onDelete, onToggleFavorite }: EntryRowProps) {
+export function EntryRow({ entry, timeLabel, timeZone, onDelete, onToggleFavorite }: EntryRowProps) {
   const { t } = useLocale()
   const { scores } = useMoodPreferences()
   const compact = isCompactEntry(entry)
@@ -41,7 +43,11 @@ export function EntryRow({ entry, timeLabel, onDelete, onToggleFavorite }: Entry
       className={`entry-row${compact ? ' is-compact' : ''}`}
       style={{ '--entry-mood-color': moodColor } as CSSProperties}
     >
-      <Link className="entry-row-link" to={`/entries/${entry.id}`}>
+      <Link
+        className="entry-row-link"
+        to={`/entries/${entry.id}`}
+        state={{ backTo: entriesListPathForInstant(entry.recorded_at, timeZone, entry.id) }}
+      >
         <div className="entry-row-main">
           <span className="entry-score">
             <span className="entry-score-badge">

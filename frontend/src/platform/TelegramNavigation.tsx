@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getTelegramStartParam, getTelegramWebApp, isTelegramMiniApp } from './telegram'
 import { routeForStartParam } from './startParam'
+import type { EntryReaderLocationState } from '../lib/entryReader'
 
 let startParamApplied = false
 
@@ -66,6 +67,11 @@ export function TelegramNavigation() {
     }
     back.show()
     const onBack = () => {
+      const backTo = (location.state as EntryReaderLocationState | null)?.backTo
+      if (backTo) {
+        navigate(backTo, { replace: true })
+        return
+      }
       const historyIndex = window.history.state?.idx
       if (typeof historyIndex === 'number' && historyIndex > 0) {
         navigate(-1)
@@ -77,7 +83,7 @@ export function TelegramNavigation() {
     return () => {
       back.offClick(onBack)
     }
-  }, [location.pathname, location.search, navigate, onboarding])
+  }, [location.pathname, location.search, location.state, navigate, onboarding])
 
   return null
 }

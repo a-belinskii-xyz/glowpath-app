@@ -1,36 +1,31 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodEntry, getMoodInsights, patchMoodEntry } from '../api/moodEntries'
+import { deleteMoodEntry, getMoodInsights, patchMoodEntry } from '../api/moodEntries'
 import { PageErrorAlert } from '../components/PageErrorAlert'
-import { AttachmentAudio } from '../components/AttachmentAudio'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
-import { EntryAttachmentThumbs } from '../components/EntryAttachmentThumbs'
-import { GoalIcon } from '../components/GoalIcon'
+import { EntryDetailCard } from '../components/EntryDetailCard'
+import { EntryReaderPager } from '../components/EntryReaderPager'
 import { HeartIcon } from '../components/HeartIcon'
 import { IconButton, IconLinkButton } from '../components/IconButton'
-import { DeleteIcon, EditIcon } from '../components/icons'
-import { MarkdownNote } from '../components/MarkdownNote'
-import { MoodScoreIcon } from '../components/MoodScoreIcon'
+import { ChevronLeftIcon, DeleteIcon, EditIcon } from '../components/icons'
 import { PatternInsights } from '../components/PatternInsights'
-import { TagIcon } from '../components/TagIcon'
 import { useAuth } from '../context/AuthContext'
 import { hasAppAccess } from '../lib/authAccess'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
-import { moodChipStyle, moodGlowFilter } from '../design'
-import { useColorScheme } from '../hooks/useColorScheme'
-import { intlLocale } from '../i18n/t'
+import { useEntryReaderFeed } from '../hooks/useEntryReaderFeed'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { ApiError, formatApiError } from '../lib/errors'
-import { formatDayHeading, formatTime, entriesListPathForInstant } from '../lib/datetime'
-import { entryMoodColor, entryMoodStyle } from '../lib/moodScale'
+import { entriesListPathForInstant } from '../lib/datetime'
+import {
+  entryReaderBackHref,
+  type EntryReaderLocationState,
+} from '../lib/entryReader'
+import { entryMoodColor } from '../lib/moodScale'
 import type { MoodEntryPublic, MoodInsightsResponse } from '../types/mood'
-
-function isSameInstant(left: string, right: string, slackMs = 60_000) {
-  return Math.abs(new Date(left).getTime() - new Date(right).getTime()) < slackMs
-}
 
 export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -39,15 +34,16 @@ export function EntryDetailPage() {
   const { user } = useAuth()
   const { locale, t } = useLocale()
   const { scores } = useMoodPreferences()
-  const colorScheme = useColorScheme()
   const timeZone = user?.timezone ?? 'UTC'
-  const dateLocale = intlLocale(locale)
+  const showDesktopControls = useMediaQuery('(hover: hover) and (pointer: fine)')
+  const locationState = (location.state as EntryReaderLocationState | null) ?? null
+  const from = locationState?.from
 
-  const [entry, setEntry] = useState<MoodEntryPublic | null>(null)
+  const feed = useEntryReaderFeed(id, timeZone, locale)
+  const entry = feed.active
   const [insights, setInsights] = useState<MoodInsightsResponse | null>(null)
   const [isInsightsLoading, setIsInsightsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
@@ -62,39 +58,30 @@ export function EntryDetailPage() {
   usePageAmbientGlow(ambientColors)
 
   useEffect(() => {
-    if (!id) {
-      setError(t('errors.entryIdMissing'))
-      setIsLoading(false)
+    if (!entry) {
       return
     }
-
-    const load = async () => {
-      setIsLoading(true)
-      try {
-        const loaded = await getMoodEntry(id)
-        setEntry(loaded)
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 403) {
-          setError(t('errors.verifyToViewEntry'))
-        } else {
-          setError(formatApiError(err, t, 'errors.failedLoadEntry'))
-        }
-      } finally {
-        setIsLoading(false)
-      }
+    const backTo = entryReaderBackHref(entry, timeZone, from)
+    if (
+      location.pathname === `/entries/${entry.id}` &&
+      locationState?.backTo === backTo
+    ) {
+      return
     }
-
-    void load()
-  }, [id, locale, t])
+    navigate(`/entries/${entry.id}`, {
+      replace: true,
+      state: { ...locationState, backTo, from },
+    })
+  }, [entry, from, location.pathname, locationState, navigate, timeZone])
 
   useEffect(() => {
-    if (!id || !hasAppAccess(user)) {
+    if (!entry?.id || !hasAppAccess(user)) {
       setInsights(null)
       return
     }
     let cancelled = false
     setIsInsightsLoading(true)
-    void getMoodInsights({ limit: 1, focus_entry_id: id })
+    void getMoodInsights({ limit: 1, focus_entry_id: entry.id })
       .then((response) => {
         if (!cancelled) {
           setInsights(response)
@@ -113,20 +100,32 @@ export function EntryDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, locale, user])
+  }, [entry?.id, locale, user])
 
   const handleDelete = async () => {
     if (!entry) {
       return
     }
     setIsDeleting(true)
-    setError(null)
+    setActionError(null)
     try {
       await deleteMoodEntry(entry.id)
       setConfirmDelete(false)
-      navigate(entriesListPathForInstant(entry.recorded_at, timeZone))
+      const next = feed.removeActive()
+      if (next) {
+        navigate(`/entries/${next.id}`, {
+          replace: true,
+          state: {
+            ...locationState,
+            backTo: entryReaderBackHref(next, timeZone, from),
+            from,
+          },
+        })
+      } else {
+        navigate(entriesListPathForInstant(entry.recorded_at, timeZone))
+      }
     } catch (err) {
-      setError(formatApiError(err, t, 'errors.failedDeleteEntry'))
+      setActionError(formatApiError(err, t, 'errors.failedDeleteEntry'))
     } finally {
       setIsDeleting(false)
     }
@@ -138,84 +137,110 @@ export function EntryDetailPage() {
     }
     const nextFavorite = !entry.is_favorite
     const previous = entry
-    setEntry({ ...entry, is_favorite: nextFavorite })
+    feed.replaceEntry({ ...entry, is_favorite: nextFavorite })
     setIsTogglingFavorite(true)
-    setError(null)
+    setActionError(null)
     try {
       const updated = await patchMoodEntry(entry.id, { is_favorite: nextFavorite })
-      setEntry(updated)
+      feed.replaceEntry(updated)
     } catch (err) {
-      setEntry(previous)
-      setError(formatApiError(err, t, 'errors.failedSaveEntry'))
+      feed.replaceEntry(previous)
+      setActionError(formatApiError(err, t, 'errors.failedSaveEntry'))
     } finally {
       setIsTogglingFavorite(false)
     }
   }
 
-  const audioAttachment = entry?.attachments.find((attachment) => attachment.kind === 'audio')
-  const fromGallery = (location.state as { from?: string } | null)?.from === '/gallery'
-  const backToEntries = entry
-    ? entriesListPathForInstant(entry.recorded_at, timeZone, entry.id)
-    : '/'
-  const backHref = fromGallery ? '/gallery' : backToEntries
-  const backLabel = fromGallery ? t('gallery.back') : t('common.backToEntries')
-  const showCreated = Boolean(entry && !isSameInstant(entry.created_at, entry.recorded_at))
-  const showUpdated = Boolean(
-    entry &&
-      entry.updated_at !== entry.created_at &&
-      !isSameInstant(entry.updated_at, entry.recorded_at),
-  )
+  const loadError = !entry && !feed.isLoading
+    ? feed.error instanceof ApiError && feed.error.status === 403
+      ? t('errors.verifyToViewEntry')
+      : id
+        ? formatApiError(feed.error, t, 'errors.failedLoadEntry')
+        : t('errors.entryIdMissing')
+    : null
+  const error = actionError ?? (confirmDelete ? null : loadError)
+  const backHref = entry
+    ? entryReaderBackHref(entry, timeZone, from)
+    : locationState?.backTo ?? '/'
+  const backLabel = from === '/gallery' ? t('gallery.back') : t('common.backToEntries')
+  const prevEntry = feed.index > 0 ? feed.items[feed.index - 1] : null
+  const nextEntry = feed.index < feed.items.length - 1 ? feed.items[feed.index + 1] : null
+  const reachedStart = !prevEntry && !feed.canGoNewer
+  const reachedEnd = !nextEntry && !feed.canGoOlder
+
+  const renderSlide = (slide: MoodEntryPublic | null, active: boolean) => {
+    if (!slide) {
+      return null
+    }
+    return (
+      <div className="entry-reader-slide-body" key={slide.id}>
+        <EntryDetailCard entry={slide} timeZone={timeZone}>
+          {active && hasAppAccess(user) ? (
+            <PatternInsights insights={insights} isLoading={isInsightsLoading} compact />
+          ) : null}
+        </EntryDetailCard>
+      </div>
+    )
+  }
 
   return (
-    <section className="page page-entry-detail">
+    <section className="page page-entry-detail page-entry-reader">
       <EmailVerificationBanner />
-      <header className="page-header">
-        <h1>{t('entries.moodEntry')}</h1>
-        <div className="page-header-actions">
-          {entry ? (
-            <div
-              className="entry-detail-header-actions"
-              role="toolbar"
-              aria-label={t('entryActions.ariaLabel')}
+      <header className="entry-reader-chrome">
+        <IconLinkButton
+          label={backLabel}
+          to={backHref}
+          replace
+          variant="ghost"
+          className="entry-reader-back"
+        >
+          <ChevronLeftIcon />
+        </IconLinkButton>
+        <h1 className="entry-reader-title">{t('entries.moodEntry')}</h1>
+        {entry ? (
+          <div
+            className="entry-detail-header-actions"
+            role="toolbar"
+            aria-label={t('entryActions.ariaLabel')}
+          >
+            <IconButton
+              label={
+                entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')
+              }
+              className={entry.is_favorite ? 'is-favorite' : undefined}
+              variant="ghost"
+              style={
+                entry.is_favorite
+                  ? ({
+                      '--entry-favorite-color': entryMoodColor(entry, scores),
+                    } as CSSProperties)
+                  : undefined
+              }
+              onClick={() => void handleToggleFavorite()}
+              disabled={isTogglingFavorite}
+              aria-pressed={entry.is_favorite}
             >
-              <IconButton
-                label={
-                  entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')
-                }
-                className={entry.is_favorite ? 'is-favorite' : undefined}
-                style={
-                  entry.is_favorite
-                    ? ({
-                        '--entry-favorite-color': entryMoodColor(entry, scores),
-                      } as CSSProperties)
-                    : undefined
-                }
-                onClick={() => void handleToggleFavorite()}
-                disabled={isTogglingFavorite}
-                aria-pressed={entry.is_favorite}
-              >
-                <HeartIcon filled={entry.is_favorite} />
-              </IconButton>
-              <IconLinkButton
-                label={t('common.edit')}
-                to={`/entries/${entry.id}/edit`}
-              >
-                <EditIcon />
-              </IconLinkButton>
-              <IconButton
-                label={isDeleting ? t('common.deleting') : t('common.delete')}
-                variant="danger"
-                disabled={isDeleting}
-                onClick={() => setConfirmDelete(true)}
-              >
-                <DeleteIcon />
-              </IconButton>
-            </div>
-          ) : null}
-          <Link className="button button-secondary web-back-link" to={backHref}>
-            {backLabel}
-          </Link>
-        </div>
+              <HeartIcon filled={entry.is_favorite} />
+            </IconButton>
+            <IconLinkButton
+              label={t('common.edit')}
+              to={`/entries/${entry.id}/edit`}
+              variant="ghost"
+            >
+              <EditIcon />
+            </IconLinkButton>
+            <IconButton
+              label={isDeleting ? t('common.deleting') : t('common.delete')}
+              variant="danger"
+              disabled={isDeleting}
+              onClick={() => setConfirmDelete(true)}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </div>
+        ) : (
+          <span className="entry-reader-chrome-spacer" />
+        )}
       </header>
 
       <PageErrorAlert error={confirmDelete ? null : error} />
@@ -226,134 +251,34 @@ export function EntryDetailPage() {
           message={t('confirm.deleteEntry')}
           confirmLabel={t('common.delete')}
           isBusy={isDeleting}
-          error={error}
+          error={actionError}
           onCancel={() => {
             if (isDeleting) return
             setConfirmDelete(false)
-            setError(null)
+            setActionError(null)
           }}
           onConfirm={() => void handleDelete()}
         />
       ) : null}
-      {isLoading ? <p className="muted">{t('common.loadingEntry')}</p> : null}
+
+      {feed.isLoading && !entry ? <p className="muted">{t('common.loadingEntry')}</p> : null}
 
       {entry ? (
-        <article className="entry-detail">
-          <div className="entry-detail-main">
-            <div className="entry-detail-block entry-detail-hero">
-              <span
-                style={{
-                  filter: moodGlowFilter(entryMoodColor(entry, scores)),
-                }}
-              >
-                <MoodScoreIcon
-                  style={entryMoodStyle(entry, scores)}
-                  className="entry-detail-emoji"
-                  fallbackScore={entry.score}
-                />
-              </span>
-              <p className="entry-detail-heading">
-                <span className="entry-detail-score">{entry.score_label}</span>
-                <span className="muted entry-detail-recorded">
-                  {' '}
-                  — {formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ·{' '}
-                  {formatTime(entry.recorded_at, timeZone, dateLocale)}
-                </span>
-              </p>
-            </div>
-
-            {entry.note || audioAttachment || entry.attachments.some((a) => a.kind === 'photo') ? (
-              <div className="entry-detail-block entry-detail-body">
-                {entry.note ? (
-                  <MarkdownNote content={entry.note} className="entry-detail-note" />
-                ) : null}
-
-                <EntryAttachmentThumbs
-                  entryId={entry.id}
-                  attachments={entry.attachments}
-                  showAudioCount={false}
-                  variant="collage"
-                />
-
-                {audioAttachment ? (
-                  <AttachmentAudio
-                    entryId={entry.id}
-                    attachment={audioAttachment}
-                    accentColor={entryMoodColor(entry, scores)}
-                  />
-                ) : null}
-              </div>
-            ) : null}
-
-            <div className="entry-detail-block entry-detail-footer">
-              {entry.tags.length > 0 ? (
-                <div className="entry-tags">
-                  {entry.tags.map((tag) => {
-                    const chip = moodChipStyle(tag.color, colorScheme)
-                    return (
-                    <span
-                      key={tag.id}
-                      className="entry-tag"
-                      style={chip}
-                    >
-                      <TagIcon
-                        style={{
-                          color: chip.color,
-                          icon_type: tag.icon_type,
-                          icon: tag.icon,
-                        }}
-                        className="entry-tag-icon"
-                      />
-                      {tag.label}
-                    </span>
-                    )
-                  })}
-                </div>
-              ) : null}
-
-              {entry.goals.length > 0 ? (
-                <div className="entry-tags entry-goals">
-                  {entry.goals.map((goal) => {
-                    const chip = moodChipStyle(goal.color, colorScheme)
-                    return (
-                    <span key={goal.id} className="entry-tag entry-goal" style={chip}>
-                      <GoalIcon
-                        style={{
-                          color: chip.color,
-                          icon_type: goal.icon_type,
-                          icon: goal.icon,
-                        }}
-                        className="entry-goal-icon"
-                      />
-                      {goal.label}
-                    </span>
-                    )
-                  })}
-                </div>
-              ) : null}
-
-              {showCreated || showUpdated ? (
-                <p className="muted entry-detail-meta">
-                  {showCreated
-                    ? t('entries.createdAt', {
-                        date: `${formatDayHeading(entry.created_at, timeZone, dateLocale)} ${formatTime(entry.created_at, timeZone, dateLocale)}`,
-                      })
-                    : null}
-                  {showCreated && showUpdated ? ' · ' : null}
-                  {showUpdated
-                    ? t('entries.updatedAt', {
-                        date: `${formatDayHeading(entry.updated_at, timeZone, dateLocale)} ${formatTime(entry.updated_at, timeZone, dateLocale)}`,
-                      })
-                    : null}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </article>
-      ) : null}
-
-      {entry && hasAppAccess(user) ? (
-        <PatternInsights insights={insights} isLoading={isInsightsLoading} compact />
+        <>
+          <p className="visually-hidden">{t('entries.readerHint')}</p>
+          <EntryReaderPager
+            hasPrev={Boolean(prevEntry)}
+            hasNext={Boolean(nextEntry)}
+            reachedStart={reachedStart}
+            reachedEnd={reachedEnd}
+            onPrev={feed.goNewer}
+            onNext={feed.goOlder}
+            showDesktopControls={showDesktopControls}
+            prev={renderSlide(prevEntry, false)}
+            current={renderSlide(entry, true)}
+            next={renderSlide(nextEntry, false)}
+          />
+        </>
       ) : null}
     </section>
   )

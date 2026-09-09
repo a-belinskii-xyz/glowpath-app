@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 
 import { getBuiltinMoodIconPath } from '../lib/moodBuiltinIcons'
 import { getCachedMoodIconObjectUrl, getMoodIconObjectUrl } from '../lib/moodIconBlobUrl'
-import { defaultMoodScoreStyle } from '../lib/moodScale'
 import { useCatalogIconBlobUrl } from '../lib/useCatalogIconBlobUrl'
 import type { MoodScoreStylePublic } from '../types/moodPreferences'
 
@@ -50,10 +49,9 @@ function useMoodIconBlobUrl(iconId: string | null): string | null {
   return url
 }
 
-export function MoodScoreIcon({ style, className, fallbackScore = 3 }: MoodScoreIconProps) {
+export function MoodScoreIcon({ style, className }: MoodScoreIconProps) {
   const uploadUrl = useMoodIconBlobUrl(style.icon_type === 'upload' ? style.icon : null)
   const catalogUrl = useCatalogIconBlobUrl(style.icon_type === 'catalog' ? style.icon : null)
-  const fallbackEmoji = defaultMoodScoreStyle(fallbackScore).icon
 
   if (style.icon_type === 'builtin') {
     return (
@@ -61,7 +59,9 @@ export function MoodScoreIcon({ style, className, fallbackScore = 3 }: MoodScore
         <img
           src={getBuiltinMoodIconPath(style.icon)}
           alt=""
-          loading="lazy"
+          loading="eager"
+          decoding="async"
+          draggable={false}
         />
       </span>
     )
@@ -70,11 +70,15 @@ export function MoodScoreIcon({ style, className, fallbackScore = 3 }: MoodScore
   if (style.icon_type === 'upload') {
     const uploadClassName = [className, 'mood-score-icon-upload'].filter(Boolean).join(' ')
     if (!uploadUrl) {
-      return <span className={uploadClassName}>{fallbackEmoji}</span>
+      return (
+        <span className={uploadClassName} aria-hidden>
+          <span className="mood-score-icon-placeholder" />
+        </span>
+      )
     }
     return (
       <span className={uploadClassName} aria-hidden>
-        <img src={uploadUrl} alt="" loading="lazy" />
+        <img src={uploadUrl} alt="" loading="eager" decoding="async" draggable={false} />
       </span>
     )
   }
@@ -82,11 +86,15 @@ export function MoodScoreIcon({ style, className, fallbackScore = 3 }: MoodScore
   if (style.icon_type === 'catalog') {
     const catalogClassName = [className, 'mood-score-icon-upload'].filter(Boolean).join(' ')
     if (!catalogUrl) {
-      return <span className={catalogClassName}>{fallbackEmoji}</span>
+      return (
+        <span className={catalogClassName} aria-hidden>
+          <span className="mood-score-icon-placeholder" />
+        </span>
+      )
     }
     return (
       <span className={catalogClassName} aria-hidden>
-        <img src={catalogUrl} alt="" loading="lazy" />
+        <img src={catalogUrl} alt="" loading="eager" decoding="async" draggable={false} />
       </span>
     )
   }
