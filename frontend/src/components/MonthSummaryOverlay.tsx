@@ -468,7 +468,7 @@ export function MonthSummaryOverlay({
 
   return createPortal(
     <div
-      className={`month-recap-backdrop is-${phase}`}
+      className={`month-recap-backdrop is-${phase} is-${colorScheme}`}
       style={auroraColors}
       role="presentation"
     >
