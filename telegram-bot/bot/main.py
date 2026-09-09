@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request, status
@@ -13,12 +14,9 @@ from bot.telegram_api import set_my_commands, set_webhook
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-    )
+async def _register_telegram() -> None:
+    # Uvicorn binds after lifespan yield; Telegram probes the URL during setWebhook.
+    await asyncio.sleep(1.5)
     try:
         await set_webhook()
     except Exception:
@@ -27,7 +25,20 @@ async def lifespan(_app: FastAPI):
         await set_my_commands()
     except Exception:
         logger.exception("Failed to register Telegram bot commands on startup")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    task = asyncio.create_task(_register_telegram())
     yield
+    task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
 
 
 app = FastAPI(

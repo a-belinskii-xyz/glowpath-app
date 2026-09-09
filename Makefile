@@ -63,8 +63,7 @@ up-no-cache:
 down:
 	docker compose down
 
-# Quick Cloudflare tunnels for local Telegram (bot :8081 + Vite :5173).
-# Patches backend/.env and recreates app + telegram-bot. Vite must already be running.
+# ngrok webhook + Cloudflare Mini App. Vite must already be running.
 telegram-up:
 	./scripts/dev-telegram-up.sh
 

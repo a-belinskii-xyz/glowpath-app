@@ -13,7 +13,10 @@ BOT_LOG="${STATE_DIR}/bot.log"
 FRONTEND_LOG="${STATE_DIR}/frontend.log"
 BOT_PID_FILE="${STATE_DIR}/bot.pid"
 FRONTEND_PID_FILE="${STATE_DIR}/frontend.pid"
-WAIT_SECONDS="${TELEGRAM_TUNNEL_WAIT_SECONDS:-45}"
+WAIT_SECONDS="${TELEGRAM_TUNNEL_WAIT_SECONDS:-60}"
+# ngrok for the bot webhook (Telegram's API cannot resolve trycloudflare from this network).
+# cloudflared HTTP/2 for the Mini App (phone WebView).
+CLOUDFLARED_PROTOCOL="${CLOUDFLARED_PROTOCOL:-http2}"
 
 read_env_value() {
   local file="$1" key="$2" default="${3:-}"
@@ -33,13 +36,16 @@ FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
 usage() {
   cat <<EOF
-Start trycloudflare tunnels for the Telegram bot (:${BOT_PORT}) and Vite Mini App (:${FRONTEND_PORT}),
-write the public URLs into backend/.env (and empty VITE_API_BASE_URL), then recreate
-the app and telegram-bot containers so they pick up the new env.
+Start an ngrok tunnel for the Telegram bot webhook (:${BOT_PORT}) and a Cloudflare
+tunnel for the Vite Mini App (:${FRONTEND_PORT}), write the public URLs into
+backend/.env (and empty VITE_API_BASE_URL), then recreate app + telegram-bot.
 
 Usage: $(basename "$0") [--stop]
 
   --stop   Kill tunnels started by this script (does not stop Docker / Vite)
+
+trycloudflare hostnames are not accepted by Telegram setWebhook on this network
+(local DNS is hijacked; Bot API returns "Failed to resolve host").
 EOF
 }
 
@@ -93,7 +99,7 @@ stop_tunnels() {
   mkdir -p "$STATE_DIR"
   stop_pid_file "$BOT_PID_FILE"
   stop_pid_file "$FRONTEND_PID_FILE"
-  echo "Stopped Telegram trycloudflare tunnels."
+  echo "Stopped Telegram tunnels."
 }
 
 set_env_key() {
@@ -111,10 +117,11 @@ found = False
 out = []
 for line in lines:
     if line.startswith(prefix) or line.startswith(export_prefix):
-        out.append(f"{key}={value}")
-        found = True
-    else:
-        out.append(line)
+        if not found:
+            out.append(f"{key}={value}")
+            found = True
+        continue
+    out.append(line)
 if not found:
     if out and out[-1] != "":
         out.append("")
@@ -140,7 +147,9 @@ origins = []
 seen = set()
 for raw in current.split(","):
     origin = raw.strip().rstrip("/")
-    if not origin or origin.endswith(".trycloudflare.com"):
+    if not origin or origin.endswith(
+        (".trycloudflare.com", ".ngrok-free.app", ".ngrok.io", ".loca.lt")
+    ):
         continue
     if origin not in seen:
         origins.append(origin)
@@ -157,10 +166,11 @@ out = []
 value = ",".join(origins)
 for line in lines:
     if line.startswith(prefix) or line.startswith("export CORS_ORIGINS="):
-        out.append(prefix + value)
-        found = True
-    else:
-        out.append(line)
+        if not found:
+            out.append(prefix + value)
+            found = True
+        continue
+    out.append(line)
 if not found:
     if out and out[-1] != "":
         out.append("")
@@ -172,35 +182,57 @@ PY
 wait_for_tunnel_url() {
   local log="$1"
   local label="$2"
+  local pid_file="$3"
+  local kind="$4"
   local i=0
   local url=""
+  local registered=0
   while (( i < WAIT_SECONDS )); do
     if [[ -f "$log" ]]; then
-      url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' "$log" | tail -n1 || true)"
-      if [[ -n "$url" ]]; then
-        printf '%s' "$url"
-        return 0
+      url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.(trycloudflare\.com|ngrok-free\.app|ngrok\.io)' "$log" | tail -n1 || true)"
+      if [[ "$kind" == "ngrok" ]]; then
+        if [[ -n "$url" ]]; then
+          printf '%s' "$url"
+          return 0
+        fi
+      else
+        if grep -q 'Registered tunnel connection' "$log" 2>/dev/null; then
+          registered=1
+        fi
+        if [[ -n "$url" && "$registered" -eq 1 ]]; then
+          printf '%s' "$url"
+          return 0
+        fi
       fi
     fi
-    if ! pid_running "$(cat "${3}" 2>/dev/null || true)"; then
-      echo "${label} tunnel exited before publishing a URL. Last log:" >&2
+    if ! pid_running "$(cat "${pid_file}" 2>/dev/null || true)"; then
+      echo "${label} tunnel exited before becoming ready. Last log:" >&2
       tail -n 40 "$log" >&2 || true
       return 1
     fi
     sleep 1
     i=$((i + 1))
   done
-  echo "Timed out waiting for ${label} trycloudflare URL (${WAIT_SECONDS}s)." >&2
+  echo "Timed out waiting for ${label} tunnel (${WAIT_SECONDS}s)." >&2
   tail -n 40 "$log" >&2 || true
   return 1
 }
 
-start_tunnel() {
+start_ngrok_tunnel() {
+  local name="$1" port="$2" log="$3" pid_file="$4"
+  : >"$log"
+  nohup ngrok http "$port" --log=stdout --log-format=json >"$log" 2>&1 &
+  echo $! >"$pid_file"
+  echo "Started ${name} tunnel (pid $(cat "$pid_file"), ngrok) → http://127.0.0.1:${port}"
+}
+
+start_cloudflared_tunnel() {
   local name="$1" target="$2" log="$3" pid_file="$4"
   : >"$log"
-  nohup cloudflared tunnel --no-autoupdate --url "$target" >"$log" 2>&1 &
+  nohup cloudflared tunnel --no-autoupdate --protocol "$CLOUDFLARED_PROTOCOL" \
+    --edge-ip-version 4 --url "$target" >"$log" 2>&1 &
   echo $! >"$pid_file"
-  echo "Started ${name} tunnel (pid $(cat "$pid_file")) → ${target}"
+  echo "Started ${name} tunnel (pid $(cat "$pid_file"), cloudflared ${CLOUDFLARED_PROTOCOL}) → ${target}"
 }
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -218,6 +250,7 @@ if [[ -n "${1:-}" ]]; then
   exit 1
 fi
 
+need_cmd ngrok
 need_cmd cloudflared
 need_cmd docker
 need_cmd python3
@@ -243,12 +276,12 @@ if ! port_open "$FRONTEND_PORT"; then
   exit 1
 fi
 
-start_tunnel "bot" "http://127.0.0.1:${BOT_PORT}" "$BOT_LOG" "$BOT_PID_FILE"
-start_tunnel "frontend" "http://127.0.0.1:${FRONTEND_PORT}" "$FRONTEND_LOG" "$FRONTEND_PID_FILE"
+start_ngrok_tunnel "bot" "$BOT_PORT" "$BOT_LOG" "$BOT_PID_FILE"
+start_cloudflared_tunnel "frontend" "http://127.0.0.1:${FRONTEND_PORT}" "$FRONTEND_LOG" "$FRONTEND_PID_FILE"
 
-echo "Waiting for trycloudflare URLs…"
-BOT_URL="$(wait_for_tunnel_url "$BOT_LOG" "bot" "$BOT_PID_FILE")"
-FRONTEND_URL="$(wait_for_tunnel_url "$FRONTEND_LOG" "frontend" "$FRONTEND_PID_FILE")"
+echo "Waiting for public tunnel URLs…"
+BOT_URL="$(wait_for_tunnel_url "$BOT_LOG" "bot" "$BOT_PID_FILE" ngrok)"
+FRONTEND_URL="$(wait_for_tunnel_url "$FRONTEND_LOG" "frontend" "$FRONTEND_PID_FILE" cloudflared)"
 echo "Bot webhook:  ${BOT_URL}"
 echo "Mini App:     ${FRONTEND_URL}"
 
@@ -264,6 +297,22 @@ fi
 
 echo "Recreating app and telegram-bot so they load the new .env…"
 docker compose -f "${ROOT}/docker-compose.yml" up -d --force-recreate --no-deps app telegram-bot
+
+echo "Waiting for Telegram to accept the webhook…"
+webhook_ok=0
+for _ in $(seq 1 40); do
+  if docker compose -f "${ROOT}/docker-compose.yml" logs --since 2m telegram-bot 2>/dev/null \
+    | grep -q 'Telegram webhook registered:'; then
+    webhook_ok=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$webhook_ok" -ne 1 ]]; then
+  echo "Telegram webhook did not register. Recent telegram-bot logs:" >&2
+  docker compose -f "${ROOT}/docker-compose.yml" logs --tail 40 telegram-bot >&2 || true
+  exit 1
+fi
 
 echo
 echo "Tunnels are running in the background. Stop with: make telegram-down"

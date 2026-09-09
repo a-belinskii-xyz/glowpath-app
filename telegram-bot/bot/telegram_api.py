@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -16,7 +17,7 @@ def _bot_url(method: str) -> str:
     return f"{TELEGRAM_API}/bot{settings.telegram_bot_token}/{method}"
 
 
-async def set_webhook() -> None:
+async def set_webhook(*, retries: int = 8, delay_seconds: float = 2.0) -> None:
     """Register the public webhook URL with Telegram when configured."""
     if not settings.telegram_bot_token:
         logger.warning("TELEGRAM_BOT_TOKEN is empty — skipping setWebhook")
@@ -32,13 +33,29 @@ async def set_webhook() -> None:
     if settings.telegram_webhook_secret:
         payload["secret_token"] = settings.telegram_webhook_secret
 
+    last_error: object = None
     async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(_bot_url("setWebhook"), json=payload)
-        response.raise_for_status()
-        data = response.json()
-        if not data.get("ok"):
-            raise RuntimeError(f"setWebhook failed: {data}")
-        logger.info("Telegram webhook registered: %s", payload["url"])
+        for attempt in range(1, retries + 1):
+            response = await client.post(_bot_url("setWebhook"), json=payload)
+            try:
+                data: object = response.json()
+            except ValueError:
+                data = response.text
+            if response.is_success and isinstance(data, dict) and data.get("ok"):
+                logger.info("Telegram webhook registered: %s", payload["url"])
+                return
+            last_error = data
+            logger.warning(
+                "setWebhook attempt %s/%s failed status=%s body=%s",
+                attempt,
+                retries,
+                response.status_code,
+                data,
+            )
+            if attempt < retries:
+                await asyncio.sleep(delay_seconds)
+
+    raise RuntimeError(f"setWebhook failed: {last_error}")
 
 
 BOT_COMMANDS = {
