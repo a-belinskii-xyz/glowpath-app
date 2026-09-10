@@ -1,7 +1,7 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
-import { deleteMoodEntry, getMoodInsights, patchMoodEntry } from '../api/moodEntries'
+import { deleteMoodEntry, patchMoodEntry } from '../api/moodEntries'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -16,6 +16,7 @@ import { hasAppAccess } from '../lib/authAccess'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
+import { useEntryFocusInsights } from '../hooks/useEntryFocusInsights'
 import { useEntryReaderFeed } from '../hooks/useEntryReaderFeed'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { ApiError, formatApiError } from '../lib/errors'
@@ -25,7 +26,7 @@ import {
   type EntryReaderLocationState,
 } from '../lib/entryReader'
 import { entryMoodColor } from '../lib/moodScale'
-import type { MoodEntryPublic, MoodInsightsResponse } from '../types/mood'
+import type { MoodEntryPublic } from '../types/mood'
 
 export function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -41,8 +42,7 @@ export function EntryDetailPage() {
 
   const feed = useEntryReaderFeed(id, timeZone, locale)
   const entry = feed.active
-  const [insights, setInsights] = useState<MoodInsightsResponse | null>(null)
-  const [isInsightsLoading, setIsInsightsLoading] = useState(false)
+  const insightsEnabled = hasAppAccess(user)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -73,34 +73,6 @@ export function EntryDetailPage() {
       state: { ...locationState, backTo, from },
     })
   }, [entry, from, location.pathname, locationState, navigate, timeZone])
-
-  useEffect(() => {
-    if (!entry?.id || !hasAppAccess(user)) {
-      setInsights(null)
-      return
-    }
-    let cancelled = false
-    setIsInsightsLoading(true)
-    void getMoodInsights({ limit: 1, focus_entry_id: entry.id })
-      .then((response) => {
-        if (!cancelled) {
-          setInsights(response)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setInsights(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsInsightsLoading(false)
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [entry?.id, locale, user])
 
   const handleDelete = async () => {
     if (!entry) {
@@ -168,15 +140,29 @@ export function EntryDetailPage() {
   const reachedStart = !prevEntry && !feed.canGoNewer
   const reachedEnd = !nextEntry && !feed.canGoOlder
 
-  const renderSlide = (slide: MoodEntryPublic | null, active: boolean) => {
+  const prefetchEntryIds = useMemo(
+    () => [entry?.id, prevEntry?.id, nextEntry?.id].filter((id): id is string => Boolean(id)),
+    [entry?.id, nextEntry?.id, prevEntry?.id],
+  )
+  const focusInsights = useEntryFocusInsights(prefetchEntryIds, insightsEnabled, locale)
+
+  const renderSlide = (slide: MoodEntryPublic | null) => {
     if (!slide) {
       return null
     }
+    if (insightsEnabled && !focusInsights.isReady(slide.id)) {
+      return (
+        <div className="entry-reader-slide-body" key={slide.id}>
+          <p className="muted">{t('common.loadingEntry')}</p>
+        </div>
+      )
+    }
+    const insights = insightsEnabled ? focusInsights.getInsights(slide.id) : null
     return (
       <div className="entry-reader-slide-body" key={slide.id}>
         <EntryDetailCard entry={slide} timeZone={timeZone}>
-          {active && hasAppAccess(user) ? (
-            <PatternInsights insights={insights} isLoading={isInsightsLoading} compact />
+          {insightsEnabled ? (
+            <PatternInsights insights={insights} isLoading={false} compact />
           ) : null}
         </EntryDetailCard>
       </div>
@@ -274,9 +260,9 @@ export function EntryDetailPage() {
             onPrev={feed.goNewer}
             onNext={feed.goOlder}
             showDesktopControls={showDesktopControls}
-            prev={renderSlide(prevEntry, false)}
-            current={renderSlide(entry, true)}
-            next={renderSlide(nextEntry, false)}
+            prev={renderSlide(prevEntry)}
+            current={renderSlide(entry)}
+            next={renderSlide(nextEntry)}
           />
         </>
       ) : null}
