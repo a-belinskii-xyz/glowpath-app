@@ -5391,11 +5391,12 @@ code {
 }
 
 .entry-composer-row.is-pinned {
-  background: color-mix(in oklab, var(--chrome-action-primary) 5%, white);
+  opacity: 0.55;
+  border-color: color-mix(in oklab, var(--chrome-border, #d1d5db) 55%, transparent);
 }
 
 .entry-composer-row.is-disabled {
-  opacity: 0.72;
+  opacity: 0.55;
 }
 
 .entry-composer-toggle {
@@ -5405,6 +5406,10 @@ code {
   min-width: 0;
   flex: 1;
   cursor: pointer;
+}
+
+.entry-composer-row.is-pinned .entry-composer-toggle {
+  cursor: default;
 }
 
 .entry-composer-toggle input {
@@ -5432,6 +5437,7 @@ code {
   flex-shrink: 0;
   font-size: 0.8rem;
   white-space: nowrap;
+  color: var(--chrome-text-secondary, #6b7280);
 }
 
 .entry-composer-actions {
@@ -6046,7 +6052,7 @@ code {
 .tag-list li.is-drop-after,
 .entry-composer-row.is-drop-before,
 .entry-composer-row.is-drop-after {
-  background: color-mix(in oklab, var(--chrome-action-primary) 6%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 12%, var(--chrome-surface, #fff));
 }
 
 .tag-list-add {
