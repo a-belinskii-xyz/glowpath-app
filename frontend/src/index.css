@@ -225,6 +225,7 @@ html.is-telegram .app-bottom-nav {
 html.is-telegram .page-entry-create .page-header-compact,
 html.is-telegram .web-back-link,
 html.is-telegram .page-back-link,
+html.is-telegram .entry-reader-back,
 html.is-telegram .profile-logout,
 html.is-telegram .entry-save-row .button-secondary {
   display: none;
