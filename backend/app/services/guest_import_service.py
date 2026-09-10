@@ -185,6 +185,13 @@ def import_guest_diary(
                 prefs.use_historical_colors = bool(prefs_data["use_historical_colors"])
             if "show_streak" in prefs_data:
                 prefs.show_streak = bool(prefs_data["show_streak"])
+            if "composer_blocks" in prefs_data:
+                from app.services.mood_preferences_service import sanitize_composer_blocks
+
+                raw_blocks = prefs_data.get("composer_blocks")
+                prefs.composer_blocks = sanitize_composer_blocks(
+                    raw_blocks if isinstance(raw_blocks, list) else None
+                )
 
     local_tag_id_map: dict[str, uuid.UUID] = {}
     for tag_data in payload.get("tags", []):

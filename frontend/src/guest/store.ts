@@ -422,6 +422,9 @@ export async function patchGuestMoodPreferences(
     show_streak: body.show_streak ?? current.show_streak,
     scores: { ...current.scores },
   }
+  if ('composer_blocks' in body) {
+    next.composer_blocks = body.composer_blocks ?? null
+  }
   if (body.scores) {
     for (const [scoreKey, update] of Object.entries(body.scores)) {
       const existing = next.scores[scoreKey]
@@ -545,13 +548,19 @@ export async function getGuestGoalStats(
 export async function getGuestMoodPreferences(locale: ApiLocale): Promise<MoodPreferencesPublic> {
   const stored = await guestDbGet<MoodPreferencesPublic>(KEYS.moodPreferences)
   if (stored) {
-    return stored
+    return {
+      ...stored,
+      composer_blocks: stored.composer_blocks ?? null,
+      show_streak: stored.show_streak ?? true,
+      use_historical_colors: stored.use_historical_colors ?? true,
+    }
   }
   const scores = resolveMoodPreferences(null, locale)
   return {
     scores,
     use_historical_colors: true,
     show_streak: true,
+    composer_blocks: null,
   }
 }
 

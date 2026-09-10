@@ -7,10 +7,17 @@ export type MoodScoreStylePublic = {
   label: string
 }
 
+export type ComposerBlockPreference = {
+  id: string
+  enabled: boolean
+}
+
 export type MoodPreferencesPublic = {
   scores: Record<string, MoodScoreStylePublic>
   use_historical_colors: boolean
   show_streak: boolean
+  /** null = user never customized layout; frontend resolves registry defaults. */
+  composer_blocks: ComposerBlockPreference[] | null
 }
 
 export type MoodScoreStyleUpdate = {
@@ -25,4 +32,5 @@ export type MoodPreferencesUpdate = {
   scores?: Record<string, MoodScoreStyleUpdate>
   use_historical_colors?: boolean
   show_streak?: boolean
+  composer_blocks?: ComposerBlockPreference[] | null
 }

@@ -25,6 +25,103 @@ def test_get_mood_preferences_returns_defaults(auth_client: TestClient, mailer) 
     assert payload["scores"]["1"]["label"] == "awful"
     assert payload["use_historical_colors"] is True
     assert payload["show_streak"] is True
+    assert payload["composer_blocks"] is None
+
+
+def test_patch_mood_preferences_updates_composer_blocks(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-composer-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    layout = [
+        {"id": "mood", "enabled": True},
+        {"id": "note", "enabled": False},
+        {"id": "tags", "enabled": True},
+        {"id": "goals", "enabled": False},
+        {"id": "attachments", "enabled": True},
+        {"id": "future_widget", "enabled": True},
+    ]
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"composer_blocks": layout},
+    )
+    assert response.status_code == 200
+    saved = response.json()["composer_blocks"]
+    assert saved == [
+        {"id": "mood", "enabled": True},
+        {"id": "note", "enabled": False},
+        {"id": "tags", "enabled": True},
+        {"id": "goals", "enabled": False},
+        {"id": "attachments", "enabled": True},
+        {"id": "future_widget", "enabled": True},
+    ]
+
+    # Partial patch of unrelated field must not snapshot/clear layout.
+    color_patch = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"scores": {"1": {"color": "#112233"}}},
+    )
+    assert color_patch.status_code == 200
+    assert color_patch.json()["composer_blocks"] == saved
+    assert color_patch.json()["scores"]["1"]["color"] == "#112233"
+
+    clear = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"composer_blocks": None},
+    )
+    assert clear.status_code == 200
+    assert clear.json()["composer_blocks"] is None
+
+
+def test_patch_mood_preferences_rejects_invalid_composer_blocks(
+    auth_client: TestClient, mailer
+) -> None:
+    email = f"mood-prefs-composer-bad-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    empty_id = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={"composer_blocks": [{"id": "  ", "enabled": True}]},
+    )
+    assert empty_id.status_code == 422
+
+    too_many = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={
+            "composer_blocks": [
+                {"id": f"block-{index}", "enabled": True} for index in range(33)
+            ]
+        },
+    )
+    assert too_many.status_code == 422
+
+
+def test_patch_mood_preferences_forces_mood_enabled(auth_client: TestClient, mailer) -> None:
+    email = f"mood-prefs-composer-mood-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers=headers,
+        json={
+            "composer_blocks": [
+                {"id": "note", "enabled": True},
+                {"id": "mood", "enabled": False},
+            ]
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["composer_blocks"] == [
+        {"id": "note", "enabled": True},
+        {"id": "mood", "enabled": True},
+    ]
 
 
 def test_patch_mood_preferences_updates_label(auth_client: TestClient, mailer) -> None:

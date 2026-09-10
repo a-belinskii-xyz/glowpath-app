@@ -32,5 +32,7 @@ class UserMoodPreferences(TimestampMixin, Base):
         nullable=False,
         server_default=text("true"),
     )
+    # null = user never customized entry-form layout; clients resolve registry defaults.
+    composer_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="mood_preferences")

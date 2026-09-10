@@ -56,6 +56,8 @@ def update_preferences(
     score_updates: dict[str, dict[str, Any]] | None = None,
     use_historical_colors: bool | None = None,
     show_streak: bool | None = None,
+    composer_blocks: list[dict[str, Any]] | None = None,
+    update_composer_blocks: bool = False,
 ) -> UserMoodPreferences:
     prefs = get_or_create_preferences(db, user_id=user_id)
     if score_updates:
@@ -65,6 +67,8 @@ def update_preferences(
         prefs.use_historical_colors = use_historical_colors
     if show_streak is not None:
         prefs.show_streak = show_streak
+    if update_composer_blocks:
+        prefs.composer_blocks = sanitize_composer_blocks(composer_blocks)
     db.commit()
     db.refresh(prefs)
     return prefs
@@ -80,7 +84,33 @@ def serialize_preferences(
         "scores": _resolved_score_styles(db, prefs.user_id, prefs.score_styles, locale=locale),
         "use_historical_colors": bool(prefs.use_historical_colors),
         "show_streak": bool(prefs.show_streak),
+        "composer_blocks": sanitize_composer_blocks(prefs.composer_blocks),
     }
+
+
+def sanitize_composer_blocks(raw: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+    """Persist opaque layout prefs; clients resolve against their registry."""
+    if raw is None:
+        return None
+    sanitized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        block_id = item.get("id")
+        if not isinstance(block_id, str):
+            continue
+        cleaned_id = block_id.strip()
+        if not cleaned_id or cleaned_id in seen:
+            continue
+        seen.add(cleaned_id)
+        sanitized.append(
+            {
+                "id": cleaned_id,
+                "enabled": True if cleaned_id == "mood" else bool(item.get("enabled")),
+            }
+        )
+    return sanitized or None
 
 
 def get_score_colors(db: Session, *, user_id: uuid.UUID) -> dict[int, str]:

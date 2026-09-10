@@ -2,16 +2,23 @@ import { memo, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
+import { EntryComposerSettingsForm } from '../components/EntryComposerSettingsForm'
 import { MoodPreferencesForm } from '../components/MoodPreferencesForm'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { TemplatesPage } from './TemplatesPage'
 
-type TrackerTab = 'moods' | 'templates'
+type TrackerTab = 'moods' | 'templates' | 'layout'
 
 function resolveTab(value: string | null): TrackerTab {
-  return value === 'templates' ? 'templates' : 'moods'
+  if (value === 'templates') {
+    return 'templates'
+  }
+  if (value === 'layout') {
+    return 'layout'
+  }
+  return 'moods'
 }
 
 function TrackerSettingsPanels({
@@ -42,6 +49,15 @@ function TrackerSettingsPanels({
         <button
           type="button"
           role="tab"
+          aria-selected={tab === 'layout'}
+          className={`segmented-control-option${tab === 'layout' ? ' is-active' : ''}`}
+          onClick={() => onTabChange('layout')}
+        >
+          {t('trackerSettings.tabLayout')}
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={tab === 'templates'}
           className={`segmented-control-option${tab === 'templates' ? ' is-active' : ''}`}
           onClick={() => onTabChange('templates')}
@@ -57,6 +73,13 @@ function TrackerSettingsPanels({
           </h2>
           <p className="profile-section-lead">{t('profile.moodPreferencesLead')}</p>
           <MoodPreferencesForm />
+        </section>
+      ) : tab === 'layout' ? (
+        <section aria-labelledby="tracker-layout-heading">
+          <h2 id="tracker-layout-heading" className="visually-hidden">
+            {t('trackerSettings.tabLayout')}
+          </h2>
+          <EntryComposerSettingsForm />
         </section>
       ) : (
         <TemplatesPage embedded />
@@ -75,7 +98,11 @@ function TrackerSettingsUrlContent() {
   const tab = resolveTab(searchParams.get('tab'))
 
   const setTab = (next: TrackerTab) => {
-    setSearchParams(next === 'moods' ? {} : { tab: next }, { replace: true })
+    if (next === 'moods') {
+      setSearchParams({}, { replace: true })
+      return
+    }
+    setSearchParams({ tab: next }, { replace: true })
   }
 
   return <TrackerSettingsPanels tab={tab} onTabChange={setTab} />

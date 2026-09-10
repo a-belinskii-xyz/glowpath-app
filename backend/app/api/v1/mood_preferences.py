@@ -82,6 +82,12 @@ def patch_mood_preferences(
     locale: str = Depends(get_locale),
 ) -> MoodPreferencesPublic:
     updates = {score: patch.model_dump(exclude_unset=True) for score, patch in body.scores.items()}
+    update_composer = "composer_blocks" in body.model_fields_set
+    composer_blocks = (
+        [item.model_dump() for item in body.composer_blocks]
+        if update_composer and body.composer_blocks is not None
+        else None
+    )
     try:
         prefs = update_preferences(
             db,
@@ -89,6 +95,8 @@ def patch_mood_preferences(
             score_updates=updates or None,
             use_historical_colors=body.use_historical_colors,
             show_streak=body.show_streak,
+            composer_blocks=composer_blocks,
+            update_composer_blocks=update_composer,
         )
     except MoodPreferencesError as exc:
         _handle_preferences_error(exc)
