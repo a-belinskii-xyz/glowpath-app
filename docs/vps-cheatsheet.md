@@ -92,8 +92,11 @@ PUBLIC_URL=http://93.77.163.171:8080
 HTTP_PORT=8080
 DATABASE_URL=postgresql://USER:PASSWORD@HOST/mood_tracker?sslmode=require
 DATABASE_URL_UNPOOLED=postgresql://USER:PASSWORD@HOST/mood_tracker?sslmode=require
-MINIO_ROOT_USER=mood
-MINIO_ROOT_PASSWORD=moodsecret
+MINIO_ENDPOINT=storage.example.com
+MINIO_ACCESS_KEY=
+MINIO_SECRET_KEY=
+MINIO_BUCKET=mood-tracker
+MINIO_SECURE=true
 SMTP_HOST=mailhog
 SMTP_PORT=1025
 MAILHOG_UI_PORT=8025
@@ -131,7 +134,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail up
 docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail down
 ```
 
-`down` не трогает volume MinIO. База живёт отдельно (Neon), Compose её не хранит.
+`down` не поднимает и не хранит базу и файлы: Postgres и объектное хранилище внешние.
 
 ## 2. Залить обнову
 

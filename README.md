@@ -31,11 +31,11 @@ Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-
 
 ## Prerequisites
 
-- **Docker** and **Docker Compose** — API, MinIO, MailHog, Telegram bot (Postgres is external, for example Neon)
+- **Docker** and **Docker Compose** — local stack (API, Postgres with pgvector, MinIO, MailHog, Telegram bot)
 - **Python 3.12+** — local backend development (`make install`, `make run`)
 - **Node.js 20+** and **npm** — frontend dev server and build
 
-Postgres (with the `vector` extension) is hosted outside Compose. Neon works: paste `DATABASE_URL` and `DATABASE_URL_UNPOOLED` into the repo-root `.env`. A `postgresql://` URL is rewritten to the psycopg 3 driver.
+Local Compose uses the `pgvector/pgvector:pg16` image. Production (Render and `docker-compose.prod.yml`) points at hosted Postgres and S3-compatible storage instead. A `postgresql://` URL is rewritten to the psycopg 3 driver.
 ## Quick start (full stack)
 
 ### 1. Environment files
@@ -46,7 +46,7 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-Edit `.env` if ports are already in use (`APP_PORT`, `MINIO_*`, `MAILHOG_*`, `TELEGRAM_BOT_PORT`) and set `DATABASE_URL` to the external database.
+Edit `.env` if ports are already in use (`POSTGRES_PORT`, `APP_PORT`, `MINIO_*`, `MAILHOG_*`, `TELEGRAM_BOT_PORT`).
 
 ### 2. Backend (Docker)
 
