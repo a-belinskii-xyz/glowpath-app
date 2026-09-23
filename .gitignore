@@ -229,3 +229,10 @@ frontend/dist-ssr/
 
 # Local helper state (trycloudflare pids/logs)
 .local/
+.neon
+
+# Neon CLI local tooling (skills install and config packages)
+.agents/
+skills-lock.json
+/package.json
+/package-lock.json
