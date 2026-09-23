@@ -1,10 +1,10 @@
-import uuid
-
 import pytest
-from fastapi.testclient import TestClient
-
 from app.config import settings
-from app.core.visitor_fingerprint import canonical_fingerprint_payload, fingerprint_hash_from_payload
+from app.core.visitor_fingerprint import (
+    canonical_fingerprint_payload,
+    fingerprint_hash_from_payload,
+)
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -25,8 +25,8 @@ def _fingerprint_body() -> dict[str, object]:
     }
 
 
-def test_bootstrap_control_when_feature_off(client: TestClient) -> None:
-    response = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
+def test_bootstrap_control_when_feature_off(auth_client: TestClient) -> None:
+    response = auth_client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
     assert response.status_code == 200
     body = response.json()
     assert body["guest_local_diary"] is False
@@ -34,10 +34,10 @@ def test_bootstrap_control_when_feature_off(client: TestClient) -> None:
 
 
 def test_bootstrap_treatment_when_enabled(
-    client: TestClient,
+    auth_client: TestClient,
     guest_experiment_on: None,
 ) -> None:
-    response = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
+    response = auth_client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
     assert response.status_code == 200
     body = response.json()
     assert body["guest_local_diary"] is True
@@ -46,21 +46,24 @@ def test_bootstrap_treatment_when_enabled(
 
 
 def test_bootstrap_restores_visitor_by_fingerprint(
-    client: TestClient,
+    auth_client: TestClient,
     guest_experiment_on: None,
 ) -> None:
-    first = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
+    first = auth_client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
     visitor_id = first.json()["visitor_id"]
-    second = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
+    second = auth_client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
     assert second.json()["visitor_id"] == visitor_id
 
 
 def test_heartbeat_rejects_control(
-    client: TestClient,
+    auth_client: TestClient,
 ) -> None:
-    bootstrap = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
+    bootstrap = auth_client.post(
+        "/v1/features/bootstrap",
+        json={"fingerprint": _fingerprint_body()},
+    )
     visitor_id = bootstrap.json()["visitor_id"]
-    heartbeat = client.post(
+    heartbeat = auth_client.post(
         "/v1/guest/heartbeat",
         json={"visitor_id": visitor_id, "entry_count": 1},
     )
@@ -68,12 +71,15 @@ def test_heartbeat_rejects_control(
 
 
 def test_heartbeat_accepts_treatment(
-    client: TestClient,
+    auth_client: TestClient,
     guest_experiment_on: None,
 ) -> None:
-    bootstrap = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
+    bootstrap = auth_client.post(
+        "/v1/features/bootstrap",
+        json={"fingerprint": _fingerprint_body()},
+    )
     visitor_id = bootstrap.json()["visitor_id"]
-    heartbeat = client.post(
+    heartbeat = auth_client.post(
         "/v1/guest/heartbeat",
         json={"visitor_id": visitor_id, "entry_count": 3, "onboarding_completed": True},
     )

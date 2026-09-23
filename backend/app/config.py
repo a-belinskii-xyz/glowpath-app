@@ -1,5 +1,7 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.db.postgres_url import normalize_postgres_url
 
 
 class Settings(BaseSettings):
@@ -22,6 +24,12 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="postgresql+psycopg://mood:mood@localhost:5432/mood_tracker",
         validation_alias="DATABASE_URL",
+    )
+    # Direct Neon connection. Alembic uses this when set; the app keeps DATABASE_URL
+    # (pooled is fine at runtime, migrations are not).
+    database_url_unpooled: str = Field(
+        default="",
+        validation_alias="DATABASE_URL_UNPOOLED",
     )
     test_database_url: str = Field(
         default="postgresql+psycopg://mood:mood@localhost:5432/mood_tracker_test",
@@ -240,7 +248,9 @@ class Settings(BaseSettings):
     sber_username: str = Field(default="", validation_alias="SBER_USERNAME")
     sber_password: str = Field(default="", validation_alias="SBER_PASSWORD")
 
-    # Local semantic search (fastembed + pgvector)
+    # Local semantic search (fastembed + pgvector).
+    # The ONNX model is downloaded on first embed. Leave false on Render:
+    # free instances have no persistent disk and 512 MB RAM.
     embedding_enabled: bool = Field(default=True, validation_alias="EMBEDDING_ENABLED")
     embedding_model: str = Field(
         default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
@@ -254,6 +264,17 @@ class Settings(BaseSettings):
         le=2.0,
         validation_alias="EMBEDDING_SEARCH_MAX_DISTANCE",
     )
+
+    @field_validator("database_url", "database_url_unpooled", "test_database_url", mode="before")
+    @classmethod
+    def _use_psycopg_driver(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        return normalize_postgres_url(value)
+
+    @property
+    def migration_database_url(self) -> str:
+        return self.database_url_unpooled or self.database_url
 
 
 settings = Settings()

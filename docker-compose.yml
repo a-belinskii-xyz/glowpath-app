@@ -1,60 +1,14 @@
+# Local stack. Postgres is external (Neon or another host): set DATABASE_URL
+# and DATABASE_URL_UNPOOLED in the repo-root .env. Compose does not run a database.
+
 services:
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_USER: mood
-      POSTGRES_PASSWORD: mood
-      POSTGRES_DB: mood_tracker
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mood -d mood_tracker"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  db-init:
-    image: pgvector/pgvector:pg16
-    environment:
-      PGPASSWORD: mood
-    depends_on:
-      db:
-        condition: service_healthy
-    entrypoint:
-      - sh
-      - -c
-      - |
-        psql -h db -U mood -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'mood_tracker_test'" | grep -q 1 \
-          || psql -h db -U mood -d postgres -c "CREATE DATABASE mood_tracker_test"
-    restart: "no"
-
   migrations:
     build: ./backend
     env_file:
       - backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./backend/alembic:/app/alembic
-      - ./backend/app:/app/app
-    command: alembic upgrade head
-    restart: "no"
-
-  migrations-test:
-    build: ./backend
-    env_file:
-      - backend/.env
-    environment:
-      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker_test
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${DATABASE_URL_UNPOOLED:-}
     volumes:
       - ./backend/alembic:/app/alembic
       - ./backend/app:/app/app
@@ -74,7 +28,9 @@ services:
     env_file:
       - backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${DATABASE_URL_UNPOOLED:-}
+      SKIP_MIGRATIONS: "true"
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
       MINIO_ENDPOINT: minio:9000
@@ -96,9 +52,11 @@ services:
     env_file:
       - backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${DATABASE_URL_UNPOOLED:-}
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
+      SKIP_MIGRATIONS: "true"
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -150,6 +108,5 @@ services:
     command: server /data --address ":9000" --console-address ":9001"
 
 volumes:
-  postgres_data:
   minio_data:
   fastembed_cache:
