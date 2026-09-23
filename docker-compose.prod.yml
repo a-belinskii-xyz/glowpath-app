@@ -1,36 +1,20 @@
-# Prod-shaped stack: one `compose up` serves UI + API behind nginx.
+# Prod-shaped stack: UI + API behind nginx.
+# Postgres and object storage are hosted services, not containers.
 # Local try:
 #   cp .env.prod.example .env.prod
 #   docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail up --build
-# Dev stack (reload / Vite) stays in docker-compose.yml — stop it first (`make down`).
+# Dev stack stays in docker-compose.yml — stop it first (`make down`).
 
 name: mood-tracker-prod
 
 services:
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_USER: mood
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mood}
-      POSTGRES_DB: mood_tracker
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mood -d mood_tracker"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    # Not published — only reachable on the compose network.
-
   migrations:
     build: ./backend
     env_file:
       - backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://mood:${POSTGRES_PASSWORD:-mood}@db:5432/mood_tracker
-    depends_on:
-      db:
-        condition: service_healthy
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${DATABASE_URL_UNPOOLED:-}
     command: alembic upgrade head
     restart: "no"
 
@@ -41,27 +25,21 @@ services:
     ports:
       - "${MAILHOG_UI_PORT:-8025}:8025"
 
-  minio:
-    image: minio/minio:latest
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-mood}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-moodsecret}
-    volumes:
-      - minio_data:/data
-    command: server /data --address ":9000" --console-address ":9001"
-
   app:
     build: ./backend
     env_file:
       - backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://mood:${POSTGRES_PASSWORD:-mood}@db:5432/mood_tracker
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${DATABASE_URL_UNPOOLED:-}
+      SKIP_MIGRATIONS: "true"
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-mood}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-moodsecret}
-      MINIO_SECURE: "false"
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-mood-tracker}
+      MINIO_SECURE: ${MINIO_SECURE:-true}
       FASTEMBED_CACHE_PATH: /var/cache/fastembed
       # Same origin as the nginx UI
       FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8080}
@@ -71,24 +49,22 @@ services:
     depends_on:
       migrations:
         condition: service_completed_successfully
-      minio:
-        condition: service_started
     volumes:
       - fastembed_cache:/var/cache/fastembed
     # No bind-mount, no --reload — image code only.
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    # API is internal; public entry is `frontend` nginx.
 
   reminders:
     build: ./backend
     env_file:
       - backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://mood:${POSTGRES_PASSWORD:-mood}@db:5432/mood_tracker
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_UNPOOLED: ${DATABASE_URL_UNPOOLED:-}
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
       FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8080}
       APP_PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      SKIP_MIGRATIONS: "true"
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -124,6 +100,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-  minio_data:
   fastembed_cache:

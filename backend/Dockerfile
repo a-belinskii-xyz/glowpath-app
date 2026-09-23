@@ -7,6 +7,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 ENV FASTEMBED_CACHE_PATH=/var/cache/fastembed
+# Do not download the local ONNX embedding model on Render (no disk, 512 MB).
+ENV EMBEDDING_ENABLED=false
 RUN mkdir -p /var/cache/fastembed
 
 COPY pyproject.toml .
@@ -16,7 +18,10 @@ RUN pip install --no-cache-dir -e .
 
 COPY alembic.ini .
 COPY alembic ./alembic
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 8000
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

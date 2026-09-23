@@ -13,13 +13,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option(
-    "sqlalchemy.url",
-    resolve_alembic_database_url(
-        configured_url=config.get_main_option("sqlalchemy.url"),
-        settings_url=settings.database_url,
-    ),
+_migration_url = resolve_alembic_database_url(
+    configured_url=config.get_main_option("sqlalchemy.url"),
+    settings_url=settings.migration_database_url,
 )
+# ConfigParser treats % as interpolation. Passwords from Neon can contain it.
+config.set_main_option("sqlalchemy.url", _migration_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

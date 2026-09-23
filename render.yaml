@@ -1,0 +1,97 @@
+# Render Blueprint. Postgres is external (Neon): set DATABASE_URL in the dashboard.
+# Frankfurt matches the Neon region (eu-central-1).
+#
+# Free web services can call each other only via public URLs. They cannot
+# receive private-network traffic. The reminder worker is not here: Render
+# has no free background-worker plan (it still runs in docker compose).
+services:
+  - type: web
+    name: glowpath-api
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      - key: EMBEDDING_ENABLED
+        value: "false"
+      - key: MINIO_ENDPOINT
+        sync: false
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      - key: MINIO_BUCKET
+        sync: false
+      - key: MINIO_SECURE
+        value: "true"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: APP_DEBUG
+        value: "false"
+      - key: TELEGRAM_BOT_SERVICE_TOKEN
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          name: glowpath-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: CORS_ORIGINS
+        fromService:
+          name: glowpath-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: APP_PUBLIC_URL
+        fromService:
+          name: glowpath-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: glowpath-web
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: API_UPSTREAM
+        fromService:
+          name: glowpath-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: glowpath-bot
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./telegram-bot/Dockerfile
+    dockerContext: ./telegram-bot
+    healthCheckPath: /health
+    envVars:
+      - key: API_BASE_URL
+        fromService:
+          name: glowpath-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_SERVICE_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      # Public origin of this service, without the webhook path.
+      # Example: https://glowpath-bot.onrender.com
+      - key: TELEGRAM_WEBHOOK_URL
+        sync: false
+      - key: TELEGRAM_MINI_APP_URL
+        fromService:
+          name: glowpath-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL

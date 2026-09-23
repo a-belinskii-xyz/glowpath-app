@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
-engine = create_engine(settings.database_url)
+engine = create_engine(
+    settings.database_url,
+    pool_pre_ping=True,
+    # Neon pooler (PgBouncer, transaction mode) rejects prepared statements.
+    connect_args={"prepare_threshold": None},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

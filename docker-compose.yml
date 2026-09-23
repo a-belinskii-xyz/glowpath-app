@@ -1,3 +1,6 @@
+# Local development. Postgres and MinIO run in Compose.
+# Production (docker-compose.prod.yml and Render) uses hosted Postgres and object storage.
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -37,6 +40,7 @@ services:
       - backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      DATABASE_URL_UNPOOLED: ""
     depends_on:
       db:
         condition: service_healthy
@@ -52,6 +56,7 @@ services:
       - backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker_test
+      DATABASE_URL_UNPOOLED: ""
     depends_on:
       db-init:
         condition: service_completed_successfully
@@ -75,9 +80,14 @@ services:
       - backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      DATABASE_URL_UNPOOLED: ""
+      SKIP_MIGRATIONS: "true"
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
       MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: mood
+      MINIO_SECRET_KEY: moodsecret
+      MINIO_SECURE: "false"
       FASTEMBED_CACHE_PATH: /var/cache/fastembed
     depends_on:
       migrations:
@@ -97,8 +107,10 @@ services:
       - backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      DATABASE_URL_UNPOOLED: ""
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
+      SKIP_MIGRATIONS: "true"
     depends_on:
       migrations:
         condition: service_completed_successfully

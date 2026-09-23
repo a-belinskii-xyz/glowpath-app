@@ -90,9 +90,13 @@ nano .env.prod
 ```bash
 PUBLIC_URL=http://93.77.163.171:8080
 HTTP_PORT=8080
-POSTGRES_PASSWORD=mood
-MINIO_ROOT_USER=mood
-MINIO_ROOT_PASSWORD=moodsecret
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/mood_tracker?sslmode=require
+DATABASE_URL_UNPOOLED=postgresql://USER:PASSWORD@HOST/mood_tracker?sslmode=require
+MINIO_ENDPOINT=storage.example.com
+MINIO_ACCESS_KEY=
+MINIO_SECRET_KEY=
+MINIO_BUCKET=mood-tracker
+MINIO_SECURE=true
 SMTP_HOST=mailhog
 SMTP_PORT=1025
 MAILHOG_UI_PORT=8025
@@ -130,7 +134,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail up
 docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail down
 ```
 
-`down` не трогает volumes (Postgres, MinIO). Данные остаются, пока не сделаешь `down -v` или не удалишь ВМ.
+`down` не поднимает и не хранит базу и файлы: Postgres и объектное хранилище внешние.
 
 ## 2. Залить обнову
 
@@ -176,7 +180,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail lo
 ## 4. Постоянный VPS (когда дойдём)
 
 1. Домен + HTTPS (Caddy / nginx) на 80/443, не сырой `:8080`.
-2. В `.env.prod`: `PUBLIC_URL=https://твой.домен`, боевые `POSTGRES_PASSWORD` / MinIO / `JWT_SECRET_KEY`.
+2. В `.env.prod`: `PUBLIC_URL=https://твой.домен`, боевые `DATABASE_URL` / MinIO / `JWT_SECRET_KEY`.
 3. Реальный SMTP, без `--profile mail`.
 4. Google OAuth redirect на `https://домен/v1/auth/google/callback`.
 5. Telegram — сервис в prod-compose + webhook на HTTPS.

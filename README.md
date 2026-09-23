@@ -31,11 +31,11 @@ Product naming / branding notes: [`docs/branding-naming-plan.md`](docs/branding-
 
 ## Prerequisites
 
-- **Docker** and **Docker Compose** — backend services (API, PostgreSQL with pgvector, MinIO, MailHog)
+- **Docker** and **Docker Compose** — local stack (API, Postgres with pgvector, MinIO, MailHog, Telegram bot)
 - **Python 3.12+** — local backend development (`make install`, `make run`)
 - **Node.js 20+** and **npm** — frontend dev server and build
 
-Compose uses the `pgvector/pgvector:pg16` image so semantic search can store note embeddings in Postgres.
+Local Compose uses the `pgvector/pgvector:pg16` image. Production (Render and `docker-compose.prod.yml`) points at hosted Postgres and S3-compatible storage instead. A `postgresql://` URL is rewritten to the psycopg 3 driver.
 ## Quick start (full stack)
 
 ### 1. Environment files
