@@ -1,0 +1,63 @@
+{
+  "name": {"en": "Demo mocks", "ru": "Демо-моки"},
+  "description": {
+    "en": "Temporary placeholder icons — drop files into this folder and run make seed-marketplace.",
+    "ru": "Временные заглушки — положите файлы в эту папку и выполните make seed-marketplace."
+  },
+  "price_tokens": 0,
+  "official": true,
+  "published": true,
+  "granted": true,
+  "sort_order": 10,
+  "cover": "fox-happy",
+  "icons": {
+    "fox-happy": {
+      "labels": {"en": "Happy fox", "ru": "Весёлый лис"},
+      "tags": ["joy", "animals"],
+      "colors": ["#f97316", "#f59e0b"],
+      "scores": [4, 5]
+    },
+    "fox-sad": {
+      "labels": {"en": "Sad fox", "ru": "Грустный лис"},
+      "tags": ["sadness", "animals"],
+      "colors": ["#2563eb", "#60a5fa"],
+      "scores": [1, 2]
+    },
+    "fox-dumbbell": {
+      "labels": {"en": "Fox with dumbbells", "ru": "Лис с гантелями"},
+      "tags": ["sport", "fitness", "animals"],
+      "colors": ["#16a34a", "#84cc16"],
+      "scores": [4, 5]
+    },
+    "fox-sleep": {
+      "labels": {"en": "Sleepy fox", "ru": "Сонный лис"},
+      "tags": ["night", "calm", "animals"],
+      "colors": ["#7c3aed", "#a78bfa"],
+      "scores": [3]
+    },
+    "blob-joy": {
+      "labels": {"en": "Joy blob", "ru": "Радостный блоб"},
+      "tags": ["joy", "energy"],
+      "colors": ["#db2777", "#f472b6"],
+      "scores": [5]
+    },
+    "star-burst": {
+      "labels": {"en": "Star burst", "ru": "Вспышка звезды"},
+      "tags": ["joy", "energy"],
+      "colors": ["#d97706", "#eab308"],
+      "scores": [4, 5]
+    },
+    "rain-cloud": {
+      "labels": {"en": "Rain cloud", "ru": "Дождевое облако"},
+      "tags": ["sadness", "weather"],
+      "colors": ["#64748b", "#94a3b8"],
+      "scores": [1, 2]
+    },
+    "coffee-cup": {
+      "labels": {"en": "Coffee cup", "ru": "Чашка кофе"},
+      "tags": ["calm", "energy"],
+      "colors": ["#dc2626", "#f97316"],
+      "scores": [3, 4]
+    }
+  }
+}

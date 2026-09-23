@@ -1,0 +1,155 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: mood
+      POSTGRES_PASSWORD: mood
+      POSTGRES_DB: mood_tracker
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mood -d mood_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-init:
+    image: pgvector/pgvector:pg16
+    environment:
+      PGPASSWORD: mood
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - |
+        psql -h db -U mood -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'mood_tracker_test'" | grep -q 1 \
+          || psql -h db -U mood -d postgres -c "CREATE DATABASE mood_tracker_test"
+    restart: "no"
+
+  migrations:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/alembic:/app/alembic
+      - ./backend/app:/app/app
+    command: alembic upgrade head
+    restart: "no"
+
+  migrations-test:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker_test
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./backend/alembic:/app/alembic
+      - ./backend/app:/app/app
+    command: alembic upgrade head
+    restart: "no"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+
+  app:
+    build: ./backend
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      MINIO_ENDPOINT: minio:9000
+      FASTEMBED_CACHE_PATH: /var/cache/fastembed
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      mailhog:
+        condition: service_started
+      minio:
+        condition: service_started
+    volumes:
+      - ./backend/app:/app/app
+      - fastembed_cache:/var/cache/fastembed
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  reminders:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      mailhog:
+        condition: service_started
+    volumes:
+      - ./backend/app:/app/app
+    command: python -m app.jobs.reminders
+
+  telegram-bot:
+    build: ./telegram-bot
+    ports:
+      - "${TELEGRAM_BOT_PORT:-8081}:8081"
+    env_file:
+      - backend/.env
+    environment:
+      API_BASE_URL: http://app:8000
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 8081
+    depends_on:
+      app:
+        condition: service_started
+    volumes:
+      - ./telegram-bot/bot:/app/bot
+    command: uvicorn bot.main:app --host 0.0.0.0 --port 8081 --reload
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: mood
+      MINIO_ROOT_PASSWORD: moodsecret
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --address ":9000" --console-address ":9001"
+
+volumes:
+  postgres_data:
+  minio_data:
+  fastembed_cache:

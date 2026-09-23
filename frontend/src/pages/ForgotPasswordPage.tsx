@@ -1,0 +1,64 @@
+import { FormEvent, useState } from 'react'
+
+import { forgotPassword } from '../api/auth'
+import { Alert } from '../components/Alert'
+import { PageErrorAlert } from '../components/PageErrorAlert'
+import { AuthFooterLink } from '../components/AuthCardLayout'
+import { FormField } from '../components/FormField'
+import { StableButtonLabel } from '../components/StableButtonLabel'
+import { useLocale } from '../context/LocaleContext'
+import { formatApiError } from '../lib/errors'
+
+export function ForgotPasswordPage() {
+  const { t } = useLocale()
+  const [email, setEmail] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    setError(null)
+    setMessage(null)
+    setIsSubmitting(true)
+
+    try {
+      const response = await forgotPassword(email)
+      setMessage(response.message)
+    } catch (err) {
+      setError(formatApiError(err, t, 'errors.requestFailed'))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <h1>{t('auth.forgotTitle')}</h1>
+      <p className="muted">{t('auth.forgotSubtitle')}</p>
+
+      <PageErrorAlert error={error} />
+      {message ? <Alert variant="success">{message}</Alert> : null}
+
+      <form className="form" onSubmit={handleSubmit}>
+        <FormField
+          id="email"
+          label={t('common.email')}
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <button className="button button-block" type="submit" disabled={isSubmitting}>
+          <StableButtonLabel
+            active={isSubmitting ? t('auth.sending') : t('auth.sendResetLink')}
+            labels={[t('auth.sendResetLink'), t('auth.sending')]}
+          />
+        </button>
+      </form>
+
+      <AuthFooterLink to="/login">{t('common.backToLogin')}</AuthFooterLink>
+    </>
+  )
+}

@@ -1,0 +1,33 @@
+{
+  "name": {"en": "Random pics", "ru": "Случайные картинки"},
+  "description": {
+    "en": "Random pictures for your projects",
+    "ru": "Случайные картинки для ваших проектов"
+  },
+  "price_tokens": 120,
+  "official": true,
+  "published": true,
+  "granted": false,
+  "sort_order": 10,
+  "cover": "random-pic-1",
+  "icons": {
+    "random-pic-1": {
+      "labels": {"en": "Random pic 1", "ru": "Случайная картинка 1"},
+      "tags": ["random", "picture"],
+      "colors": ["#f97316", "#f59e0b"],
+      "scores": [1, 2, 3]
+    },
+    "random-pic-2": {
+      "labels": {"en": "Random pic 2", "ru": "Случайная картинка 2"},
+      "tags": ["random", "picture"],
+      "colors": ["#f97316", "#f59e0b"],
+      "scores": [1, 2, 3]
+    },
+    "random-pic-3": {
+      "labels": {"en": "Random pic 3", "ru": "Случайная картинка 3"},
+      "tags": ["random", "picture"],
+      "colors": ["#f97316", "#f59e0b"],
+      "scores": [1, 2, 3]
+    }
+  }
+}
