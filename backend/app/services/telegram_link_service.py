@@ -1,0 +1,215 @@
+from __future__ import annotations
+
+import secrets
+import uuid
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.core.error_codes import ErrorCode
+from app.core.errors import AppError
+from app.core.i18n import normalize_locale
+from app.core.identity import telegram_is_only_auth_method
+from app.core.security import hash_token
+from app.models.telegram_link_code import TelegramLinkCode
+from app.models.user import User
+from app.models.user_notification_settings import UserNotificationSettings
+from app.services.notifications.base import NotificationChannel
+
+
+class TelegramLinkError(AppError):
+    pass
+
+
+def bot_is_configured() -> bool:
+    return bool(settings.telegram_bot_token.strip() and settings.telegram_bot_username.strip())
+
+
+def serialize_entry_point() -> dict[str, str | None]:
+    username = settings.telegram_bot_username.strip() or None
+    return {
+        "bot_username": username,
+        "bot_url": f"https://t.me/{username}" if username else None,
+    }
+
+
+def serialize_link_status(user: User) -> dict[str, object]:
+    username = settings.telegram_bot_username.strip() or None
+    return {
+        "linked": user.telegram_linked,
+        "telegram_user_id": user.telegram_user_id,
+        "telegram_linked_at": user.telegram_linked_at,
+        "bot_username": username,
+        "bot_configured": bot_is_configured(),
+        "can_unlink": user.telegram_linked and not telegram_is_only_auth_method(user),
+    }
+
+
+def create_link_code(db: Session, *, user: User) -> tuple[str, TelegramLinkCode, str]:
+    if not bot_is_configured():
+        raise TelegramLinkError(
+            "Telegram bot is not configured",
+            code=ErrorCode.TELEGRAM_BOT_NOT_CONFIGURED,
+            status_code=503,
+        )
+    if user.telegram_linked:
+        raise TelegramLinkError(
+            "Telegram is already linked. Unlink it before connecting another account.",
+            code=ErrorCode.TELEGRAM_ALREADY_LINKED,
+            status_code=409,
+        )
+
+    # Telegram start payload max length is 64 characters.
+    raw_code = secrets.token_urlsafe(18)
+    expires_at = datetime.now(UTC) + timedelta(
+        minutes=settings.telegram_link_code_expire_minutes,
+    )
+
+    db.execute(
+        update(TelegramLinkCode)
+        .where(
+            TelegramLinkCode.user_id == user.id,
+            TelegramLinkCode.used_at.is_(None),
+        )
+        .values(used_at=datetime.now(UTC))
+    )
+
+    row = TelegramLinkCode(
+        user_id=user.id,
+        code_hash=hash_token(raw_code),
+        expires_at=expires_at,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+
+    username = settings.telegram_bot_username.strip()
+    deep_link = f"https://t.me/{username}?start={raw_code}"
+    return raw_code, row, deep_link
+
+
+def link_telegram_account(
+    db: Session,
+    *,
+    code: str,
+    telegram_user_id: int,
+    telegram_chat_id: int,
+    locale: str | None = None,
+) -> User:
+    now = datetime.now(UTC)
+    code_hash = hash_token(code.strip())
+    row = db.scalar(
+        select(TelegramLinkCode)
+        .where(
+            TelegramLinkCode.code_hash == code_hash,
+            TelegramLinkCode.used_at.is_(None),
+        )
+        .order_by(TelegramLinkCode.created_at.desc())
+    )
+    if row is None:
+        raise TelegramLinkError(
+            "Invalid or already used link code",
+            code=ErrorCode.TELEGRAM_LINK_CODE_INVALID,
+            status_code=400,
+        )
+    if row.expires_at <= now:
+        raise TelegramLinkError(
+            "Link code has expired", code=ErrorCode.TELEGRAM_LINK_CODE_EXPIRED, status_code=400
+        )
+
+    user = db.get(User, row.user_id)
+    if user is None:
+        raise TelegramLinkError("User not found", code=ErrorCode.USER_NOT_FOUND, status_code=404)
+    if user.email_verified_at is None:
+        raise TelegramLinkError(
+            "User email is not verified", code=ErrorCode.EMAIL_NOT_VERIFIED, status_code=403
+        )
+
+    existing = db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
+    if existing is not None and existing.id != user.id:
+        raise TelegramLinkError(
+            "This Telegram account is already linked to another user",
+            code=ErrorCode.TELEGRAM_ACCOUNT_LINKED_OTHER_USER,
+            status_code=409,
+        )
+    if user.telegram_linked and user.telegram_user_id != telegram_user_id:
+        raise TelegramLinkError(
+            "This GlowPath account is already linked to another Telegram user",
+            code=ErrorCode.ACCOUNT_LINKED_OTHER_TELEGRAM,
+            status_code=409,
+        )
+
+    user.telegram_user_id = telegram_user_id
+    user.telegram_chat_id = telegram_chat_id
+    user.telegram_linked_at = now
+    if locale:
+        user.telegram_locale = normalize_locale(locale)
+    _ensure_telegram_channel(db, user_id=user.id)
+
+    row.used_at = now
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def unlink_telegram_account(db: Session, *, user: User) -> User:
+    if not user.telegram_linked:
+        raise TelegramLinkError(
+            "Telegram is not linked", code=ErrorCode.TELEGRAM_NOT_LINKED, status_code=404
+        )
+    if telegram_is_only_auth_method(user):
+        raise TelegramLinkError(
+            "Telegram is the only sign-in method for this account",
+            code=ErrorCode.TELEGRAM_UNLINK_NOT_ALLOWED,
+            status_code=409,
+        )
+
+    user.telegram_user_id = None
+    user.telegram_chat_id = None
+    user.telegram_linked_at = None
+    user.telegram_locale = None
+    _remove_telegram_channel(db, user_id=user.id)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def unlink_by_telegram_user_id(db: Session, *, telegram_user_id: int) -> User:
+    user = db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
+    if user is None:
+        raise TelegramLinkError(
+            "Telegram account is not linked", code=ErrorCode.TELEGRAM_NOT_LINKED, status_code=404
+        )
+    return unlink_telegram_account(db, user=user)
+
+
+def get_user_by_telegram_id(db: Session, *, telegram_user_id: int) -> User | None:
+    return db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
+
+
+def _ensure_telegram_channel(db: Session, *, user_id: uuid.UUID) -> None:
+    prefs = db.scalar(
+        select(UserNotificationSettings).where(UserNotificationSettings.user_id == user_id)
+    )
+    if prefs is None:
+        return
+    channel = NotificationChannel.TELEGRAM.value
+    current = list(prefs.channels or [])
+    if channel in current:
+        return
+    prefs.channels = [*current, channel]
+
+
+def _remove_telegram_channel(db: Session, *, user_id: uuid.UUID) -> None:
+    prefs = db.scalar(
+        select(UserNotificationSettings).where(UserNotificationSettings.user_id == user_id)
+    )
+    if prefs is None or not prefs.channels:
+        return
+    channel = NotificationChannel.TELEGRAM.value
+    if channel not in prefs.channels:
+        return
+    remaining = [item for item in prefs.channels if item != channel]
+    prefs.channels = remaining or [NotificationChannel.EMAIL.value]

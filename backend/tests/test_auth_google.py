@@ -26,6 +26,13 @@ def test_google_id_token_creates_user_and_tags(
     assert response.status_code == 200
     assert "access_token" in response.json()
 
+    me_response = auth_client.get(
+        "/v1/auth/me",
+        headers={"Authorization": f"Bearer {response.json()['access_token']}"},
+    )
+    assert me_response.status_code == 200
+    assert me_response.json()["has_password"] is False
+
     user = db.scalar(select(User).where(User.email == "google-new@example.com"))
     assert user is not None
     assert user.google_sub == "google-sub-1"
@@ -53,6 +60,13 @@ def test_google_id_token_links_existing_email_account(
     )
     response = auth_client.post("/v1/auth/google", json={"id_token": "fake-token"})
     assert response.status_code == 200
+
+    me_response = auth_client.get(
+        "/v1/auth/me",
+        headers={"Authorization": f"Bearer {response.json()['access_token']}"},
+    )
+    assert me_response.status_code == 200
+    assert me_response.json()["has_password"] is True
 
     user = db.scalar(select(User).where(User.email == email))
     assert user is not None

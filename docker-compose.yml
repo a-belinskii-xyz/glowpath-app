@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: mood
       POSTGRES_PASSWORD: mood
@@ -17,7 +17,7 @@ services:
       retries: 5
 
   db-init:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       PGPASSWORD: mood
     depends_on:
@@ -40,6 +40,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./backend/alembic:/app/alembic
+      - ./backend/app:/app/app
     command: alembic upgrade head
     restart: "no"
 
@@ -52,6 +55,9 @@ services:
     depends_on:
       db-init:
         condition: service_completed_successfully
+    volumes:
+      - ./backend/alembic:/app/alembic
+      - ./backend/app:/app/app
     command: alembic upgrade head
     restart: "no"
 
@@ -71,6 +77,28 @@ services:
       DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
+      MINIO_ENDPOINT: minio:9000
+      FASTEMBED_CACHE_PATH: /var/cache/fastembed
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      mailhog:
+        condition: service_started
+      minio:
+        condition: service_started
+    volumes:
+      - ./backend/app:/app/app
+      - fastembed_cache:/var/cache/fastembed
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  reminders:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:mood@db:5432/mood_tracker
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -78,7 +106,36 @@ services:
         condition: service_started
     volumes:
       - ./backend/app:/app/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: python -m app.jobs.reminders
+
+  telegram-bot:
+    build: ./telegram-bot
+    ports:
+      - "${TELEGRAM_BOT_PORT:-8081}:8081"
+    env_file:
+      - backend/.env
+    environment:
+      API_BASE_URL: http://app:8000
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 8081
+    depends_on:
+      app:
+        condition: service_started
+    volumes:
+      - ./telegram-bot/bot:/app/bot
+    command: uvicorn bot.main:app --host 0.0.0.0 --port 8081 --reload
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   minio:
     image: minio/minio:latest
@@ -90,8 +147,9 @@ services:
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001"
+    command: server /data --address ":9000" --console-address ":9001"
 
 volumes:
   postgres_data:
   minio_data:
+  fastembed_cache:

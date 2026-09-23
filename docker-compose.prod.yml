@@ -1,0 +1,129 @@
+# Prod-shaped stack: one `compose up` serves UI + API behind nginx.
+# Local try:
+#   cp .env.prod.example .env.prod
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod --profile mail up --build
+# Dev stack (reload / Vite) stays in docker-compose.yml — stop it first (`make down`).
+
+name: mood-tracker-prod
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: mood
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mood}
+      POSTGRES_DB: mood_tracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mood -d mood_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # Not published — only reachable on the compose network.
+
+  migrations:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:${POSTGRES_PASSWORD:-mood}@db:5432/mood_tracker
+    depends_on:
+      db:
+        condition: service_healthy
+    command: alembic upgrade head
+    restart: "no"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    # Optional local mail catcher for prod-compose smoke. Disable on a real VPS.
+    profiles: ["mail"]
+    ports:
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-mood}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-moodsecret}
+    volumes:
+      - minio_data:/data
+    command: server /data --address ":9000" --console-address ":9001"
+
+  app:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:${POSTGRES_PASSWORD:-mood}@db:5432/mood_tracker
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-mood}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-moodsecret}
+      MINIO_SECURE: "false"
+      FASTEMBED_CACHE_PATH: /var/cache/fastembed
+      # Same origin as the nginx UI
+      FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${PUBLIC_URL:-http://localhost:8080}
+      APP_PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      APP_DEBUG: "false"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
+    volumes:
+      - fastembed_cache:/var/cache/fastembed
+    # No bind-mount, no --reload — image code only.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    # API is internal; public entry is `frontend` nginx.
+
+  reminders:
+    build: ./backend
+    env_file:
+      - backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://mood:${POSTGRES_PASSWORD:-mood}@db:5432/mood_tracker
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8080}
+      APP_PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    command: python -m app.jobs.reminders
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ""
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      app:
+        condition: service_started
+    restart: unless-stopped
+
+  telegram-bot:
+    build: ./telegram-bot
+    env_file:
+      - backend/.env
+    environment:
+      API_BASE_URL: http://app:8000
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 8081
+      TELEGRAM_MINI_APP_URL: ${PUBLIC_URL:-http://localhost:8080}
+    ports:
+      - "${TELEGRAM_BOT_PORT:-8081}:8081"
+    depends_on:
+      app:
+        condition: service_started
+    command: uvicorn bot.main:app --host 0.0.0.0 --port 8081
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+  fastembed_cache:

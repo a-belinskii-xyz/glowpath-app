@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint, text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,11 @@ class TagGroup(TimestampMixin, Base):
     slug: Mapped[str] = mapped_column(String(64))
     labels: Mapped[dict[str, str]] = mapped_column(JSONB)
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
+    show_on_entry: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
 
     user: Mapped["User"] = relationship(back_populates="tag_groups")
     tags: Mapped[list["Tag"]] = relationship(

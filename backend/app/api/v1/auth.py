@@ -1,14 +1,18 @@
 from typing import cast
 
-from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_email_service
 from app.config import settings
+from app.core.error_codes import ErrorCode
+from app.core.errors import raise_http_error, structured_detail
 from app.core.google_oauth import oauth
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
+    AttachEmailRequest,
     EmailRequest,
     GoogleIdTokenRequest,
     LoginRequest,
@@ -18,48 +22,50 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     RegisterRequest,
     ResetPasswordRequest,
+    TelegramAuthRequest,
     TokenResponse,
     VerificationResendResponse,
     VerificationResendStatus,
 )
-from app.schemas.user import UserPublic
+from app.schemas.user import UserPublic, UserUpdate
 from app.services.auth_service import (
     AuthError,
     GoogleProfile,
     TokenPair,
+    attach_email,
     authenticate_google_profile,
     forgot_password,
     login_user,
+    parse_visitor_id,
     refresh_access_token,
     register_user,
     resend_verification_email,
     reset_password,
+    update_user_timezone,
     verify_email,
     verify_google_id_token,
 )
 from app.services.email_service import EmailService
+from app.services.telegram_auth_service import authenticate_telegram_init_data
+from app.services.user_public import to_user_public
 
 router = APIRouter(tags=["auth"])
 
 
 def _to_user_public(user: User) -> UserPublic:
-    return UserPublic(
-        id=user.id,
-        email=user.email,
-        timezone=user.timezone,
-        email_verified=user.email_verified_at is not None,
-        email_verified_at=user.email_verified_at,
-    )
+    return to_user_public(user)
 
 
 def _handle_auth_error(exc: AuthError) -> None:
-    from fastapi import HTTPException
-
-    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    raise_http_error(exc)
 
 
 def _to_token_response(tokens: TokenPair) -> TokenResponse:
-    return TokenResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)
+    return TokenResponse(
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+        user_created=tokens.user_created or None,
+    )
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=MessageResponse)
@@ -75,10 +81,31 @@ def register(
             password=body.password,
             timezone=body.timezone,
             email_service=mailer,
+            visitor_id=parse_visitor_id(body.visitor_id),
         )
     except AuthError as exc:
         _handle_auth_error(exc)
     return MessageResponse(message="Check your email to verify your account")
+
+
+@router.post("/attach-email", response_model=UserPublic)
+def attach_email_endpoint(
+    body: AttachEmailRequest,
+    db: Session = Depends(get_db),
+    mailer: EmailService = Depends(get_email_service),
+    current_user: User = Depends(get_current_user),
+) -> UserPublic:
+    try:
+        user = attach_email(
+            db,
+            user=current_user,
+            email=body.email,
+            password=body.password,
+            email_service=mailer,
+        )
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    return _to_user_public(user)
 
 
 @router.get("/verify-email", response_model=MessageResponse)
@@ -109,7 +136,12 @@ def resend_verification_endpoint(
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     try:
-        tokens = login_user(db, email=body.email, password=body.password)
+        tokens = login_user(
+            db,
+            email=body.email,
+            password=body.password,
+            visitor_id=parse_visitor_id(body.visitor_id),
+        )
     except AuthError as exc:
         _handle_auth_error(exc)
     return _to_token_response(tokens)
@@ -152,35 +184,61 @@ def reset_password_endpoint(
 @router.get("/google/login")
 async def google_login(request: Request) -> Response:
     if not settings.google_client_id or not settings.google_client_secret:
-        from fastapi import HTTPException
-
-        raise HTTPException(status_code=503, detail="Google OAuth is not configured")
+        raise HTTPException(
+            status_code=503,
+            detail=structured_detail(
+                code=ErrorCode.GOOGLE_OAUTH_NOT_CONFIGURED,
+                message="Google OAuth is not configured",
+            ),
+        )
     return cast(
         Response,
         await oauth.google.authorize_redirect(request, settings.google_redirect_uri),
     )
 
 
-@router.get("/google/callback", response_model=TokenResponse)
-async def google_callback(request: Request, db: Session = Depends(get_db)) -> TokenResponse:
-    from fastapi import HTTPException
-
+@router.get("/google/callback")
+async def google_callback(request: Request, db: Session = Depends(get_db)) -> RedirectResponse:
     if not settings.google_client_id or not settings.google_client_secret:
-        raise HTTPException(status_code=503, detail="Google OAuth is not configured")
+        raise HTTPException(
+            status_code=503,
+            detail=structured_detail(
+                code=ErrorCode.GOOGLE_OAUTH_NOT_CONFIGURED,
+                message="Google OAuth is not configured",
+            ),
+        )
 
     try:
         token = await oauth.google.authorize_access_token(request)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Google authorization failed") from exc
+        raise HTTPException(
+            status_code=400,
+            detail=structured_detail(
+                code=ErrorCode.GOOGLE_AUTHORIZATION_FAILED,
+                message="Google authorization failed",
+            ),
+        ) from exc
 
     user_info = token.get("userinfo")
     if not isinstance(user_info, dict):
-        raise HTTPException(status_code=400, detail="Google user info missing")
+        raise HTTPException(
+            status_code=400,
+            detail=structured_detail(
+                code=ErrorCode.GOOGLE_USER_INFO_MISSING,
+                message="Google user info missing",
+            ),
+        )
 
     sub = user_info.get("sub")
     email = user_info.get("email")
     if not isinstance(sub, str) or not isinstance(email, str):
-        raise HTTPException(status_code=400, detail="Google user info incomplete")
+        raise HTTPException(
+            status_code=400,
+            detail=structured_detail(
+                code=ErrorCode.GOOGLE_USER_INFO_INCOMPLETE,
+                message="Google user info incomplete",
+            ),
+        )
 
     profile = GoogleProfile(
         sub=sub,
@@ -188,10 +246,16 @@ async def google_callback(request: Request, db: Session = Depends(get_db)) -> To
         email_verified=bool(user_info.get("email_verified")),
     )
     try:
-        tokens = authenticate_google_profile(db, profile)
+        visitor_id = parse_visitor_id(request.cookies.get(settings.guest_visitor_cookie_name))
+        tokens = authenticate_google_profile(db, profile, visitor_id=visitor_id)
     except AuthError as exc:
         _handle_auth_error(exc)
-    return _to_token_response(tokens)
+    user_created_param = "&user_created=1" if tokens.user_created else ""
+    redirect_url = (
+        f"{settings.frontend_url}/auth/google/callback"
+        f"#access_token={tokens.access_token}&refresh_token={tokens.refresh_token}{user_created_param}"
+    )
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/google", response_model=TokenResponse)
@@ -201,7 +265,27 @@ def google_id_token_login(
 ) -> TokenResponse:
     try:
         profile = verify_google_id_token(body.id_token)
-        tokens = authenticate_google_profile(db, profile)
+        tokens = authenticate_google_profile(
+            db,
+            profile,
+            visitor_id=parse_visitor_id(body.visitor_id),
+        )
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    return _to_token_response(tokens)
+
+
+@router.post("/telegram", response_model=TokenResponse)
+def telegram_mini_app_login(
+    body: TelegramAuthRequest,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    try:
+        tokens = authenticate_telegram_init_data(
+            db,
+            init_data=body.init_data,
+            timezone=body.timezone,
+        )
     except AuthError as exc:
         _handle_auth_error(exc)
     return _to_token_response(tokens)
@@ -210,3 +294,16 @@ def google_id_token_login(
 @router.get("/me", response_model=UserPublic)
 def me(current_user: User = Depends(get_current_user)) -> UserPublic:
     return _to_user_public(current_user)
+
+
+@router.patch("/me", response_model=UserPublic)
+def patch_me(
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserPublic:
+    try:
+        user = update_user_timezone(db, user_id=current_user.id, timezone=body.timezone)
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    return _to_user_public(user)

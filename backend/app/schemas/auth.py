@@ -19,6 +19,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     password_confirm: str = Field(min_length=8, max_length=128)
     timezone: str = Field(default="Europe/Minsk", max_length=64)
+    visitor_id: str | None = Field(default=None, max_length=36)
 
     @model_validator(mode="after")
     def passwords_match(self) -> "RegisterRequest":
@@ -30,6 +31,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+    visitor_id: str | None = Field(default=None, max_length=36)
 
 
 class TokenRequest(BaseModel):
@@ -54,6 +56,24 @@ class EmailRequest(BaseModel):
 
 class GoogleIdTokenRequest(BaseModel):
     id_token: str = Field(min_length=1)
+    visitor_id: str | None = Field(default=None, max_length=36)
+
+
+class TelegramAuthRequest(BaseModel):
+    init_data: str = Field(min_length=1, max_length=8192)
+    timezone: str = Field(default="Europe/Minsk", max_length=64)
+
+
+class AttachEmailRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    password_confirm: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "AttachEmailRequest":
+        if self.password != self.password_confirm:
+            raise ValueError("Passwords do not match")
+        return self
 
 
 class RefreshTokenRequest(BaseModel):
@@ -64,6 +84,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    user_created: bool | None = None
 
 
 class MessageResponse(BaseModel):

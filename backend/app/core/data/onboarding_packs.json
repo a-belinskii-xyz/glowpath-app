@@ -1,0 +1,3519 @@
+{
+  "meta": {
+    "product": "GlowPath",
+    "version": "1.0",
+    "locales": [
+      "en",
+      "ru"
+    ],
+    "notes": "Generated content packs for onboarding as per TZ v1.0. All slugs are unique across packages. The BASE pack includes the canonical defaults. Proposed additions to BASE are provided for consideration."
+  },
+  "onboarding_questions": [
+    {
+      "block_id": "life",
+      "title": {
+        "en": "What best describes your main activity?",
+        "ru": "Чем ты в основном занят?"
+      },
+      "selection": "multiple",
+      "max_selections": 2,
+      "options": [
+        {
+          "key": "life.office",
+          "label": {
+            "en": "Office / Remote Work",
+            "ru": "Офис / удалёнка"
+          },
+          "packs": [
+            "life.office"
+          ]
+        },
+        {
+          "key": "life.student",
+          "label": {
+            "en": "Studies / Student",
+            "ru": "Учёба"
+          },
+          "packs": [
+            "life.student"
+          ]
+        },
+        {
+          "key": "life.freelance",
+          "label": {
+            "en": "Freelance / Own Project",
+            "ru": "Фриланс / свой проект"
+          },
+          "packs": [
+            "life.freelance"
+          ]
+        },
+        {
+          "key": "life.shift",
+          "label": {
+            "en": "Shift / Irregular Schedule",
+            "ru": "Сменный / нерегулярный график"
+          },
+          "packs": [
+            "life.shift"
+          ]
+        },
+        {
+          "key": "life.parent",
+          "label": {
+            "en": "Caring for Children / Family",
+            "ru": "Забота о детях / семье"
+          },
+          "packs": [
+            "life.parent"
+          ]
+        },
+        {
+          "key": "life.between",
+          "label": {
+            "en": "Transition Period / Finding My Way",
+            "ru": "Переходный период / поиск себя"
+          },
+          "packs": [
+            "life.between"
+          ]
+        }
+      ]
+    },
+    {
+      "block_id": "focus",
+      "title": {
+        "en": "What's important to track alongside your mood?",
+        "ru": "Что важно отслеживать рядом с настроением?"
+      },
+      "selection": "multiple",
+      "max_selections": 3,
+      "options": [
+        {
+          "key": "focus.sleep",
+          "label": {
+            "en": "Sleep & Recovery",
+            "ru": "Сон и восстановление"
+          },
+          "packs": [
+            "focus.sleep"
+          ]
+        },
+        {
+          "key": "focus.stress",
+          "label": {
+            "en": "Stress & Anxiety",
+            "ru": "Стресс и тревога"
+          },
+          "packs": [
+            "focus.stress"
+          ]
+        },
+        {
+          "key": "focus.energy",
+          "label": {
+            "en": "Energy & Burnout",
+            "ru": "Энергия и выгорание"
+          },
+          "packs": [
+            "focus.energy"
+          ]
+        },
+        {
+          "key": "focus.social",
+          "label": {
+            "en": "Relationships & Social Life",
+            "ru": "Отношения и общение"
+          },
+          "packs": [
+            "focus.social"
+          ]
+        },
+        {
+          "key": "focus.body",
+          "label": {
+            "en": "Body / Well-being",
+            "ru": "Тело / самочувствие"
+          },
+          "packs": [
+            "focus.body"
+          ]
+        },
+        {
+          "key": "focus.habits",
+          "label": {
+            "en": "Habits & Discipline",
+            "ru": "Привычки и дисциплина"
+          },
+          "packs": [
+            "focus.habits"
+          ]
+        },
+        {
+          "key": "focus.emotions",
+          "label": {
+            "en": "Emotions in Detail",
+            "ru": "Эмоции подробнее"
+          },
+          "packs": [
+            "focus.emotions"
+          ]
+        }
+      ]
+    },
+    {
+      "block_id": "interest",
+      "title": {
+        "en": "What do you enjoy doing?",
+        "ru": "Чем любишь заниматься?"
+      },
+      "selection": "multiple",
+      "max_selections": 4,
+      "options": [
+        {
+          "key": "interest.gaming",
+          "label": {
+            "en": "Gaming",
+            "ru": "Игры"
+          },
+          "packs": [
+            "interest.gaming"
+          ]
+        },
+        {
+          "key": "interest.sport",
+          "label": {
+            "en": "Sports / Workouts",
+            "ru": "Спорт / тренировки"
+          },
+          "packs": [
+            "interest.sport"
+          ]
+        },
+        {
+          "key": "interest.outdoors",
+          "label": {
+            "en": "Nature / Walks",
+            "ru": "Природа / прогулки"
+          },
+          "packs": [
+            "interest.outdoors"
+          ]
+        },
+        {
+          "key": "interest.creative",
+          "label": {
+            "en": "Creativity (drawing, music, writing...)",
+            "ru": "Творчество (рисование, музыка, письмо…)"
+          },
+          "packs": [
+            "interest.creative"
+          ]
+        },
+        {
+          "key": "interest.reading",
+          "label": {
+            "en": "Reading / Learning for fun",
+            "ru": "Чтение / учёба ради интереса"
+          },
+          "packs": [
+            "interest.reading"
+          ]
+        },
+        {
+          "key": "interest.food",
+          "label": {
+            "en": "Food / Cooking",
+            "ru": "Еда / готовка"
+          },
+          "packs": [
+            "interest.food"
+          ]
+        },
+        {
+          "key": "interest.media",
+          "label": {
+            "en": "Movies / Series / Podcasts",
+            "ru": "Фильмы / сериалы / подкасты"
+          },
+          "packs": [
+            "interest.media"
+          ]
+        },
+        {
+          "key": "interest.music",
+          "label": {
+            "en": "Music (listening / playing)",
+            "ru": "Музыка (слушаю / играю)"
+          },
+          "packs": [
+            "interest.music"
+          ]
+        },
+        {
+          "key": "interest.travel",
+          "label": {
+            "en": "Travel / Commuting",
+            "ru": "Поездки / дорога"
+          },
+          "packs": [
+            "interest.travel"
+          ]
+        },
+        {
+          "key": "interest.social_hobbies",
+          "label": {
+            "en": "Social Hobbies / Meetups",
+            "ru": "Компании / тусовки / хобби с людьми"
+          },
+          "packs": [
+            "interest.social_hobbies"
+          ]
+        }
+      ]
+    }
+  ],
+  "packs": [
+    {
+      "pack_id": "base.default",
+      "kind": "base",
+      "title": {
+        "en": "Core Mood Tracking",
+        "ru": "Базовое отслеживание"
+      },
+      "description": {
+        "en": "Essential groups, templates, and goals for everyday mood tracking.",
+        "ru": "Основные группы, шаблоны и цели для ежедневного отслеживания настроения."
+      },
+      "onboarding_triggers": [],
+      "priority": 1000,
+      "tag_groups": [
+        {
+          "slug": "weather",
+          "labels": {
+            "en": "Weather",
+            "ru": "Погода"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "sunny",
+              "labels": {
+                "en": "Sunny",
+                "ru": "Солнечно"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "☀️",
+              "sort_order": 0
+            },
+            {
+              "slug": "cloudy",
+              "labels": {
+                "en": "Cloudy",
+                "ru": "Облачно"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "☁️",
+              "sort_order": 1
+            },
+            {
+              "slug": "rain",
+              "labels": {
+                "en": "Rain",
+                "ru": "Дождь"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "🌧️",
+              "sort_order": 2
+            },
+            {
+              "slug": "thunderstorm",
+              "labels": {
+                "en": "Thunderstorm",
+                "ru": "Гроза"
+              },
+              "color": "#6366f1",
+              "icon_type": "emoji",
+              "icon": "⛈️",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "slug": "sleep_quality",
+          "labels": {
+            "en": "Sleep Quality",
+            "ru": "Качество сна"
+          },
+          "show_on_entry": true,
+          "sort_order": 1,
+          "tags": [
+            {
+              "slug": "slept_well",
+              "labels": {
+                "en": "Slept well",
+                "ru": "Хорошо поспал"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "😴",
+              "sort_order": 0
+            },
+            {
+              "slug": "average_sleep",
+              "labels": {
+                "en": "Average sleep",
+                "ru": "Средний сон"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "😑",
+              "sort_order": 1
+            },
+            {
+              "slug": "slept_poorly",
+              "labels": {
+                "en": "Slept poorly",
+                "ru": "Плохо спал"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "😩",
+              "sort_order": 2
+            }
+          ]
+        },
+        {
+          "slug": "mood",
+          "labels": {
+            "en": "Mood",
+            "ru": "Настроение"
+          },
+          "show_on_entry": true,
+          "sort_order": 2,
+          "tags": [
+            {
+              "slug": "joy",
+              "labels": {
+                "en": "Joy",
+                "ru": "Радость"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "😊",
+              "sort_order": 0
+            },
+            {
+              "slug": "anxiety",
+              "labels": {
+                "en": "Anxiety",
+                "ru": "Тревога"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "😰",
+              "sort_order": 1
+            },
+            {
+              "slug": "fatigue",
+              "labels": {
+                "en": "Fatigue",
+                "ru": "Усталость"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "😮‍💨",
+              "sort_order": 2
+            },
+            {
+              "slug": "calm",
+              "labels": {
+                "en": "Calm",
+                "ru": "Спокойствие"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "😌",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "slug": "activity",
+          "labels": {
+            "en": "Activity",
+            "ru": "Активность"
+          },
+          "show_on_entry": true,
+          "sort_order": 3,
+          "tags": [
+            {
+              "slug": "work",
+              "labels": {
+                "en": "Work",
+                "ru": "Работа"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "💼",
+              "sort_order": 0
+            },
+            {
+              "slug": "sport",
+              "labels": {
+                "en": "Sport",
+                "ru": "Спорт"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🏃",
+              "sort_order": 1
+            },
+            {
+              "slug": "social",
+              "labels": {
+                "en": "Socializing",
+                "ru": "Общение"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "💬",
+              "sort_order": 2
+            },
+            {
+              "slug": "rest",
+              "labels": {
+                "en": "Rest",
+                "ru": "Отдых"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "🛋️",
+              "sort_order": 3
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "daily_reflection",
+          "labels": {
+            "en": "Daily Reflection",
+            "ru": "Дневная рефлексия"
+          },
+          "bodies": {
+            "en": "## What I did\n\n## What got in the way\n\n## What I'll do tomorrow\n",
+            "ru": "## Что я делал\n\n## Что мне мешало\n\n## Что я буду делать завтра\n"
+          },
+          "sort_order": 0
+        },
+        {
+          "slug": "gratitude",
+          "labels": {
+            "en": "Gratitude",
+            "ru": "Благодарность"
+          },
+          "bodies": {
+            "en": "## Three things I'm grateful for\n\n1. \n2. \n3. \n",
+            "ru": "## Три вещи, за которые я благодарен\n\n1. \n2. \n3. \n"
+          },
+          "sort_order": 1
+        },
+        {
+          "slug": "mood_check_in",
+          "labels": {
+            "en": "Mood Check-in",
+            "ru": "Чек-ин настроения"
+          },
+          "bodies": {
+            "en": "## How I feel\n\n## Why\n\n## What would help\n",
+            "ru": "## Как я себя чувствую\n\n## Почему\n\n## Что бы помогло\n"
+          },
+          "sort_order": 2
+        }
+      ],
+      "goals": [
+        {
+          "slug": "early_rise",
+          "labels": {
+            "en": "Early Rise",
+            "ru": "Ранний подъём"
+          },
+          "times_per_week": 7,
+          "color": "#60a5fa",
+          "icon_type": "emoji",
+          "icon": "🌅",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "min_screen_time",
+          "labels": {
+            "en": "Min Screen Time",
+            "ru": "Меньше экрана"
+          },
+          "times_per_week": 5,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "📵",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        },
+        {
+          "slug": "exercise",
+          "labels": {
+            "en": "Exercise",
+            "ru": "Тренировка"
+          },
+          "times_per_week": 3,
+          "color": "#f59e0b",
+          "icon_type": "emoji",
+          "icon": "🏋️",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "pack_id": "life.office",
+      "kind": "life",
+      "title": {
+        "en": "Office & Work Life",
+        "ru": "Офис и работа"
+      },
+      "description": {
+        "en": "Track your work context, meetings, and focus.",
+        "ru": "Отслеживайте рабочий контекст, встречи и концентрацию."
+      },
+      "onboarding_triggers": [
+        "life.office"
+      ],
+      "priority": 90,
+      "tag_groups": [
+        {
+          "slug": "work_context",
+          "labels": {
+            "en": "Work Context",
+            "ru": "Рабочий контекст"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "deep_work",
+              "labels": {
+                "en": "Deep Work",
+                "ru": "Глубокая работа"
+              },
+              "color": "#8b5cf6",
+              "icon_type": "emoji",
+              "icon": "🧠",
+              "sort_order": 0
+            },
+            {
+              "slug": "meetings",
+              "labels": {
+                "en": "Meetings",
+                "ru": "Встречи"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "📅",
+              "sort_order": 1
+            },
+            {
+              "slug": "emails_chat",
+              "labels": {
+                "en": "Emails & Chat",
+                "ru": "Почта и чаты"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "💬",
+              "sort_order": 2
+            },
+            {
+              "slug": "overtime",
+              "labels": {
+                "en": "Overtime",
+                "ru": "Переработка"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "⏰",
+              "sort_order": 3
+            },
+            {
+              "slug": "commute_day",
+              "labels": {
+                "en": "Commute Day",
+                "ru": "Дорога на работу"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "🚗",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "workday_reflection",
+          "labels": {
+            "en": "Workday Reflection",
+            "ru": "Рефлексия рабочего дня"
+          },
+          "bodies": {
+            "en": "## What did I accomplish?\n\n## What was draining?\n\n## How did I feel about my work today?\n",
+            "ru": "## Что мне удалось сделать?\n\n## Что меня утомило?\n\n## Как я относился к своей работе сегодня?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "deep_work_block",
+          "labels": {
+            "en": "Deep Work Block",
+            "ru": "Блок глубокой работы"
+          },
+          "times_per_week": 4,
+          "color": "#8b5cf6",
+          "icon_type": "emoji",
+          "icon": "⏳",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "walk_after_work",
+          "labels": {
+            "en": "Walk After Work",
+            "ru": "Прогулка после работы"
+          },
+          "times_per_week": 3,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "🚶",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "life.student",
+      "kind": "life",
+      "title": {
+        "en": "Student Life",
+        "ru": "Студенческая жизнь"
+      },
+      "description": {
+        "en": "Track your studies, lectures, and exam prep.",
+        "ru": "Отслеживайте учёбу, лекции и подготовку к экзаменам."
+      },
+      "onboarding_triggers": [
+        "life.student"
+      ],
+      "priority": 90,
+      "tag_groups": [
+        {
+          "slug": "study",
+          "labels": {
+            "en": "Study",
+            "ru": "Учёба"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "lectures",
+              "labels": {
+                "en": "Lectures",
+                "ru": "Лекции"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "📚",
+              "sort_order": 0
+            },
+            {
+              "slug": "homework",
+              "labels": {
+                "en": "Homework",
+                "ru": "Домашнее задание"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "✍️",
+              "sort_order": 1
+            },
+            {
+              "slug": "exam_prep",
+              "labels": {
+                "en": "Exam Prep",
+                "ru": "Подготовка к экзаменам"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "📝",
+              "sort_order": 2
+            },
+            {
+              "slug": "group_project",
+              "labels": {
+                "en": "Group Project",
+                "ru": "Групповой проект"
+              },
+              "color": "#8b5cf6",
+              "icon_type": "emoji",
+              "icon": "👥",
+              "sort_order": 3
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "study_session_note",
+          "labels": {
+            "en": "Study Session Note",
+            "ru": "Заметка о занятии"
+          },
+          "bodies": {
+            "en": "## What I studied\n\n## What I understood\n\n## What's still unclear\n",
+            "ru": "## Что я изучал\n\n## Что я понял\n\n## Что всё ещё неясно\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "study_block",
+          "labels": {
+            "en": "Study Block",
+            "ru": "Блок учёбы"
+          },
+          "times_per_week": 4,
+          "color": "#60a5fa",
+          "icon_type": "emoji",
+          "icon": "📖",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "sleep_before_midnight",
+          "labels": {
+            "en": "Sleep Before Midnight",
+            "ru": "Сон до полуночи"
+          },
+          "times_per_week": 5,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🌙",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "life.freelance",
+      "kind": "life",
+      "title": {
+        "en": "Freelance & Projects",
+        "ru": "Фриланс и проекты"
+      },
+      "description": {
+        "en": "Track client work, admin, and creative flow.",
+        "ru": "Отслеживайте работу с клиентами, администрирование и творческий поток."
+      },
+      "onboarding_triggers": [
+        "life.freelance"
+      ],
+      "priority": 90,
+      "tag_groups": [
+        {
+          "slug": "freelance",
+          "labels": {
+            "en": "Freelance",
+            "ru": "Фриланс"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "client_work",
+              "labels": {
+                "en": "Client Work",
+                "ru": "Работа с клиентами"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🤝",
+              "sort_order": 0
+            },
+            {
+              "slug": "admin",
+              "labels": {
+                "en": "Admin",
+                "ru": "Администрирование"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "📋",
+              "sort_order": 1
+            },
+            {
+              "slug": "sales_outreach",
+              "labels": {
+                "en": "Sales & Outreach",
+                "ru": "Продажи и контакты"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "📢",
+              "sort_order": 2
+            },
+            {
+              "slug": "creative_flow",
+              "labels": {
+                "en": "Creative Flow",
+                "ru": "Творческий поток"
+              },
+              "color": "#8b5cf6",
+              "icon_type": "emoji",
+              "icon": "✨",
+              "sort_order": 3
+            },
+            {
+              "slug": "unpaid_break",
+              "labels": {
+                "en": "Unpaid Break",
+                "ru": "Перерыв без оплаты"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "🕊️",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "weekly_freelance_review",
+          "labels": {
+            "en": "Weekly Freelance Review",
+            "ru": "Еженедельный обзор фриланса"
+          },
+          "bodies": {
+            "en": "## Wins this week\n\n## Challenges\n\n## What to focus on next week\n",
+            "ru": "## Удачи на этой неделе\n\n## Сложности\n\n## На чём сосредоточиться на следующей неделе\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "billable_hours_day",
+          "labels": {
+            "en": "Billable Hours / Day",
+            "ru": "Часы в работе"
+          },
+          "times_per_week": 4,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "⏱️",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "no_work_evening",
+          "labels": {
+            "en": "No Work Evening",
+            "ru": "Вечер без работы"
+          },
+          "times_per_week": 3,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🌆",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "life.shift",
+      "kind": "life",
+      "title": {
+        "en": "Shift Work",
+        "ru": "Сменная работа"
+      },
+      "description": {
+        "en": "Track your schedule, shifts, and recovery.",
+        "ru": "Отслеживайте свой график, смены и восстановление."
+      },
+      "onboarding_triggers": [
+        "life.shift"
+      ],
+      "priority": 90,
+      "tag_groups": [
+        {
+          "slug": "schedule",
+          "labels": {
+            "en": "Schedule",
+            "ru": "График"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "day_shift",
+              "labels": {
+                "en": "Day Shift",
+                "ru": "Дневная смена"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "☀️",
+              "sort_order": 0
+            },
+            {
+              "slug": "night_shift",
+              "labels": {
+                "en": "Night Shift",
+                "ru": "Ночная смена"
+              },
+              "color": "#6366f1",
+              "icon_type": "emoji",
+              "icon": "🌙",
+              "sort_order": 1
+            },
+            {
+              "slug": "day_off",
+              "labels": {
+                "en": "Day Off",
+                "ru": "Выходной"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🛋️",
+              "sort_order": 2
+            },
+            {
+              "slug": "short_sleep_after_shift",
+              "labels": {
+                "en": "Short Sleep After Shift",
+                "ru": "Короткий сон после смены"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "😴",
+              "sort_order": 3
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "shift_recovery_check_in",
+          "labels": {
+            "en": "Shift Recovery Check-in",
+            "ru": "Чек-ин восстановления после смены"
+          },
+          "bodies": {
+            "en": "## How is my energy?\n\n## What do I need to recover?\n\n## What's next?\n",
+            "ru": "## Как моя энергия?\n\n## Что мне нужно для восстановления?\n\n## Что дальше?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "recovery_sleep",
+          "labels": {
+            "en": "Recovery Sleep",
+            "ru": "Восстанавливающий сон"
+          },
+          "times_per_week": 4,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🛌",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "daylight_walk",
+          "labels": {
+            "en": "Daylight Walk",
+            "ru": "Прогулка при свете дня"
+          },
+          "times_per_week": 3,
+          "color": "#f59e0b",
+          "icon_type": "emoji",
+          "icon": "🚶",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "life.parent",
+      "kind": "life",
+      "title": {
+        "en": "Family & Parenting",
+        "ru": "Семья и родительство"
+      },
+      "description": {
+        "en": "Track family time, parenting, and household.",
+        "ru": "Отслеживайте время с семьёй, родительство и домашние дела."
+      },
+      "onboarding_triggers": [
+        "life.parent"
+      ],
+      "priority": 90,
+      "tag_groups": [
+        {
+          "slug": "family_care",
+          "labels": {
+            "en": "Family Care",
+            "ru": "Забота о семье"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "kids_time",
+              "labels": {
+                "en": "Kids Time",
+                "ru": "Время с детьми"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "👶",
+              "sort_order": 0
+            },
+            {
+              "slug": "school_run",
+              "labels": {
+                "en": "School Run",
+                "ru": "Школьные заботы"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "🚌",
+              "sort_order": 1
+            },
+            {
+              "slug": "solo_parenting",
+              "labels": {
+                "en": "Solo Parenting",
+                "ru": "Сольное родительство"
+              },
+              "color": "#8b5cf6",
+              "icon_type": "emoji",
+              "icon": "👤",
+              "sort_order": 2
+            },
+            {
+              "slug": "partner_time",
+              "labels": {
+                "en": "Partner Time",
+                "ru": "Время с партнёром"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "❤️",
+              "sort_order": 3
+            },
+            {
+              "slug": "household",
+              "labels": {
+                "en": "Household",
+                "ru": "Домашние дела"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "🏠",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "parenting_check_in",
+          "labels": {
+            "en": "Parenting Check-in",
+            "ru": "Чек-ин родителя"
+          },
+          "bodies": {
+            "en": "## What was good today?\n\n## What was challenging?\n\n## What do I need?\n",
+            "ru": "## Что было хорошего сегодня?\n\n## Что было сложного?\n\n## Что мне нужно?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "personal_30min",
+          "labels": {
+            "en": "Personal 30 Minutes",
+            "ru": "30 минут на себя"
+          },
+          "times_per_week": 4,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🧘",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "early_sleep",
+          "labels": {
+            "en": "Early Sleep",
+            "ru": "Ранний сон"
+          },
+          "times_per_week": 4,
+          "color": "#6366f1",
+          "icon_type": "emoji",
+          "icon": "🌜",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "life.between",
+      "kind": "life",
+      "title": {
+        "en": "Transition & Discovery",
+        "ru": "Переход и поиск"
+      },
+      "description": {
+        "en": "Track uncertain times, planning, and small wins.",
+        "ru": "Отслеживайте неопределённые периоды, планирование и маленькие победы."
+      },
+      "onboarding_triggers": [
+        "life.between"
+      ],
+      "priority": 90,
+      "tag_groups": [
+        {
+          "slug": "life_phase",
+          "labels": {
+            "en": "Life Phase",
+            "ru": "Период жизни"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "job_search",
+              "labels": {
+                "en": "Job Search",
+                "ru": "Поиск работы"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "💼",
+              "sort_order": 0
+            },
+            {
+              "slug": "rest_day",
+              "labels": {
+                "en": "Rest Day",
+                "ru": "День отдыха"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "😌",
+              "sort_order": 1
+            },
+            {
+              "slug": "planning",
+              "labels": {
+                "en": "Planning",
+                "ru": "Планирование"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "📋",
+              "sort_order": 2
+            },
+            {
+              "slug": "uncertainty",
+              "labels": {
+                "en": "Uncertainty",
+                "ru": "Неопределённость"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "🤔",
+              "sort_order": 3
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "grounding_note",
+          "labels": {
+            "en": "Grounding Note",
+            "ru": "Заметка для опоры"
+          },
+          "bodies": {
+            "en": "## What gave me support today?\n\n## What's one small step I can take?\n",
+            "ru": "## Что дало мне поддержку сегодня?\n\n## Какой один маленький шаг я могу сделать?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "one_small_win",
+          "labels": {
+            "en": "One Small Win",
+            "ru": "Одна маленькая победа"
+          },
+          "times_per_week": 5,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "🌟",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "outdoor_minutes",
+          "labels": {
+            "en": "Outdoor Minutes",
+            "ru": "Минуты на улице"
+          },
+          "times_per_week": 3,
+          "color": "#60a5fa",
+          "icon_type": "emoji",
+          "icon": "🌳",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "focus.sleep",
+      "kind": "focus",
+      "title": {
+        "en": "Sleep & Recovery",
+        "ru": "Сон и восстановление"
+      },
+      "description": {
+        "en": "Track sleep factors, habits, and recovery.",
+        "ru": "Отслеживайте факторы сна, привычки и восстановление."
+      },
+      "onboarding_triggers": [
+        "focus.sleep"
+      ],
+      "priority": 85,
+      "tag_groups": [
+        {
+          "slug": "sleep_factors",
+          "labels": {
+            "en": "Sleep Factors",
+            "ru": "Факторы сна"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "late_caffeine",
+              "labels": {
+                "en": "Late Caffeine",
+                "ru": "Кофеин поздно"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "☕",
+              "sort_order": 0
+            },
+            {
+              "slug": "screen_before_bed",
+              "labels": {
+                "en": "Screen Before Bed",
+                "ru": "Экран перед сном"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "📱",
+              "sort_order": 1
+            },
+            {
+              "slug": "nap",
+              "labels": {
+                "en": "Nap",
+                "ru": "Дневной сон"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "💤",
+              "sort_order": 2
+            },
+            {
+              "slug": "insomnia_night",
+              "labels": {
+                "en": "Insomnia Night",
+                "ru": "Бессонная ночь"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "😫",
+              "sort_order": 3
+            },
+            {
+              "slug": "early_wake",
+              "labels": {
+                "en": "Early Wake",
+                "ru": "Раннее пробуждение"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🌅",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "sleep_diary_mini",
+          "labels": {
+            "en": "Sleep Diary Mini",
+            "ru": "Мини-дневник сна"
+          },
+          "bodies": {
+            "en": "## Sleep time / Wake time\n## How I slept (quality)\n## What affected my sleep\n",
+            "ru": "## Время сна / Пробуждения\n## Как я спал (качество)\n## Что повлияло на сон\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "consistent_bedtime",
+          "labels": {
+            "en": "Consistent Bedtime",
+            "ru": "Постоянное время сна"
+          },
+          "times_per_week": 5,
+          "color": "#6366f1",
+          "icon_type": "emoji",
+          "icon": "⏰",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "no_screens_late",
+          "labels": {
+            "en": "No Screens Late",
+            "ru": "Нет экранов перед сном"
+          },
+          "times_per_week": 4,
+          "color": "#94a3b8",
+          "icon_type": "emoji",
+          "icon": "🚫",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "focus.stress",
+      "kind": "focus",
+      "title": {
+        "en": "Stress & Anxiety",
+        "ru": "Стресс и тревога"
+      },
+      "description": {
+        "en": "Track stressors, coping mechanisms, and relief.",
+        "ru": "Отслеживайте стрессоры, механизмы совладания и облегчение."
+      },
+      "onboarding_triggers": [
+        "focus.stress"
+      ],
+      "priority": 85,
+      "tag_groups": [
+        {
+          "slug": "coping",
+          "labels": {
+            "en": "Coping",
+            "ru": "Совладание"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "breathing",
+              "labels": {
+                "en": "Breathing",
+                "ru": "Дыхание"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🌬️",
+              "sort_order": 0
+            },
+            {
+              "slug": "walk",
+              "labels": {
+                "en": "Walk",
+                "ru": "Прогулка"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "🚶",
+              "sort_order": 1
+            },
+            {
+              "slug": "talk_it_out",
+              "labels": {
+                "en": "Talk It Out",
+                "ru": "Выговориться"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "🗣️",
+              "sort_order": 2
+            },
+            {
+              "slug": "distraction",
+              "labels": {
+                "en": "Distraction",
+                "ru": "Отвлечение"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🎮",
+              "sort_order": 3
+            },
+            {
+              "slug": "coping_rest",
+              "labels": {
+                "en": "Rest",
+                "ru": "Отдых"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "😌",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "stress_unload",
+          "labels": {
+            "en": "Stress Unload",
+            "ru": "Разгрузка от стресса"
+          },
+          "bodies": {
+            "en": "## What's on my mind?\n## What's the main source of stress?\n## What would help me feel better right now?\n",
+            "ru": "## Что у меня на уме?\n## Что является основным источником стресса?\n## Что бы помогло мне почувствовать себя лучше прямо сейчас?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "stress_reset_break",
+          "labels": {
+            "en": "Stress Reset Break",
+            "ru": "Перерыв для снятия стресса"
+          },
+          "times_per_week": 4,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "🧘",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "journaling",
+          "labels": {
+            "en": "Journaling",
+            "ru": "Ведение дневника"
+          },
+          "times_per_week": 3,
+          "color": "#8b5cf6",
+          "icon_type": "emoji",
+          "icon": "✍️",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "focus.energy",
+      "kind": "focus",
+      "title": {
+        "en": "Energy & Burnout",
+        "ru": "Энергия и выгорание"
+      },
+      "description": {
+        "en": "Track your energy levels, drains, and recovery.",
+        "ru": "Отслеживайте уровень энергии, факторы утомления и восстановление."
+      },
+      "onboarding_triggers": [
+        "focus.energy"
+      ],
+      "priority": 85,
+      "tag_groups": [
+        {
+          "slug": "energy",
+          "labels": {
+            "en": "Energy",
+            "ru": "Энергия"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "high_energy",
+              "labels": {
+                "en": "High Energy",
+                "ru": "Высокая энергия"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "⚡",
+              "sort_order": 0
+            },
+            {
+              "slug": "medium_energy",
+              "labels": {
+                "en": "Medium Energy",
+                "ru": "Средняя энергия"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🌤️",
+              "sort_order": 1
+            },
+            {
+              "slug": "low_energy",
+              "labels": {
+                "en": "Low Energy",
+                "ru": "Низкая энергия"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "🔋",
+              "sort_order": 2
+            },
+            {
+              "slug": "wired_tired",
+              "labels": {
+                "en": "Wired Tired",
+                "ru": "Устал, но возбуждён"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "😵",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "slug": "drainers",
+          "labels": {
+            "en": "Energy Drainers",
+            "ru": "Источники утомления"
+          },
+          "show_on_entry": true,
+          "sort_order": 1,
+          "tags": [
+            {
+              "slug": "social_drain",
+              "labels": {
+                "en": "Social Drain",
+                "ru": "Социальное утомление"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "🙅",
+              "sort_order": 0
+            },
+            {
+              "slug": "decision_fatigue",
+              "labels": {
+                "en": "Decision Fatigue",
+                "ru": "Усталость от решений"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "🤯",
+              "sort_order": 1
+            },
+            {
+              "slug": "overstimulation",
+              "labels": {
+                "en": "Overstimulation",
+                "ru": "Перегрузка стимулами"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "📢",
+              "sort_order": 2
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "energy_audit",
+          "labels": {
+            "en": "Energy Audit",
+            "ru": "Аудит энергии"
+          },
+          "bodies": {
+            "en": "## What gave me energy today?\n## What drained my energy?\n## What was my overall energy level?\n",
+            "ru": "## Что дало мне энергию сегодня?\n## Что истощило мою энергию?\n## Каков был мой общий уровень энергии?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "no_overtime",
+          "labels": {
+            "en": "No Overtime",
+            "ru": "Без переработок"
+          },
+          "times_per_week": 3,
+          "color": "#f87171",
+          "icon_type": "emoji",
+          "icon": "🚫",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "recovery_evening",
+          "labels": {
+            "en": "Recovery Evening",
+            "ru": "Восстанавливающий вечер"
+          },
+          "times_per_week": 4,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🌆",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "focus.social",
+      "kind": "focus",
+      "title": {
+        "en": "Relationships & Social Life",
+        "ru": "Отношения и общение"
+      },
+      "description": {
+        "en": "Track interactions with people and social quality.",
+        "ru": "Отслеживайте взаимодействие с людьми и качество общения."
+      },
+      "onboarding_triggers": [
+        "focus.social"
+      ],
+      "priority": 85,
+      "tag_groups": [
+        {
+          "slug": "people",
+          "labels": {
+            "en": "People",
+            "ru": "Люди"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "family",
+              "labels": {
+                "en": "Family",
+                "ru": "Семья"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "👨‍👩‍👦",
+              "sort_order": 0
+            },
+            {
+              "slug": "friends",
+              "labels": {
+                "en": "Friends",
+                "ru": "Друзья"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "👯",
+              "sort_order": 1
+            },
+            {
+              "slug": "partner",
+              "labels": {
+                "en": "Partner",
+                "ru": "Партнёр"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "❤️",
+              "sort_order": 2
+            },
+            {
+              "slug": "colleagues",
+              "labels": {
+                "en": "Colleagues",
+                "ru": "Коллеги"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "💼",
+              "sort_order": 3
+            },
+            {
+              "slug": "alone",
+              "labels": {
+                "en": "Alone",
+                "ru": "Один"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "🧘",
+              "sort_order": 4
+            }
+          ]
+        },
+        {
+          "slug": "social_quality",
+          "labels": {
+            "en": "Social Quality",
+            "ru": "Качество общения"
+          },
+          "show_on_entry": true,
+          "sort_order": 1,
+          "tags": [
+            {
+              "slug": "meaningful_talk",
+              "labels": {
+                "en": "Meaningful Talk",
+                "ru": "Содержательный разговор"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "💬",
+              "sort_order": 0
+            },
+            {
+              "slug": "small_talk",
+              "labels": {
+                "en": "Small Talk",
+                "ru": "Лёгкая беседа"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "🗣️",
+              "sort_order": 1
+            },
+            {
+              "slug": "conflict",
+              "labels": {
+                "en": "Conflict",
+                "ru": "Конфликт"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "⚡",
+              "sort_order": 2
+            },
+            {
+              "slug": "support_given",
+              "labels": {
+                "en": "Support Given",
+                "ru": "Поддержал"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🤝",
+              "sort_order": 3
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "relationship_check_in",
+          "labels": {
+            "en": "Relationship Check-in",
+            "ru": "Чек-ин отношений"
+          },
+          "bodies": {
+            "en": "## Who did I connect with?\n## How was my social energy?\n## What felt good or hard about it?\n",
+            "ru": "## С кем я общался?\n## Какой была моя социальная энергия?\n## Что в этом было хорошего или сложного?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "reach_out",
+          "labels": {
+            "en": "Reach Out",
+            "ru": "Связаться с близкими"
+          },
+          "times_per_week": 3,
+          "color": "#f472b6",
+          "icon_type": "emoji",
+          "icon": "📞",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "quality_time",
+          "labels": {
+            "en": "Quality Time",
+            "ru": "Качественное время"
+          },
+          "times_per_week": 3,
+          "color": "#f59e0b",
+          "icon_type": "emoji",
+          "icon": "⏳",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "focus.body",
+      "kind": "focus",
+      "title": {
+        "en": "Body & Well-being",
+        "ru": "Тело и самочувствие"
+      },
+      "description": {
+        "en": "Track physical symptoms, aches, and overall feeling.",
+        "ru": "Отслеживайте физические симптомы, боли и общее самочувствие."
+      },
+      "onboarding_triggers": [
+        "focus.body"
+      ],
+      "priority": 85,
+      "tag_groups": [
+        {
+          "slug": "body",
+          "labels": {
+            "en": "Body",
+            "ru": "Тело"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "headache",
+              "labels": {
+                "en": "Headache",
+                "ru": "Головная боль"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "🤕",
+              "sort_order": 0
+            },
+            {
+              "slug": "stomach",
+              "labels": {
+                "en": "Stomach",
+                "ru": "Желудок"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🤢",
+              "sort_order": 1
+            },
+            {
+              "slug": "muscle_soreness",
+              "labels": {
+                "en": "Muscle Soreness",
+                "ru": "Боль в мышцах"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "💪",
+              "sort_order": 2
+            },
+            {
+              "slug": "allergy",
+              "labels": {
+                "en": "Allergy",
+                "ru": "Аллергия"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "🤧",
+              "sort_order": 3
+            },
+            {
+              "slug": "sick",
+              "labels": {
+                "en": "Sick",
+                "ru": "Болезнь"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "🤒",
+              "sort_order": 4
+            },
+            {
+              "slug": "feeling_good",
+              "labels": {
+                "en": "Feeling Good",
+                "ru": "Хорошее самочувствие"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "💚",
+              "sort_order": 5
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "body_scan_mini",
+          "labels": {
+            "en": "Body Scan Mini",
+            "ru": "Мини-сканирование тела"
+          },
+          "bodies": {
+            "en": "## How does my body feel?\n## What needs attention?\n## What would help me relax?\n",
+            "ru": "## Как я чувствую своё тело?\n## Что требует внимания?\n## Что помогло бы мне расслабиться?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "stretch",
+          "labels": {
+            "en": "Stretch",
+            "ru": "Растяжка"
+          },
+          "times_per_week": 4,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "🧘",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "hydrate_day",
+          "labels": {
+            "en": "Hydrate Day",
+            "ru": "Пить воду в течение дня"
+          },
+          "times_per_week": 5,
+          "color": "#60a5fa",
+          "icon_type": "emoji",
+          "icon": "💧",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "focus.habits",
+      "kind": "focus",
+      "title": {
+        "en": "Habits & Discipline",
+        "ru": "Привычки и дисциплина"
+      },
+      "description": {
+        "en": "Track your routines, breaks, and fresh starts.",
+        "ru": "Отслеживайте свои рутины, перерывы и новые начинания."
+      },
+      "onboarding_triggers": [
+        "focus.habits"
+      ],
+      "priority": 85,
+      "tag_groups": [
+        {
+          "slug": "habit_day",
+          "labels": {
+            "en": "Habit Day",
+            "ru": "Привычки дня"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "kept_routine",
+              "labels": {
+                "en": "Kept Routine",
+                "ru": "Соблюдал рутину"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "✅",
+              "sort_order": 0
+            },
+            {
+              "slug": "broke_routine",
+              "labels": {
+                "en": "Broke Routine",
+                "ru": "Нарушил рутину"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "❌",
+              "sort_order": 1
+            },
+            {
+              "slug": "started_fresh",
+              "labels": {
+                "en": "Started Fresh",
+                "ru": "Начал заново"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🌱",
+              "sort_order": 2
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "habit_reflection",
+          "labels": {
+            "en": "Habit Reflection",
+            "ru": "Рефлексия привычек"
+          },
+          "bodies": {
+            "en": "## What habits did I practice?\n## What made it easy or hard?\n## What do I want to do differently tomorrow?\n",
+            "ru": "## Какие привычки я практиковал?\n## Что облегчило или усложнило их?\n## Что я хочу сделать по-другому завтра?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "morning_routine",
+          "labels": {
+            "en": "Morning Routine",
+            "ru": "Утренняя рутина"
+          },
+          "times_per_week": 5,
+          "color": "#f59e0b",
+          "icon_type": "emoji",
+          "icon": "🌅",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "no_sugar",
+          "labels": {
+            "en": "No Sugar Today",
+            "ru": "Без сахара сегодня"
+          },
+          "times_per_week": 4,
+          "color": "#f472b6",
+          "icon_type": "emoji",
+          "icon": "🍬",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "focus.emotions",
+      "kind": "focus",
+      "title": {
+        "en": "Detailed Emotions",
+        "ru": "Детальные эмоции"
+      },
+      "description": {
+        "en": "Track a wider range of feelings beyond the base mood.",
+        "ru": "Отслеживайте более широкий спектр чувств помимо базового настроения."
+      },
+      "onboarding_triggers": [
+        "focus.emotions"
+      ],
+      "priority": 85,
+      "tag_groups": [
+        {
+          "slug": "detailed_emotions",
+          "labels": {
+            "en": "Detailed Emotions",
+            "ru": "Детальные эмоции"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "gratitude",
+              "labels": {
+                "en": "Gratitude",
+                "ru": "Благодарность"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🙏",
+              "sort_order": 0
+            },
+            {
+              "slug": "irritation",
+              "labels": {
+                "en": "Irritation",
+                "ru": "Раздражение"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "😤",
+              "sort_order": 1
+            },
+            {
+              "slug": "sadness",
+              "labels": {
+                "en": "Sadness",
+                "ru": "Печаль"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "😢",
+              "sort_order": 2
+            },
+            {
+              "slug": "excitement",
+              "labels": {
+                "en": "Excitement",
+                "ru": "Волнение"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "🤩",
+              "sort_order": 3
+            },
+            {
+              "slug": "loneliness",
+              "labels": {
+                "en": "Loneliness",
+                "ru": "Одиночество"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "😔",
+              "sort_order": 4
+            },
+            {
+              "slug": "pride",
+              "labels": {
+                "en": "Pride",
+                "ru": "Гордость"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🦁",
+              "sort_order": 5
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "emotion_naming",
+          "labels": {
+            "en": "Emotion Naming",
+            "ru": "Называние эмоций"
+          },
+          "bodies": {
+            "en": "## What am I feeling right now?\n## Where do I feel it in my body?\n## What do I need?\n",
+            "ru": "## Что я чувствую прямо сейчас?\n## Где я это чувствую в теле?\n## Что мне нужно?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "mood_check_twice",
+          "labels": {
+            "en": "Mood Check (2x/day)",
+            "ru": "Проверка настроения (2 раза в день)"
+          },
+          "times_per_week": 4,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🔄",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "emotion_journaling",
+          "labels": {
+            "en": "Journaling",
+            "ru": "Ведение дневника"
+          },
+          "times_per_week": 5,
+          "color": "#8b5cf6",
+          "icon_type": "emoji",
+          "icon": "✍️",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.gaming",
+      "kind": "interest",
+      "title": {
+        "en": "Gaming",
+        "ru": "Игры"
+      },
+      "description": {
+        "en": "Track your gaming sessions, wins, and mood.",
+        "ru": "Отслеживайте игровые сессии, победы и настроение."
+      },
+      "onboarding_triggers": [
+        "interest.gaming"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "gaming",
+          "labels": {
+            "en": "Gaming",
+            "ru": "Игры"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "coop",
+              "labels": {
+                "en": "Co-op",
+                "ru": "Кооператив"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🤝",
+              "sort_order": 0
+            },
+            {
+              "slug": "competitive",
+              "labels": {
+                "en": "Competitive",
+                "ru": "Соревнование"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "🏆",
+              "sort_order": 1
+            },
+            {
+              "slug": "story_game",
+              "labels": {
+                "en": "Story-driven Game",
+                "ru": "Сюжетная игра"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "📖",
+              "sort_order": 2
+            },
+            {
+              "slug": "grind_session",
+              "labels": {
+                "en": "Grind Session",
+                "ru": "Фарм / Зачистка"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "🔄",
+              "sort_order": 3
+            },
+            {
+              "slug": "toxic_lobby",
+              "labels": {
+                "en": "Toxic Lobby",
+                "ru": "Токсичный лобби"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "💢",
+              "sort_order": 4
+            },
+            {
+              "slug": "win_high",
+              "labels": {
+                "en": "Win High",
+                "ru": "Каеф от победы"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "🥳",
+              "sort_order": 5
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "after_session_notes",
+          "labels": {
+            "en": "After Session Notes",
+            "ru": "Заметки после сессии"
+          },
+          "bodies": {
+            "en": "## Mood before\n## Mood after\n## Why did I play?\n",
+            "ru": "## Настроение до\n## Настроение после\n## Почему я играл?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "gaming_time_limit_day",
+          "labels": {
+            "en": "Gaming Time Limit (Day)",
+            "ru": "Лимит времени на игры (день)"
+          },
+          "times_per_week": 4,
+          "color": "#f59e0b",
+          "icon_type": "emoji",
+          "icon": "⏳",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "stretch_between_matches",
+          "labels": {
+            "en": "Stretch Between Matches",
+            "ru": "Разминка между матчами"
+          },
+          "times_per_week": 3,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "🤸",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.sport",
+      "kind": "interest",
+      "title": {
+        "en": "Sports & Workouts",
+        "ru": "Спорт и тренировки"
+      },
+      "description": {
+        "en": "Track your training types and rest days.",
+        "ru": "Отслеживайте типы тренировок и дни отдыха."
+      },
+      "onboarding_triggers": [
+        "interest.sport"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "training",
+          "labels": {
+            "en": "Training",
+            "ru": "Тренировка"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "strength",
+              "labels": {
+                "en": "Strength",
+                "ru": "Силовая"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "🏋️",
+              "sort_order": 0
+            },
+            {
+              "slug": "cardio",
+              "labels": {
+                "en": "Cardio",
+                "ru": "Кардио"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🏃",
+              "sort_order": 1
+            },
+            {
+              "slug": "team_sport",
+              "labels": {
+                "en": "Team Sport",
+                "ru": "Командный спорт"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "⚽",
+              "sort_order": 2
+            },
+            {
+              "slug": "yoga_mobility",
+              "labels": {
+                "en": "Yoga / Mobility",
+                "ru": "Йога / Мобильность"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "🧘",
+              "sort_order": 3
+            },
+            {
+              "slug": "rest_day_active",
+              "labels": {
+                "en": "Rest Day Active",
+                "ru": "Активный отдых"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "🚶",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "workout_lite",
+          "labels": {
+            "en": "Workout Lite",
+            "ru": "Лёгкий дневник тренировки"
+          },
+          "bodies": {
+            "en": "## Workout type\n## Duration\n## How I felt\n",
+            "ru": "## Тип тренировки\n## Продолжительность\n## Как я себя чувствовал\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "training_session",
+          "labels": {
+            "en": "Training Session",
+            "ru": "Тренировочная сессия"
+          },
+          "times_per_week": 3,
+          "color": "#f87171",
+          "icon_type": "emoji",
+          "icon": "💪",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "mobility",
+          "labels": {
+            "en": "Mobility",
+            "ru": "Мобильность"
+          },
+          "times_per_week": 3,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🧘",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.outdoors",
+      "kind": "interest",
+      "title": {
+        "en": "Nature & Outdoors",
+        "ru": "Природа и прогулки"
+      },
+      "description": {
+        "en": "Track your time in nature, walks, and hikes.",
+        "ru": "Отслеживайте время на природе, прогулки и походы."
+      },
+      "onboarding_triggers": [
+        "interest.outdoors"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "outdoors",
+          "labels": {
+            "en": "Outdoors",
+            "ru": "Природа"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "park",
+              "labels": {
+                "en": "Park",
+                "ru": "Парк"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🌳",
+              "sort_order": 0
+            },
+            {
+              "slug": "forest",
+              "labels": {
+                "en": "Forest",
+                "ru": "Лес"
+              },
+              "color": "#10b981",
+              "icon_type": "emoji",
+              "icon": "🌲",
+              "sort_order": 1
+            },
+            {
+              "slug": "water",
+              "labels": {
+                "en": "Water",
+                "ru": "Вода"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "🌊",
+              "sort_order": 2
+            },
+            {
+              "slug": "rainy_walk",
+              "labels": {
+                "en": "Rainy Walk",
+                "ru": "Прогулка под дождём"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "🌧️",
+              "sort_order": 3
+            },
+            {
+              "slug": "long_hike",
+              "labels": {
+                "en": "Long Hike",
+                "ru": "Долгий поход"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🥾",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "nature_walk_reflection",
+          "labels": {
+            "en": "Nature Walk Reflection",
+            "ru": "Рефлексия прогулки на природе"
+          },
+          "bodies": {
+            "en": "## Where did I go?\n## What did I notice?\n## How do I feel now?\n",
+            "ru": "## Где я был?\n## Что я заметил?\n## Как я себя чувствую сейчас?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "nature_walk",
+          "labels": {
+            "en": "Nature Walk",
+            "ru": "Прогулка на природе"
+          },
+          "times_per_week": 3,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "🌿",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.creative",
+      "kind": "interest",
+      "title": {
+        "en": "Creativity",
+        "ru": "Творчество"
+      },
+      "description": {
+        "en": "Track your creative activities and flow.",
+        "ru": "Отслеживайте творческие занятия и поток."
+      },
+      "onboarding_triggers": [
+        "interest.creative"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "creative",
+          "labels": {
+            "en": "Creative",
+            "ru": "Творчество"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "drawing",
+              "labels": {
+                "en": "Drawing",
+                "ru": "Рисование"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "🎨",
+              "sort_order": 0
+            },
+            {
+              "slug": "writing",
+              "labels": {
+                "en": "Writing",
+                "ru": "Письмо"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "✍️",
+              "sort_order": 1
+            },
+            {
+              "slug": "music_making",
+              "labels": {
+                "en": "Music Making",
+                "ru": "Музыка"
+              },
+              "color": "#8b5cf6",
+              "icon_type": "emoji",
+              "icon": "🎵",
+              "sort_order": 2
+            },
+            {
+              "slug": "crafts",
+              "labels": {
+                "en": "Crafts",
+                "ru": "Рукоделие"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🧵",
+              "sort_order": 3
+            },
+            {
+              "slug": "creative_block",
+              "labels": {
+                "en": "Creative Block",
+                "ru": "Творческий блок"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "😐",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "creative_session_notes",
+          "labels": {
+            "en": "Creative Session Notes",
+            "ru": "Заметки о творческой сессии"
+          },
+          "bodies": {
+            "en": "## What did I create?\n## How did it feel?\n## Any challenges?\n",
+            "ru": "## Что я создал?\n## Как я себя чувствовал?\n## Были ли сложности?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "create_30min",
+          "labels": {
+            "en": "Create 30 Min",
+            "ru": "Творить 30 минут"
+          },
+          "times_per_week": 4,
+          "color": "#f472b6",
+          "icon_type": "emoji",
+          "icon": "🎨",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.reading",
+      "kind": "interest",
+      "title": {
+        "en": "Reading & Learning",
+        "ru": "Чтение и учёба"
+      },
+      "description": {
+        "en": "Track what you read and your takeaways.",
+        "ru": "Отслеживайте, что вы читаете, и основные выводы."
+      },
+      "onboarding_triggers": [
+        "interest.reading"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "reading",
+          "labels": {
+            "en": "Reading",
+            "ru": "Чтение"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "fiction",
+              "labels": {
+                "en": "Fiction",
+                "ru": "Художественная литература"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "📚",
+              "sort_order": 0
+            },
+            {
+              "slug": "nonfiction",
+              "labels": {
+                "en": "Non-fiction",
+                "ru": "Нон-фикшн"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "📘",
+              "sort_order": 1
+            },
+            {
+              "slug": "articles",
+              "labels": {
+                "en": "Articles",
+                "ru": "Статьи"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "📰",
+              "sort_order": 2
+            },
+            {
+              "slug": "studying_material",
+              "labels": {
+                "en": "Studying Material",
+                "ru": "Учебные материалы"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "📖",
+              "sort_order": 3
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "reading_notes",
+          "labels": {
+            "en": "Reading Notes",
+            "ru": "Заметки о прочитанном"
+          },
+          "bodies": {
+            "en": "## What I read\n## Key takeaways\n## My thoughts / feelings\n",
+            "ru": "## Что я прочитал\n## Ключевые выводы\n## Мои мысли / чувства\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "read_20min",
+          "labels": {
+            "en": "Read 20 Min",
+            "ru": "Читать 20 минут"
+          },
+          "times_per_week": 5,
+          "color": "#60a5fa",
+          "icon_type": "emoji",
+          "icon": "📖",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.food",
+      "kind": "interest",
+      "title": {
+        "en": "Food & Cooking",
+        "ru": "Еда и готовка"
+      },
+      "description": {
+        "en": "Track your meals, cooking, and eating habits.",
+        "ru": "Отслеживайте свои приёмы пищи, готовку и привычки в еде."
+      },
+      "onboarding_triggers": [
+        "interest.food"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "food",
+          "labels": {
+            "en": "Food",
+            "ru": "Еда"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "home_cooked",
+              "labels": {
+                "en": "Home Cooked",
+                "ru": "Домашняя еда"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🍳",
+              "sort_order": 0
+            },
+            {
+              "slug": "ordered_in",
+              "labels": {
+                "en": "Ordered In",
+                "ru": "Заказал доставку"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "📦",
+              "sort_order": 1
+            },
+            {
+              "slug": "healthy",
+              "labels": {
+                "en": "Healthy",
+                "ru": "Полезная еда"
+              },
+              "color": "#10b981",
+              "icon_type": "emoji",
+              "icon": "🥗",
+              "sort_order": 2
+            },
+            {
+              "slug": "comfort_food",
+              "labels": {
+                "en": "Comfort Food",
+                "ru": "Еда для комфорта"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "🍕",
+              "sort_order": 3
+            },
+            {
+              "slug": "skipped_meal",
+              "labels": {
+                "en": "Skipped Meal",
+                "ru": "Пропустил приём пищи"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "⏭️",
+              "sort_order": 4
+            },
+            {
+              "slug": "shared_meal",
+              "labels": {
+                "en": "Shared Meal",
+                "ru": "Совместная трапеза"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "🍽️",
+              "sort_order": 5
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "meal_mood",
+          "labels": {
+            "en": "Meal & Mood",
+            "ru": "Еда и настроение"
+          },
+          "bodies": {
+            "en": "## What did I eat?\n## How did I feel before/after?\n",
+            "ru": "## Что я ел?\n## Как я себя чувствовал до / после?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "cook_home",
+          "labels": {
+            "en": "Cook at Home",
+            "ru": "Готовить дома"
+          },
+          "times_per_week": 4,
+          "color": "#f59e0b",
+          "icon_type": "emoji",
+          "icon": "🍳",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.media",
+      "kind": "interest",
+      "title": {
+        "en": "Media & Entertainment",
+        "ru": "Медиа и развлечения"
+      },
+      "description": {
+        "en": "Track what you watch, listen to, and its impact.",
+        "ru": "Отслеживайте, что вы смотрите, слушаете и как это на вас влияет."
+      },
+      "onboarding_triggers": [
+        "interest.media"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "media",
+          "labels": {
+            "en": "Media",
+            "ru": "Медиа"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "movie",
+              "labels": {
+                "en": "Movie",
+                "ru": "Фильм"
+              },
+              "color": "#8b5cf6",
+              "icon_type": "emoji",
+              "icon": "🎬",
+              "sort_order": 0
+            },
+            {
+              "slug": "series",
+              "labels": {
+                "en": "Series",
+                "ru": "Сериал"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "📺",
+              "sort_order": 1
+            },
+            {
+              "slug": "podcast",
+              "labels": {
+                "en": "Podcast",
+                "ru": "Подкаст"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🎙️",
+              "sort_order": 2
+            },
+            {
+              "slug": "youtube_rabbit_hole",
+              "labels": {
+                "en": "YouTube Rabbit Hole",
+                "ru": "Завис на YouTube"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "🕳️",
+              "sort_order": 3
+            },
+            {
+              "slug": "news",
+              "labels": {
+                "en": "News",
+                "ru": "Новости"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "📰",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "media_mood",
+          "labels": {
+            "en": "Media & Mood",
+            "ru": "Медиа и настроение"
+          },
+          "bodies": {
+            "en": "## What did I watch/listen to?\n## How did it affect my mood?\n",
+            "ru": "## Что я смотрел / слушал?\n## Как это повлияло на моё настроение?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "intentional_media",
+          "labels": {
+            "en": "Intentional Media",
+            "ru": "Осознанное потребление медиа"
+          },
+          "times_per_week": 3,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🎯",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.music",
+      "kind": "interest",
+      "title": {
+        "en": "Music",
+        "ru": "Музыка"
+      },
+      "description": {
+        "en": "Track listening, playing, and live music.",
+        "ru": "Отслеживайте прослушивание, игру на инструментах и живую музыку."
+      },
+      "onboarding_triggers": [
+        "interest.music"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "music",
+          "labels": {
+            "en": "Music",
+            "ru": "Музыка"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "listening",
+              "labels": {
+                "en": "Listening",
+                "ru": "Слушание"
+              },
+              "color": "#a78bfa",
+              "icon_type": "emoji",
+              "icon": "🎧",
+              "sort_order": 0
+            },
+            {
+              "slug": "playing_instrument",
+              "labels": {
+                "en": "Playing Instrument",
+                "ru": "Игра на инструменте"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🎸",
+              "sort_order": 1
+            },
+            {
+              "slug": "live_show",
+              "labels": {
+                "en": "Live Show",
+                "ru": "Концерт"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "🎤",
+              "sort_order": 2
+            },
+            {
+              "slug": "playlist_mood",
+              "labels": {
+                "en": "Playlist Mood",
+                "ru": "Плейлист под настроение"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "📼",
+              "sort_order": 3
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "soundtrack_of_the_day",
+          "labels": {
+            "en": "Soundtrack of the Day",
+            "ru": "Саундтрек дня"
+          },
+          "bodies": {
+            "en": "## What did I listen to?\n## How did it make me feel?\n",
+            "ru": "## Что я слушал?\n## Как я себя чувствовал?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "practice_instrument",
+          "labels": {
+            "en": "Practice Instrument",
+            "ru": "Занятия на инструменте"
+          },
+          "times_per_week": 3,
+          "color": "#f59e0b",
+          "icon_type": "emoji",
+          "icon": "🎵",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        },
+        {
+          "slug": "mindful_listening",
+          "labels": {
+            "en": "Mindful Listening",
+            "ru": "Осознанное слушание"
+          },
+          "times_per_week": 3,
+          "color": "#a78bfa",
+          "icon_type": "emoji",
+          "icon": "🎶",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.travel",
+      "kind": "interest",
+      "title": {
+        "en": "Travel & Commuting",
+        "ru": "Поездки и дорога"
+      },
+      "description": {
+        "en": "Track your journeys, new places, and travel mood.",
+        "ru": "Отслеживайте свои поездки, новые места и настроение в пути."
+      },
+      "onboarding_triggers": [
+        "interest.travel"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "travel",
+          "labels": {
+            "en": "Travel",
+            "ru": "Поездки"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "commute",
+              "labels": {
+                "en": "Commute",
+                "ru": "Дорога на работу"
+              },
+              "color": "#94a3b8",
+              "icon_type": "emoji",
+              "icon": "🚌",
+              "sort_order": 0
+            },
+            {
+              "slug": "trip_day",
+              "labels": {
+                "en": "Trip Day",
+                "ru": "День в поездке"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "✈️",
+              "sort_order": 1
+            },
+            {
+              "slug": "airport_train",
+              "labels": {
+                "en": "Airport / Train",
+                "ru": "Аэропорт / Вокзал"
+              },
+              "color": "#8b5cf6",
+              "icon_type": "emoji",
+              "icon": "🚉",
+              "sort_order": 2
+            },
+            {
+              "slug": "new_place",
+              "labels": {
+                "en": "New Place",
+                "ru": "Новое место"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "📍",
+              "sort_order": 3
+            },
+            {
+              "slug": "homesick",
+              "labels": {
+                "en": "Homesick",
+                "ru": "Тоска по дому"
+              },
+              "color": "#f87171",
+              "icon_type": "emoji",
+              "icon": "🏡",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "travel_day_log",
+          "labels": {
+            "en": "Travel Day Log",
+            "ru": "Лог дня в поездке"
+          },
+          "bodies": {
+            "en": "## Where I am\n## What I saw/did\n## How I felt\n",
+            "ru": "## Где я нахожусь\n## Что я видел / делал\n## Как я себя чувствовал\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "explore_somewhere",
+          "labels": {
+            "en": "Explore Somewhere",
+            "ru": "Исследовать новое место"
+          },
+          "times_per_week": 2,
+          "color": "#34d399",
+          "icon_type": "emoji",
+          "icon": "🗺️",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "pack_id": "interest.social_hobbies",
+      "kind": "interest",
+      "title": {
+        "en": "Social Hobbies",
+        "ru": "Хобби с людьми"
+      },
+      "description": {
+        "en": "Track parties, games, clubs, and social events.",
+        "ru": "Отслеживайте вечеринки, настольные игры, клубы и социальные мероприятия."
+      },
+      "onboarding_triggers": [
+        "interest.social_hobbies"
+      ],
+      "priority": 70,
+      "tag_groups": [
+        {
+          "slug": "social_hobby",
+          "labels": {
+            "en": "Social Hobby",
+            "ru": "Хобби с людьми"
+          },
+          "show_on_entry": true,
+          "sort_order": 0,
+          "tags": [
+            {
+              "slug": "party",
+              "labels": {
+                "en": "Party",
+                "ru": "Вечеринка"
+              },
+              "color": "#f472b6",
+              "icon_type": "emoji",
+              "icon": "🥳",
+              "sort_order": 0
+            },
+            {
+              "slug": "board_games",
+              "labels": {
+                "en": "Board Games",
+                "ru": "Настольные игры"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "🎲",
+              "sort_order": 1
+            },
+            {
+              "slug": "club",
+              "labels": {
+                "en": "Club",
+                "ru": "Клуб"
+              },
+              "color": "#60a5fa",
+              "icon_type": "emoji",
+              "icon": "🏛️",
+              "sort_order": 2
+            },
+            {
+              "slug": "volunteering",
+              "labels": {
+                "en": "Volunteering",
+                "ru": "Волонтёрство"
+              },
+              "color": "#34d399",
+              "icon_type": "emoji",
+              "icon": "🤲",
+              "sort_order": 3
+            },
+            {
+              "slug": "date",
+              "labels": {
+                "en": "Date",
+                "ru": "Свидание"
+              },
+              "color": "#f59e0b",
+              "icon_type": "emoji",
+              "icon": "❤️",
+              "sort_order": 4
+            }
+          ]
+        }
+      ],
+      "note_templates": [
+        {
+          "slug": "after_social_event",
+          "labels": {
+            "en": "After Social Event",
+            "ru": "После социального события"
+          },
+          "bodies": {
+            "en": "## What was the event?\n## How was my social energy?\n## How do I feel now?\n",
+            "ru": "## Что это было за событие?\n## Какой была моя социальная энергия?\n## Как я себя чувствую сейчас?\n"
+          },
+          "sort_order": 0
+        }
+      ],
+      "goals": [
+        {
+          "slug": "plan_social",
+          "labels": {
+            "en": "Plan Social Activity",
+            "ru": "Запланировать социальную активность"
+          },
+          "times_per_week": 2,
+          "color": "#f472b6",
+          "icon_type": "emoji",
+          "icon": "📅",
+          "show_on_entry": true,
+          "show_in_stats": true,
+          "sort_order": 0
+        }
+      ]
+    }
+  ],
+  "composition_rules": {
+    "on_skip": [
+      "base.default"
+    ],
+    "max_show_on_entry_tag_groups": 6,
+    "always_show_on_entry_group_slugs": [
+      "mood",
+      "sleep_quality"
+    ],
+    "dedupe": "by_slug_prefer_higher_priority"
+  },
+  "proposed_base_additions": [
+    {
+      "slug": "sadness",
+      "labels": {
+        "en": "Sadness",
+        "ru": "Печаль"
+      },
+      "color": "#60a5fa",
+      "icon_type": "emoji",
+      "icon": "😢"
+    },
+    {
+      "slug": "irritation",
+      "labels": {
+        "en": "Irritation",
+        "ru": "Раздражение"
+      },
+      "color": "#f87171",
+      "icon_type": "emoji",
+      "icon": "😤"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="16" fill="#FDE68A"/>
+  <path d="M32 10l5.5 12.2L51 24l-10.5 8.5L43.5 46 32 38.8 20.5 46l3-13.5L13 24l13.5-1.8L32 10z" fill="#D97706"/>
+  <circle cx="32" cy="28" r="4" fill="#FEF3C7"/>
+  <text x="32" y="58" text-anchor="middle" fill="#92400E" font-size="7" font-family="system-ui,sans-serif">MOCK</text>
+</svg>

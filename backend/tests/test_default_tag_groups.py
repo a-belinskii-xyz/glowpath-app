@@ -13,3 +13,5 @@ def test_default_tag_groups_have_i18n_labels() -> None:
         for tag in group.tags:
             assert tag.slug
             assert SUPPORTED_LOCALES.issubset(tag.labels.keys())
+            assert tag.color.startswith("#") and len(tag.color) == 7
+            assert tag.icon
