@@ -5,6 +5,9 @@ export type FeatureBootstrapResponse = {
   visitor_id: string
   guest_local_diary: boolean
   cohort: string
+  features?: {
+    notifications?: boolean
+  }
 }
 
 export function bootstrapFeatures(fingerprint: GuestFingerprintSignals): Promise<FeatureBootstrapResponse> {

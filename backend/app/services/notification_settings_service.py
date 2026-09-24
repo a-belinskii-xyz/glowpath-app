@@ -1,17 +1,26 @@
 from __future__ import annotations
 
 import uuid
-from datetime import time
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.models.user import User
-from app.models.user_notification_settings import UserNotificationSettings
+from app.models.user_notification_schedule import UserNotificationSchedule
+from app.schemas.notification_settings import (
+    DEFAULT_TIME_BY_KIND,
+    PROVISIONED_KINDS,
+    NotificationScheduleKind,
+    NotificationSchedulePublic,
+    NotificationScheduleUpdate,
+    NotificationSettingsPublic,
+)
 from app.services.notifications.base import NotificationChannel
+from app.services.notifications.worker_status import system_status
 from app.services.user_provisioning import provision_notification_settings
 
 
@@ -20,66 +29,121 @@ class NotificationSettingsError(AppError):
 
 
 _IMPLEMENTED_CHANNELS = frozenset({NotificationChannel.EMAIL, NotificationChannel.TELEGRAM})
+_KIND_ORDER = {kind: index for index, kind in enumerate(NotificationScheduleKind)}
 
 
-def get_or_create_settings(db: Session, *, user_id: uuid.UUID) -> UserNotificationSettings:
-    settings_row = db.scalar(
-        select(UserNotificationSettings).where(UserNotificationSettings.user_id == user_id)
-    )
-    if settings_row is not None:
-        if _heal_telegram_native_channels(db, settings_row, user_id=user_id):
-            db.commit()
-            db.refresh(settings_row)
-        return settings_row
-    provision_notification_settings(db, user_id)
-    db.commit()
-    settings_row = db.scalar(
-        select(UserNotificationSettings).where(UserNotificationSettings.user_id == user_id)
-    )
-    assert settings_row is not None
-    return settings_row
-
-
-def update_settings(
+def list_settings(
     db: Session,
     *,
     user_id: uuid.UUID,
-    enabled: bool | None = None,
-    channels: list[NotificationChannel] | None = None,
-    daily_mood_reminder_enabled: bool | None = None,
-    daily_mood_reminder_time: time | None = None,
-    clear_daily_mood_reminder_time: bool = False,
-    goal_reminders_enabled: bool | None = None,
-) -> UserNotificationSettings:
-    prefs = get_or_create_settings(db, user_id=user_id)
+    locale: str,
+) -> NotificationSettingsPublic:
+    rows = ensure_schedules(db, user_id=user_id)
+    return NotificationSettingsPublic(
+        system_status=system_status(db, locale=locale),
+        schedules=[_serialize(row) for row in rows],
+    )
 
-    if enabled is not None:
-        prefs.enabled = enabled
-    if channels is not None:
-        prefs.channels = _serialize_channels(channels, user_id=user_id, db=db)
-    if daily_mood_reminder_enabled is not None:
-        prefs.daily_mood_reminder_enabled = daily_mood_reminder_enabled
-    if clear_daily_mood_reminder_time:
-        prefs.daily_mood_reminder_time = None
-    elif daily_mood_reminder_time is not None:
-        prefs.daily_mood_reminder_time = daily_mood_reminder_time
-    if goal_reminders_enabled is not None:
-        prefs.goal_reminders_enabled = goal_reminders_enabled
 
-    _validate_prefs(prefs, user_id=user_id, db=db)
+def ensure_schedules(db: Session, *, user_id: uuid.UUID) -> list[UserNotificationSchedule]:
+    rows = list(
+        db.scalars(
+            select(UserNotificationSchedule).where(UserNotificationSchedule.user_id == user_id)
+        ).all()
+    )
+    kinds = {row.kind for row in rows}
+    missing = [kind for kind in PROVISIONED_KINDS if kind.value not in kinds]
+    if not rows or missing:
+        provision_notification_settings(db, user_id)
+        db.commit()
+        rows = list(
+            db.scalars(
+                select(UserNotificationSchedule).where(UserNotificationSchedule.user_id == user_id)
+            ).all()
+        )
+    elif _heal_telegram_native_channels(db, rows, user_id=user_id):
+        db.commit()
+        for row in rows:
+            db.refresh(row)
+    return sorted(rows, key=lambda row: _KIND_ORDER.get(NotificationScheduleKind(row.kind), 99))
+
+
+def update_schedule(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    kind: str,
+    body: NotificationScheduleUpdate,
+    locale: str,
+) -> NotificationSettingsPublic:
+    if not settings.feature_notifications_enabled:
+        raise NotificationSettingsError(
+            "Notifications are disabled while the app is in closed testing",
+            code=ErrorCode.FEATURE_DISABLED,
+            status_code=403,
+        )
+    try:
+        schedule_kind = NotificationScheduleKind(kind)
+    except ValueError as exc:
+        raise NotificationSettingsError(
+            f"Unknown notification kind: {kind}",
+            code=ErrorCode.UNKNOWN_NOTIFICATION_KIND,
+            status_code=404,
+            params={"kind": kind},
+        ) from exc
+
+    rows = ensure_schedules(db, user_id=user_id)
+    row = next((item for item in rows if item.kind == schedule_kind.value), None)
+    if row is None:
+        row = UserNotificationSchedule(
+            user_id=user_id,
+            kind=schedule_kind.value,
+            enabled=False,
+            time_of_day=DEFAULT_TIME_BY_KIND[schedule_kind],
+            interval_days=1,
+            channels=_default_channels(db, user_id),
+        )
+        db.add(row)
+        db.flush()
+
+    if body.enabled is not None:
+        row.enabled = body.enabled
+    if body.time_of_day is not None:
+        row.time_of_day = body.time_of_day
+    if body.interval_days is not None:
+        row.interval_days = body.interval_days
+    if "days_of_week" in body.model_fields_set:
+        row.days_of_week = body.days_of_week or None
+    if body.channels is not None:
+        row.channels = _serialize_channels(body.channels, user_id=user_id, db=db)
+
+    _validate_row(row, user_id=user_id, db=db)
     db.commit()
-    db.refresh(prefs)
-    return prefs
+    db.refresh(row)
+    return list_settings(db, user_id=user_id, locale=locale)
 
 
-def serialize_settings(prefs: UserNotificationSettings) -> dict[str, Any]:
-    return {
-        "enabled": prefs.enabled,
-        "channels": list(prefs.channels),
-        "daily_mood_reminder_enabled": prefs.daily_mood_reminder_enabled,
-        "daily_mood_reminder_time": prefs.daily_mood_reminder_time,
-        "goal_reminders_enabled": prefs.goal_reminders_enabled,
-    }
+def serialize_schedule(row: UserNotificationSchedule) -> dict[str, Any]:
+    return _serialize(row).model_dump(mode="json")
+
+
+def _serialize(row: UserNotificationSchedule) -> NotificationSchedulePublic:
+    return NotificationSchedulePublic(
+        kind=NotificationScheduleKind(row.kind),
+        enabled=row.enabled,
+        time_of_day=row.time_of_day,
+        interval_days=row.interval_days,
+        days_of_week=list(row.days_of_week) if row.days_of_week else None,
+        channels=[NotificationChannel(channel) for channel in row.channels],
+        last_sent_at=row.last_sent_at,
+    )
+
+
+def _default_channels(db: Session, user_id: uuid.UUID) -> list[str]:
+    user = db.get(User, user_id)
+    if user is not None and user.telegram_linked:
+        return [NotificationChannel.TELEGRAM.value]
+    return [NotificationChannel.EMAIL.value]
 
 
 def _serialize_channels(
@@ -109,13 +173,13 @@ def _serialize_channels(
     return unique
 
 
-def _validate_prefs(
-    prefs: UserNotificationSettings,
+def _validate_row(
+    row: UserNotificationSchedule,
     *,
     user_id: uuid.UUID,
     db: Session,
 ) -> None:
-    channels = prefs.channels or []
+    channels = row.channels or []
     if not channels:
         raise NotificationSettingsError(
             "At least one notification channel is required",
@@ -139,18 +203,16 @@ def _validate_prefs(
             )
         if channel is NotificationChannel.TELEGRAM:
             _require_telegram_linked(db, user_id=user_id)
-
-    needs_schedule = prefs.daily_mood_reminder_enabled or prefs.goal_reminders_enabled
-    if prefs.enabled and needs_schedule and prefs.daily_mood_reminder_time is None:
+    if row.interval_days < 1:
         raise NotificationSettingsError(
-            "daily_mood_reminder_time is required when mood or goal reminders are enabled",
-            code=ErrorCode.REMINDER_TIME_REQUIRED,
+            "interval_days must be at least 1",
+            code=ErrorCode.INVALID_INTERVAL_DAYS,
         )
 
 
 def _heal_telegram_native_channels(
     db: Session,
-    prefs: UserNotificationSettings,
+    rows: list[UserNotificationSchedule],
     *,
     user_id: uuid.UUID,
 ) -> bool:
@@ -159,10 +221,13 @@ def _heal_telegram_native_channels(
     if user is None or user.email or not user.telegram_linked:
         return False
     desired = [NotificationChannel.TELEGRAM.value]
-    if list(prefs.channels or []) == desired:
-        return False
-    prefs.channels = desired
-    return True
+    changed = False
+    for row in rows:
+        if list(row.channels or []) == desired:
+            continue
+        row.channels = desired
+        changed = True
+    return changed
 
 
 def _require_telegram_linked(db: Session, *, user_id: uuid.UUID) -> None:

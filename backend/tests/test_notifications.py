@@ -1,12 +1,13 @@
 import uuid
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from app.config import settings
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.user import User
-from app.models.user_notification_settings import UserNotificationSettings
+from app.models.user_notification_schedule import UserNotificationSchedule
 from app.services.notifications import (
     EmailNotifier,
     FakeNotifier,
@@ -19,6 +20,11 @@ from app.services.notifications.base import BaseNotifier
 from sqlalchemy.orm import Session
 
 from tests.conftest import FakeEmailService, register_verify_and_login
+
+
+@pytest.fixture(autouse=True)
+def _enable_notifications(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "feature_notifications_enabled", True)
 
 
 def test_base_notifier_requires_channel_and_send() -> None:
@@ -130,32 +136,56 @@ def test_notification_settings_api_get_and_patch(
     get_response = auth_client.get("/v1/notification-settings", headers=headers)
     assert get_response.status_code == 200
     body = get_response.json()
-    assert body["enabled"] is False
-    assert body["channels"] == ["email"]
-    assert body["daily_mood_reminder_enabled"] is False
-    assert body["daily_mood_reminder_time"] is None
-    assert body["goal_reminders_enabled"] is False
+    assert body["system_status"]["status_code"] == "WORKER_OFFLINE"
+    assert body["system_status"]["feature_enabled"] is True
+    by_kind = {row["kind"]: row for row in body["schedules"]}
+    assert by_kind["daily_mood"]["enabled"] is False
+    assert by_kind["daily_mood"]["time_of_day"] == "21:00"
+    assert by_kind["daily_mood"]["channels"] == ["email"]
+    assert by_kind["goal_tracking"]["time_of_day"] == "12:00"
 
     patch_response = auth_client.patch(
-        "/v1/notification-settings",
+        "/v1/notification-settings/daily_mood",
         headers=headers,
         json={
             "enabled": True,
-            "daily_mood_reminder_enabled": True,
-            "daily_mood_reminder_time": "20:30:00",
-            "goal_reminders_enabled": True,
+            "time_of_day": "20:30",
+            "interval_days": 2,
             "channels": ["email"],
         },
     )
     assert patch_response.status_code == 200
-    updated = patch_response.json()
-    assert updated["enabled"] is True
-    assert updated["daily_mood_reminder_enabled"] is True
-    assert updated["daily_mood_reminder_time"] == "20:30:00"
-    assert updated["goal_reminders_enabled"] is True
+    updated = {row["kind"]: row for row in patch_response.json()["schedules"]}
+    assert updated["daily_mood"]["enabled"] is True
+    assert updated["daily_mood"]["time_of_day"] == "20:30"
+    assert updated["daily_mood"]["interval_days"] == 2
+    assert updated["goal_tracking"]["enabled"] is False
 
 
-def test_notification_settings_require_time_when_reminders_enabled(
+def test_notification_settings_rejected_when_feature_disabled(
+    auth_client,
+    mailer: FakeEmailService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "feature_notifications_enabled", False)
+    token = register_verify_and_login(auth_client, mailer, "notify-off@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    status = auth_client.get("/v1/notification-settings/status", headers=headers)
+    assert status.status_code == 200
+    assert status.json()["status_code"] == "DISABLED_STAGE_TESTING"
+    assert status.json()["feature_enabled"] is False
+
+    response = auth_client.patch(
+        "/v1/notification-settings/daily_mood",
+        headers=headers,
+        json={"enabled": True, "time_of_day": "21:00"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "feature_disabled"
+
+
+def test_notification_settings_require_channel(
     auth_client,
     mailer: FakeEmailService,
 ) -> None:
@@ -163,16 +193,11 @@ def test_notification_settings_require_time_when_reminders_enabled(
     headers = {"Authorization": f"Bearer {token}"}
 
     response = auth_client.patch(
-        "/v1/notification-settings",
+        "/v1/notification-settings/daily_mood",
         headers=headers,
-        json={
-            "enabled": True,
-            "daily_mood_reminder_enabled": True,
-        },
+        json={"channels": []},
     )
-    assert response.status_code == 400
-    assert "daily_mood_reminder_time" in response.json()["detail"]["message"]
-    assert response.json()["detail"]["code"] == "reminder_time_required"
+    assert response.status_code == 422
 
 
 def test_process_due_reminders_sends_daily_mood(
@@ -196,13 +221,13 @@ def test_process_due_reminders_sends_daily_mood(
     db.add(user)
     db.flush()
     db.add(
-        UserNotificationSettings(
+        UserNotificationSchedule(
             user_id=user.id,
+            kind="daily_mood",
             enabled=True,
+            time_of_day="20:30",
+            interval_days=1,
             channels=["email"],
-            daily_mood_reminder_enabled=True,
-            daily_mood_reminder_time=time(20, 30),
-            goal_reminders_enabled=False,
         )
     )
     db.commit()
@@ -246,13 +271,13 @@ def test_process_due_reminders_skips_when_mood_already_logged(
     db.add(user)
     db.flush()
     db.add(
-        UserNotificationSettings(
+        UserNotificationSchedule(
             user_id=user.id,
+            kind="daily_mood",
             enabled=True,
+            time_of_day="20:30",
+            interval_days=1,
             channels=["email"],
-            daily_mood_reminder_enabled=True,
-            daily_mood_reminder_time=time(20, 30),
-            goal_reminders_enabled=False,
         )
     )
     db.add(
@@ -297,13 +322,13 @@ def test_process_due_reminders_sends_goal_nudge(
     db.add(user)
     db.flush()
     db.add(
-        UserNotificationSettings(
+        UserNotificationSchedule(
             user_id=user.id,
+            kind="goal_tracking",
             enabled=True,
+            time_of_day="20:30",
+            interval_days=1,
             channels=["email"],
-            daily_mood_reminder_enabled=False,
-            daily_mood_reminder_time=time(20, 30),
-            goal_reminders_enabled=True,
         )
     )
     db.add(
@@ -535,13 +560,13 @@ def test_process_due_reminders_sends_telegram(
     db.add(user)
     db.flush()
     db.add(
-        UserNotificationSettings(
+        UserNotificationSchedule(
             user_id=user.id,
+            kind="daily_mood",
             enabled=True,
+            time_of_day="20:30",
+            interval_days=1,
             channels=["telegram"],
-            daily_mood_reminder_enabled=True,
-            daily_mood_reminder_time=time(20, 30),
-            goal_reminders_enabled=False,
         )
     )
     db.commit()
@@ -577,13 +602,13 @@ def test_process_due_reminders_skips_unlinked_telegram(
     db.add(user)
     db.flush()
     db.add(
-        UserNotificationSettings(
+        UserNotificationSchedule(
             user_id=user.id,
+            kind="daily_mood",
             enabled=True,
+            time_of_day="20:30",
+            interval_days=1,
             channels=["telegram"],
-            daily_mood_reminder_enabled=True,
-            daily_mood_reminder_time=time(20, 30),
-            goal_reminders_enabled=False,
         )
     )
     db.commit()
@@ -605,10 +630,79 @@ def test_notification_settings_reject_telegram_without_link(
     headers = {"Authorization": f"Bearer {token}"}
 
     response = auth_client.patch(
-        "/v1/notification-settings",
+        "/v1/notification-settings/daily_mood",
         headers=headers,
         json={"channels": ["email", "telegram"]},
     )
     assert response.status_code == 400
     assert "link" in response.json()["detail"]["message"].lower()
     assert response.json()["detail"]["code"] == "telegram_link_required"
+
+
+def test_process_due_reminders_respects_interval_days(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.notifications.reminders.settings.notifications_match_window_minutes",
+        5,
+    )
+    tz_name = "Europe/Minsk"
+    tz = ZoneInfo(tz_name)
+    local_now = datetime(2026, 7, 15, 20, 30, 10, tzinfo=tz)
+    now_utc = local_now.astimezone(UTC)
+
+    user = User(
+        email=f"interval-{uuid.uuid4()}@example.com",
+        password_hash="hash",
+        timezone=tz_name,
+        email_verified_at=datetime.now(UTC),
+    )
+    db.add(user)
+    db.flush()
+    schedule = UserNotificationSchedule(
+        user_id=user.id,
+        kind="daily_mood",
+        enabled=True,
+        time_of_day="20:30",
+        interval_days=2,
+        channels=["email"],
+        last_sent_at=now_utc - timedelta(days=1),
+    )
+    db.add(schedule)
+    db.commit()
+
+    mailer = FakeEmailService()
+    dispatcher = NotificationDispatcher({NotificationChannel.EMAIL: EmailNotifier(mailer)})
+    stats = process_due_reminders(db, dispatcher, now=now_utc)
+    assert stats.daily_mood_sent == 0
+    assert mailer.outbox == []
+
+    schedule.last_sent_at = now_utc - timedelta(days=2)
+    db.commit()
+    stats = process_due_reminders(db, dispatcher, now=now_utc)
+    assert stats.daily_mood_sent == 1
+    assert len(mailer.outbox) == 1
+
+
+def test_worker_heartbeat_marks_status_healthy(db: Session) -> None:
+    from app.services.notifications.worker_status import record_heartbeat, system_status
+
+    record_heartbeat(db, meta={"phase": "test"})
+    status = system_status(db)
+    assert status.feature_enabled is True
+    assert status.worker_status == "healthy"
+    assert status.status_code == "OK"
+
+
+def test_notifications_flag_is_on_auth_me(
+    auth_client,
+    mailer: FakeEmailService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "feature_notifications_enabled", False)
+    token = register_verify_and_login(auth_client, mailer, f"flag-{uuid.uuid4()}@example.com")
+    me = auth_client.get("/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["features"]["notifications"] is False
+

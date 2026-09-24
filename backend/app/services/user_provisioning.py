@@ -15,7 +15,8 @@ from app.models.tag import Tag
 from app.models.tag_group import TagGroup
 from app.models.user import User
 from app.models.user_mood_preferences import UserMoodPreferences
-from app.models.user_notification_settings import UserNotificationSettings
+from app.models.user_notification_schedule import UserNotificationSchedule
+from app.schemas.notification_settings import DEFAULT_TIME_BY_KIND, PROVISIONED_KINDS
 from app.services.notifications.base import NotificationChannel
 
 
@@ -225,16 +226,25 @@ def _sync_tag_group_visibility(
 
 
 def provision_notification_settings(db: Session, user_id: uuid.UUID) -> None:
-    db.add(
-        UserNotificationSettings(
-            user_id=user_id,
-            enabled=False,
-            channels=_default_notification_channels(db, user_id),
-            daily_mood_reminder_enabled=False,
-            daily_mood_reminder_time=None,
-            goal_reminders_enabled=False,
-        )
+    existing = set(
+        db.scalars(
+            select(UserNotificationSchedule.kind).where(UserNotificationSchedule.user_id == user_id)
+        ).all()
     )
+    channels = _default_notification_channels(db, user_id)
+    for kind in PROVISIONED_KINDS:
+        if kind.value in existing:
+            continue
+        db.add(
+            UserNotificationSchedule(
+                user_id=user_id,
+                kind=kind.value,
+                enabled=False,
+                time_of_day=DEFAULT_TIME_BY_KIND[kind],
+                interval_days=1,
+                channels=list(channels),
+            )
+        )
 
 
 def _default_notification_channels(db: Session, user_id: uuid.UUID) -> list[str]:
@@ -268,8 +278,8 @@ def count_user_goals(db: Session, user_id: uuid.UUID) -> int:
 def count_user_notification_settings(db: Session, user_id: uuid.UUID) -> int:
     count = db.scalar(
         select(func.count())
-        .select_from(UserNotificationSettings)
-        .where(UserNotificationSettings.user_id == user_id)
+        .select_from(UserNotificationSchedule)
+        .where(UserNotificationSchedule.user_id == user_id)
     )
     return int(count or 0)
 

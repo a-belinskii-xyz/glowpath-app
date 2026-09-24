@@ -57,7 +57,8 @@ def test_telegram_auth_creates_user_without_email(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert settings_response.status_code == 200
-    assert settings_response.json()["channels"] == ["telegram"]
+    assert settings_response.json()["schedules"]
+    assert all(row["channels"] == ["telegram"] for row in settings_response.json()["schedules"])
 
     entries = auth_client.get(
         "/v1/mood-entries",

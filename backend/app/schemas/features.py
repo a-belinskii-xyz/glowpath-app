@@ -18,3 +18,4 @@ class FeatureBootstrapResponse(BaseModel):
     visitor_id: str
     guest_local_diary: bool
     cohort: str
+    features: dict[str, bool] = Field(default_factory=dict)

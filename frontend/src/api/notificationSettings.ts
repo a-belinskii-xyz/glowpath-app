@@ -1,9 +1,17 @@
 import { apiRequest } from './client'
 import { apiLocaleHeaders } from '../lib/locale'
 import type {
+  NotificationScheduleUpdate,
   NotificationSettingsPublic,
-  NotificationSettingsUpdate,
+  NotificationSystemStatus,
 } from '../types/notificationSettings'
+
+export function getNotificationStatus(): Promise<NotificationSystemStatus> {
+  return apiRequest<NotificationSystemStatus>('/v1/notification-settings/status', {
+    auth: true,
+    headers: apiLocaleHeaders(),
+  })
+}
 
 export function getNotificationSettings(): Promise<NotificationSettingsPublic> {
   return apiRequest<NotificationSettingsPublic>('/v1/notification-settings', {
@@ -12,10 +20,11 @@ export function getNotificationSettings(): Promise<NotificationSettingsPublic> {
   })
 }
 
-export function patchNotificationSettings(
-  body: NotificationSettingsUpdate,
+export function patchNotificationSchedule(
+  kind: string,
+  body: NotificationScheduleUpdate,
 ): Promise<NotificationSettingsPublic> {
-  return apiRequest<NotificationSettingsPublic>('/v1/notification-settings', {
+  return apiRequest<NotificationSettingsPublic>(`/v1/notification-settings/${kind}`, {
     method: 'PATCH',
     auth: true,
     headers: apiLocaleHeaders(),

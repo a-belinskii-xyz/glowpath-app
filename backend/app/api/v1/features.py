@@ -58,4 +58,5 @@ def feature_bootstrap(
         visitor_id=str(result.visitor_id),
         guest_local_diary=result.guest_local_diary,
         cohort=result.cohort,
+        features={"notifications": settings.feature_notifications_enabled},
     )

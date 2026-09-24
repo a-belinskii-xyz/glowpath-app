@@ -121,7 +121,12 @@ class ErrorCode(StrEnum):
     NOTE_TEMPLATE_REORDER_MISMATCH = "note_template_reorder_mismatch"
 
     # Notifications
+    FEATURE_DISABLED = "feature_disabled"
     NOTIFICATION_CHANNEL_REQUIRED = "notification_channel_required"
+    UNKNOWN_NOTIFICATION_KIND = "unknown_notification_kind"
+    INVALID_REMINDER_TIME = "invalid_reminder_time"
+    INVALID_INTERVAL_DAYS = "invalid_interval_days"
+    INVALID_DAYS_OF_WEEK = "invalid_days_of_week"
     NOTIFICATION_CHANNEL_UNAVAILABLE = "notification_channel_unavailable"
     UNKNOWN_NOTIFICATION_CHANNEL = "unknown_notification_channel"
     REMINDER_TIME_REQUIRED = "reminder_time_required"

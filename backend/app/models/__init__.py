@@ -26,7 +26,8 @@ from app.models.user_catalog_icon_unlock import UserCatalogIconUnlock
 from app.models.user_goal_icon import UserGoalIcon
 from app.models.user_mood_icon import UserMoodIcon
 from app.models.user_mood_preferences import UserMoodPreferences
-from app.models.user_notification_settings import UserNotificationSettings
+from app.models.system_worker_heartbeat import SystemWorkerHeartbeat
+from app.models.user_notification_schedule import UserNotificationSchedule
 from app.models.user_subscription import UserSubscription
 from app.models.user_tag_icon import UserTagIcon
 from app.models.user_wallet import UserWallet
@@ -62,7 +63,8 @@ __all__ = [
     "UserGoalIcon",
     "UserMoodIcon",
     "UserMoodPreferences",
-    "UserNotificationSettings",
+    "SystemWorkerHeartbeat",
+    "UserNotificationSchedule",
     "UserSubscription",
     "UserTagIcon",
     "UserWallet",
