@@ -2,6 +2,7 @@ import { moodChipStyle } from '../design'
 import { useColorScheme } from '../hooks/useColorScheme'
 import { useLocale } from '../context/LocaleContext'
 import type { MoodInsightPublic, MoodInsightsResponse } from '../types/mood'
+import { InsightsSkeleton } from './DiarySkeletons'
 import { TagIcon } from './TagIcon'
 
 type PatternInsightsProps = {
@@ -24,7 +25,7 @@ export function PatternInsights({
   const { t } = useLocale()
 
   if (isLoading && !insights) {
-    return <p className="muted">{t('common.loadingInsights')}</p>
+    return <InsightsSkeleton />
   }
 
   const items = compact ? insights?.items.slice(0, 1) ?? [] : insights?.items ?? []
