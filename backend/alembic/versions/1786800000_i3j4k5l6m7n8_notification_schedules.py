@@ -90,7 +90,7 @@ def upgrade() -> None:
                 enabled AND daily_mood_reminder_enabled,
                 COALESCE(to_char(daily_mood_reminder_time, 'HH24:MI'), '21:00'),
                 1,
-                NULL,
+                NULL::integer[],
                 COALESCE(
                     (
                         SELECT array_agg(value)::varchar[]
@@ -109,7 +109,7 @@ def upgrade() -> None:
                 enabled AND goal_reminders_enabled,
                 COALESCE(to_char(daily_mood_reminder_time, 'HH24:MI'), '12:00'),
                 1,
-                NULL,
+                NULL::integer[],
                 COALESCE(
                     (
                         SELECT array_agg(value)::varchar[]
