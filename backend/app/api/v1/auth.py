@@ -1,3 +1,4 @@
+import hmac
 from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -9,6 +10,7 @@ from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error, structured_detail
 from app.core.google_oauth import oauth
+from app.core.telegram_oidc import telegram_oidc_configured
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
@@ -46,7 +48,11 @@ from app.services.auth_service import (
     verify_google_id_token,
 )
 from app.services.email_service import EmailService
-from app.services.telegram_auth_service import authenticate_telegram_init_data
+from app.services.telegram_auth_service import (
+    authenticate_telegram_init_data,
+    begin_telegram_browser_login,
+    complete_telegram_browser_login,
+)
 from app.services.user_public import to_user_public
 
 router = APIRouter(tags=["auth"])
@@ -273,6 +279,104 @@ def google_id_token_login(
     except AuthError as exc:
         _handle_auth_error(exc)
     return _to_token_response(tokens)
+
+
+_TELEGRAM_OIDC_STATE = "telegram_oidc_state"
+_TELEGRAM_OIDC_VERIFIER = "telegram_oidc_verifier"
+_TELEGRAM_OIDC_TIMEZONE = "telegram_oidc_timezone"
+
+
+@router.get("/telegram/login")
+def telegram_browser_login(
+    request: Request,
+    timezone: str = Query(default="Europe/Minsk", max_length=64),
+) -> RedirectResponse:
+    if not telegram_oidc_configured(
+        client_id=settings.telegram_oidc_client_id,
+        client_secret=settings.telegram_oidc_client_secret,
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail=structured_detail(
+                code=ErrorCode.TELEGRAM_OIDC_NOT_CONFIGURED,
+                message="Telegram browser login is not configured",
+            ),
+        )
+    try:
+        url, state, verifier, timezone_name = begin_telegram_browser_login(timezone=timezone)
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    request.session[_TELEGRAM_OIDC_STATE] = state
+    request.session[_TELEGRAM_OIDC_VERIFIER] = verifier
+    request.session[_TELEGRAM_OIDC_TIMEZONE] = timezone_name
+    return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+
+@router.get("/telegram/callback")
+def telegram_browser_callback(
+    request: Request,
+    db: Session = Depends(get_db),
+    code: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+) -> RedirectResponse:
+    if not telegram_oidc_configured(
+        client_id=settings.telegram_oidc_client_id,
+        client_secret=settings.telegram_oidc_client_secret,
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail=structured_detail(
+                code=ErrorCode.TELEGRAM_OIDC_NOT_CONFIGURED,
+                message="Telegram browser login is not configured",
+            ),
+        )
+
+    expected_state = request.session.pop(_TELEGRAM_OIDC_STATE, None)
+    code_verifier = request.session.pop(_TELEGRAM_OIDC_VERIFIER, None)
+    timezone_name = request.session.pop(_TELEGRAM_OIDC_TIMEZONE, None)
+    if (
+        error
+        or not code
+        or not state
+        or not isinstance(expected_state, str)
+        or not isinstance(code_verifier, str)
+        or not isinstance(timezone_name, str)
+        or not secrets_compare(state, expected_state)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=structured_detail(
+                code=ErrorCode.TELEGRAM_AUTHORIZATION_FAILED,
+                message="Telegram authorization failed",
+            ),
+        )
+
+    try:
+        visitor_id = parse_visitor_id(request.cookies.get(settings.guest_visitor_cookie_name))
+        tokens = complete_telegram_browser_login(
+            db,
+            code=code,
+            code_verifier=code_verifier,
+            timezone=timezone_name,
+            visitor_id=visitor_id,
+        )
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    user_created_param = "&user_created=1" if tokens.user_created else ""
+    redirect_url = (
+        f"{settings.frontend_url}/auth/telegram/callback"
+        f"#access_token={tokens.access_token}&refresh_token={tokens.refresh_token}{user_created_param}"
+    )
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+
+
+def secrets_compare(left: str, right: str) -> bool:
+    left_bytes = left.encode()
+    right_bytes = right.encode()
+    if len(left_bytes) != len(right_bytes):
+        return False
+    return hmac.compare_digest(left_bytes, right_bytes)
 
 
 @router.post("/telegram", response_model=TokenResponse)

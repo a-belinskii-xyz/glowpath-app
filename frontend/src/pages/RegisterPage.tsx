@@ -6,6 +6,7 @@ import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
 import { FormField } from '../components/FormField'
 import { StableButtonLabel } from '../components/StableButtonLabel'
+import { getTelegramBrowserLoginUrl } from '../api/auth'
 import { TelegramOpenCta } from '../components/TelegramOpenCta'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -111,6 +112,11 @@ export function RegisterPage() {
           />
         </button>
       </form>
+
+      <div className="divider">{t('common.or')}</div>
+      <a className="button button-secondary button-block" href={getTelegramBrowserLoginUrl(timezone)}>
+        {t('auth.continueWithTelegram')}
+      </a>
 
       <AuthFooterLink to="/login">{t('auth.alreadyHaveAccount')}</AuthFooterLink>
       <p className="auth-footer">

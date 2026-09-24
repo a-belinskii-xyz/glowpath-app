@@ -1016,6 +1016,11 @@ html.is-telegram[data-tg-color-scheme='dark'] .month-summary-invite {
   width: 100%;
 }
 
+.auth-oauth-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
 /* Reserve width for the longest label so swap states do not shift layout. */
 .button-stable-label {
   display: inline-grid;

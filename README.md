@@ -174,6 +174,7 @@ Environment variables in `backend/.env` (see `backend/.env.example`):
 
 - `JWT_SECRET_KEY` — required in production
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` — for Google OAuth
+- `TELEGRAM_OIDC_CLIENT_ID`, `TELEGRAM_OIDC_CLIENT_SECRET`, `TELEGRAM_OIDC_REDIRECT_URI` — browser “Continue with Telegram” (BotFather → Login Widget). Register the redirect URI as an allowed URL. The `id` claim from the `profile` scope is the Telegram user id, same as Mini App `initData`.
 - `SMTP_*`, `EMAIL_FROM` — email delivery (MailHog in Docker: `SMTP_HOST=mailhog`, port `1025`)
 - `NOTIFICATIONS_WORKER_ENABLED` — master switch for the reminder worker (default `true`)
 - `NOTIFICATIONS_POLL_INTERVAL_SECONDS` — how often the worker checks due reminders (default `60`)
