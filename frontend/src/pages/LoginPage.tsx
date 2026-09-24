@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
-import { getGoogleLoginUrl } from '../api/auth'
+import { getGoogleLoginUrl, getTelegramBrowserLoginUrl } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { AuthFooterLink } from '../components/AuthCardLayout'
@@ -11,6 +11,7 @@ import { TelegramOpenCta } from '../components/TelegramOpenCta'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
+import { detectTimezone } from '../lib/timezones'
 import { ApiError, formatApiError } from '../lib/errors'
 
 const AUTH_RETURN_TO_KEY = 'auth_return_to'
@@ -97,18 +98,33 @@ export function LoginPage() {
 
       <div className="divider">{t('common.or')}</div>
 
-      <a
-        className="button button-secondary button-block"
-        href={getGoogleLoginUrl()}
-        onClick={() => {
-          const returnTo = postLoginPath(location.state as LoginLocationState | null)
-          if (returnTo !== '/') {
-            sessionStorage.setItem(AUTH_RETURN_TO_KEY, returnTo)
-          }
-        }}
-      >
-        {t('auth.continueWithGoogle')}
-      </a>
+      <div className="auth-oauth-actions">
+        <a
+          className="button button-secondary button-block"
+          href={getTelegramBrowserLoginUrl(detectTimezone())}
+          onClick={() => {
+            const returnTo = postLoginPath(location.state as LoginLocationState | null)
+            if (returnTo !== '/') {
+              sessionStorage.setItem(AUTH_RETURN_TO_KEY, returnTo)
+            }
+          }}
+        >
+          {t('auth.continueWithTelegram')}
+        </a>
+
+        <a
+          className="button button-secondary button-block"
+          href={getGoogleLoginUrl()}
+          onClick={() => {
+            const returnTo = postLoginPath(location.state as LoginLocationState | null)
+            if (returnTo !== '/') {
+              sessionStorage.setItem(AUTH_RETURN_TO_KEY, returnTo)
+            }
+          }}
+        >
+          {t('auth.continueWithGoogle')}
+        </a>
+      </div>
 
       <AuthFooterLink to="/forgot-password">{t('auth.forgotPassword')}</AuthFooterLink>
       <AuthFooterLink to="/resend-verification">{t('auth.resendVerification')}</AuthFooterLink>

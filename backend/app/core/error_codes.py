@@ -149,6 +149,9 @@ class ErrorCode(StrEnum):
     TELEGRAM_NOT_LINKED = "telegram_not_linked"
     INVALID_TELEGRAM_INIT_DATA = "invalid_telegram_init_data"
     TELEGRAM_INIT_DATA_EXPIRED = "telegram_init_data_expired"
+    TELEGRAM_OIDC_NOT_CONFIGURED = "telegram_oidc_not_configured"
+    TELEGRAM_AUTHORIZATION_FAILED = "telegram_authorization_failed"
+    INVALID_TELEGRAM_ID_TOKEN = "invalid_telegram_id_token"
     TELEGRAM_UNLINK_NOT_ALLOWED = "telegram_unlink_not_allowed"
 
     # Storage

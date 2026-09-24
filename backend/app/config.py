@@ -237,6 +237,16 @@ class Settings(BaseSettings):
         validation_alias="TELEGRAM_INIT_DATA_MAX_AGE_SECONDS",
     )
     telegram_mini_app_url: str = Field(default="", validation_alias="TELEGRAM_MINI_APP_URL")
+    # Browser login (OpenID Connect). Client id/secret come from BotFather → Login Widget.
+    telegram_oidc_client_id: str = Field(default="", validation_alias="TELEGRAM_OIDC_CLIENT_ID")
+    telegram_oidc_client_secret: str = Field(
+        default="",
+        validation_alias="TELEGRAM_OIDC_CLIENT_SECRET",
+    )
+    telegram_oidc_redirect_uri: str = Field(
+        default="http://localhost:8000/v1/auth/telegram/callback",
+        validation_alias="TELEGRAM_OIDC_REDIRECT_URI",
+    )
 
     # Billing / subscriptions (fake provider is the local default).
     billing_currency: str = Field(default="RUB", validation_alias="BILLING_CURRENCY")

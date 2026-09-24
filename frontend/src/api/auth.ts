@@ -84,3 +84,8 @@ export function loginTelegram(body: {
 export function getGoogleLoginUrl(): string {
   return `${getApiBaseUrl()}/v1/auth/google/login`
 }
+
+export function getTelegramBrowserLoginUrl(timezone: string): string {
+  const params = new URLSearchParams({ timezone })
+  return `${getApiBaseUrl()}/v1/auth/telegram/login?${params.toString()}`
+}

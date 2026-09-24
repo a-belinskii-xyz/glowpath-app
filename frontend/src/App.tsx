@@ -17,6 +17,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { GalleryPage } from './pages/GalleryPage'
 import { GoalsPage } from './pages/GoalsPage'
 import { GoogleCallbackPage } from './pages/GoogleCallbackPage'
+import { TelegramCallbackPage } from './pages/TelegramCallbackPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { OnboardingPage } from './pages/OnboardingPage'
@@ -48,6 +49,7 @@ function App() {
                     <Route path="plans" element={<PlansPage />} />
                     <Route path="verify-email" element={<VerifyEmailPage />} />
                     <Route path="auth/google/callback" element={<GoogleCallbackPage />} />
+                    <Route path="auth/telegram/callback" element={<TelegramCallbackPage />} />
 
                     <Route element={<GuestRoute />}>
                       <Route element={<AuthCardLayout />}>
