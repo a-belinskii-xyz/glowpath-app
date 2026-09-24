@@ -8,7 +8,7 @@ from app.models.goal import Goal
 from app.models.note_template import NoteTemplate
 from app.models.tag import Tag
 from app.models.user import User
-from app.models.user_notification_settings import UserNotificationSettings
+from app.models.user_notification_schedule import UserNotificationSchedule
 from app.services.user_provisioning import (
     count_user_goals,
     count_user_mood_preferences,
@@ -88,10 +88,12 @@ def test_provision_notification_settings(db: Session) -> None:
     provision_notification_settings(db, user.id)
     db.flush()
 
-    assert count_user_notification_settings(db, user.id) == 1
-    prefs = db.get(UserNotificationSettings, user.id)
-    assert prefs is not None
-    assert prefs.channels == ["email"]
+    assert count_user_notification_settings(db, user.id) == 2
+    prefs = db.scalars(
+        select(UserNotificationSchedule).where(UserNotificationSchedule.user_id == user.id)
+    ).all()
+    assert {row.kind for row in prefs} == {"daily_mood", "goal_tracking"}
+    assert all(row.channels == ["email"] for row in prefs)
 
 
 def test_provision_notification_settings_telegram_native(db: Session) -> None:
@@ -107,9 +109,11 @@ def test_provision_notification_settings_telegram_native(db: Session) -> None:
     provision_notification_settings(db, user.id)
     db.flush()
 
-    prefs = db.get(UserNotificationSettings, user.id)
-    assert prefs is not None
-    assert prefs.channels == ["telegram"]
+    prefs = db.scalars(
+        select(UserNotificationSchedule).where(UserNotificationSchedule.user_id == user.id)
+    ).all()
+    assert prefs
+    assert all(row.channels == ["telegram"] for row in prefs)
 
 
 def test_provision_mood_preferences(db: Session) -> None:

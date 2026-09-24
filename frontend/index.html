@@ -7,7 +7,34 @@
     <title>glowpath:\</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-splash" aria-hidden="true">
+        <div class="boot-splash-glow"></div>
+      </div>
+    </div>
+    <style>
+      .boot-splash {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #eef1f6;
+      }
+      .boot-splash-glow {
+        width: 7.5rem;
+        height: 7.5rem;
+        border-radius: 50%;
+        background: radial-gradient(circle at 32% 30%, #fff 0%, #bfdbfe 36%, #c4b5fd 62%, #fda4af 100%);
+        filter: blur(0.5px);
+        animation: boot-splash-pulse 2.8s ease-in-out infinite;
+      }
+      @keyframes boot-splash-pulse {
+        0%, 100% { transform: scale(0.92); opacity: 0.82; }
+        50% { transform: scale(1.06); opacity: 1; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash-glow { animation: none; }
+      }
+    </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

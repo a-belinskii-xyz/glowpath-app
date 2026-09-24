@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from app.models.user_goal_icon import UserGoalIcon
     from app.models.user_mood_icon import UserMoodIcon
     from app.models.user_mood_preferences import UserMoodPreferences
-    from app.models.user_notification_settings import UserNotificationSettings
+    from app.models.user_notification_schedule import UserNotificationSchedule
     from app.models.user_subscription import UserSubscription
     from app.models.user_tag_icon import UserTagIcon
     from app.models.user_wallet import UserWallet
@@ -84,9 +84,8 @@ class User(TimestampMixin, Base):
     telegram_link_codes: Mapped[list["TelegramLinkCode"]] = relationship(
         back_populates="user",
     )
-    notification_settings: Mapped["UserNotificationSettings | None"] = relationship(
+    notification_schedules: Mapped[list["UserNotificationSchedule"]] = relationship(
         back_populates="user",
-        uselist=False,
     )
     mood_preferences: Mapped["UserMoodPreferences | None"] = relationship(
         back_populates="user",

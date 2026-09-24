@@ -34,6 +34,7 @@ class FeatureFlag(StrEnum):
     ICON_MARKETPLACE = "icon_marketplace"
     ACHIEVEMENTS = "achievements"
     GUEST_LOCAL_DIARY = "guest_local_diary"
+    NOTIFICATIONS = "notifications"
 
 
 @dataclass(frozen=True)
@@ -94,6 +95,13 @@ def targeting_for(flag: FeatureFlag) -> FeatureTargeting:
             emails=frozenset(),
             user_ids=parse_uuid_csv(settings.feature_guest_local_diary_visitor_ids),
         )
+    if flag is FeatureFlag.NOTIFICATIONS:
+        return FeatureTargeting(
+            enabled=settings.feature_notifications_enabled,
+            percent=100,
+            emails=frozenset(),
+            user_ids=frozenset(),
+        )
     raise ValueError(f"Unknown feature flag: {flag}")
 
 
@@ -142,6 +150,10 @@ def features_for_user(user: FeatureUser) -> dict[str, bool]:
         ),
         FeatureFlag.ACHIEVEMENTS.value: is_feature_enabled_for_user(
             FeatureFlag.ACHIEVEMENTS,
+            user,
+        ),
+        FeatureFlag.NOTIFICATIONS.value: is_feature_enabled_for_user(
+            FeatureFlag.NOTIFICATIONS,
             user,
         ),
     }

@@ -895,6 +895,13 @@ export function MoodEntryForm({
   return (
     <form ref={formRef} className="form mood-entry-form entry-journey" onSubmit={handleSubmit}>
       <PageErrorAlert error={error} />
+      {isSubmitting ? (
+        <p className="save-status" role="status">
+          {photoDrafts.some((draft) => draft.source === 'pending')
+            ? t('boot.uploadingPhotos')
+            : t('common.saving')}
+        </p>
+      ) : null}
 
       <section className="entry-mood-hero" aria-labelledby="entry-mood-question">
         <div className="entry-when" role="group" aria-label={t('entries.recordedAt')}>

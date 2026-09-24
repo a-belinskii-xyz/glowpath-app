@@ -113,7 +113,7 @@ def test_link_and_unlink_flow(
 
     prefs = auth_client.get("/v1/notification-settings", headers=_auth_headers(token))
     assert prefs.status_code == 200
-    assert "telegram" in prefs.json()["channels"]
+    assert all("telegram" in row["channels"] for row in prefs.json()["schedules"])
 
     reuse = auth_client.post(
         "/v1/telegram/bot/link",

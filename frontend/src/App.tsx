@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import { AppBootGate } from './components/AppBootGate'
 import { AuthCardLayout } from './components/AuthCardLayout'
 import { AppRoute, AccountRoute } from './components/AppRoute'
 import { GuestRoute } from './components/GuestRoute'
@@ -36,6 +37,7 @@ function App() {
     <LocaleProvider>
       <AuthProvider>
         <GuestExperimentProvider>
+          <AppBootGate>
           <MoodPreferencesProvider>
             <AmbientGlowProvider>
               <BrowserRouter>
@@ -84,6 +86,7 @@ function App() {
               </BrowserRouter>
             </AmbientGlowProvider>
           </MoodPreferencesProvider>
+          </AppBootGate>
         </GuestExperimentProvider>
       </AuthProvider>
     </LocaleProvider>

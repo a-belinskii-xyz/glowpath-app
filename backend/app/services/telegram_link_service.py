@@ -15,7 +15,7 @@ from app.core.identity import telegram_is_only_auth_method
 from app.core.security import hash_token
 from app.models.telegram_link_code import TelegramLinkCode
 from app.models.user import User
-from app.models.user_notification_settings import UserNotificationSettings
+from app.models.user_notification_schedule import UserNotificationSchedule
 from app.services.notifications.base import NotificationChannel
 
 
@@ -190,26 +190,28 @@ def get_user_by_telegram_id(db: Session, *, telegram_user_id: int) -> User | Non
 
 
 def _ensure_telegram_channel(db: Session, *, user_id: uuid.UUID) -> None:
-    prefs = db.scalar(
-        select(UserNotificationSettings).where(UserNotificationSettings.user_id == user_id)
+    rows = list(
+        db.scalars(
+            select(UserNotificationSchedule).where(UserNotificationSchedule.user_id == user_id)
+        ).all()
     )
-    if prefs is None:
-        return
     channel = NotificationChannel.TELEGRAM.value
-    current = list(prefs.channels or [])
-    if channel in current:
-        return
-    prefs.channels = [*current, channel]
+    for prefs in rows:
+        current = list(prefs.channels or [])
+        if channel in current:
+            continue
+        prefs.channels = [*current, channel]
 
 
 def _remove_telegram_channel(db: Session, *, user_id: uuid.UUID) -> None:
-    prefs = db.scalar(
-        select(UserNotificationSettings).where(UserNotificationSettings.user_id == user_id)
+    rows = list(
+        db.scalars(
+            select(UserNotificationSchedule).where(UserNotificationSchedule.user_id == user_id)
+        ).all()
     )
-    if prefs is None or not prefs.channels:
-        return
     channel = NotificationChannel.TELEGRAM.value
-    if channel not in prefs.channels:
-        return
-    remaining = [item for item in prefs.channels if item != channel]
-    prefs.channels = remaining or [NotificationChannel.EMAIL.value]
+    for prefs in rows:
+        if not prefs.channels or channel not in prefs.channels:
+            continue
+        remaining = [item for item in prefs.channels if item != channel]
+        prefs.channels = remaining or [NotificationChannel.EMAIL.value]

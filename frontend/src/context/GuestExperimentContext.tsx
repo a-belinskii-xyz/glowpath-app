@@ -22,6 +22,7 @@ type GuestExperimentContextValue = {
   cohort: string | null
   guestOnboardingCompleted: boolean
   refreshGuestMeta: () => Promise<void>
+  retryBootstrap: () => void
 }
 
 const GuestExperimentContext = createContext<GuestExperimentContextValue | null>(null)
@@ -32,15 +33,22 @@ export function GuestExperimentProvider({ children }: { children: ReactNode }) {
   const [visitorId, setVisitorId] = useState<string | null>(null)
   const [cohort, setCohort] = useState<string | null>(null)
   const [guestOnboardingCompleted, setGuestOnboardingCompleted] = useState(false)
+  const [bootId, setBootId] = useState(0)
 
   const refreshGuestMeta = useCallback(async () => {
     const meta = await getGuestMeta()
     setGuestOnboardingCompleted(meta?.onboarding_completed ?? false)
   }, [])
 
+  const retryBootstrap = useCallback(() => {
+    setIsBootstrapLoading(true)
+    setBootId((current) => current + 1)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     const run = async () => {
+      setIsBootstrapLoading(true)
       if (isTelegramMiniApp() || getAccessToken()) {
         setGuestExperimentState(false, null)
         if (!cancelled) {
@@ -78,7 +86,7 @@ export function GuestExperimentProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [refreshGuestMeta])
+  }, [bootId, refreshGuestMeta])
 
   const value = useMemo(
     () => ({
@@ -88,6 +96,7 @@ export function GuestExperimentProvider({ children }: { children: ReactNode }) {
       cohort,
       guestOnboardingCompleted,
       refreshGuestMeta,
+      retryBootstrap,
     }),
     [
       isBootstrapLoading,
@@ -96,6 +105,7 @@ export function GuestExperimentProvider({ children }: { children: ReactNode }) {
       cohort,
       guestOnboardingCompleted,
       refreshGuestMeta,
+      retryBootstrap,
     ],
   )
 

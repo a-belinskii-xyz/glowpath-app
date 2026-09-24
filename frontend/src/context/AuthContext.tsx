@@ -32,6 +32,7 @@ type AuthContextValue = {
   refreshUser: () => Promise<void>
   updateTimezone: (timezone: string) => Promise<void>
   completeLogin: (accessToken: string, refreshToken: string, userCreated?: boolean) => Promise<void>
+  retryBootstrap: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserPublic | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [telegramAuthError, setTelegramAuthError] = useState<string | null>(null)
+  const [bootId, setBootId] = useState(0)
   const isTelegram = isTelegramMiniApp()
 
   const refreshUser = useCallback(async () => {
@@ -96,38 +98,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile)
   }, [])
 
+  const retryBootstrap = useCallback(() => {
+    setTelegramAuthError(null)
+    setIsLoading(true)
+    setBootId((current) => current + 1)
+  }, [])
+
   useEffect(() => {
+    let cancelled = false
     const bootstrap = async () => {
+      setIsLoading(true)
       try {
         if (isTelegramMiniApp()) {
           applyTelegramChrome()
           const webApp = getTelegramWebApp()
           if (!webApp) {
-            setTelegramAuthError('missing_init_data')
+            if (!cancelled) {
+              setTelegramAuthError('missing_init_data')
+            }
             return
           }
           const tokens = await authApi.loginTelegram({
             init_data: webApp.initData,
             timezone: browserTimezone(),
           })
+          if (cancelled) {
+            return
+          }
           await completeLogin(tokens.access_token, tokens.refresh_token, tokens.user_created ?? false)
-          setTelegramAuthError(null)
+          if (!cancelled) {
+            setTelegramAuthError(null)
+          }
           return
         }
-        await refreshUser()
+        if (!getAccessToken()) {
+          if (!cancelled) {
+            setUser(null)
+          }
+          return
+        }
+        const profile = await authApi.getMe()
+        if (!cancelled) {
+          setUser(profile)
+        }
       } catch {
+        if (cancelled) {
+          return
+        }
         if (isTelegramMiniApp()) {
           setTelegramAuthError('auth_failed')
         }
         clearTokens()
         setUser(null)
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
     void bootstrap()
-  }, [completeLogin, refreshUser])
+    return () => {
+      cancelled = true
+    }
+  }, [bootId, completeLogin])
 
   useEffect(() => {
     if (!isTelegramMiniApp()) {
@@ -149,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshUser,
       updateTimezone,
       completeLogin,
+      retryBootstrap,
     }),
     [
       user,
@@ -161,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshUser,
       updateTimezone,
       completeLogin,
+      retryBootstrap,
     ],
   )
 

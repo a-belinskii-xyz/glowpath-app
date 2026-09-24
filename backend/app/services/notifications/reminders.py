@@ -13,7 +13,7 @@ from app.core.identity import user_has_verified_identity
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.user import User
-from app.models.user_notification_settings import UserNotificationSettings
+from app.models.user_notification_schedule import UserNotificationSchedule
 from app.services.goal_service import goal_is_active_on, week_completion_counts
 from app.services.notifications.base import NotificationChannel
 from app.services.notifications.dispatcher import NotificationDispatcher
@@ -38,33 +38,26 @@ def process_due_reminders(
     *,
     now: datetime | None = None,
 ) -> ReminderRunStats:
-    """Send due daily mood and goal reminders for users who opted in."""
+    """Send due mood and goal reminders for schedules whose local time matches."""
     instant = now if now is not None else datetime.now(UTC)
     if instant.tzinfo is None:
         instant = instant.replace(tzinfo=UTC)
+    if not settings.feature_notifications_enabled:
+        return ReminderRunStats()
 
     stats = ReminderRunStats()
-    user_ids = list(
+    schedules = list(
         db.scalars(
-            select(UserNotificationSettings.user_id).where(
-                UserNotificationSettings.enabled.is_(True)
-            )
-        ).all()
+            select(UserNotificationSchedule)
+            .where(UserNotificationSchedule.enabled.is_(True))
+            .options(joinedload(UserNotificationSchedule.user))
+        ).unique().all()
     )
     window = timedelta(minutes=settings.notifications_match_window_minutes)
 
-    for user_id in user_ids:
+    for schedule in schedules:
         stats.users_considered += 1
-        prefs = db.scalar(
-            select(UserNotificationSettings)
-            .where(UserNotificationSettings.user_id == user_id)
-            .options(joinedload(UserNotificationSettings.user))
-        )
-        if prefs is None:
-            stats.skipped += 1
-            continue
-
-        user = prefs.user
+        user = schedule.user
         if not user_has_verified_identity(user):
             stats.skipped += 1
             continue
@@ -76,36 +69,51 @@ def process_due_reminders(
             continue
 
         local_now = instant.astimezone(tz)
-        local_day = local_now.date()
-        channels = _parse_channels(prefs.channels)
-        if not channels or prefs.daily_mood_reminder_time is None:
-            stats.skipped += 1
+        try:
+            reminder_clock = _parse_time_of_day(schedule.time_of_day)
+        except ValueError:
+            stats.errors.append(f"user={user.id}: bad time_of_day {schedule.time_of_day!r}")
             continue
 
         if not _is_within_reminder_window(
             local_now=local_now,
-            reminder_time=prefs.daily_mood_reminder_time,
+            reminder_time=reminder_clock,
             window=window,
         ):
             stats.skipped += 1
             continue
+        if not _schedule_is_due(schedule, local_day=local_now.date(), tz=tz):
+            stats.skipped += 1
+            continue
+
+        channels = _parse_channels(schedule.channels)
+        if schedule.kind not in {"daily_mood", "goal_tracking"}:
+            stats.skipped += 1
+            continue
+        deliverable = _deliverable_channels(user, channels)
+        if not deliverable:
+            stats.skipped += 1
+            continue
 
         try:
-            deliverable = _deliverable_channels(user, channels)
-            if not deliverable:
-                stats.skipped += 1
-                continue
-            _process_user_reminders(
+            sent = _deliver_schedule(
                 db,
                 dispatcher,
-                prefs=prefs,
+                schedule=schedule,
                 user=user,
                 channels=deliverable,
-                local_day=local_day,
+                local_day=local_now.date(),
                 local_hour=local_now.hour,
                 tz=tz,
-                stats=stats,
             )
+            if sent:
+                if schedule.kind == "daily_mood":
+                    stats.daily_mood_sent += 1
+                elif schedule.kind == "goal_tracking":
+                    stats.goal_reminders_sent += 1
+            else:
+                stats.skipped += 1
+            schedule.last_sent_at = instant
             db.commit()
         except Exception as exc:
             db.rollback()
@@ -114,54 +122,77 @@ def process_due_reminders(
     return stats
 
 
-def _process_user_reminders(
+def _schedule_is_due(
+    schedule: UserNotificationSchedule,
+    *,
+    local_day: date,
+    tz: ZoneInfo,
+) -> bool:
+    weekdays = list(schedule.days_of_week or [])
+    if weekdays and local_day.weekday() not in weekdays:
+        return False
+    if schedule.last_sent_at is None:
+        return True
+    last_sent = schedule.last_sent_at
+    if last_sent.tzinfo is None:
+        last_sent = last_sent.replace(tzinfo=UTC)
+    last_local_day = last_sent.astimezone(tz).date()
+    return (local_day - last_local_day).days >= schedule.interval_days
+
+
+def _parse_time_of_day(value: str) -> time:
+    from app.schemas.notification_settings import normalize_time_of_day
+
+    normalized = normalize_time_of_day(value)
+    hour, minute = normalized.split(":")
+    return time(int(hour), int(minute))
+
+
+def _deliver_schedule(
     db: Session,
     dispatcher: NotificationDispatcher,
     *,
-    prefs: UserNotificationSettings,
+    schedule: UserNotificationSchedule,
     user: User,
     channels: list[NotificationChannel],
     local_day: date,
     local_hour: int,
     tz: ZoneInfo,
-    stats: ReminderRunStats,
-) -> None:
+) -> bool:
     locale = normalize_locale(user.telegram_locale) if user.telegram_locale else DEFAULT_LOCALE
-    if prefs.daily_mood_reminder_enabled and prefs.last_daily_mood_reminder_on != local_day:
+    if schedule.kind == "daily_mood":
         if _has_mood_entry_on_local_day(db, user=user, local_day=local_day, tz=tz):
-            prefs.last_daily_mood_reminder_on = local_day
-        else:
-            for channel in channels:
-                dispatcher.send(
-                    user=user,
-                    channels=[channel],
-                    message=daily_mood_reminder_message(
-                        channel=channel,
-                        hour=local_hour,
-                        locale=locale,
-                    ),
-                )
-            prefs.last_daily_mood_reminder_on = local_day
-            stats.daily_mood_sent += 1
+            return False
+        for channel in channels:
+            dispatcher.send(
+                user=user,
+                channels=[channel],
+                message=daily_mood_reminder_message(
+                    channel=channel,
+                    hour=local_hour,
+                    locale=locale,
+                ),
+            )
+        return True
 
-    if prefs.goal_reminders_enabled and prefs.last_goal_reminder_on != local_day:
+    if schedule.kind == "goal_tracking":
         behind = _behind_goals(db, user=user, local_day=local_day)
-        if behind:
-            labels = [resolve_label(goal.labels, DEFAULT_LOCALE) for goal in behind]
-            for channel in channels:
-                dispatcher.send(
-                    user=user,
-                    channels=[channel],
-                    message=goal_reminder_message(
-                        channel=channel,
-                        goal_labels=labels,
-                        locale=locale,
-                    ),
-                )
-            prefs.last_goal_reminder_on = local_day
-            stats.goal_reminders_sent += 1
-        else:
-            prefs.last_goal_reminder_on = local_day
+        if not behind:
+            return False
+        labels = [resolve_label(goal.labels, DEFAULT_LOCALE) for goal in behind]
+        for channel in channels:
+            dispatcher.send(
+                user=user,
+                channels=[channel],
+                message=goal_reminder_message(
+                    channel=channel,
+                    goal_labels=labels,
+                    locale=locale,
+                ),
+            )
+        return True
+
+    return False
 
 
 def _parse_channels(raw: list[str]) -> list[NotificationChannel]:

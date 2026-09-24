@@ -9,6 +9,7 @@ import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EmotionStatsBarChart } from '../components/EmotionStatsBarChart'
 import { PatternInsights } from '../components/PatternInsights'
 import { GoalPeriodStats, type GoalStatsPeriod } from '../components/GoalPeriodStats'
+import { CalendarSkeleton, EntriesSkeleton, GoalStatsSkeleton, StatsSkeleton } from '../components/DiarySkeletons'
 import { EntryRow } from '../components/EntryRow'
 import { HeartIcon } from '../components/HeartIcon'
 import { IconButton, IconLinkButton } from '../components/IconButton'
@@ -1046,7 +1047,7 @@ export function EntriesPage() {
             </button>
           </div>
           {isCalendarLoading && calendarDays.length === 0 && goalCalendarDays.length === 0 ? (
-            <p className="muted calendar-panel-status">{t('common.loadingCalendar')}</p>
+            <CalendarSkeleton />
           ) : (
             <MonthCalendar
               year={year}
@@ -1070,7 +1071,7 @@ export function EntriesPage() {
       {diaryAccess && !isSearchMode ? (
         calendarMode === 'goals' ? (
           isGoalStatsLoading && goalStatsItems.length === 0 ? (
-            <p className="muted">{t('common.loadingGoalStats')}</p>
+            <GoalStatsSkeleton />
           ) : (
             <GoalPeriodStats
               items={goalStatsItems}
@@ -1087,8 +1088,8 @@ export function EntriesPage() {
               onPeriodChange={setGoalStatsPeriod}
             />
           )
-        ) : isStatsLoading ? (
-          <p className="muted">{t('common.loadingStats')}</p>
+        ) : isStatsLoading && !stats ? (
+          <StatsSkeleton />
         ) : stats ? (
           <EmotionStatsBarChart
             stats={stats}
@@ -1138,8 +1139,8 @@ export function EntriesPage() {
         />
       ) : null}
 
-      {isLoading ? (
-        <p className="muted">{t('common.loadingEntries')}</p>
+      {isLoading && entries.length === 0 ? (
+        <EntriesSkeleton />
       ) : diaryAccess && entries.length === 0 && (isSearchMode || favoritesOnly || !stats) ? (
         <div className="entry-feed">
           <section className="day-section">

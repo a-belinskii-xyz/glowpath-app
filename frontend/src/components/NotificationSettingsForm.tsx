@@ -1,116 +1,58 @@
 import { useEffect, useRef, useState } from 'react'
 
-import {
-  getNotificationSettings,
-  patchNotificationSettings,
-} from '../api/notificationSettings'
+import { getNotificationSettings, patchNotificationSchedule } from '../api/notificationSettings'
 import { getTelegramLink } from '../api/telegram'
 import { PageErrorAlert } from './PageErrorAlert'
-import { FormField } from './FormField'
+import { TestingStageNotice, WorkerOfflineNotice } from './NotificationNotices'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { useNotificationStatus } from '../hooks/useNotificationStatus'
 import { ApiError, formatApiError } from '../lib/errors'
-import type { NotificationChannel, NotificationSettingsPublic } from '../types/notificationSettings'
+import type {
+  NotificationChannel,
+  NotificationSchedule,
+  NotificationScheduleKind,
+} from '../types/notificationSettings'
 
-const DEFAULT_REMINDER_TIME = '20:00'
 const TIME_SAVE_DELAY_MS = 400
+const VISIBLE_KINDS: NotificationScheduleKind[] = ['daily_mood', 'goal_tracking']
+const INTERVAL_OPTIONS = [1, 2, 3, 7] as const
 
-type SettingsDraft = {
+type ScheduleDraft = {
   enabled: boolean
-  dailyMood: boolean
-  goalReminders: boolean
-  reminderTime: string
+  timeOfDay: string
+  intervalDays: number
   telegramChannel: boolean
 }
 
-function apiTimeToInput(value: string | null): string {
-  if (!value) {
-    return ''
-  }
-  return value.slice(0, 5)
-}
-
-function inputToApiTime(value: string): string {
-  if (value.length === 5) {
-    return `${value}:00`
-  }
-  return value
-}
-
-function draftFromSettings(settings: NotificationSettingsPublic): SettingsDraft {
+function draftFromSchedule(schedule: NotificationSchedule): ScheduleDraft {
   return {
-    enabled: settings.enabled,
-    dailyMood: settings.daily_mood_reminder_enabled,
-    goalReminders: settings.goal_reminders_enabled,
-    reminderTime: apiTimeToInput(settings.daily_mood_reminder_time),
-    telegramChannel: settings.channels.includes('telegram'),
+    enabled: schedule.enabled,
+    timeOfDay: schedule.time_of_day.slice(0, 5),
+    intervalDays: schedule.interval_days,
+    telegramChannel: schedule.channels.includes('telegram'),
   }
 }
 
-function draftsEqual(left: SettingsDraft, right: SettingsDraft): boolean {
-  return (
-    left.enabled === right.enabled &&
-    left.dailyMood === right.dailyMood &&
-    left.goalReminders === right.goalReminders &&
-    left.reminderTime === right.reminderTime &&
-    left.telegramChannel === right.telegramChannel
-  )
-}
-
-type NotificationSettingsFormProps = {
-  timezone: string
-}
-
-export function NotificationSettingsForm({ timezone }: NotificationSettingsFormProps) {
+export function NotificationSettingsForm({ timezone }: { timezone: string }) {
   const { t } = useLocale()
   const { user } = useAuth()
+  const { status, isLoading: statusLoading, error: statusError } = useNotificationStatus()
+  const [drafts, setDrafts] = useState<Partial<Record<NotificationScheduleKind, ScheduleDraft>>>({})
+  const draftsRef = useRef(drafts)
+  draftsRef.current = drafts
+  const [telegramLinked, setTelegramLinked] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [savingKind, setSavingKind] = useState<NotificationScheduleKind | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const timeTimers = useRef<Partial<Record<NotificationScheduleKind, number>>>({})
+
+  const locked = status?.status_code === 'DISABLED_STAGE_TESTING'
   const showEmailChannel = Boolean(user?.email)
   const telegramRequired = Boolean(user?.telegram_linked && !user.email)
 
-  const [enabled, setEnabled] = useState(false)
-  const [dailyMood, setDailyMood] = useState(false)
-  const [goalReminders, setGoalReminders] = useState(false)
-  const [reminderTime, setReminderTime] = useState('')
-  const [telegramChannel, setTelegramChannel] = useState(false)
-  const [telegramLinked, setTelegramLinked] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const draftRef = useRef<SettingsDraft>({
-    enabled: false,
-    dailyMood: false,
-    goalReminders: false,
-    reminderTime: '',
-    telegramChannel: false,
-  })
-  const lastSavedRef = useRef<SettingsDraft | null>(null)
-  const telegramLinkedRef = useRef(false)
-  const persistChainRef = useRef(Promise.resolve())
-  const persistRef = useRef<() => Promise<void>>(async () => {})
-  const timeTimerRef = useRef<number | null>(null)
-  const persistGenerationRef = useRef(0)
-  const mountedRef = useRef(true)
-
-  telegramLinkedRef.current = telegramLinked
-
-  const applyDraft = (next: SettingsDraft) => {
-    draftRef.current = next
-    setEnabled(next.enabled)
-    setDailyMood(next.dailyMood)
-    setGoalReminders(next.goalReminders)
-    setReminderTime(next.reminderTime)
-    setTelegramChannel(next.telegramChannel)
-  }
-
-  const applySettings = (settings: NotificationSettingsPublic) => {
-    const next = draftFromSettings(settings)
-    lastSavedRef.current = next
-    applyDraft(next)
-  }
-
   useEffect(() => {
-    mountedRef.current = true
+    let cancelled = false
     const load = async () => {
       setIsLoading(true)
       try {
@@ -118,231 +60,227 @@ export function NotificationSettingsForm({ timezone }: NotificationSettingsFormP
           getNotificationSettings(),
           getTelegramLink().catch(() => null),
         ])
-        applySettings(settings)
+        if (cancelled) {
+          return
+        }
+        const nextDrafts: Partial<Record<NotificationScheduleKind, ScheduleDraft>> = {}
+        for (const schedule of settings.schedules) {
+          if (VISIBLE_KINDS.includes(schedule.kind)) {
+            nextDrafts[schedule.kind] = draftFromSchedule(schedule)
+          }
+        }
+        setDrafts(nextDrafts)
         setTelegramLinked(telegram?.linked === true)
         setError(null)
       } catch (err) {
+        if (cancelled) {
+          return
+        }
         if (err instanceof ApiError && err.status === 403) {
           setError(t('errors.verifyToManageNotifications'))
         } else {
           setError(formatApiError(err, t, 'errors.failedLoadNotifications'))
         }
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
     void load()
     return () => {
-      mountedRef.current = false
-      persistGenerationRef.current += 1
-      if (timeTimerRef.current !== null) {
-        window.clearTimeout(timeTimerRef.current)
-        timeTimerRef.current = null
-      }
-      void persistRef.current()
+      cancelled = true
     }
   }, [t])
 
-  const persist = () => {
-    persistChainRef.current = persistChainRef.current
-      .catch(() => undefined)
-      .then(async () => {
-        while (true) {
-          const draft = { ...draftRef.current }
-          if (!lastSavedRef.current || draftsEqual(draft, lastSavedRef.current)) {
-            return
-          }
+  useEffect(() => {
+    const timers = timeTimers.current
+    return () => {
+      for (const timer of Object.values(timers)) {
+        if (timer !== undefined) {
+          window.clearTimeout(timer)
+        }
+      }
+    }
+  }, [])
 
-          const needsTime = draft.enabled && (draft.dailyMood || draft.goalReminders)
-          if (needsTime && !draft.reminderTime) {
-            if (mountedRef.current) {
-              setError(t('profile.reminderTimeRequired'))
-            }
-            return
-          }
+  useEffect(() => {
+    if (!statusError) {
+      return
+    }
+    setError(formatApiError(statusError, t, 'errors.failedLoadNotifications'))
+  }, [statusError, t])
 
-          const channels: NotificationChannel[] = []
-          if (user?.email) {
-            channels.push('email')
-          }
-          const telegramOn =
-            Boolean(user?.telegram_linked) && (draft.telegramChannel || !user?.email)
-          if (telegramOn || (telegramLinkedRef.current && draft.telegramChannel)) {
-            channels.push('telegram')
-          }
-
-          const generation = persistGenerationRef.current
-          if (mountedRef.current) {
-            setIsSaving(true)
-            setError(null)
-          }
-          try {
-            const saved = await patchNotificationSettings({
-              enabled: draft.enabled,
-              channels,
-              daily_mood_reminder_enabled: draft.dailyMood,
-              daily_mood_reminder_time: draft.reminderTime
-                ? inputToApiTime(draft.reminderTime)
-                : null,
-              goal_reminders_enabled: draft.goalReminders,
-            })
-            if (generation !== persistGenerationRef.current) {
-              return
-            }
-            lastSavedRef.current = draftFromSettings(saved)
-            if (!draftsEqual(draft, draftRef.current)) {
-              continue
-            }
-            if (mountedRef.current) {
-              applySettings(saved)
-            }
-            return
-          } catch (err) {
-            if (!mountedRef.current) {
-              return
-            }
-            if (err instanceof ApiError && err.status === 403) {
-              setError(t('errors.verifyToManageNotifications'))
-            } else {
-              setError(formatApiError(err, t, 'errors.failedSave'))
-            }
-            return
-          } finally {
-            if (mountedRef.current) {
-              setIsSaving(false)
-            }
+  const persist = async (kind: NotificationScheduleKind, draft: ScheduleDraft) => {
+    if (locked) {
+      return
+    }
+    const channels: NotificationChannel[] = []
+    if (user?.email) {
+      channels.push('email')
+    }
+    const telegramOn = Boolean(user?.telegram_linked) && (draft.telegramChannel || !user?.email)
+    if (telegramOn || (telegramLinked && draft.telegramChannel)) {
+      channels.push('telegram')
+    }
+    if (channels.length === 0) {
+      setError(t('profile.reminderTimeRequired'))
+      return
+    }
+    setSavingKind(kind)
+    setError(null)
+    try {
+      const saved = await patchNotificationSchedule(kind, {
+        enabled: draft.enabled,
+        time_of_day: draft.timeOfDay,
+        interval_days: draft.intervalDays,
+        channels,
+      })
+      setDrafts((current) => {
+        const next = { ...current }
+        for (const schedule of saved.schedules) {
+          if (VISIBLE_KINDS.includes(schedule.kind)) {
+            next[schedule.kind] = draftFromSchedule(schedule)
           }
         }
+        return next
       })
-    return persistChainRef.current
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'feature_disabled') {
+        setError(t('errors.featureDisabled'))
+      } else if (err instanceof ApiError && err.status === 403) {
+        setError(t('errors.verifyToManageNotifications'))
+      } else {
+        setError(formatApiError(err, t, 'errors.failedSave'))
+      }
+    } finally {
+      setSavingKind(null)
+    }
   }
 
-  persistRef.current = persist
-
-  const commitDraft = (patch: Partial<SettingsDraft>, options?: { debounce?: boolean }) => {
-    const next = { ...draftRef.current, ...patch }
-    if ((patch.dailyMood === true || patch.goalReminders === true) && !next.reminderTime) {
-      next.reminderTime = DEFAULT_REMINDER_TIME
+  const updateDraft = (
+    kind: NotificationScheduleKind,
+    patch: Partial<ScheduleDraft>,
+    options?: { debounce?: boolean },
+  ) => {
+    const current = drafts[kind]
+    if (!current || locked) {
+      return
     }
-    applyDraft(next)
-
+    const next = { ...current, ...patch }
+    setDrafts((prev) => ({ ...prev, [kind]: next }))
     if (options?.debounce) {
-      if (timeTimerRef.current !== null) {
-        window.clearTimeout(timeTimerRef.current)
+      const pending = timeTimers.current[kind]
+      if (pending !== undefined) {
+        window.clearTimeout(pending)
       }
-      timeTimerRef.current = window.setTimeout(() => {
-        timeTimerRef.current = null
-        void persist()
+      timeTimers.current[kind] = window.setTimeout(() => {
+        timeTimers.current[kind] = undefined
+        const latest = draftsRef.current[kind]
+        if (latest) {
+          void persist(kind, latest)
+        }
       }, TIME_SAVE_DELAY_MS)
       return
     }
-
-    if (timeTimerRef.current !== null) {
-      window.clearTimeout(timeTimerRef.current)
-      timeTimerRef.current = null
-    }
-    void persist()
+    void persist(kind, next)
   }
 
-  const needsReminderTime = enabled && (dailyMood || goalReminders)
-
-  if (isLoading) {
+  if (isLoading || statusLoading) {
     return <p className="muted">{t('common.loadingNotifications')}</p>
   }
 
   return (
     <form
       className="card form profile-notifications-form"
-      aria-busy={isSaving}
+      aria-busy={savingKind !== null}
       onSubmit={(event) => event.preventDefault()}
     >
       <PageErrorAlert error={error} />
+      {status?.status_code === 'DISABLED_STAGE_TESTING' ? <TestingStageNotice /> : null}
+      {status?.status_code === 'WORKER_OFFLINE' ? <WorkerOfflineNotice /> : null}
 
-      <label className="notification-master">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(event) => commitDraft({ enabled: event.target.checked })}
-        />
-        <span>
-          <span className="notification-master-title">{t('profile.notificationsEnabled')}</span>
-          <span className="notification-master-hint">{t('profile.notificationsEnabledHint')}</span>
-        </span>
-      </label>
+      {VISIBLE_KINDS.map((kind) => {
+        const draft = drafts[kind]
+        if (!draft) {
+          return null
+        }
+        const displayedEnabled = locked ? false : draft.enabled
+        return (
+          <fieldset key={kind} className="notification-group" disabled={locked}>
+            <legend className="notification-group-title">
+              {kind === 'daily_mood' ? t('profile.dailyMoodReminder') : t('profile.goalReminders')}
+            </legend>
+            <label className="tag-visibility-toggle">
+              <input
+                type="checkbox"
+                checked={displayedEnabled}
+                onChange={(event) => updateDraft(kind, { enabled: event.target.checked })}
+              />
+              <span>{t('profile.scheduleEnabled')}</span>
+            </label>
+            <label className="form-field" htmlFor={`${kind}-time`}>
+              <span className="form-label">{t('profile.reminderTime')}</span>
+              <input
+                id={`${kind}-time`}
+                className="form-input"
+                type="time"
+                value={draft.timeOfDay}
+                onChange={(event) =>
+                  updateDraft(kind, { timeOfDay: event.target.value }, { debounce: true })
+                }
+              />
+            </label>
+            <label className="form-field" htmlFor={`${kind}-interval`}>
+              <span className="form-label">{t('profile.reminderFrequency')}</span>
+              <select
+                id={`${kind}-interval`}
+                className="form-input"
+                value={draft.intervalDays}
+                onChange={(event) =>
+                  updateDraft(kind, { intervalDays: Number(event.target.value) })
+                }
+              >
+                {INTERVAL_OPTIONS.map((days) => (
+                  <option key={days} value={days}>
+                    {t(`profile.intervalDays.${days}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="notification-channel-row">
+              <span>{t('profile.notificationChannels')}</span>
+            </div>
+            {showEmailChannel ? (
+              <div className="notification-channel-row">
+                <span>{t('profile.channelEmail')}</span>
+                <span className="status-pill status-pill--ok status-pill--sm">
+                  {t('profile.channelAlwaysOn')}
+                </span>
+              </div>
+            ) : null}
+            <label
+              className={
+                telegramLinked
+                  ? 'tag-visibility-toggle'
+                  : 'tag-visibility-toggle notification-channel-disabled'
+              }
+            >
+              <input
+                type="checkbox"
+                checked={telegramLinked && (draft.telegramChannel || telegramRequired)}
+                disabled={!telegramLinked || telegramRequired || locked}
+                onChange={(event) => updateDraft(kind, { telegramChannel: event.target.checked })}
+              />
+              <span>
+                {telegramLinked ? t('profile.channelTelegram') : t('profile.channelTelegramLinkFirst')}
+              </span>
+            </label>
+          </fieldset>
+        )
+      })}
 
-      <fieldset className="notification-group" disabled={!enabled}>
-        <legend className="notification-group-title">{t('profile.notificationChannels')}</legend>
-        {showEmailChannel ? (
-          <div className="notification-channel-row">
-            <span>{t('profile.channelEmail')}</span>
-            <span className="status-pill status-pill--ok status-pill--sm">
-              {t('profile.channelAlwaysOn')}
-            </span>
-          </div>
-        ) : null}
-        <label
-          className={
-            telegramLinked
-              ? 'tag-visibility-toggle'
-              : 'tag-visibility-toggle notification-channel-disabled'
-          }
-        >
-          <input
-            type="checkbox"
-            checked={telegramLinked && (telegramChannel || telegramRequired)}
-            disabled={!telegramLinked || telegramRequired}
-            onChange={(event) => commitDraft({ telegramChannel: event.target.checked })}
-          />
-          <span>
-            {telegramLinked
-              ? t('profile.channelTelegram')
-              : t('profile.channelTelegramLinkFirst')}
-          </span>
-        </label>
-      </fieldset>
-
-      <fieldset className="notification-group" disabled={!enabled}>
-        <legend className="notification-group-title">{t('profile.notificationReminders')}</legend>
-        <label className="tag-visibility-toggle">
-          <input
-            type="checkbox"
-            checked={dailyMood}
-            onChange={(event) => commitDraft({ dailyMood: event.target.checked })}
-          />
-          <span>{t('profile.dailyMoodReminder')}</span>
-        </label>
-        <label className="tag-visibility-toggle">
-          <input
-            type="checkbox"
-            checked={goalReminders}
-            onChange={(event) => commitDraft({ goalReminders: event.target.checked })}
-          />
-          <span>{t('profile.goalReminders')}</span>
-        </label>
-      </fieldset>
-
-      {needsReminderTime ? (
-        <FormField
-          id="notification-reminder-time"
-          label={t('profile.reminderTime')}
-          type="time"
-          required
-          value={reminderTime}
-          onChange={(event) => commitDraft({ reminderTime: event.target.value }, { debounce: true })}
-          onBlur={() => {
-            if (timeTimerRef.current !== null) {
-              window.clearTimeout(timeTimerRef.current)
-              timeTimerRef.current = null
-            }
-            void persist()
-          }}
-          hint={t('profile.reminderTimeHint')}
-        />
-      ) : null}
-
-      <p className="form-hint">
-        {t('profile.notificationsTimezoneHint', { timezone })}
-      </p>
+      <p className="form-hint">{t('profile.notificationsTimezoneHint', { timezone })}</p>
     </form>
   )
 }

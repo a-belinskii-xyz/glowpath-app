@@ -69,7 +69,12 @@ class Settings(BaseSettings):
     smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
     email_from: str = Field(default="noreply@mood-tracker.local", validation_alias="EMAIL_FROM")
 
-    # Reminder worker (daily mood + goal notifications)
+    # Reminder worker (daily mood + goal notifications).
+    # Product kill switch: false hides delivery and locks the settings UI.
+    feature_notifications_enabled: bool = Field(
+        default=False,
+        validation_alias="FEATURE_NOTIFICATIONS_ENABLED",
+    )
     notifications_worker_enabled: bool = Field(
         default=True,
         validation_alias="NOTIFICATIONS_WORKER_ENABLED",
