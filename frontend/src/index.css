@@ -3665,6 +3665,28 @@ code {
 .photo-lightbox-stage {
   width: 100%;
   max-height: min(80vh, 48rem);
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.photo-lightbox-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.photo-lightbox-track {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  will-change: transform;
+}
+
+.photo-lightbox-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
   display: grid;
   place-items: center;
 }
@@ -3677,6 +3699,9 @@ code {
   object-fit: contain;
   border-radius: 0.5rem;
   background: transparent;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .photo-lightbox-image.attachment-image-skeleton,
