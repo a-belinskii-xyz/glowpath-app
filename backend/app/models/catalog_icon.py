@@ -1,5 +1,5 @@
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     BigInteger,
@@ -51,11 +51,11 @@ class CatalogIcon(TimestampMixin, Base):
         index=True,
     )
     slug: Mapped[str] = mapped_column(String(64))
-    labels: Mapped[dict] = mapped_column(JSONB)
+    labels: Mapped[dict[str, Any]] = mapped_column(JSONB)
     storage_key: Mapped[str] = mapped_column(String(512))
     mime_type: Mapped[str] = mapped_column(String(127))
     size_bytes: Mapped[int] = mapped_column(BigInteger)
-    suggested_colors: Mapped[list] = mapped_column(JSONB)
+    suggested_colors: Mapped[list[Any]] = mapped_column(JSONB)
     suggested_mood_scores: Mapped[list[int]] = mapped_column(
         ARRAY(SmallInteger),
         server_default=text("'{}'::smallint[]"),

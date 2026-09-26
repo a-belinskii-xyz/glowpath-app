@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -17,7 +18,7 @@ class GuestHeartbeatResponse(BaseModel):
 
 class GuestImportRequest(BaseModel):
     visitor_id: uuid.UUID
-    payload: dict
+    payload: dict[str, Any]
 
 
 class GuestImportResponse(BaseModel):

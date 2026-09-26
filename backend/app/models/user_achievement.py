@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -68,7 +68,10 @@ class UserAchievement(TimestampMixin, Base):
         nullable=True,
         index=True,
     )
-    rewards_snapshot: Mapped[list | dict | None] = mapped_column(JSONB, nullable=True)
+    rewards_snapshot: Mapped[list[Any] | dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
     seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="achievements")

@@ -34,6 +34,8 @@ export function EntryDetailCard({ entry, timeZone, children }: EntryDetailCardPr
   const showCreated = !isSameInstant(entry.created_at, entry.recorded_at)
   const showUpdated =
     entry.updated_at !== entry.created_at && !isSameInstant(entry.updated_at, entry.recorded_at)
+  const showFooter =
+    entry.tags.length > 0 || entry.goals.length > 0 || showCreated || showUpdated
 
   return (
     <article className="entry-detail">
@@ -84,7 +86,8 @@ export function EntryDetailCard({ entry, timeZone, children }: EntryDetailCardPr
           </div>
         ) : null}
 
-        <div className="entry-detail-block entry-detail-footer">
+        {showFooter ? (
+          <div className="entry-detail-block entry-detail-footer">
           {entry.tags.length > 0 ? (
             <div className="entry-tags">
               {entry.tags.map((tag) => {
@@ -142,7 +145,8 @@ export function EntryDetailCard({ entry, timeZone, children }: EntryDetailCardPr
                 : null}
             </p>
           ) : null}
-        </div>
+          </div>
+        ) : null}
         {children}
       </div>
     </article>

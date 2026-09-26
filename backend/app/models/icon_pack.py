@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
@@ -28,9 +28,7 @@ class IconPack(TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint("price_tokens >= 0", name="icon_pack_price_non_negative"),
         CheckConstraint(
-            "status IN ("
-            "'draft', 'pending_review', 'rejected', 'published', 'archived'"
-            ")",
+            "status IN ('draft', 'pending_review', 'rejected', 'published', 'archived')",
             name="icon_pack_status_values",
         ),
     )
@@ -50,7 +48,7 @@ class IconPack(TimestampMixin, Base):
     is_official: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     status: Mapped[str] = mapped_column(String(32), server_default="draft")
     price_tokens: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    labels: Mapped[dict] = mapped_column(JSONB)
+    labels: Mapped[dict[str, Any]] = mapped_column(JSONB)
     cover_icon_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey(fk_column("catalog_icons"), ondelete="SET NULL", use_alter=True),

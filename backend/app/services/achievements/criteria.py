@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -53,7 +54,7 @@ def _count(value: int | None) -> int:
     return int(value or 0)
 
 
-def _target_count(criteria: dict, key: str = "count") -> int:
+def _target_count(criteria: dict[str, Any], key: str = "count") -> int:
     return max(1, int(criteria.get(key, 1)))
 
 
@@ -257,7 +258,7 @@ def _local_hour_range_count(
     )
 
 
-def evaluate_criteria(db: Session, *, user: User, criteria: dict) -> CriteriaProgress:
+def evaluate_criteria(db: Session, *, user: User, criteria: dict[str, Any]) -> CriteriaProgress:
     criteria_type = criteria.get("type")
     if criteria_type == CriteriaType.ENTRY_COUNT.value:
         target = _target_count(criteria)
@@ -342,7 +343,7 @@ def evaluate_criteria(db: Session, *, user: User, criteria: dict) -> CriteriaPro
     return CriteriaProgress(current=0, target=1)
 
 
-def progress_target_for_criteria(criteria: dict) -> int:
+def progress_target_for_criteria(criteria: dict[str, Any]) -> int:
     criteria_type = criteria.get("type")
     if criteria_type == CriteriaType.CONSECUTIVE_DAYS.value:
         return _target_count(criteria, "days")

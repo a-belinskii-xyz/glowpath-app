@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import and_, func, or_, select
@@ -136,9 +137,7 @@ def _normalize_pack_labels(raw: Any) -> dict[str, LocaleLabels]:
 
 
 def _normalize_suggested_colors(raw: Any) -> list[str]:
-    if not isinstance(raw, list) or not (
-        MIN_SUGGESTED_COLORS <= len(raw) <= MAX_SUGGESTED_COLORS
-    ):
+    if not isinstance(raw, list) or not (MIN_SUGGESTED_COLORS <= len(raw) <= MAX_SUGGESTED_COLORS):
         raise MarketplaceError(
             f"suggested_colors must have {MIN_SUGGESTED_COLORS}–{MAX_SUGGESTED_COLORS} hex colors",
             code=ErrorCode.INVALID_SUGGESTED_COLORS,
@@ -267,9 +266,7 @@ def user_can_view_pack(user: User, pack: IconPack) -> bool:
         return True
     if user.is_staff:
         return True
-    if pack.author_id is not None and pack.author_id == user.id:
-        return True
-    return False
+    return pack.author_id is not None and pack.author_id == user.id
 
 
 def user_can_assign_catalog_icon(
@@ -314,9 +311,7 @@ def can_assign_catalog_icon(
     except ValueError:
         return False
     icon = db.scalar(
-        select(CatalogIcon)
-        .options(selectinload(CatalogIcon.pack))
-        .where(CatalogIcon.id == parsed)
+        select(CatalogIcon).options(selectinload(CatalogIcon.pack)).where(CatalogIcon.id == parsed)
     )
     if icon is None:
         return False
@@ -503,9 +498,7 @@ def list_published_packs(
             ),
         )
     elif unlocked is False:
-        unlocked_ids = select(IconPackUnlock.pack_id).where(
-            IconPackUnlock.user_id == user.id
-        )
+        unlocked_ids = select(IconPackUnlock.pack_id).where(IconPackUnlock.user_id == user.id)
         query = query.where(
             or_(
                 IconPack.price_tokens == 0,
@@ -556,15 +549,15 @@ def search_icons(
             selectinload(CatalogIcon.pack),
             selectinload(CatalogIcon.search_tags),
         )
-        .where(
+        .order_by(CatalogIcon.sort_order, CatalogIcon.created_at.desc())
+    )
+    if not user.is_staff:
+        query = query.where(
             or_(
                 IconPack.status == PackStatus.PUBLISHED.value,
                 IconPack.author_id == user.id,
-                user.is_staff,
             )
         )
-        .order_by(CatalogIcon.sort_order, CatalogIcon.created_at.desc())
-    )
     if pack_id is not None:
         query = query.where(CatalogIcon.pack_id == pack_id)
     if q:
@@ -960,10 +953,8 @@ def delete_studio_icon(
     key = icon.storage_key
     db.delete(icon)
     db.flush()
-    try:
+    with contextlib.suppress(StorageError):
         storage.delete_object(key=key)
-    except StorageError:
-        pass
 
 
 def submit_studio_pack(db: Session, *, user: User, pack_id: uuid.UUID) -> IconPack:
@@ -1027,7 +1018,7 @@ def publish_pack(db: Session, *, staff: User, pack_id: uuid.UUID) -> IconPack:
             code=ErrorCode.ICON_PACK_EMPTY,
         )
     pack.status = PackStatus.PUBLISHED.value
-    pack.published_at = datetime.now(timezone.utc)
+    pack.published_at = datetime.now(UTC)
     pack.reviewed_at = pack.published_at
     pack.reviewed_by = staff.id
     pack.moderation_note = None
@@ -1054,7 +1045,7 @@ def reject_pack(
             params={"status": pack.status},
         )
     pack.status = PackStatus.REJECTED.value
-    pack.reviewed_at = datetime.now(timezone.utc)
+    pack.reviewed_at = datetime.now(UTC)
     pack.reviewed_by = staff.id
     pack.moderation_note = (note or "")[:1000] or None
     db.flush()
@@ -1118,9 +1109,7 @@ def serialize_pack_card(
     user: User,
     locale: str,
 ) -> dict[str, Any]:
-    unlocked = pack.price_tokens == 0 or _pack_is_unlocked(
-        db, user_id=user.id, pack_id=pack.id
-    )
+    unlocked = pack.price_tokens == 0 or _pack_is_unlocked(db, user_id=user.id, pack_id=pack.id)
     name_labels = (pack.labels or {}).get("name") or {}
     description_labels = (pack.labels or {}).get("description") or {}
     return {

@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.achievements import (
@@ -33,13 +33,12 @@ class AchievementError(AppError):
     pass
 
 
-def _published_achievements_query():
+def _published_achievements_query() -> Select[tuple[Achievement]]:
     return (
         select(Achievement)
         .where(Achievement.status == AchievementStatus.PUBLISHED.value)
         .options(
-            selectinload(Achievement.rewards)
-            .selectinload(AchievementReward.pack),
+            selectinload(Achievement.rewards).selectinload(AchievementReward.pack),
             selectinload(Achievement.rewards)
             .selectinload(AchievementReward.catalog_icon)
             .selectinload(CatalogIcon.pack),
@@ -53,9 +52,7 @@ def _user_progress_map(
     *,
     user_id: uuid.UUID,
 ) -> dict[uuid.UUID, UserAchievement]:
-    rows = db.scalars(
-        select(UserAchievement).where(UserAchievement.user_id == user_id)
-    ).all()
+    rows = db.scalars(select(UserAchievement).where(UserAchievement.user_id == user_id)).all()
     return {row.achievement_id: row for row in rows}
 
 
@@ -84,9 +81,7 @@ def _get_or_create_progress(
 def _eligible_user_count(db: Session) -> int:
     """Denominator for rarity: verified users."""
     return int(
-        db.scalar(
-            select(func.count()).select_from(User).where(User.email_verified_at.is_not(None))
-        )
+        db.scalar(select(func.count()).select_from(User).where(User.email_verified_at.is_not(None)))
         or 0
     )
 
@@ -141,10 +136,9 @@ def evaluate_user_achievements(
 
     for achievement in achievements:
         progress = progress_map.get(achievement.id)
-        already_unlocked = progress is not None and progress.unlocked_at is not None
         result = evaluate_criteria(db, user=user, criteria=achievement.criteria)
 
-        if already_unlocked:
+        if progress is not None and progress.unlocked_at is not None:
             # Sticky unlock: keep unlocked_at; optionally refresh target display.
             progress.progress_target = result.target
             progress.progress_current = max(progress.progress_current, result.target)
@@ -263,21 +257,11 @@ def serialize_achievement_public(
         "unlocked": unlocked,
         "unlocked_at": progress.unlocked_at if progress else None,
         "unlocked_by_entry_id": (
-            progress.unlocked_by_entry_id
-            if progress is not None and unlocked
-            else None
+            progress.unlocked_by_entry_id if progress is not None and unlocked else None
         ),
         "unlock_percent": unlock_percent,
-        "is_new": bool(
-            unlocked
-            and progress is not None
-            and progress.seen_at is None
-        ),
-        "progress_current": (
-            progress.progress_current
-            if progress is not None
-            else 0
-        ),
+        "is_new": bool(unlocked and progress is not None and progress.seen_at is None),
+        "progress_current": (progress.progress_current if progress is not None else 0),
         "progress_target": (
             progress.progress_target
             if progress is not None

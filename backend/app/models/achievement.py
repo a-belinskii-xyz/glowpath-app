@@ -1,5 +1,5 @@
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import CheckConstraint, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -44,8 +44,8 @@ class Achievement(TimestampMixin, Base):
     category: Mapped[str] = mapped_column(String(32))
     visibility: Mapped[str] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(32), server_default="draft")
-    labels: Mapped[dict] = mapped_column(JSONB)
-    descriptions: Mapped[dict] = mapped_column(JSONB)
+    labels: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    descriptions: Mapped[dict[str, Any]] = mapped_column(JSONB)
     icon_type: Mapped[str] = mapped_column(
         String(16),
         nullable=False,
@@ -56,7 +56,7 @@ class Achievement(TimestampMixin, Base):
         nullable=False,
         server_default=DEFAULT_ACHIEVEMENT_ICON,
     )
-    criteria: Mapped[dict] = mapped_column(JSONB)
+    criteria: Mapped[dict[str, Any]] = mapped_column(JSONB)
     sort_order: Mapped[int] = mapped_column(Integer, server_default=text("0"))
 
     rewards: Mapped[list["AchievementReward"]] = relationship(

@@ -794,15 +794,13 @@ export function MonthSummaryOverlay({
             </RecapChipRow>
           ) : null}
 
-          <RecapChipRow label={t('monthSummary.tags')}>
-            {stats.tags.length === 0 ? (
-              <span className="muted">{t('monthSummary.emptyTags')}</span>
-            ) : (
-              stats.tags.slice(0, 8).map((item) => (
+          {stats.tags.length > 0 ? (
+            <RecapChipRow label={t('monthSummary.tags')}>
+              {stats.tags.slice(0, 8).map((item) => (
                 <RecapNamedChip key={item.id} item={item} />
-              ))
-            )}
-          </RecapChipRow>
+              ))}
+            </RecapChipRow>
+          ) : null}
 
           <RecapChipRow label={t('monthSummary.goals')}>
             {stats.goals.length === 0 ? (

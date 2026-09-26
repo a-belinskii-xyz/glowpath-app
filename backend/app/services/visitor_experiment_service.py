@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Literal, TypedDict
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -17,7 +18,6 @@ from app.core.visitor_fingerprint import (
 )
 from app.models.guest_device import GuestAuthEvent, GuestDevice
 from app.models.visitor import Visitor, VisitorCohort
-
 
 VISITOR_COOKIE_NAME = settings.guest_visitor_cookie_name
 
@@ -44,7 +44,34 @@ def _cookie_max_age_seconds() -> int:
     return settings.guest_visitor_cookie_max_age_days * 24 * 60 * 60
 
 
-def visitor_cookie_settings() -> dict[str, object]:
+def _as_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+def _as_float(value: object, default: float = 1.0) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
+class VisitorCookieSettings(TypedDict):
+    key: str
+    httponly: bool
+    samesite: Literal["lax", "strict", "none"]
+    secure: bool
+    max_age: int
+    path: str
+
+
+def visitor_cookie_settings() -> VisitorCookieSettings:
     return {
         "key": VISITOR_COOKIE_NAME,
         "httponly": True,
@@ -95,11 +122,11 @@ def resolve_or_create_visitor(
             user_agent=user_agent,
             accept_language=accept_language,
             timezone=str(fingerprint_payload.get("timezone", "")),
-            screen_width=int(fingerprint_payload.get("screen_width", 0)),
-            screen_height=int(fingerprint_payload.get("screen_height", 0)),
-            screen_dpr=float(fingerprint_payload.get("screen_dpr", 1)),
+            screen_width=_as_int(fingerprint_payload.get("screen_width", 0)),
+            screen_height=_as_int(fingerprint_payload.get("screen_height", 0)),
+            screen_dpr=_as_float(fingerprint_payload.get("screen_dpr", 1)),
             platform=str(fingerprint_payload.get("platform", "")),
-            max_touch_points=int(fingerprint_payload.get("max_touch_points", 0)),
+            max_touch_points=_as_int(fingerprint_payload.get("max_touch_points", 0)),
         )
         fingerprint_hash = fingerprint_hash_from_payload(canonical)
         visitor = db.scalar(select(Visitor).where(Visitor.fingerprint_hash == fingerprint_hash))
@@ -207,37 +234,57 @@ def get_experiment_summary(db: Session) -> GuestExperimentSummary:
     now = datetime.now(UTC)
     week_ago = now - timedelta(days=7)
 
-    control_visitors = db.scalar(
-        select(func.count()).select_from(Visitor).where(Visitor.cohort == VisitorCohort.CONTROL.value)
-    ) or 0
-    treatment_visitors = db.scalar(
-        select(func.count())
-        .select_from(Visitor)
-        .where(Visitor.cohort == VisitorCohort.TREATMENT.value)
-    ) or 0
-    treatment_active_7d = db.scalar(
-        select(func.count())
-        .select_from(GuestDevice)
-        .where(GuestDevice.last_seen_at >= week_ago)
-    ) or 0
-    control_converted = db.scalar(
-        select(func.count())
-        .select_from(Visitor)
-        .where(
-            Visitor.cohort == VisitorCohort.CONTROL.value,
-            Visitor.converted_user_id.is_not(None),
+    control_visitors = (
+        db.scalar(
+            select(func.count())
+            .select_from(Visitor)
+            .where(Visitor.cohort == VisitorCohort.CONTROL.value)
         )
-    ) or 0
-    treatment_converted = db.scalar(
-        select(func.count())
-        .select_from(GuestDevice)
-        .where(GuestDevice.converted_user_id.is_not(None))
-    ) or 0
-    treatment_existing_login_skipped = db.scalar(
-        select(func.count())
-        .select_from(GuestDevice)
-        .where(GuestDevice.last_auth_event == GuestAuthEvent.EXISTING_LOGIN_SKIPPED.value)
-    ) or 0
+        or 0
+    )
+    treatment_visitors = (
+        db.scalar(
+            select(func.count())
+            .select_from(Visitor)
+            .where(Visitor.cohort == VisitorCohort.TREATMENT.value)
+        )
+        or 0
+    )
+    treatment_active_7d = (
+        db.scalar(
+            select(func.count())
+            .select_from(GuestDevice)
+            .where(GuestDevice.last_seen_at >= week_ago)
+        )
+        or 0
+    )
+    control_converted = (
+        db.scalar(
+            select(func.count())
+            .select_from(Visitor)
+            .where(
+                Visitor.cohort == VisitorCohort.CONTROL.value,
+                Visitor.converted_user_id.is_not(None),
+            )
+        )
+        or 0
+    )
+    treatment_converted = (
+        db.scalar(
+            select(func.count())
+            .select_from(GuestDevice)
+            .where(GuestDevice.converted_user_id.is_not(None))
+        )
+        or 0
+    )
+    treatment_existing_login_skipped = (
+        db.scalar(
+            select(func.count())
+            .select_from(GuestDevice)
+            .where(GuestDevice.last_auth_event == GuestAuthEvent.EXISTING_LOGIN_SKIPPED.value)
+        )
+        or 0
+    )
 
     median_entry_count = db.scalar(
         select(func.percentile_cont(0.5).within_group(GuestDevice.entry_count)).where(

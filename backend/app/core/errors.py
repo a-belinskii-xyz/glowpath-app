@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import HTTPException
 
@@ -55,5 +55,5 @@ def structured_detail(
     return detail
 
 
-def raise_http_error(exc: AppError) -> None:
+def raise_http_error(exc: AppError) -> NoReturn:
     raise HTTPException(status_code=exc.status_code, detail=error_detail(exc)) from exc

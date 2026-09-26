@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
-from app.core.mood_scale import default_mood_score_style, MoodScore
+from app.core.mood_scale import MoodScore, default_mood_score_style
 from app.models.goal import Goal
 from app.models.guest_device import GuestAuthEvent
 from app.models.mood_entry import MoodEntry
@@ -71,7 +71,9 @@ def import_guest_diary(
     }
     existing_templates = {
         template.slug: template
-        for template in db.scalars(select(NoteTemplate).where(NoteTemplate.user_id == user.id)).all()
+        for template in db.scalars(
+            select(NoteTemplate).where(NoteTemplate.user_id == user.id)
+        ).all()
     }
 
     for group_data in payload.get("tag_groups", []):
@@ -122,9 +124,7 @@ def import_guest_diary(
             continue
         starts_on_raw = goal_data.get("starts_on")
         starts_on = (
-            date.fromisoformat(str(starts_on_raw))
-            if starts_on_raw
-            else _local_today(user.timezone)
+            date.fromisoformat(str(starts_on_raw)) if starts_on_raw else _local_today(user.timezone)
         )
         ends_on_raw = goal_data.get("ends_on")
         ends_on = date.fromisoformat(str(ends_on_raw)) if ends_on_raw else None
@@ -175,10 +175,11 @@ def import_guest_diary(
                     if not isinstance(style, dict):
                         continue
                     icon_type = _sanitize_icon_type(str(style.get("icon_type", "emoji")))
+                    fallback = default_mood_score_style(MoodScore(int(score_key)))
                     sanitized[str(score_key)] = {
                         "icon_type": icon_type,
-                        "icon": str(style.get("icon", default_mood_score_style(MoodScore(int(score_key))).emoji)),
-                        "color": str(style.get("color", default_mood_score_style(MoodScore(int(score_key))).color)),
+                        "icon": str(style.get("icon", fallback.icon)),
+                        "color": str(style.get("color", fallback.color)),
                     }
                 prefs.score_styles = sanitized
             if "use_historical_colors" in prefs_data:
