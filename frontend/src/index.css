@@ -263,6 +263,7 @@ html.is-telegram .app-bottom-nav {
 html.is-telegram .page-entry-create .page-header-compact,
 html.is-telegram .web-back-link,
 html.is-telegram .page-back-link,
+html.is-telegram .settings-back-link,
 html.is-telegram .entry-reader-back,
 html.is-telegram .profile-logout,
 html.is-telegram .entry-save-row .button-secondary {
@@ -1599,14 +1600,6 @@ html[data-color-scheme='dark'] .month-summary-invite {
   overflow-anchor: none;
 }
 
-.profile-settings-panel {
-  border-radius: var(--chrome-radius-card);
-  background: var(--chrome-surface);
-  border: 1px solid var(--chrome-border-default);
-  box-shadow: var(--chrome-shadow-soft);
-  overflow: hidden;
-  overflow-anchor: none;
-}
 
 .profile-shortcut {
   display: flex;
@@ -1615,10 +1608,10 @@ html[data-color-scheme='dark'] .month-summary-invite {
   width: 100%;
   margin: 0;
   padding: 0.85rem 0.95rem;
-  border: 0;
+  border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-card);
   background: var(--chrome-surface);
-  box-shadow: none;
+  box-shadow: var(--chrome-shadow-soft);
   color: var(--chrome-text-primary);
   font: inherit;
   text-align: left;
@@ -1632,10 +1625,6 @@ html[data-color-scheme='dark'] .month-summary-invite {
   background: color-mix(in oklab, var(--chrome-surface) 86%, var(--chrome-surface-inset));
 }
 
-.profile-settings-panel.is-open .profile-shortcut {
-  border-radius: var(--chrome-radius-card) var(--chrome-radius-card) 0 0;
-  background: color-mix(in oklab, var(--chrome-surface) 90%, var(--chrome-surface-inset));
-}
 
 .profile-shortcut-icon {
   display: inline-flex;
@@ -1678,33 +1667,52 @@ html[data-color-scheme='dark'] .month-summary-invite {
   transition: transform 0.18s ease;
 }
 
-.profile-settings-panel.is-open .profile-shortcut-chevron {
-  transform: rotate(90deg);
-}
 
-.profile-settings-panel-body {
-  display: grid;
-  gap: 1.25rem;
-  padding: 0.15rem 0.95rem 1.1rem;
-  border-top: 1px solid color-mix(in oklab, var(--chrome-border-default) 70%, transparent);
-  overflow-anchor: none;
-}
 
-.profile-settings-panel-body[hidden] {
-  display: none;
-}
 
 .profile-settings-subheading {
   margin: 0 0 0.35rem;
   font-size: 1.05rem;
 }
 
-.profile-settings-panel-body .profile-section-lead {
-  margin-bottom: 0.75rem;
+
+
+.profile-hub-links {
+  margin-top: 0.25rem;
 }
 
-.profile-settings-panel-body .tracker-settings-tabs {
-  margin-top: 0.15rem;
+.settings-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 0 0 0.35rem -0.2rem;
+  color: var(--chrome-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.settings-back-link:hover {
+  color: var(--chrome-text-primary);
+  text-decoration: none;
+}
+
+.settings-back-link svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.settings-lead {
+  margin: 0 0 1rem;
+}
+
+.settings-stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.settings-stack > .profile-account {
+  margin: 0;
 }
 
 .profile-logout {

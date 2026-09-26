@@ -1313,7 +1313,7 @@ export function MoodEntryForm({
       <nav className="entry-configure" aria-label={t('entries.configure')}>
         {showTags ? (
           <>
-            <Link to="/tags">{t('common.tags')}</Link>
+            <Link to="/settings/diary?tab=tags">{t('common.tags')}</Link>
             <span aria-hidden="true">·</span>
           </>
         ) : null}
@@ -1325,11 +1325,11 @@ export function MoodEntryForm({
         ) : null}
         {showNote ? (
           <>
-            <Link to="/tracker-settings?tab=templates">{t('entries.templatesLink')}</Link>
+            <Link to="/settings/diary?tab=templates">{t('entries.templatesLink')}</Link>
             <span aria-hidden="true">·</span>
           </>
         ) : null}
-        <Link to="/tracker-settings?tab=layout">{t('entries.customizeForm')}</Link>
+        <Link to="/settings/diary?tab=layout">{t('entries.customizeForm')}</Link>
       </nav>
 
       <div className={`entry-form-footer${isSubmitting ? ' is-saving' : ''}`}>
@@ -1448,7 +1448,7 @@ export function MoodEntryForm({
                   <p className="muted">{t('entries.noTemplates')}</p>
                 )}
                   <Link
-                  to="/tracker-settings?tab=templates"
+                  to="/settings/diary?tab=templates"
                   className="button button-secondary button-small entry-sheet-manage"
                   onClick={() => setShowTemplateSheet(false)}
                 >

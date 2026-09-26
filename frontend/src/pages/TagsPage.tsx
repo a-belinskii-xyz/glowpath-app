@@ -1,5 +1,4 @@
 import { type DragEvent, type FormEvent, useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import {
   createTag,
@@ -17,7 +16,6 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { DragHandle } from '../components/DragHandle'
 import { EditorDrawer } from '../components/EditorDrawer'
-import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { FormField } from '../components/FormField'
 import { IconButton } from '../components/IconButton'
 import { ArrowDownIcon, ArrowUpIcon, DeleteIcon, EditIcon } from '../components/icons'
@@ -25,7 +23,6 @@ import { OverflowMenu } from '../components/OverflowMenu'
 import { TagIcon } from '../components/TagIcon'
 import { TagIconEditor, type PendingIconUpload } from '../components/TagIconEditor'
 import { StableButtonLabel } from '../components/StableButtonLabel'
-import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
 import { moodGlowFilter } from '../design'
 import { ApiError, formatApiError } from '../lib/errors'
@@ -45,6 +42,7 @@ type EditorMode =
   | { kind: 'create-tag'; group: TagGroupPublic }
   | { kind: 'edit-tag'; group: TagGroupPublic; tag: TagPublic }
 
+/** Tag groups editor, rendered as the Tags tab of diary settings. */
 export function TagsPage() {
   const { locale, t } = useLocale()
   const [groups, setGroups] = useState<TagGroupPublic[]>([])
@@ -386,14 +384,10 @@ export function TagsPage() {
         : null
   const selectedTagId = editor?.kind === 'edit-tag' ? editor.tag.id : null
   const drawerColors = groups.flatMap((group) => group.tags.map((tag) => tag.color))
-  usePageAmbientGlow(drawerColors)
 
   return (
-    <section className="page">
-      <EmailVerificationBanner />
-
-      <header className="page-header">
-        <h1>{t('tagsPage.title')}</h1>
+    <section aria-label={t('tagsPage.title')}>
+      <header className="page-header page-header-embedded">
         <button type="button" className="button" onClick={() => openEditor({ kind: 'create-group' })}>
           {t('tagsPage.addGroup')}
         </button>
@@ -810,9 +804,6 @@ export function TagsPage() {
         ))}
       </div>
 
-      <p className="muted page-back-link">
-        <Link to="/">{t('common.backToEntries')}</Link>
-      </p>
     </section>
   )
 }

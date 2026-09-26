@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppBootGate } from './components/AppBootGate'
 import { AuthCardLayout } from './components/AuthCardLayout'
-import { AppRoute, AccountRoute } from './components/AppRoute'
+import { AppRoute, AccountRoute, RegisteredOnly } from './components/AppRoute'
 import { GuestRoute } from './components/GuestRoute'
 import { Layout } from './components/Layout'
 import { AmbientGlowProvider } from './context/AmbientGlowContext'
@@ -25,11 +25,19 @@ import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResendVerificationPage } from './pages/ResendVerificationPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
-import { TagsPage } from './pages/TagsPage'
 import { MarketPage } from './pages/MarketPage'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { PlansPage } from './pages/PlansPage'
-import { TemplatesRedirect, TrackerSettingsPage } from './pages/TrackerSettingsPage'
+import { AccountSettingsPage } from './pages/AccountSettingsPage'
+import { AppearanceSettingsPage } from './pages/AppearanceSettingsPage'
+import {
+  DiarySettingsPage,
+  TagsRedirect,
+  TemplatesRedirect,
+  TrackerSettingsRedirect,
+} from './pages/DiarySettingsPage'
+import { NotificationSettingsPage } from './pages/NotificationSettingsPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { TelegramNavigation } from './platform/TelegramNavigation'
 
@@ -70,16 +78,23 @@ function App() {
                       <Route path="entries/:id/edit" element={<EditEntryPage />} />
                       <Route path="entries/:id" element={<EntryDetailPage />} />
                       <Route path="gallery" element={<GalleryPage />} />
-                      <Route path="tags" element={<TagsPage />} />
                       <Route path="goals" element={<GoalsPage />} />
-                      <Route path="tracker-settings" element={<TrackerSettingsPage />} />
+                      <Route path="settings" element={<SettingsPage />} />
+                      <Route path="settings/diary" element={<DiarySettingsPage />} />
+                      <Route path="tags" element={<TagsRedirect />} />
                       <Route path="templates" element={<TemplatesRedirect />} />
+                      <Route path="tracker-settings" element={<TrackerSettingsRedirect />} />
                     </Route>
 
                     <Route element={<AccountRoute />}>
                       <Route path="market" element={<MarketPage />} />
                       <Route path="achievements" element={<AchievementsPage />} />
                       <Route path="profile" element={<ProfilePage />} />
+                      <Route element={<RegisteredOnly />}>
+                        <Route path="settings/notifications" element={<NotificationSettingsPage />} />
+                        <Route path="settings/appearance" element={<AppearanceSettingsPage />} />
+                        <Route path="settings/account" element={<AccountSettingsPage />} />
+                      </Route>
                     </Route>
 
                     <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,5 +1,5 @@
 import { GuestLockedPreview, GuestRegistrationCallout } from './GuestRegistrationLock'
-import { BellIcon, ChevronRightIcon, PaletteIcon, SettingsIcon, SparkleIcon, TrophyIcon } from './icons'
+import { BellIcon, ChevronRightIcon, PaletteIcon, SparkleIcon } from './icons'
 import { useLocale } from '../context/LocaleContext'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
@@ -70,31 +70,11 @@ export function GuestProfilePreview() {
       <div className="profile-shortcuts">
         <div className="profile-shortcut" aria-hidden="true">
           <span className="profile-shortcut-icon" aria-hidden="true">
-            <TrophyIcon />
-          </span>
-          <span className="profile-shortcut-copy">
-            <span className="profile-shortcut-title">{t('nav.achievements')}</span>
-            <span className="profile-shortcut-lead">{t('profile.achievementsLink')}</span>
-          </span>
-          <ChevronRightIcon className="profile-shortcut-chevron" />
-        </div>
-        <div className="profile-shortcut" aria-hidden="true">
-          <span className="profile-shortcut-icon" aria-hidden="true">
             <SparkleIcon />
           </span>
           <span className="profile-shortcut-copy">
             <span className="profile-shortcut-title">{t('nav.plans')}</span>
             <span className="profile-shortcut-lead">{t('profile.plansLink')}</span>
-          </span>
-          <ChevronRightIcon className="profile-shortcut-chevron" />
-        </div>
-        <div className="profile-shortcut">
-          <span className="profile-shortcut-icon" aria-hidden="true">
-            <SettingsIcon />
-          </span>
-          <span className="profile-shortcut-copy">
-            <span className="profile-shortcut-title">{t('nav.trackerSettings')}</span>
-            <span className="profile-shortcut-lead">{t('profile.trackerSettingsLink')}</span>
           </span>
           <ChevronRightIcon className="profile-shortcut-chevron" />
         </div>
