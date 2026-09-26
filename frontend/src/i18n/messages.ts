@@ -701,6 +701,9 @@ export const en = {
     emptyHint: 'Photos you attach to entries will show up here, newest first.',
     openEntry: 'Go to entry',
     back: 'Back to gallery',
+    zoomControls: 'Gallery zoom',
+    zoomIn: 'Zoom in (group by day)',
+    zoomOut: 'Zoom out (group by month)',
   },
   guest: {
     banner: {
@@ -1851,6 +1854,9 @@ export const ru: DeepStringLeaves<typeof en> = {
     emptyHint: 'Снимки из записей появятся здесь — сначала новые.',
     openEntry: 'Перейти к записи',
     back: 'К галерее',
+    zoomControls: 'Масштаб галереи',
+    zoomIn: 'Увеличить (по дням)',
+    zoomOut: 'Уменьшить (по месяцам)',
   },
   guest: {
     banner: {

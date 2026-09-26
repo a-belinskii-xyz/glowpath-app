@@ -3862,40 +3862,71 @@ code {
   max-width: 72rem;
 }
 
-.gallery-months {
-  display: grid;
-  gap: 1.35rem;
+.gallery-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.gallery-month {
+.gallery-groups {
+  --gallery-cols: 4;
+  --gallery-gap: 0.2rem;
+  display: grid;
+  gap: 1.35rem;
+  /* Pinch on the grid steps our zoom instead of zooming the page. */
+  touch-action: pan-x pan-y;
+}
+
+.gallery-by-day {
+  gap: 1rem;
+}
+
+.gallery-group {
   display: grid;
   gap: 0.55rem;
 }
 
-.gallery-month-heading {
+.gallery-group-heading {
   margin: 0;
   font-size: 0.98rem;
   font-weight: 650;
   color: var(--chrome-text-secondary, #374151);
 }
 
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.2rem;
+.gallery-by-day .gallery-group-heading {
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
+.gallery-by-day .gallery-group-heading::first-letter {
+  text-transform: uppercase;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--gallery-cols), minmax(0, 1fr));
+  gap: var(--gallery-gap);
+}
+
+/* Columns per zoom level: phone / ≥640px / ≥960px. */
+.gallery-zoom-0 { --gallery-cols: 2; --gallery-gap: 0.3rem; }
+.gallery-zoom-1 { --gallery-cols: 3; }
+.gallery-zoom-2 { --gallery-cols: 4; }
+.gallery-zoom-3 { --gallery-cols: 6; --gallery-gap: 0.12rem; }
+
 @media (min-width: 640px) {
-  .gallery-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.28rem;
-  }
+  .gallery-groups { --gallery-gap: 0.28rem; }
+  .gallery-zoom-0 { --gallery-cols: 3; --gallery-gap: 0.4rem; }
+  .gallery-zoom-1 { --gallery-cols: 4; }
+  .gallery-zoom-2 { --gallery-cols: 6; }
+  .gallery-zoom-3 { --gallery-cols: 9; --gallery-gap: 0.16rem; }
 }
 
 @media (min-width: 960px) {
-  .gallery-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
+  .gallery-zoom-0 { --gallery-cols: 4; }
+  .gallery-zoom-1 { --gallery-cols: 5; }
+  .gallery-zoom-2 { --gallery-cols: 7; }
+  .gallery-zoom-3 { --gallery-cols: 11; }
 }
 
 .gallery-tile {
