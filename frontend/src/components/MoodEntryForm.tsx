@@ -179,6 +179,9 @@ export function MoodEntryForm({
   const [isRecordingAudio, setIsRecordingAudio] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  )
   const [isLoadingTags, setIsLoadingTags] = useState(showTags || showNote)
   const [isLoadingGoals, setIsLoadingGoals] = useState(showGoals)
 
@@ -774,12 +777,19 @@ export function MoodEntryForm({
 
   const syncAttachments = async (entryId: string) => {
     const orderedIds: string[] = []
+    const total = photoDrafts.filter((draft) => draft.source === 'pending').length
+    let done = 0
+    if (total > 0) {
+      setUploadProgress({ done, total })
+    }
     for (const draft of photoDrafts) {
       if (draft.source === 'existing') {
         orderedIds.push(draft.attachment.id)
       } else {
         const uploaded = await uploadMoodEntryAttachment(entryId, 'photo', draft.file)
         orderedIds.push(uploaded.id)
+        done += 1
+        setUploadProgress({ done, total })
       }
     }
     if (mode === 'edit' && orderedIds.length > 0) {
@@ -870,6 +880,7 @@ export function MoodEntryForm({
       }
     } finally {
       setIsSubmitting(false)
+      setUploadProgress(null)
     }
   }
 
@@ -893,15 +904,13 @@ export function MoodEntryForm({
   })
 
   return (
-    <form ref={formRef} className="form mood-entry-form entry-journey" onSubmit={handleSubmit}>
+    <form
+      ref={formRef}
+      className={`form mood-entry-form entry-journey${isSubmitting ? ' is-saving' : ''}`}
+      aria-busy={isSubmitting}
+      onSubmit={handleSubmit}
+    >
       <PageErrorAlert error={error} />
-      {isSubmitting ? (
-        <p className="save-status" role="status">
-          {photoDrafts.some((draft) => draft.source === 'pending')
-            ? t('boot.uploadingPhotos')
-            : t('common.saving')}
-        </p>
-      ) : null}
 
       <section className="entry-mood-hero" aria-labelledby="entry-mood-question">
         <div className="entry-when" role="group" aria-label={t('entries.recordedAt')}>
@@ -1323,13 +1332,42 @@ export function MoodEntryForm({
         <Link to="/tracker-settings?tab=layout">{t('entries.customizeForm')}</Link>
       </nav>
 
-      <div className="entry-form-footer">
+      <div className={`entry-form-footer${isSubmitting ? ' is-saving' : ''}`}>
+        {isSubmitting ? (
+          <div className="entry-save-progress" role="status" aria-live="polite">
+            <div className="entry-save-progress-text">
+              <span className="save-spinner" aria-hidden="true" />
+              <span>
+                {uploadProgress && uploadProgress.done < uploadProgress.total
+                  ? t('entries.uploadingPhotoProgress', {
+                      current: uploadProgress.done + 1,
+                      total: uploadProgress.total,
+                    })
+                  : t('common.saving')}
+              </span>
+            </div>
+            <div
+              className={`entry-save-progress-track${uploadProgress ? '' : ' is-indeterminate'}`}
+              aria-hidden="true"
+            >
+              <span
+                className="entry-save-progress-bar"
+                style={
+                  uploadProgress
+                    ? { width: `${Math.max(8, (uploadProgress.done / uploadProgress.total) * 100)}%` }
+                    : undefined
+                }
+              />
+            </div>
+          </div>
+        ) : null}
         <div className="button-row entry-save-row">
           <button
             className="button"
             type="submit"
             disabled={isSubmitting || isRecordingAudio || (!moodPicked && mode === 'create')}
           >
+            {isSubmitting ? <span className="save-spinner" aria-hidden="true" /> : null}
             <StableButtonLabel
               active={
                 isSubmitting

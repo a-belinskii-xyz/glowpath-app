@@ -270,7 +270,7 @@ html.is-telegram .entry-save-row .button-secondary {
 }
 
 html.is-telegram.has-tg-main-button .entry-save-row,
-html.is-telegram.has-tg-main-button .entry-form-footer {
+html.is-telegram.has-tg-main-button .entry-form-footer:not(.is-saving) {
   display: none;
 }
 
@@ -6675,6 +6675,103 @@ code {
   justify-content: stretch;
 }
 
+.entry-save-row .button:first-child .save-spinner {
+  margin-right: 0.5rem;
+}
+
+.mood-entry-form.is-saving > :not(.entry-form-footer) {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.entry-save-progress {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.85rem;
+  background: color-mix(in oklab, var(--chrome-action-primary, var(--chrome-text-primary)) 10%, var(--chrome-surface));
+  border: 1px solid color-mix(in oklab, var(--chrome-action-primary, var(--chrome-text-primary)) 28%, transparent);
+  box-shadow: 0 6px 20px rgb(15 23 42 / 12%);
+  animation: entry-save-progress-in 0.22s ease-out;
+}
+
+.entry-save-progress-text {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--chrome-text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.entry-save-progress-track {
+  position: relative;
+  height: 0.3rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--chrome-text-primary) 10%, transparent);
+}
+
+.entry-save-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--chrome-action-primary, var(--chrome-text-primary));
+  transition: width 0.35s ease;
+}
+
+.entry-save-progress-track.is-indeterminate .entry-save-progress-bar {
+  width: 35%;
+  animation: entry-save-progress-slide 1.2s ease-in-out infinite;
+}
+
+.save-spinner {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -0.15em;
+  animation: save-spinner-rotate 0.75s linear infinite;
+}
+
+@keyframes save-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes entry-save-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(290%);
+  }
+}
+
+@keyframes entry-save-progress-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.4rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-spinner,
+  .entry-save-progress,
+  .entry-save-progress-track.is-indeterminate .entry-save-progress-bar {
+    animation: none;
+  }
+}
+
 .entry-save-row .button:first-child {
   flex: 1;
   min-height: 2.9rem;
@@ -10676,12 +10773,6 @@ a.plans-cta:hover {
   color: var(--chrome-action-primary);
   cursor: pointer;
   text-decoration: underline;
-}
-
-.save-status {
-  margin: 0 0 0.85rem;
-  color: var(--chrome-text-secondary);
-  font-size: 0.9rem;
 }
 
 .skeleton-block {
