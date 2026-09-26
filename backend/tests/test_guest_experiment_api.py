@@ -14,6 +14,14 @@ def guest_experiment_on(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "feature_guest_local_diary_visitor_ids", "")
 
 
+@pytest.fixture
+def guest_experiment_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the control cohort; a developer .env may enable the experiment."""
+    monkeypatch.setattr(settings, "feature_guest_local_diary", False)
+    monkeypatch.setattr(settings, "feature_guest_local_diary_percent", 0)
+    monkeypatch.setattr(settings, "feature_guest_local_diary_visitor_ids", "")
+
+
 def _fingerprint_body() -> dict[str, object]:
     return {
         "timezone": "Europe/Minsk",
@@ -25,7 +33,10 @@ def _fingerprint_body() -> dict[str, object]:
     }
 
 
-def test_bootstrap_control_when_feature_off(auth_client: TestClient) -> None:
+def test_bootstrap_control_when_feature_off(
+    auth_client: TestClient,
+    guest_experiment_off: None,
+) -> None:
     response = auth_client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
     assert response.status_code == 200
     body = response.json()
@@ -57,6 +68,7 @@ def test_bootstrap_restores_visitor_by_fingerprint(
 
 def test_heartbeat_rejects_control(
     auth_client: TestClient,
+    guest_experiment_off: None,
 ) -> None:
     bootstrap = auth_client.post(
         "/v1/features/bootstrap",

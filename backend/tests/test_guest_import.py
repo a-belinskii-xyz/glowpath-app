@@ -3,7 +3,11 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import FakeEmailService, register_verify_and_login
+from tests.conftest import (
+    FakeEmailService,
+    extract_token_from_email,
+    register_verify_and_login,
+)
 
 
 @pytest.fixture
@@ -48,7 +52,11 @@ def test_guest_import_only_for_new_registration(
     )
     assert register.status_code == 201
 
-    token = register_verify_and_login(auth_client, mailer, email)
+    verify_token = extract_token_from_email(mailer.outbox[-1].body)
+    assert auth_client.get(f"/v1/auth/verify-email?token={verify_token}").status_code == 200
+    login = auth_client.post("/v1/auth/login", json={"email": email, "password": "password123"})
+    assert login.status_code == 200
+    token = login.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     payload = {

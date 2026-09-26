@@ -51,7 +51,9 @@ def process_due_reminders(
             select(UserNotificationSchedule)
             .where(UserNotificationSchedule.enabled.is_(True))
             .options(joinedload(UserNotificationSchedule.user))
-        ).unique().all()
+        )
+        .unique()
+        .all()
     )
     window = timedelta(minutes=settings.notifications_match_window_minutes)
 
@@ -222,10 +224,11 @@ def _deliverable_channels(
             deliverable.append(channel)
     if deliverable:
         return deliverable
-    if user.telegram_linked:
+    # Telegram-only accounts can carry an email default from provisioning; deliver via
+    # Telegram instead. The reverse is not done: an unlinked Telegram schedule is skipped
+    # rather than emailing someone who did not opt into email.
+    if NotificationChannel.EMAIL in channels and not user.email and user.telegram_linked:
         return [NotificationChannel.TELEGRAM]
-    if user.email:
-        return [NotificationChannel.EMAIL]
     return []
 
 
