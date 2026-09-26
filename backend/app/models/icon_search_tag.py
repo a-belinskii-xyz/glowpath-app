@@ -1,5 +1,5 @@
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -23,7 +23,7 @@ class IconSearchTag(TimestampMixin, Base):
         server_default=text("gen_random_uuid()"),
     )
     slug: Mapped[str] = mapped_column(String(64), unique=True)
-    labels: Mapped[dict] = mapped_column(JSONB)
+    labels: Mapped[dict[str, Any]] = mapped_column(JSONB)
     sort_order: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
 

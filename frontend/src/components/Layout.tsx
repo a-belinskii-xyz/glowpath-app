@@ -4,14 +4,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { CaptureAttribution } from './CaptureAttribution'
 import { GuestDataBanner } from './GuestDataBanner'
 import { LanguageSwitcher } from './LanguageSwitcher'
-import {
-  NavEntriesIcon,
-  NavGalleryIcon,
-  NavGoalsIcon,
-  NavMarketIcon,
-  NavProfileIcon,
-  NavTagsIcon,
-} from './icons'
+import { NavEntriesIcon, NavGalleryIcon, NavGoalsIcon, NavProfileIcon } from './icons'
 import { useAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useGuestExperiment } from '../context/GuestExperimentContext'
@@ -26,13 +19,11 @@ function bottomNavClassName({ isActive }: { isActive: boolean }) {
   return `app-bottom-nav-link${isActive ? ' is-active' : ''}`
 }
 
-function isAccountSection(pathname: string) {
-  return (
-    pathname.startsWith('/profile') ||
-    pathname.startsWith('/tracker-settings') ||
-    pathname.startsWith('/achievements') ||
-    pathname.startsWith('/plans')
-  )
+/** Everything reachable from the Profile hub lights up the Profile tab on mobile. */
+const PROFILE_HUB_PREFIXES = ['/profile', '/settings', '/achievements', '/market', '/plans']
+
+function isProfileHubSection(pathname: string) {
+  return PROFILE_HUB_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
 function isFocusedEntryFlow(pathname: string) {
@@ -41,11 +32,8 @@ function isFocusedEntryFlow(pathname: string) {
 
 function BottomNav() {
   const { t } = useLocale()
-  const { user } = useAuth()
   const location = useLocation()
-  const accountActive = isAccountSection(location.pathname)
-  const guestShell = isGuestDiaryMode()
-  const showMarket = Boolean(user?.features?.icon_marketplace) || guestShell
+  const profileActive = isProfileHubSection(location.pathname)
 
   return (
     <nav className="app-bottom-nav" aria-label={t('nav.menu')}>
@@ -61,19 +49,9 @@ function BottomNav() {
         <NavGoalsIcon />
         <span>{t('nav.goals')}</span>
       </NavLink>
-      <NavLink to="/tags" className={bottomNavClassName}>
-        <NavTagsIcon />
-        <span>{t('nav.tags')}</span>
-      </NavLink>
-      {showMarket ? (
-        <NavLink to="/market" className={bottomNavClassName}>
-          <NavMarketIcon />
-          <span>{t('nav.market')}</span>
-        </NavLink>
-      ) : null}
       <NavLink
         to="/profile"
-        className={() => `app-bottom-nav-link${accountActive ? ' is-active' : ''}`}
+        className={() => `app-bottom-nav-link${profileActive ? ' is-active' : ''}`}
       >
         <NavProfileIcon />
         <span>{t('nav.profile')}</span>
@@ -110,6 +88,9 @@ function ShellChrome({
   const guestShell = isGuestDiaryMode()
   const showMarket = Boolean(user?.features?.icon_marketplace) || guestShell
   const showAchievements = Boolean(user?.features?.achievements) || guestShell
+  // Plans has no sidebar entry of its own; it lives under the Profile hub.
+  const profileLinkActive =
+    location.pathname.startsWith('/profile') || location.pathname.startsWith('/plans')
 
   if (onboarding) {
     return (
@@ -190,28 +171,25 @@ function ShellChrome({
           <NavLink to="/goals" className={navClassName}>
             {t('nav.goals')}
           </NavLink>
-          <NavLink to="/tags" className={navClassName}>
-            {t('nav.tags')}
-          </NavLink>
-          {showMarket ? (
-            <NavLink to="/market" className={navClassName}>
-              {t('nav.market')}
-            </NavLink>
-          ) : null}
-          <NavLink to="/tracker-settings" className={navClassName}>
-            {t('nav.trackerSettings')}
-          </NavLink>
           <p className="app-sidebar-section">{t('nav.sectionAccount')}</p>
           {showAchievements ? (
             <NavLink to="/achievements" className={navClassName}>
               {t('nav.achievements')}
             </NavLink>
           ) : null}
-          <NavLink to="/plans" className={navClassName}>
-            {t('nav.plans')}
-          </NavLink>
-          <NavLink to="/profile" className={navClassName}>
+          {showMarket ? (
+            <NavLink to="/market" className={navClassName}>
+              {t('nav.market')}
+            </NavLink>
+          ) : null}
+          <NavLink
+            to="/profile"
+            className={() => navClassName({ isActive: profileLinkActive })}
+          >
             {t('nav.profile')}
+          </NavLink>
+          <NavLink to="/settings" className={navClassName}>
+            {t('nav.settings')}
           </NavLink>
           {guestShell ? (
             <Link to="/register" className="app-nav-link">

@@ -1,3 +1,5 @@
+import { forcedColorScheme } from '../design/themePreference'
+
 export type TelegramThemeParams = {
   bg_color?: string
   text_color?: string
@@ -428,10 +430,14 @@ export function applyTelegramTheme(webApp?: TelegramWebApp | null): void {
     return
   }
   const root = document.documentElement
-  const theme = instance.themeParams
+  const telegramBg = normalizeHex(instance.themeParams.bg_color)
+  const telegramDark =
+    instance.colorScheme === 'dark' || (telegramBg != null && !isLightColor(telegramBg, false))
+  const forced = forcedColorScheme()
+  const dark = forced ? forced === 'dark' : telegramDark
+  // Telegram's palette only fits when its scheme matches; otherwise use our own fallback.
+  const theme: TelegramThemeParams = dark === telegramDark ? instance.themeParams : {}
   const themeBg = normalizeHex(theme.bg_color)
-  const dark =
-    instance.colorScheme === 'dark' || (themeBg != null && !isLightColor(themeBg, false))
   const fallback = dark ? DARK_FALLBACK : LIGHT_FALLBACK
   const bg = themeBg ?? fallback.bg
   const text = pickContrastingColor(theme.text_color, bg, fallback.text)
@@ -460,11 +466,13 @@ export function applyTelegramTheme(webApp?: TelegramWebApp | null): void {
   }
   lastThemeKey = themeKey
 
-  root.dataset.tgColorScheme = dark ? 'dark' : 'light'
+  root.dataset.colorScheme = dark ? 'dark' : 'light'
   for (const [key, cssVar] of Object.entries(THEME_VAR_MAP)) {
     const value = theme[key as keyof TelegramThemeParams]
     if (value) {
       root.style.setProperty(cssVar, value)
+    } else {
+      root.style.removeProperty(cssVar)
     }
   }
   applyChromeTokens(root, dark, {

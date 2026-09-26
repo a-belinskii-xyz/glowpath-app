@@ -49,6 +49,10 @@ class User(TimestampMixin, Base):
             ")",
             name="telegram_link_complete",
         ),
+        CheckConstraint(
+            "theme_preference IN ('system', 'light', 'dark')",
+            name="theme_preference_valid",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -63,6 +67,7 @@ class User(TimestampMixin, Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_staff: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    theme_preference: Mapped[str] = mapped_column(String(16), server_default="system")
 
     telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { listGalleryPhotos } from '../api/moodEntries'
 import { AttachmentImage } from '../components/AttachmentImage'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { GuestGalleryCallout } from '../components/GuestAccountPreviews'
+import { MinusIcon, PlusIcon } from '../components/icons'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { PhotoLightbox } from '../components/PhotoLightbox'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
@@ -12,32 +13,89 @@ import { useLocale } from '../context/LocaleContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import { hasAppAccess } from '../lib/authAccess'
 import { intlLocale } from '../i18n/t'
-import { formatMonthHeading, monthKey } from '../lib/datetime'
+import {
+  dayKey,
+  formatDayHeading,
+  formatMonthHeading,
+  formatWeekday,
+  monthKey,
+} from '../lib/datetime'
 import { ApiError, formatApiError } from '../lib/errors'
 import type { GalleryPhotoPublic } from '../types/mood'
 
 const PAGE_SIZE = 48
 
-type MonthGroup = {
+type Grouping = 'day' | 'month'
+
+/**
+ * Index 0 is the closest zoom. Column counts per level live in CSS
+ * (`.gallery-zoom-N`); crossing from level 1 to 2 switches day → month groups.
+ */
+const ZOOM_GROUPINGS: readonly Grouping[] = ['day', 'day', 'month', 'month']
+const DEFAULT_ZOOM = 2
+const MAX_ZOOM = ZOOM_GROUPINGS.length - 1
+const ZOOM_STORAGE_KEY = 'mood_tracker_gallery_zoom'
+
+// Pinch must grow/shrink by this factor before we step one level.
+const PINCH_STEP_RATIO = 1.3
+// Accumulated ctrl+wheel delta (trackpad pinch) per level step.
+const WHEEL_STEP_DELTA = 80
+
+type PhotoGroup = {
   key: string
-  year: number
-  month: number
+  heading: string
   photos: { photo: GalleryPhotoPublic; index: number }[]
 }
 
-function groupPhotosByMonth(
+type ZoomAnchor = { photoId: string; top: number }
+
+function readStoredZoom(): number {
+  try {
+    const stored = Number(localStorage.getItem(ZOOM_STORAGE_KEY))
+    return Number.isInteger(stored) && stored >= 0 && stored <= MAX_ZOOM
+      ? stored
+      : DEFAULT_ZOOM
+  } catch {
+    return DEFAULT_ZOOM
+  }
+}
+
+function storeZoom(level: number): void {
+  try {
+    localStorage.setItem(ZOOM_STORAGE_KEY, String(level))
+  } catch {
+    // Storage can be unavailable (private mode); the in-memory value still applies.
+  }
+}
+
+function groupPhotos(
   photos: GalleryPhotoPublic[],
+  grouping: Grouping,
   timeZone: string,
-): MonthGroup[] {
-  const groups: MonthGroup[] = []
-  const byKey = new Map<string, MonthGroup>()
+  locale: string,
+): PhotoGroup[] {
+  const groups: PhotoGroup[] = []
+  const byKey = new Map<string, PhotoGroup>()
 
   photos.forEach((photo, index) => {
-    const key = monthKey(photo.created_at, timeZone)
+    const key =
+      grouping === 'day'
+        ? dayKey(photo.created_at, timeZone)
+        : monthKey(photo.created_at, timeZone)
     let group = byKey.get(key)
     if (!group) {
-      const [year, monthNumber] = key.split('-').map(Number)
-      group = { key, year, month: monthNumber - 1, photos: [] }
+      let heading: string
+      if (grouping === 'day') {
+        heading = `${formatWeekday(photo.created_at, timeZone, locale)}, ${formatDayHeading(
+          photo.created_at,
+          timeZone,
+          locale,
+        )}`
+      } else {
+        const [year, monthNumber] = key.split('-').map(Number)
+        heading = formatMonthHeading(year, monthNumber - 1, locale)
+      }
+      group = { key, heading, photos: [] }
       byKey.set(key, group)
       groups.push(group)
     }
@@ -45,6 +103,29 @@ function groupPhotosByMonth(
   })
 
   return groups
+}
+
+/** The tile closest to `focusY` (viewport px), so zooming keeps it in place. */
+function findZoomAnchor(root: HTMLElement, focusY: number): ZoomAnchor | null {
+  let best: ZoomAnchor | null = null
+  let bestDistance = Infinity
+  root.querySelectorAll<HTMLElement>('[data-photo-id]').forEach((tile) => {
+    const rect = tile.getBoundingClientRect()
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      return
+    }
+    const distance = Math.abs(rect.top + rect.height / 2 - focusY)
+    if (distance < bestDistance) {
+      bestDistance = distance
+      best = { photoId: tile.dataset.photoId ?? '', top: rect.top }
+    }
+  })
+  return best
+}
+
+function touchDistance(touches: TouchList): number {
+  const [a, b] = [touches[0], touches[1]]
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
 }
 
 export function GalleryPage() {
@@ -62,9 +143,104 @@ export function GalleryPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [zoom, setZoom] = useState(readStoredZoom)
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const loadingRef = useRef(false)
+  const gridRootRef = useRef<HTMLDivElement | null>(null)
+  const zoomRef = useRef(zoom)
+  const zoomAnchorRef = useRef<ZoomAnchor | null>(null)
+
+  const applyZoom = useCallback((next: number, focusY = window.innerHeight / 3) => {
+    const clamped = Math.min(MAX_ZOOM, Math.max(0, next))
+    if (clamped === zoomRef.current) {
+      return
+    }
+    const root = gridRootRef.current
+    zoomAnchorRef.current = root ? findZoomAnchor(root, focusY) : null
+    zoomRef.current = clamped
+    setZoom(clamped)
+    storeZoom(clamped)
+  }, [])
+
+  // Keep the photo that was under the zoom focus at the same screen position.
+  useLayoutEffect(() => {
+    const anchor = zoomAnchorRef.current
+    zoomAnchorRef.current = null
+    if (!anchor || !gridRootRef.current) {
+      return
+    }
+    const tile = gridRootRef.current.querySelector<HTMLElement>(
+      `[data-photo-id="${CSS.escape(anchor.photoId)}"]`,
+    )
+    if (tile) {
+      window.scrollBy(0, tile.getBoundingClientRect().top - anchor.top)
+    }
+  }, [zoom])
+
+  // Pinch (touch) and ctrl+wheel (trackpad pinch / ctrl+scroll) step the zoom.
+  const hasPhotos = photos.length > 0
+  useEffect(() => {
+    const root = gridRootRef.current
+    if (!root) {
+      return
+    }
+
+    let pinchBaseDistance = 0
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length === 2) {
+        pinchBaseDistance = touchDistance(event.touches)
+      }
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 2 || pinchBaseDistance === 0) {
+        return
+      }
+      event.preventDefault()
+      const distance = touchDistance(event.touches)
+      const ratio = distance / pinchBaseDistance
+      const focusY = (event.touches[0].clientY + event.touches[1].clientY) / 2
+      if (ratio >= PINCH_STEP_RATIO) {
+        applyZoom(zoomRef.current - 1, focusY)
+        pinchBaseDistance = distance
+      } else if (ratio <= 1 / PINCH_STEP_RATIO) {
+        applyZoom(zoomRef.current + 1, focusY)
+        pinchBaseDistance = distance
+      }
+    }
+    const onTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length < 2) {
+        pinchBaseDistance = 0
+      }
+    }
+
+    let wheelDelta = 0
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) {
+        return
+      }
+      event.preventDefault()
+      wheelDelta += event.deltaY
+      if (Math.abs(wheelDelta) >= WHEEL_STEP_DELTA) {
+        applyZoom(zoomRef.current + Math.sign(wheelDelta), event.clientY)
+        wheelDelta = 0
+      }
+    }
+
+    root.addEventListener('touchstart', onTouchStart, { passive: true })
+    root.addEventListener('touchmove', onTouchMove, { passive: false })
+    root.addEventListener('touchend', onTouchEnd, { passive: true })
+    root.addEventListener('touchcancel', onTouchEnd, { passive: true })
+    root.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      root.removeEventListener('touchstart', onTouchStart)
+      root.removeEventListener('touchmove', onTouchMove)
+      root.removeEventListener('touchend', onTouchEnd)
+      root.removeEventListener('touchcancel', onTouchEnd)
+      root.removeEventListener('wheel', onWheel)
+    }
+  }, [applyZoom, hasPhotos])
 
   usePageAmbientGlow(['#64748b', '#94a3b8', '#cbd5e1'])
 
@@ -134,9 +310,10 @@ export function GalleryPage() {
     return () => observer.disconnect()
   }, [guestLocked, hasMore, isLoading, isLoadingMore, loadPage, offset])
 
-  const monthGroups = useMemo(
-    () => groupPhotosByMonth(photos, timeZone),
-    [photos, timeZone],
+  const grouping = ZOOM_GROUPINGS[zoom]
+  const photoGroups = useMemo(
+    () => groupPhotos(photos, grouping, timeZone, dateLocale),
+    [dateLocale, grouping, photos, timeZone],
   )
 
   return (
@@ -145,6 +322,30 @@ export function GalleryPage() {
 
       <header className="page-header">
         <h1>{t('gallery.title')}</h1>
+        {hasPhotos ? (
+          <div className="gallery-zoom-controls" role="group" aria-label={t('gallery.zoomControls')}>
+            <button
+              type="button"
+              className="icon-button icon-button-md"
+              aria-label={t('gallery.zoomOut')}
+              title={t('gallery.zoomOut')}
+              disabled={zoom >= MAX_ZOOM}
+              onClick={() => applyZoom(zoom + 1)}
+            >
+              <MinusIcon />
+            </button>
+            <button
+              type="button"
+              className="icon-button icon-button-md"
+              aria-label={t('gallery.zoomIn')}
+              title={t('gallery.zoomIn')}
+              disabled={zoom <= 0}
+              onClick={() => applyZoom(zoom - 1)}
+            >
+              <PlusIcon />
+            </button>
+          </div>
+        ) : null}
       </header>
 
       {guestLocked ? <GuestGalleryCallout /> : null}
@@ -159,19 +360,21 @@ export function GalleryPage() {
         </p>
       ) : null}
 
-      {photos.length > 0 ? (
-        <div className="gallery-months">
-          {monthGroups.map((group) => (
-            <section key={group.key} className="gallery-month">
-              <h2 className="gallery-month-heading">
-                {formatMonthHeading(group.year, group.month, dateLocale)}
-              </h2>
+      {hasPhotos ? (
+        <div
+          ref={gridRootRef}
+          className={`gallery-groups gallery-zoom-${zoom} gallery-by-${grouping}`}
+        >
+          {photoGroups.map((group) => (
+            <section key={group.key} className="gallery-group">
+              <h2 className="gallery-group-heading">{group.heading}</h2>
               <div className="gallery-grid">
                 {group.photos.map(({ photo, index }) => (
                   <button
                     key={photo.id}
                     type="button"
                     className="gallery-tile"
+                    data-photo-id={photo.id}
                     aria-label={t('media.viewPhoto', { name: photo.original_name })}
                     onClick={() => setLightboxIndex(index)}
                   >

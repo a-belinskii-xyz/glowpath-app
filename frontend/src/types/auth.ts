@@ -1,3 +1,5 @@
+import type { ThemePreference } from '../design/themePreference'
+
 export type UserPublic = {
   id: string
   email: string | null
@@ -7,6 +9,7 @@ export type UserPublic = {
   onboarding_completed: boolean
   onboarding_completed_at: string | null
   has_password: boolean
+  theme_preference: ThemePreference
   telegram_linked: boolean
   can_unlink_telegram: boolean
   features: Record<string, boolean>

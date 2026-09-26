@@ -50,3 +50,9 @@ export function AccountRoute() {
 
   return <Navigate to="/login" replace state={{ from: location }} />
 }
+
+/** Account-backed settings have nothing to show in the local guest diary. */
+export function RegisteredOnly() {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <Outlet /> : <Navigate to="/settings" replace />
+}

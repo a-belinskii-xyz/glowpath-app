@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.errors import raise_http_error
 from app.core.i18n import parse_accept_language
 from app.db.session import get_db
 from app.schemas.features import (
@@ -46,13 +45,13 @@ def feature_bootstrap(
     )
     cookie = visitor_cookie_settings()
     response.set_cookie(
-        key=str(cookie["key"]),
+        key=cookie["key"],
         value=str(result.visitor_id),
-        httponly=bool(cookie["httponly"]),
-        samesite=cookie["samesite"],  # type: ignore[arg-type]
-        secure=bool(cookie["secure"]),
-        max_age=int(cookie["max_age"]),
-        path=str(cookie["path"]),
+        httponly=cookie["httponly"],
+        samesite=cookie["samesite"],
+        secure=cookie["secure"],
+        max_age=cookie["max_age"],
+        path=cookie["path"],
     )
     return FeatureBootstrapResponse(
         visitor_id=str(result.visitor_id),

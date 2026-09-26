@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, TypedDict
 from urllib.parse import quote
 
 from fastapi import (
@@ -79,7 +79,7 @@ def _to_public(
     locale: str,
     label_overrides: dict[str, str] | None = None,
     color_settings: ColorDisplaySettings | None = None,
-    unlocked_achievements: list[dict] | None = None,
+    unlocked_achievements: list[dict[str, Any]] | None = None,
 ) -> MoodEntryPublic:
     payload = serialize_mood_entry(
         entry,

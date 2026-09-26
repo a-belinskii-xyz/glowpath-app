@@ -400,6 +400,20 @@ export function PlusIcon(props: IconProps) {
   )
 }
 
+export function MinusIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <path
+        d="M5.5 12h13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </BaseIcon>
+  )
+}
+
 export function SettingsIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>

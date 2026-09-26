@@ -15,7 +15,7 @@ export function routeForStartParam(param: string): string | null {
     return '/gallery'
   }
   if (value === 'tags') {
-    return '/tags'
+    return '/settings/diary?tab=tags'
   }
   if (value === 'goals') {
     return '/goals'
@@ -27,7 +27,7 @@ export function routeForStartParam(param: string): string | null {
     return '/profile'
   }
   if (value === 'settings') {
-    return '/tracker-settings'
+    return '/settings'
   }
   if (value === 'onboarding') {
     return '/onboarding'

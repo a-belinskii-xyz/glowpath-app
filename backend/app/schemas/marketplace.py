@@ -62,7 +62,7 @@ class PackCardPublic(BaseModel):
     slug: str
     name: str
     description: str
-    labels: dict
+    labels: dict[str, str]
     is_official: bool
     status: str
     price_tokens: int

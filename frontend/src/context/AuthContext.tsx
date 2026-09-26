@@ -9,6 +9,11 @@ import {
 } from 'react'
 
 import * as authApi from '../api/auth'
+import {
+  getThemePreference,
+  setThemePreference,
+  type ThemePreference,
+} from '../design/themePreference'
 import { clearTokens, getAccessToken, setTokens } from '../lib/storage'
 import { getVisitorId } from '../lib/guestMode'
 import { tryImportGuestDiaryAfterAuth } from '../lib/guestImport'
@@ -31,6 +36,7 @@ type AuthContextValue = {
   logout: () => void
   refreshUser: () => Promise<void>
   updateTimezone: (timezone: string) => Promise<void>
+  updateThemePreference: (themePreference: ThemePreference) => Promise<void>
   completeLogin: (accessToken: string, refreshToken: string, userCreated?: boolean) => Promise<void>
   retryBootstrap: () => void
 }
@@ -96,6 +102,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateTimezone = useCallback(async (timezone: string) => {
     const profile = await authApi.updateMe({ timezone })
     setUser(profile)
+  }, [])
+
+  const updateThemePreference = useCallback(async (themePreference: ThemePreference) => {
+    const previous = getThemePreference()
+    setThemePreference(themePreference)
+    try {
+      const profile = await authApi.updateMe({ theme_preference: themePreference })
+      setUser(profile)
+    } catch (err) {
+      setThemePreference(previous)
+      throw err
+    }
   }, [])
 
   const retryBootstrap = useCallback(() => {
@@ -170,6 +188,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return subscribeTelegramTheme(() => undefined)
   }, [])
 
+  const serverThemePreference = user?.theme_preference
+  useEffect(() => {
+    if (serverThemePreference) {
+      setThemePreference(serverThemePreference)
+    }
+  }, [serverThemePreference])
+
   const value = useMemo(
     () => ({
       user,
@@ -182,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser,
       updateTimezone,
+      updateThemePreference,
       completeLogin,
       retryBootstrap,
     }),
@@ -195,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser,
       updateTimezone,
+      updateThemePreference,
       completeLogin,
       retryBootstrap,
     ],

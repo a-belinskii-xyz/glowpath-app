@@ -103,9 +103,12 @@ React app with routing wired to the API.
 | `/entries/new` | Create mood entry |
 | `/entries/:id` | Entry detail |
 | `/entries/:id/edit` | Edit mood entry |
-| `/tags` | Manage tag groups and tags |
-| `/templates` | Manage note templates |
-| `/profile` | Current user (`GET /v1/auth/me`), language switch |
+| `/profile` | Profile hub: identity, wallet, links to achievements, market, plans, settings |
+| `/settings` | Settings categories |
+| `/settings/diary?tab=moods\|tags\|templates\|layout` | Mood scale, tag groups, note templates, entry form blocks (`/tags`, `/templates`, `/tracker-settings` redirect here) |
+| `/settings/notifications` | Telegram link and email/Telegram reminders |
+| `/settings/appearance` | Theme, streak badge, historical entry colors |
+| `/settings/account` | Sign-in email, password reset, language, time zone |
 | `/plans` | Freemium plans (Spark / Glow / Radiant) and checkout |
 | `/verify-email?token=…` | Email verification (link from MailHog) |
 | `/resend-verification` | Resend verification email |
