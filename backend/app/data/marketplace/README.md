@@ -75,7 +75,7 @@ marketplace/
 
 `published: false` — черновик, в витрине не показывается. Альтернатива: `"status": "draft"` / `"published"` / `"archived"`.
 
-Ключи в `icons` — slug или имя файла. Поля, которых нет, берутся из дефолтов пака / имени файла. `scores` — suggested mood 1–5.
+Ключи в `icons` — slug или имя файла. Поля, которых нет, берутся из дефолтов пака / имени файла. `scores` — suggested mood 1–5. `sort_order` у иконки задаёт порядок в паке (иначе — по имени файла).
 
 Готовые теги: `joy`, `sadness`, `calm`, `energy`, `sport`, `fitness`, `animals`, `nature`, `weather`, `night`. Неизвестный тег игнорируется — сначала добавьте его в `DEFAULT_SEARCH_TAGS` в `backend/app/services/marketplace_seed.py`.
 
@@ -100,3 +100,16 @@ marketplace/
 | Размер | **≤ 512 KB** |
 | Формат | SVG предпочтителен; PNG если нужна прозрачность; JPEG/WebP для фото |
 | Safe area | объект в центре ~90% — углы обрежет круг |
+
+## Пресеты (перенос каталога на другой инстанс)
+
+Staff может выгрузить паки и ачивки в `/staff` → «Пресеты» или командой `make preset-export`. Архив — это те же сид-папки:
+
+```text
+manifest.json
+marketplace/search-tags.json
+marketplace/<pack>/pack.json + картинки
+achievements/catalog.json
+```
+
+Загрузка на новом инстансе: импорт в `/staff` или `make preset-import PRESET=../preset.zip`. Можно и распаковать `marketplace/*` сюда, а `achievements/catalog.json` — в `../achievements/`, и выполнить `make seed-marketplace seed-achievements`. Роль staff выдаётся `make staff STAFF_ARGS='grant --user you@example.com'`.

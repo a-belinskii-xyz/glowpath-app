@@ -184,6 +184,8 @@ class ErrorCode(StrEnum):
     INVALID_ICON_LABELS = "invalid_icon_labels"
     COVER_ICON_NOT_IN_PACK = "cover_icon_not_in_pack"
     WALLET_GRANT_INVALID = "wallet_grant_invalid"
+    PRESET_INVALID_ARCHIVE = "preset_invalid_archive"
+    PRESET_IMPORT_FAILED = "preset_import_failed"
 
     # Achievements
     ACHIEVEMENTS_DISABLED = "achievements_disabled"

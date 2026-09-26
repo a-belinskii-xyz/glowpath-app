@@ -16,6 +16,7 @@ def to_user_public(user: User) -> UserPublic:
         onboarding_completed=user.onboarding_completed_at is not None,
         onboarding_completed_at=user.onboarding_completed_at,
         has_password=user.password_hash is not None,
+        is_staff=bool(user.is_staff),
         theme_preference=user.theme_preference,
         telegram_linked=user.telegram_linked,
         can_unlink_telegram=user.telegram_linked and not telegram_is_only_auth_method(user),

@@ -11014,3 +11014,284 @@ a.plans-cta:hover {
     animation: none;
   }
 }
+
+/* Staff console (/staff) */
+.staff-tabs {
+  margin: 0.25rem 0 1.25rem;
+}
+
+.staff-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.staff-search,
+.staff-inline-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.staff-search .form-input,
+.staff-inline-form .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.staff-split {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 900px) {
+  .staff-split {
+    grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.staff-list,
+.staff-checklist,
+.staff-ledger,
+.staff-error-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.staff-list-empty {
+  padding: 0.5rem 0;
+}
+
+.staff-list-row {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--chrome-border-default);
+  border-radius: var(--chrome-radius-card);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.staff-list-row:hover,
+.staff-list-row.is-active {
+  border-color: var(--chrome-border-strong);
+  background: var(--chrome-surface-inset);
+}
+
+.staff-list-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.staff-list-meta {
+  color: var(--chrome-text-secondary);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.staff-card {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.staff-card-title {
+  margin: 0;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+.staff-card-meta {
+  margin: 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.staff-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+}
+
+.staff-grant-form {
+  margin-top: 0;
+}
+
+.staff-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.staff-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.staff-form-grid {
+  margin-top: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+  .staff-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.staff-form-wide,
+.staff-form-actions {
+  grid-column: 1 / -1;
+}
+
+.staff-ledger-row {
+  display: grid;
+  grid-template-columns: 4.5rem 6.5rem minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  align-items: baseline;
+}
+
+.staff-ledger-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staff-delta-plus {
+  color: var(--chrome-action-success);
+  font-weight: 600;
+}
+
+.staff-delta-minus {
+  color: var(--chrome-action-danger);
+  font-weight: 600;
+}
+
+.staff-back {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.staff-pack-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.staff-pack-actions,
+.staff-icon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.staff-file-button {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.staff-fieldset {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.85rem;
+  border: 1px dashed var(--chrome-border-default);
+  border-radius: var(--chrome-radius-control);
+}
+
+.staff-color-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.staff-color-field input[type='color'] {
+  width: 2.5rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--chrome-border-strong);
+  border-radius: var(--chrome-radius-control);
+  background: none;
+}
+
+.staff-icon-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+}
+
+.staff-icon-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid var(--chrome-border-default);
+  border-radius: var(--chrome-radius-card);
+  background: var(--chrome-surface);
+  text-align: center;
+}
+
+.staff-icon-card .catalog-icon-thumb {
+  width: 4rem;
+  height: 4rem;
+}
+
+.staff-icon-label,
+.staff-icon-slug {
+  margin: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.staff-icon-label {
+  font-weight: 600;
+}
+
+.staff-icon-slug {
+  font-size: 0.8rem;
+}
+
+.staff-icon-actions {
+  justify-content: center;
+}
+
+.staff-icon-edit {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.staff-check-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.6rem;
+  row-gap: 0.1rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.staff-check-row > .staff-list-meta {
+  grid-column: 2;
+}

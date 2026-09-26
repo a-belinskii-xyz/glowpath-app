@@ -22,6 +22,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Lets the SPA read download filenames (staff preset export).
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(api_v1_router, prefix="/v1")

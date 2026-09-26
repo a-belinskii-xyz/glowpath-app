@@ -115,6 +115,7 @@ class DiscoveredMockIcon:
     tags: tuple[str, ...]
     colors: tuple[str, ...]
     scores: tuple[int, ...]
+    sort_order: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,6 +214,12 @@ def _bool(raw: object, *, default: bool) -> bool:
     return default
 
 
+def _optional_int(raw: object) -> int | None:
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        return None
+    return raw
+
+
 def _optional_slug(raw: object) -> str | None:
     if not isinstance(raw, str) or not raw.strip():
         return None
@@ -281,8 +288,11 @@ def _discover_icons(pack_dir: Path, pack_meta: dict[str, object]) -> tuple[Disco
                 tags=_string_tuple(override.get("tags")) or default_tags,
                 colors=_color_tuple(override.get("colors"), fallback=default_colors),
                 scores=_score_tuple(override.get("scores")),
+                sort_order=_optional_int(override.get("sort_order")),
             )
         )
+    # Explicit per-icon sort_order (exported presets) wins; filename order breaks ties.
+    icons.sort(key=lambda icon: (icon.sort_order is None, icon.sort_order or 0))
     return tuple(icons)
 
 
@@ -499,7 +509,7 @@ def _seed_one_mock_pack(
                 size_bytes=len(data),
                 suggested_colors=list(item.colors),
                 suggested_mood_scores=list(item.scores),
-                sort_order=index,
+                sort_order=item.sort_order if item.sort_order is not None else index,
             )
             db.add(icon)
             db.flush()
@@ -514,7 +524,7 @@ def _seed_one_mock_pack(
             icon.size_bytes = len(data)
             icon.suggested_colors = list(item.colors)
             icon.suggested_mood_scores = list(item.scores)
-            icon.sort_order = index
+            icon.sort_order = item.sort_order if item.sort_order is not None else index
 
         icon.search_tags = [tags_by_slug[slug] for slug in item.tags if slug in tags_by_slug]
         seeded_icons[item.slug] = icon

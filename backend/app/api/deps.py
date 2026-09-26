@@ -87,6 +87,15 @@ def get_current_verified_user(user: User = Depends(get_current_user)) -> User:
     )
 
 
+def get_current_staff_user(user: User = Depends(get_current_verified_user)) -> User:
+    if user.is_staff:
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=structured_detail(code=ErrorCode.STAFF_REQUIRED, message="Staff access required"),
+    )
+
+
 def require_telegram_bot_service(
     x_telegram_bot_service_token: str | None = Header(default=None),
 ) -> None:
