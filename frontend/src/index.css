@@ -3720,18 +3720,31 @@ code {
 }
 
 .photo-lightbox {
+  /* Fixed stage height so arrows and footer stay put whatever the photo's size. */
+  --lightbox-stage-height: min(72vh, 48rem);
   position: relative;
   width: min(100%, 56rem);
-  max-height: min(100%, 90vh);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
 }
 
+@supports (height: 1dvh) {
+  .photo-lightbox {
+    --lightbox-stage-height: min(72dvh, 48rem);
+  }
+}
+
+.photo-lightbox-viewport {
+  position: relative;
+  width: 100%;
+  height: var(--lightbox-stage-height);
+}
+
 .photo-lightbox-stage {
   width: 100%;
-  max-height: min(80vh, 48rem);
+  height: 100%;
   overflow: hidden;
   touch-action: none;
   cursor: grab;
@@ -3746,21 +3759,23 @@ code {
 .photo-lightbox-track {
   display: flex;
   width: 100%;
-  align-items: center;
+  height: 100%;
   will-change: transform;
 }
 
 .photo-lightbox-slide {
   flex: 0 0 100%;
   width: 100%;
+  height: 100%;
   min-width: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .photo-lightbox-image {
   max-width: 100%;
-  max-height: min(80vh, 48rem);
+  max-height: 100%;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -3791,8 +3806,14 @@ code {
 }
 
 .photo-lightbox-close:hover,
-.photo-lightbox-nav:hover {
+.photo-lightbox-nav:hover:not(:disabled) {
   background: rgba(15, 23, 42, 0.85);
+}
+
+.photo-lightbox-nav:disabled {
+  color: rgba(148, 163, 184, 0.55);
+  background: rgba(15, 23, 42, 0.4);
+  cursor: default;
 }
 
 .photo-lightbox-close {
@@ -3812,6 +3833,9 @@ code {
   height: 2.75rem;
   border-radius: 999px;
   font-size: 1.75rem;
+  /* The track is its own layer (transform); keep arrows above it. */
+  z-index: 1;
+  transition: color 160ms ease, background-color 160ms ease;
 }
 
 .photo-lightbox-prev {
@@ -3831,6 +3855,7 @@ code {
 
 .photo-lightbox-footer {
   display: grid;
+  align-content: start;
   justify-items: center;
   gap: 0.35rem;
   width: min(100%, 28rem);
@@ -3868,6 +3893,8 @@ code {
 
 .page-gallery {
   max-width: 72rem;
+  /* The live pinch preview scales the grid past the page edges. */
+  overflow-x: clip;
 }
 
 .gallery-zoom-controls {
