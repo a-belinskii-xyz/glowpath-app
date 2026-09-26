@@ -48,8 +48,7 @@ export function EditorDrawer({
         radial-gradient(circle at 16% 18%, ${pick(0)}44 0%, transparent 38%),
         radial-gradient(circle at 78% 22%, ${pick(1)}33 0%, transparent 34%),
         radial-gradient(circle at 68% 76%, ${pick(2)}40 0%, transparent 40%),
-        radial-gradient(circle at 28% 72%, ${pick(3)}30 0%, transparent 36%),
-        linear-gradient(135deg, rgba(248, 250, 252, 0.48), rgba(226, 232, 240, 0.18))
+        radial-gradient(circle at 28% 72%, ${pick(3)}30 0%, transparent 36%)
       `,
     } as CSSProperties
   }, [accentColors, title])

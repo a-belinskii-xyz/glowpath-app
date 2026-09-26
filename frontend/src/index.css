@@ -5,6 +5,8 @@
   --chrome-surface-elevated: #ffffff;
   --chrome-surface-inset: #f3f4f6;
   --chrome-surface-glass: rgb(255 255 255 / 72%);
+  /* Base for light tints (`color-mix(accent N%, base)`): white on light, surface on dark. */
+  --chrome-tint-base: #ffffff;
   --chrome-text-primary: #1f2937;
   --chrome-text-secondary: #6b7280;
   --chrome-text-inverse: #ffffff;
@@ -73,6 +75,7 @@ html[data-color-scheme='dark'] {
   --chrome-surface-elevated: #1d2433;
   --chrome-surface-inset: #131926;
   --chrome-surface-glass: rgb(23 29 42 / 78%);
+  --chrome-tint-base: var(--chrome-surface-elevated);
   --chrome-text-primary: #e5e7eb;
   --chrome-text-secondary: #9ca3af;
   --chrome-text-inverse: #ffffff;
@@ -409,6 +412,127 @@ html[data-color-scheme='dark'] .month-summary-invite {
       color-mix(in oklab, var(--chrome-surface) 18%, transparent)
     ),
     linear-gradient(120deg, #93c5fd, #6ee7b7 46%, #fcd34d);
+}
+
+/* Dark scheme: surfaces and text that are hard-coded for the light palette. */
+html[data-color-scheme='dark'] .editor-drawer-backdrop {
+  background:
+    var(--editor-drawer-fog),
+    linear-gradient(180deg, rgb(2 6 23 / 30%) 0%, rgb(2 6 23 / 45%) 100%),
+    rgb(2 6 23 / 40%);
+}
+
+html[data-color-scheme='dark'] .confirm-dialog-backdrop {
+  background:
+    radial-gradient(circle at 18% 16%, rgb(148 163 184 / 10%) 0%, transparent 38%),
+    radial-gradient(circle at 68% 76%, rgb(148 163 184 / 8%) 0%, transparent 40%),
+    rgb(2 6 23 / 62%);
+}
+
+html[data-color-scheme='dark'] .tag-visibility-toggle,
+html[data-color-scheme='dark'] .score-label,
+html[data-color-scheme='dark'] .mood-preferences-upload-action,
+html[data-color-scheme='dark'] .image-crop-hint,
+html[data-color-scheme='dark'] .markdown-wysiwyg .tiptap blockquote,
+html[data-color-scheme='dark'] .markdown-wysiwyg .ProseMirror blockquote {
+  color: var(--chrome-text-secondary);
+}
+
+html[data-color-scheme='dark'] .tag-chip-selected,
+html[data-color-scheme='dark'] .score-option-selected {
+  background: color-mix(in oklab, var(--chrome-action-primary) 18%, var(--chrome-surface));
+}
+
+html[data-color-scheme='dark'] .tag-chip-selected {
+  color: color-mix(in oklab, var(--chrome-action-primary) 40%, white);
+}
+
+html[data-color-scheme='dark'] .goal-chip.tag-chip-selected {
+  border-color: var(--chrome-action-success);
+  background: color-mix(in oklab, var(--chrome-action-success) 18%, var(--chrome-surface));
+  color: color-mix(in oklab, var(--chrome-action-success) 45%, white);
+}
+
+html[data-color-scheme='dark'] .emoji-picker-option:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--chrome-text-primary) 8%, var(--chrome-surface));
+}
+
+html[data-color-scheme='dark'] .alert-error {
+  background: color-mix(in oklab, #ef4444 14%, var(--chrome-surface));
+  border-color: color-mix(in oklab, #ef4444 40%, transparent);
+  color: #fecaca;
+}
+
+html[data-color-scheme='dark'] .alert-success {
+  background: color-mix(in oklab, #10b981 14%, var(--chrome-surface));
+  border-color: color-mix(in oklab, #10b981 40%, transparent);
+  color: #a7f3d0;
+}
+
+html[data-color-scheme='dark'] .alert-info {
+  background: color-mix(in oklab, #3b82f6 14%, var(--chrome-surface));
+  border-color: color-mix(in oklab, #3b82f6 40%, transparent);
+  color: #bfdbfe;
+}
+
+html[data-color-scheme='dark'] .alert-warning,
+html[data-color-scheme='dark'] .notice-worker .alert-warning,
+html[data-color-scheme='dark'] .guest-data-banner {
+  background: color-mix(in oklab, #f59e0b 14%, var(--chrome-surface));
+  border-color: color-mix(in oklab, #f59e0b 40%, transparent);
+  color: #fde68a;
+}
+
+html[data-color-scheme='dark'] .guest-registration-callout {
+  background: var(--chrome-surface-inset);
+  border-color: var(--chrome-border-default);
+  color: var(--chrome-text-secondary);
+}
+
+html[data-color-scheme='dark'] .guest-registration-callout__icon {
+  background: var(--chrome-surface-elevated);
+  color: var(--chrome-text-secondary);
+  box-shadow: 0 0 0 1px var(--chrome-border-default);
+}
+
+html[data-color-scheme='dark'] .icon-button-danger,
+html[data-color-scheme='dark'] .entry-icon-button-danger:hover:not(:disabled),
+html[data-color-scheme='dark'] .icon-button-danger:hover:not(:disabled) {
+  color: #fca5a5;
+}
+
+html[data-color-scheme='dark'] .entry-icon-button-danger:hover:not(:disabled),
+html[data-color-scheme='dark'] .icon-button-danger:hover:not(:disabled),
+html[data-color-scheme='dark'] .mood-preferences-upload-remove:hover,
+html[data-color-scheme='dark'] .mood-preferences-upload-remove:focus-visible {
+  background: color-mix(in oklab, #ef4444 18%, var(--chrome-surface));
+  border-color: color-mix(in oklab, #ef4444 40%, transparent);
+}
+
+html[data-color-scheme='dark'] .image-crop-preview {
+  background: var(--chrome-surface-inset);
+  border-color: var(--chrome-border-default);
+}
+
+html[data-color-scheme='dark'] .onboarding-required-hint,
+html[data-color-scheme='dark'] .plans-current-banner svg,
+html[data-color-scheme='dark'] .plans-popular,
+html[data-color-scheme='dark'] .achievement-new-badge {
+  color: var(--chrome-action-warning);
+}
+
+html[data-color-scheme='dark'] .achievement-reward-chip,
+html[data-color-scheme='dark'] .achievement-reward-kind,
+html[data-color-scheme='dark'] .achievement-entry-link {
+  color: #93c5fd;
+}
+
+html[data-color-scheme='dark'] .achievement-secret-badge {
+  color: #c4b5fd;
+}
+
+html[data-color-scheme='dark'] .achievement-card.is-mystery .achievement-card-icon {
+  color: var(--chrome-text-secondary);
 }
 
 .app-root {
@@ -1004,16 +1128,16 @@ html[data-color-scheme='dark'] .month-summary-invite {
 }
 
 .button.is-saved {
-  background: color-mix(in oklab, var(--chrome-action-success) 6%, white);
+  background: color-mix(in oklab, var(--chrome-action-success) 6%, var(--chrome-tint-base));
   color: var(--chrome-action-success);
-  border-color: color-mix(in oklab, var(--chrome-action-success) 28%, white);
+  border-color: color-mix(in oklab, var(--chrome-action-success) 28%, var(--chrome-tint-base));
   box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
   animation: button-saved-pulse 0.45s var(--motion-hover-easing);
 }
 
 .button.is-saved:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--chrome-action-success) 9%, white);
-  border-color: color-mix(in oklab, var(--chrome-action-success) 38%, white);
+  background: color-mix(in oklab, var(--chrome-action-success) 9%, var(--chrome-tint-base));
+  border-color: color-mix(in oklab, var(--chrome-action-success) 38%, var(--chrome-tint-base));
   color: var(--chrome-action-success);
   box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
@@ -1038,7 +1162,7 @@ html[data-color-scheme='dark'] .month-summary-invite {
 }
 
 .button-secondary:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, var(--chrome-tint-base));
   border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
   color: var(--chrome-text-primary);
   box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
@@ -1455,14 +1579,14 @@ html[data-color-scheme='dark'] .month-summary-invite {
 
 .status-pill--ok {
   color: var(--chrome-action-success);
-  background: color-mix(in oklab, var(--chrome-action-success) 12%, white);
-  border-color: color-mix(in oklab, var(--chrome-action-success) 28%, white);
+  background: color-mix(in oklab, var(--chrome-action-success) 12%, var(--chrome-tint-base));
+  border-color: color-mix(in oklab, var(--chrome-action-success) 28%, var(--chrome-tint-base));
 }
 
 .status-pill--warn {
   color: var(--chrome-action-danger);
-  background: color-mix(in oklab, var(--chrome-action-danger) 10%, white);
-  border-color: color-mix(in oklab, var(--chrome-action-danger) 26%, white);
+  background: color-mix(in oklab, var(--chrome-action-danger) 10%, var(--chrome-tint-base));
+  border-color: color-mix(in oklab, var(--chrome-action-danger) 26%, var(--chrome-tint-base));
 }
 
 .status-pill--muted {
@@ -1817,13 +1941,13 @@ code {
 .button-danger-ghost {
   background: var(--chrome-surface);
   color: var(--chrome-action-danger);
-  border: 1px solid color-mix(in oklab, var(--chrome-action-danger) 22%, white);
+  border: 1px solid color-mix(in oklab, var(--chrome-action-danger) 22%, var(--chrome-tint-base));
   box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
 }
 
 .button-danger-ghost:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--chrome-action-danger) 6%, white);
-  border-color: color-mix(in oklab, var(--chrome-action-danger) 38%, white);
+  background: color-mix(in oklab, var(--chrome-action-danger) 6%, var(--chrome-tint-base));
+  border-color: color-mix(in oklab, var(--chrome-action-danger) 38%, var(--chrome-tint-base));
   color: var(--chrome-action-danger);
   box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
   transform: none;
@@ -1933,7 +2057,7 @@ code {
   place-items: center;
   border-radius: 50%;
   overflow: hidden;
-  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, var(--chrome-tint-base));
 }
 
 .confirm-icon-preview--single .confirm-icon-preview-media {
@@ -3037,8 +3161,8 @@ code {
 
 .entry-icon-button.is-favorite {
   color: var(--entry-favorite-color, #e11d48);
-  border-color: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 35%, #ffffff);
-  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 12%, #ffffff);
+  border-color: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 35%, var(--chrome-tint-base));
+  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 12%, var(--chrome-tint-base));
   box-shadow:
     0 1px 2px color-mix(in oklab, var(--entry-favorite-color, #e11d48) 22%, transparent),
     0 0 0.4rem color-mix(in oklab, var(--entry-favorite-color, #e11d48) 36%, transparent);
@@ -3046,8 +3170,8 @@ code {
 
 .entry-icon-button.is-favorite:hover:not(:disabled) {
   color: var(--entry-favorite-color, #be123c);
-  border-color: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 48%, #ffffff);
-  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 18%, #ffffff);
+  border-color: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 48%, var(--chrome-tint-base));
+  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 18%, var(--chrome-tint-base));
   box-shadow:
     0 2px 5px color-mix(in oklab, var(--entry-favorite-color, #e11d48) 28%, transparent),
     0 0 0.65rem color-mix(in oklab, var(--entry-favorite-color, #e11d48) 45%, transparent);
@@ -3177,7 +3301,7 @@ code {
 
 .entry-favorite-mark.is-favorite {
   color: var(--entry-favorite-color, #e11d48);
-  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 14%, #ffffff);
+  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 14%, var(--chrome-tint-base));
   box-shadow:
     0 0 0 1px color-mix(in oklab, var(--entry-favorite-color, #e11d48) 28%, transparent),
     0 0 0.45rem color-mix(in oklab, var(--entry-favorite-color, #e11d48) 38%, transparent);
@@ -3185,7 +3309,7 @@ code {
 
 .entry-favorite-mark.is-favorite:hover {
   color: var(--entry-favorite-color, #e11d48);
-  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 20%, #ffffff);
+  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 20%, var(--chrome-tint-base));
 }
 
 .entry-favorite-mark svg {
@@ -3511,7 +3635,7 @@ code {
   width: 2rem;
   height: 2rem;
   border-radius: 0.45rem;
-  background: color-mix(in oklab, var(--chrome-border-default) 70%, white);
+  background: color-mix(in oklab, var(--chrome-border-default) 70%, var(--chrome-tint-base));
   color: var(--chrome-text-secondary);
   flex-shrink: 0;
 }
@@ -3531,11 +3655,11 @@ code {
   background:
     linear-gradient(
       145deg,
-      color-mix(in oklab, var(--audio-surface) 88%, white) 0%,
+      color-mix(in oklab, var(--audio-surface) 88%, var(--chrome-tint-base)) 0%,
       var(--audio-surface) 55%,
-      color-mix(in oklab, var(--audio-surface-edge) 70%, white) 100%
+      color-mix(in oklab, var(--audio-surface-edge) 70%, var(--chrome-tint-base)) 100%
     );
-  border: 1px solid color-mix(in oklab, var(--audio-surface-edge) 65%, white);
+  border: 1px solid color-mix(in oklab, var(--audio-surface-edge) 65%, var(--chrome-tint-base));
   box-shadow: 0 1px 0 color-mix(in oklab, white 70%, var(--audio-surface-edge));
 }
 
@@ -3565,7 +3689,7 @@ code {
   padding: 0;
   border: none;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--audio-accent) 82%, white);
+  background: color-mix(in oklab, var(--audio-accent) 82%, var(--chrome-tint-base));
   color: white;
   cursor: pointer;
   box-shadow: 0 1px 2px color-mix(in oklab, var(--audio-accent) 35%, transparent);
@@ -3677,7 +3801,7 @@ code {
   width: 100%;
   height: 2rem;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--audio-track, var(--chrome-border-default)) 80%, white);
+  background: color-mix(in oklab, var(--audio-track, var(--chrome-border-default)) 80%, var(--chrome-tint-base));
   animation: entry-thumb-pulse 1.2s ease-in-out infinite;
 }
 
@@ -4198,7 +4322,7 @@ code {
   padding: 0.85rem 1rem;
   border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-card);
-  background: color-mix(in oklab, var(--chrome-surface-inset) 55%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 55%, var(--chrome-tint-base));
   overflow: visible;
 }
 
@@ -4483,7 +4607,7 @@ code {
 
 .emoji-picker-option-selected {
   border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 10%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 10%, var(--chrome-tint-base));
 }
 
 .emoji-picker-option:disabled {
@@ -4501,6 +4625,30 @@ code {
 .emoji-picker-custom-preview {
   font-size: 1.25rem;
   line-height: 1;
+}
+
+.emoji-picker-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.emoji-picker-custom-input.form-input {
+  width: 9rem;
+  min-width: 0;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+.emoji-picker-custom-input.is-invalid {
+  border-color: var(--chrome-action-danger);
+}
+
+.emoji-picker-custom-error {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: var(--chrome-action-danger);
 }
 
 @media (max-width: 480px) {
@@ -4604,7 +4752,7 @@ code {
 
 .mood-preferences-builtin-option-selected {
   border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 8%, var(--chrome-tint-base));
 }
 
 .mood-preferences-builtin-thumb {
@@ -4703,7 +4851,7 @@ code {
   padding: 0.85rem 1rem;
   border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-card);
-  background: color-mix(in oklab, var(--chrome-surface-inset) 55%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 55%, var(--chrome-tint-base));
   overflow: visible;
 }
 
@@ -4766,7 +4914,7 @@ code {
 
 .mood-preferences-upload-tile-selected {
   border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 8%, var(--chrome-tint-base));
 }
 
 .mood-preferences-upload-thumb {
@@ -5034,7 +5182,7 @@ code {
 
 .markdown-toolbar-btn-active {
   border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
-  background: color-mix(in oklab, var(--chrome-surface-inset) 35%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 35%, var(--chrome-tint-base));
   color: var(--chrome-text-primary);
 }
 
@@ -6268,7 +6416,7 @@ code {
 }
 
 .icon-button-add:hover {
-  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 42%, var(--chrome-tint-base));
   border-color: color-mix(in oklab, var(--chrome-action-quiet) 18%, var(--chrome-border-strong));
   box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
@@ -6591,7 +6739,7 @@ code {
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-control);
-  background: color-mix(in oklab, var(--chrome-surface-inset) 70%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 70%, var(--chrome-tint-base));
   display: grid;
   gap: 0.55rem;
 }
@@ -6911,7 +7059,7 @@ code {
 
 .entry-sheet-item:hover {
   border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
-  background: color-mix(in oklab, var(--chrome-surface-inset) 28%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 28%, var(--chrome-tint-base));
 }
 
 .entry-sheet-manage {
@@ -7153,7 +7301,7 @@ code {
 
 .icon-button.is-favorite {
   color: var(--entry-favorite-color, #e11d48);
-  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 14%, #ffffff);
+  background: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 14%, var(--chrome-tint-base));
   border-color: color-mix(in oklab, var(--entry-favorite-color, #e11d48) 28%, transparent);
 }
 
@@ -7220,6 +7368,7 @@ code {
   padding: 1rem;
   background:
     var(--editor-drawer-fog),
+    linear-gradient(135deg, rgba(248, 250, 252, 0.48), rgba(226, 232, 240, 0.18)),
     linear-gradient(
       180deg,
       rgba(248, 250, 252, 0.18) 0%,
@@ -7825,7 +7974,7 @@ code {
 
 .onboarding-option.is-active {
   border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 10%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 10%, var(--chrome-tint-base));
   color: var(--chrome-action-primary-hover);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--chrome-action-primary) 45%, transparent);
   font-weight: 600;
@@ -7839,7 +7988,7 @@ code {
 
 .onboarding-option.is-active:hover:not(:disabled) {
   border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 14%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 14%, var(--chrome-tint-base));
   color: var(--chrome-action-primary-hover);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--chrome-action-primary) 55%, transparent);
 }
@@ -7906,19 +8055,19 @@ code {
 
 .onboarding-suggestion-card:hover:not(:disabled) {
   border-color: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-border-strong));
-  background: color-mix(in oklab, var(--chrome-surface-inset) 28%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 28%, var(--chrome-tint-base));
 }
 
 .onboarding-suggestion-card.is-active {
   border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 10%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 10%, var(--chrome-tint-base));
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--chrome-action-primary) 45%, transparent);
   color: var(--chrome-action-primary-hover);
 }
 
 .onboarding-suggestion-card.is-active:hover:not(:disabled) {
   border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 14%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 14%, var(--chrome-tint-base));
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--chrome-action-primary) 55%, transparent);
 }
 
@@ -7956,7 +8105,7 @@ code {
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
   font-size: 0.8rem;
-  background: color-mix(in oklab, var(--chrome-text-primary) 6%, white);
+  background: color-mix(in oklab, var(--chrome-text-primary) 6%, var(--chrome-tint-base));
   color: var(--chrome-text-secondary);
 }
 
@@ -7988,7 +8137,7 @@ code {
   margin: 0;
   padding: 0.65rem 0.75rem;
   border-radius: 0.5rem;
-  background: color-mix(in oklab, var(--chrome-text-primary) 5%, white);
+  background: color-mix(in oklab, var(--chrome-text-primary) 5%, var(--chrome-tint-base));
   color: var(--chrome-text-secondary);
   font-size: 0.85rem;
   line-height: 1.45;
@@ -8743,7 +8892,7 @@ code {
   height: 5.5rem;
   border: 1px dashed var(--chrome-border-strong);
   border-radius: 50%;
-  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, var(--chrome-tint-base));
   color: var(--chrome-text-secondary);
   font-size: 0.95rem;
   font-weight: 700;
@@ -8783,7 +8932,7 @@ code {
   margin-inline: auto;
   border-radius: 50%;
   overflow: hidden;
-  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, white);
+  background: color-mix(in oklab, var(--chrome-surface-inset) 90%, var(--chrome-tint-base));
 }
 
 .market-icon-card-media .catalog-icon-thumb {
@@ -8864,7 +9013,7 @@ code {
 
 .catalog-icon-picker-tile-selected {
   border-color: var(--chrome-action-primary);
-  background: color-mix(in oklab, var(--chrome-action-primary) 8%, white);
+  background: color-mix(in oklab, var(--chrome-action-primary) 8%, var(--chrome-tint-base));
 }
 
 .catalog-icon-picker-tile-locked {

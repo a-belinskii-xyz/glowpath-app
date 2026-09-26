@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.emoji import is_single_emoji
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
@@ -324,6 +325,12 @@ def _coerce_style(
                 f"Emoji for score {score.value} must be at most {_MAX_EMOJI_LENGTH} characters",
                 code=ErrorCode.EMOJI_TOO_LONG,
                 params={"score": str(score.value), "max": str(_MAX_EMOJI_LENGTH)},
+            )
+        if not is_single_emoji(icon):
+            raise MoodPreferencesError(
+                f"Icon for score {score.value} must be a single emoji",
+                code=ErrorCode.INVALID_EMOJI,
+                params={"score": str(score.value)},
             )
     elif icon_type is MoodScoreIconType.BUILTIN:
         if not is_valid_builtin_icon_slug(icon):

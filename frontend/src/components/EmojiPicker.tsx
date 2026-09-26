@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
+import { isSingleEmoji } from '../lib/emoji'
 import type { EmojiGroup } from '../lib/emojiPalette'
 import { useLocale } from '../context/LocaleContext'
 
@@ -55,9 +56,11 @@ export function EmojiPicker({
 }: EmojiPickerProps) {
   const { t } = useLocale()
   const [expanded, setExpanded] = useState(false)
+  const [customDraft, setCustomDraft] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
+  const customErrorId = useId()
 
   const selected = value.trim()
   const resolvedGroups: readonly EmojiGroup[] =
@@ -75,6 +78,17 @@ export function EmojiPicker({
     [flat, selected, collapsedCount],
   )
   const hiddenCount = Math.max(0, flat.length - collapsed.length)
+  const customValue = customDraft.trim()
+  const customInvalid = customValue !== '' && !isSingleEmoji(customValue)
+
+  const applyCustom = () => {
+    if (!customValue || customInvalid) {
+      return
+    }
+    onChange(customValue)
+    setCustomDraft('')
+    setExpanded(false)
+  }
 
   useEffect(() => {
     if (!expanded) {
@@ -151,6 +165,41 @@ export function EmojiPicker({
         {!known && selected ? (
           <span className="emoji-picker-custom-preview" aria-hidden>
             {selected}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="emoji-picker-custom">
+        <input
+          className={`form-input emoji-picker-custom-input${customInvalid ? ' is-invalid' : ''}`}
+          type="text"
+          inputMode="text"
+          autoComplete="off"
+          value={customDraft}
+          placeholder={t('moodPreferences.customEmojiPlaceholder')}
+          aria-label={t('moodPreferences.customEmojiPlaceholder')}
+          aria-invalid={customInvalid}
+          aria-describedby={customInvalid ? customErrorId : undefined}
+          disabled={disabled}
+          onChange={(event) => setCustomDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              applyCustom()
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="button button-secondary button-small"
+          disabled={disabled || !customValue || customInvalid}
+          onClick={applyCustom}
+        >
+          {t('moodPreferences.customEmojiApply')}
+        </button>
+        {customInvalid ? (
+          <span id={customErrorId} className="emoji-picker-custom-error" role="alert">
+            {t('moodPreferences.customEmojiInvalid')}
           </span>
         ) : null}
       </div>

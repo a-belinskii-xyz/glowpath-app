@@ -93,6 +93,7 @@ class ErrorCode(StrEnum):
     UNKNOWN_ICON_TYPE = "unknown_icon_type"
     ICON_REQUIRED = "icon_required"
     EMOJI_TOO_LONG = "emoji_too_long"
+    INVALID_EMOJI = "invalid_emoji"
     UNKNOWN_BUILTIN_ICON = "unknown_builtin_icon"
     UPLOAD_ICON_BEFORE_CREATE = "upload_icon_before_create"
     UPLOADED_ICON_NOT_FOUND = "uploaded_icon_not_found"
