@@ -431,17 +431,28 @@ def get_user_by_id(db: Session, user_id: uuid.UUID) -> User | None:
     return db.get(User, user_id)
 
 
-def update_user_timezone(db: Session, *, user_id: uuid.UUID, timezone: str) -> User:
-    try:
-        timezone_name = normalize_timezone(timezone)
-    except ValueError as exc:
-        raise AuthError(str(exc), code=ErrorCode.INVALID_TIMEZONE, status_code=400) from exc
+def update_user_settings(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    timezone: str | None = None,
+    theme_preference: str | None = None,
+) -> User:
+    timezone_name: str | None = None
+    if timezone is not None:
+        try:
+            timezone_name = normalize_timezone(timezone)
+        except ValueError as exc:
+            raise AuthError(str(exc), code=ErrorCode.INVALID_TIMEZONE, status_code=400) from exc
 
     user = db.get(User, user_id)
     if user is None:
         raise AuthError("User not found", code=ErrorCode.USER_NOT_FOUND, status_code=404)
 
-    user.timezone = timezone_name
+    if timezone_name is not None:
+        user.timezone = timezone_name
+    if theme_preference is not None:
+        user.theme_preference = theme_preference
     db.commit()
     db.refresh(user)
     return user

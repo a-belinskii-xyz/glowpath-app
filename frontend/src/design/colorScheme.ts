@@ -4,7 +4,7 @@ export function getColorScheme(): ColorScheme {
   if (typeof document === 'undefined') {
     return 'light'
   }
-  return document.documentElement.dataset.tgColorScheme === 'dark' ? 'dark' : 'light'
+  return document.documentElement.dataset.colorScheme === 'dark' ? 'dark' : 'light'
 }
 
 export function subscribeColorScheme(onChange: () => void): () => void {
@@ -15,6 +15,6 @@ export function subscribeColorScheme(onChange: () => void): () => void {
   const observer = new MutationObserver(() => {
     onChange()
   })
-  observer.observe(root, { attributes: true, attributeFilter: ['data-tg-color-scheme'] })
+  observer.observe(root, { attributes: true, attributeFilter: ['data-color-scheme'] })
   return () => observer.disconnect()
 }

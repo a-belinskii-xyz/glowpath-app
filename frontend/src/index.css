@@ -49,6 +49,8 @@
   --brand-ink-1: #334155;
   --brand-ink-2: #1d4ed8;
   --brand-ink-3: #9f1239;
+  /* Share of near-white mixed into the wordmark ink (dark scheme lifts it). */
+  --brand-ink-lift: 0%;
 
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.5;
@@ -59,6 +61,42 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Dark scheme (website: user choice or OS; Telegram: user choice or client theme).
+ * Inside Telegram, applyTelegramTheme() writes palette tokens inline, which win over these.
+ */
+html[data-color-scheme='dark'] {
+  --chrome-bg-app: #0f1420;
+  --chrome-surface: #171d2a;
+  --chrome-surface-elevated: #1d2433;
+  --chrome-surface-inset: #131926;
+  --chrome-surface-glass: rgb(23 29 42 / 78%);
+  --chrome-text-primary: #e5e7eb;
+  --chrome-text-secondary: #9ca3af;
+  --chrome-text-inverse: #ffffff;
+  --chrome-border-subtle: rgb(229 231 235 / 10%);
+  --chrome-border-default: rgb(229 231 235 / 16%);
+  --chrome-border-strong: rgb(229 231 235 / 24%);
+  --chrome-action-primary: #3b82f6;
+  --chrome-action-primary-hover: #60a5fa;
+  --chrome-action-quiet: #b7b3cf;
+  --chrome-action-danger: #f87171;
+  --chrome-action-success: #34d399;
+  --chrome-action-warning: #fbbf24;
+  --chrome-focus-ring: #3b82f6;
+  --chrome-focus-ring-soft: rgb(59 130 246 / 35%);
+  --chrome-shadow-soft: 0 8px 28px rgb(0 0 0 / 32%);
+  --brand-ink-lift: 58%;
+}
+
+html[data-color-scheme='dark'] .app-ambient {
+  opacity: 0.45;
+}
+
+html[data-color-scheme='dark'] .app-sidebar {
+  border-color: var(--chrome-border-default);
 }
 
 * {
@@ -154,11 +192,11 @@ html.is-telegram body {
   color-scheme: inherit;
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] {
+html[data-color-scheme='dark'] {
   color-scheme: dark;
 }
 
-html.is-telegram[data-tg-color-scheme='light'] {
+html[data-color-scheme='light'] {
   color-scheme: light;
 }
 
@@ -297,56 +335,56 @@ html.is-telegram .month-recap-stage {
     max(1rem, var(--tg-safe-right)) max(1rem, var(--tg-safe-bottom)) max(1rem, var(--tg-safe-left));
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .app-nav-link:hover {
+html[data-color-scheme='dark'] .app-nav-link:hover {
   background: color-mix(in oklab, var(--chrome-text-primary) 10%, transparent);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .button-secondary:hover:not(:disabled),
-html.is-telegram[data-tg-color-scheme='dark'] .icon-button:hover:not(:disabled),
-html.is-telegram[data-tg-color-scheme='dark'] .entry-icon-button:hover:not(:disabled) {
+html[data-color-scheme='dark'] .button-secondary:hover:not(:disabled),
+html[data-color-scheme='dark'] .icon-button:hover:not(:disabled),
+html[data-color-scheme='dark'] .entry-icon-button:hover:not(:disabled) {
   background: color-mix(in oklab, var(--chrome-text-primary) 10%, var(--chrome-surface));
   color: var(--chrome-text-primary);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .entry-row:hover {
+html[data-color-scheme='dark'] .entry-row:hover {
   background: color-mix(in oklab, var(--chrome-text-primary) 8%, var(--chrome-surface));
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .markdown-note blockquote {
+html[data-color-scheme='dark'] .markdown-note blockquote {
   color: var(--chrome-text-secondary);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .day-section {
+html[data-color-scheme='dark'] .day-section {
   border-color: color-mix(in oklab, var(--chrome-text-primary) 12%, transparent);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .entry-tag {
+html[data-color-scheme='dark'] .entry-tag {
   background: color-mix(in oklab, var(--chrome-action-primary) 18%, var(--chrome-surface));
   color: color-mix(in oklab, var(--chrome-action-primary) 40%, white);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .entry-goal {
+html[data-color-scheme='dark'] .entry-goal {
   background: color-mix(in oklab, var(--chrome-action-success) 20%, var(--chrome-surface));
   color: color-mix(in oklab, var(--chrome-action-success) 45%, white);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .entry-overflow-item {
+html[data-color-scheme='dark'] .entry-overflow-item {
   color: var(--chrome-text-primary);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .entry-overflow-item-danger {
+html[data-color-scheme='dark'] .entry-overflow-item-danger {
   color: #fca5a5;
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .entry-overflow-item-danger:hover {
+html[data-color-scheme='dark'] .entry-overflow-item-danger:hover {
   background: color-mix(in oklab, #b91c1c 22%, var(--chrome-surface));
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .entry-audio-badge {
+html[data-color-scheme='dark'] .entry-audio-badge {
   background: color-mix(in oklab, var(--chrome-border-default) 70%, var(--chrome-surface));
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .entry-audio-player {
+html[data-color-scheme='dark'] .entry-audio-player {
   background:
     linear-gradient(
       145deg,
@@ -358,14 +396,14 @@ html.is-telegram[data-tg-color-scheme='dark'] .entry-audio-player {
   box-shadow: 0 1px 0 color-mix(in oklab, var(--chrome-text-primary) 8%, transparent);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .editor-drawer,
-html.is-telegram[data-tg-color-scheme='dark'] .confirm-dialog {
+html[data-color-scheme='dark'] .editor-drawer,
+html[data-color-scheme='dark'] .confirm-dialog {
   background: var(--chrome-surface-elevated);
   border-color: var(--chrome-border-default);
   box-shadow: var(--chrome-shadow-soft);
 }
 
-html.is-telegram[data-tg-color-scheme='dark'] .month-summary-invite {
+html[data-color-scheme='dark'] .month-summary-invite {
   border-color: var(--chrome-border-default);
   text-shadow: 0 1px 2px rgb(0 0 0 / 35%);
   background:
@@ -439,11 +477,16 @@ html.is-telegram[data-tg-color-scheme='dark'] .month-summary-invite {
     in oklab,
     color-mix(
       in oklab,
-      var(--brand-ink-1) calc((1 - min(var(--brand-cycle), 1)) * 100%),
-      var(--brand-ink-2) calc(min(var(--brand-cycle), 1) * 100%)
+      color-mix(
+        in oklab,
+        var(--brand-ink-1) calc((1 - min(var(--brand-cycle), 1)) * 100%),
+        var(--brand-ink-2) calc(min(var(--brand-cycle), 1) * 100%)
+      )
+      calc((2 - max(var(--brand-cycle), 1)) * 100%),
+      var(--brand-ink-3) calc((max(var(--brand-cycle), 1) - 1) * 100%)
     )
-    calc((2 - max(var(--brand-cycle), 1)) * 100%),
-    var(--brand-ink-3) calc((max(var(--brand-cycle), 1) - 1) * 100%)
+    calc(100% - var(--brand-ink-lift)),
+    #f8fafc
   );
   text-decoration: none;
   letter-spacing: -0.02em;
@@ -1440,6 +1483,22 @@ html.is-telegram[data-tg-color-scheme='dark'] .month-summary-invite {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.theme-setting {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.notification-master.theme-setting-card {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  cursor: default;
+}
+
+.theme-setting-options {
+  flex-wrap: nowrap;
 }
 
 .streak-display-setting {
@@ -6846,7 +6905,7 @@ code {
   }
 
   .brand {
-    color: var(--brand-ink-1);
+    color: color-mix(in oklab, var(--brand-ink-1) calc(100% - var(--brand-ink-lift)), #f8fafc);
     --brand-cycle: 0;
   }
 }

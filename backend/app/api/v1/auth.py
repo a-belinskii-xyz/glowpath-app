@@ -43,7 +43,7 @@ from app.services.auth_service import (
     register_user,
     resend_verification_email,
     reset_password,
-    update_user_timezone,
+    update_user_settings,
     verify_email,
     verify_google_id_token,
 )
@@ -407,7 +407,12 @@ def patch_me(
     current_user: User = Depends(get_current_user),
 ) -> UserPublic:
     try:
-        user = update_user_timezone(db, user_id=current_user.id, timezone=body.timezone)
+        user = update_user_settings(
+            db,
+            user_id=current_user.id,
+            timezone=body.timezone,
+            theme_preference=body.theme_preference,
+        )
     except AuthError as exc:
         _handle_auth_error(exc)
     return _to_user_public(user)

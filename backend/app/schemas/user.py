@@ -1,7 +1,10 @@
 import uuid
 from datetime import datetime
+from typing import Literal, Self
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
+
+ThemePreference = Literal["system", "light", "dark"]
 
 
 class UserPublic(BaseModel):
@@ -13,6 +16,7 @@ class UserPublic(BaseModel):
     onboarding_completed: bool
     onboarding_completed_at: datetime | None
     has_password: bool
+    theme_preference: ThemePreference = "system"
     telegram_linked: bool = False
     can_unlink_telegram: bool = False
     features: dict[str, bool] = Field(default_factory=dict)
@@ -23,4 +27,11 @@ class UserPublic(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    timezone: str = Field(min_length=1, max_length=64)
+    timezone: str | None = Field(default=None, min_length=1, max_length=64)
+    theme_preference: ThemePreference | None = None
+
+    @model_validator(mode="after")
+    def _require_any_field(self) -> Self:
+        if self.timezone is None and self.theme_preference is None:
+            raise ValueError("At least one field must be provided")
+        return self

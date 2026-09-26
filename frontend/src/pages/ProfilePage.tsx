@@ -14,6 +14,7 @@ import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
 import { StreakDisplaySetting } from '../components/StreakDisplaySetting'
 import { TelegramLinkForm } from '../components/TelegramLinkForm'
+import { ThemeSetting } from '../components/ThemeSetting'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
@@ -62,14 +63,17 @@ const AppearanceSettingsPanelBody = memo(function AppearanceSettingsPanelBody() 
   const { t } = useLocale()
   const { isLoading } = useMoodPreferences()
 
-  if (isLoading) {
-    return <p className="muted">{t('common.loadingMoodPreferences')}</p>
-  }
-
   return (
     <div className="appearance-settings">
-      <StreakDisplaySetting />
-      <HistoricalColorsSetting />
+      <ThemeSetting />
+      {isLoading ? (
+        <p className="muted">{t('common.loadingMoodPreferences')}</p>
+      ) : (
+        <>
+          <StreakDisplaySetting />
+          <HistoricalColorsSetting />
+        </>
+      )}
     </div>
   )
 })

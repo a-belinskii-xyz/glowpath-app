@@ -1,4 +1,5 @@
 import { apiRequest, getApiBaseUrl } from './client'
+import type { ThemePreference } from '../design/themePreference'
 import type {
   LoginRequest,
   MessageResponse,
@@ -54,7 +55,10 @@ export function getMe(): Promise<UserPublic> {
   return apiRequest<UserPublic>('/v1/auth/me', { auth: true })
 }
 
-export function updateMe(body: { timezone: string }): Promise<UserPublic> {
+export function updateMe(body: {
+  timezone?: string
+  theme_preference?: ThemePreference
+}): Promise<UserPublic> {
   return apiRequest<UserPublic>('/v1/auth/me', {
     method: 'PATCH',
     body,
