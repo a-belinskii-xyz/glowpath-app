@@ -93,6 +93,7 @@ class ErrorCode(StrEnum):
     UNKNOWN_ICON_TYPE = "unknown_icon_type"
     ICON_REQUIRED = "icon_required"
     EMOJI_TOO_LONG = "emoji_too_long"
+    INVALID_EMOJI = "invalid_emoji"
     UNKNOWN_BUILTIN_ICON = "unknown_builtin_icon"
     UPLOAD_ICON_BEFORE_CREATE = "upload_icon_before_create"
     UPLOADED_ICON_NOT_FOUND = "uploaded_icon_not_found"
@@ -184,6 +185,8 @@ class ErrorCode(StrEnum):
     INVALID_ICON_LABELS = "invalid_icon_labels"
     COVER_ICON_NOT_IN_PACK = "cover_icon_not_in_pack"
     WALLET_GRANT_INVALID = "wallet_grant_invalid"
+    PRESET_INVALID_ARCHIVE = "preset_invalid_archive"
+    PRESET_IMPORT_FAILED = "preset_import_failed"
 
     # Achievements
     ACHIEVEMENTS_DISABLED = "achievements_disabled"

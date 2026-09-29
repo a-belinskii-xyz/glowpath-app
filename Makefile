@@ -6,7 +6,7 @@ MARKER := $(VENV)/.installed
 -include .env
 APP_PORT ?= 8000
 
-.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed seed-marketplace seed-achievements reindex-embeddings wallet telegram-up telegram-down
+.PHONY: install lint format typecheck test run up down up-prod down-prod migrate migrate-test migrate-create migrate-down venv reinstall pre-commit-install pre-commit frontend-install frontend-dev frontend-build seed seed-marketplace seed-achievements reindex-embeddings wallet staff preset-export preset-import telegram-up telegram-down
 
 FRONTEND := frontend
 
@@ -122,6 +122,24 @@ seed-achievements:
 WALLET_ARGS ?= --help
 wallet: $(MARKER)
 	cd $(BACKEND) && $(BIN)/python -m app.cli.wallet $(WALLET_ARGS)
+
+# Staff role (token grants, official packs, presets in the /staff console).
+#   make staff STAFF_ARGS='grant --user you@example.com'
+STAFF_ARGS ?= list
+staff: $(MARKER)
+	cd $(BACKEND) && $(BIN)/python -m app.cli.staff $(STAFF_ARGS)
+
+# Catalog presets (packs + achievements) for bootstrapping another instance.
+#   make preset-export PRESET=../preset.zip PRESET_ARGS='--pack foxes --no-achievements'
+#   make preset-import PRESET=../preset.zip
+# PRESET is relative to backend/. Host-side run, so MinIO goes through MINIO_API_PORT.
+PRESET ?= ../preset.zip
+PRESET_ARGS ?=
+preset-export: $(MARKER)
+	cd $(BACKEND) && MINIO_ENDPOINT=localhost:$(MINIO_API_PORT) $(BIN)/python -m app.cli.presets export --out $(PRESET) $(PRESET_ARGS)
+
+preset-import: $(MARKER)
+	cd $(BACKEND) && MINIO_ENDPOINT=localhost:$(MINIO_API_PORT) $(BIN)/python -m app.cli.presets import $(PRESET)
 
 # Recompute semantic-search embeddings for all mood entries (requires EMBEDDING_ENABLED=true).
 reindex-embeddings: $(MARKER)

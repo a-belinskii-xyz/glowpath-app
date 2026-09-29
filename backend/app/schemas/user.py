@@ -16,6 +16,7 @@ class UserPublic(BaseModel):
     onboarding_completed: bool
     onboarding_completed_at: datetime | None
     has_password: bool
+    is_staff: bool = False
     theme_preference: ThemePreference = "system"
     telegram_linked: bool = False
     can_unlink_telegram: bool = False

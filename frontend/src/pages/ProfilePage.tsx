@@ -4,7 +4,7 @@ import { getAchievementsSummary } from '../api/achievements'
 import { getWallet } from '../api/wallet'
 import { GuestProfilePreview } from '../components/GuestAccountPreviews'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
-import { NavMarketIcon, SettingsIcon, SparkleIcon, TrophyIcon } from '../components/icons'
+import { LockIcon, NavMarketIcon, SettingsIcon, SparkleIcon, TrophyIcon } from '../components/icons'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { ShortcutLink } from '../components/ShortcutLink'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
@@ -218,6 +218,14 @@ export function ProfilePage() {
           }
         />
         {settingsLink}
+        {user.is_staff ? (
+          <ShortcutLink
+            to="/staff"
+            icon={<LockIcon />}
+            title={t('staff.title')}
+            lead={t('staff.profileLink')}
+          />
+        ) : null}
       </nav>
 
       {isTelegram ? null : (

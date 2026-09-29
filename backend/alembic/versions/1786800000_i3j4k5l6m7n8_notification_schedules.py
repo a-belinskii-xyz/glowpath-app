@@ -195,8 +195,8 @@ def downgrade() -> None:
                 bool_or(enabled) FILTER (WHERE kind = 'daily_mood'),
                 MAX(time_of_day::time) FILTER (WHERE kind = 'daily_mood'),
                 bool_or(enabled) FILTER (WHERE kind = 'goal_tracking'),
-                MAX(last_sent_at)::date FILTER (WHERE kind = 'daily_mood'),
-                MAX(last_sent_at)::date FILTER (WHERE kind = 'goal_tracking'),
+                (MAX(last_sent_at) FILTER (WHERE kind = 'daily_mood'))::date,
+                (MAX(last_sent_at) FILTER (WHERE kind = 'goal_tracking'))::date,
                 MIN(created_at),
                 MAX(updated_at)
             FROM mt_user_notification_schedules AS outer_row

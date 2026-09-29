@@ -38,6 +38,7 @@ import {
 } from './pages/DiarySettingsPage'
 import { NotificationSettingsPage } from './pages/NotificationSettingsPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { StaffPage } from './pages/StaffPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { TelegramNavigation } from './platform/TelegramNavigation'
 
@@ -94,6 +95,7 @@ function App() {
                         <Route path="settings/notifications" element={<NotificationSettingsPage />} />
                         <Route path="settings/appearance" element={<AppearanceSettingsPage />} />
                         <Route path="settings/account" element={<AccountSettingsPage />} />
+                        <Route path="staff" element={<StaffPage />} />
                       </Route>
                     </Route>
 

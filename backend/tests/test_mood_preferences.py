@@ -94,9 +94,7 @@ def test_patch_mood_preferences_rejects_invalid_composer_blocks(
         "/v1/mood-preferences",
         headers=headers,
         json={
-            "composer_blocks": [
-                {"id": f"block-{index}", "enabled": True} for index in range(33)
-            ]
+            "composer_blocks": [{"id": f"block-{index}", "enabled": True} for index in range(33)]
         },
     )
     assert too_many.status_code == 422
@@ -256,6 +254,22 @@ def test_patch_mood_preferences_emoji_icon(auth_client: TestClient, mailer) -> N
     assert response.status_code == 200
     assert response.json()["scores"]["3"]["icon_type"] == "emoji"
     assert response.json()["scores"]["3"]["icon"] == "🫠"
+
+
+def test_patch_mood_preferences_rejects_text_as_emoji(
+    auth_client: TestClient,
+    mailer,
+) -> None:
+    email = f"mood-prefs-emoji-text-{uuid.uuid4()}@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+
+    response = auth_client.patch(
+        "/v1/mood-preferences",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"scores": {"3": {"icon_type": "emoji", "icon": "meh"}}},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_emoji"
 
 
 def test_patch_mood_preferences_rejects_upload_without_icon_record(

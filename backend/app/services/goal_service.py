@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.emoji import is_single_emoji
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.goal_tracking import MAX_GOAL_AMOUNT, MAX_GOAL_UNIT_LENGTH, GoalTrackingKind
@@ -675,6 +676,8 @@ def _validate_goal_style(
                 code=ErrorCode.EMOJI_TOO_LONG,
                 params={"max": str(_MAX_EMOJI_LENGTH)},
             )
+        if not is_single_emoji(resolved_icon):
+            raise GoalError("Icon must be a single emoji", code=ErrorCode.INVALID_EMOJI)
     elif resolved_type is MoodScoreIconType.BUILTIN:
         if not is_valid_builtin_icon_slug(resolved_icon):
             raise GoalError(

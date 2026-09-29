@@ -14,6 +14,7 @@ from app.api.v1 import (
     note_templates,
     notification_settings,
     onboarding,
+    staff,
     tag_groups,
     telegram,
     wallet,
@@ -36,6 +37,7 @@ api_v1_router.include_router(marketplace.router, prefix="/marketplace")
 api_v1_router.include_router(wallet.router, prefix="/wallet")
 api_v1_router.include_router(billing.router, prefix="/billing")
 api_v1_router.include_router(achievements.router, prefix="/achievements")
+api_v1_router.include_router(staff.router, prefix="/staff")
 api_v1_router.include_router(telegram.router, prefix="/telegram")
 
 if settings.debug:

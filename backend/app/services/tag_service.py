@@ -17,6 +17,7 @@ from app.core.default_tag_groups import (
     DEFAULT_TAG_ICON,
     DEFAULT_TAG_ICON_TYPE,
 )
+from app.core.emoji import is_single_emoji
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.feature_flags import FeatureFlag, is_feature_enabled_for_user
@@ -460,6 +461,8 @@ def _validate_tag_style(
                 code=ErrorCode.EMOJI_TOO_LONG,
                 params={"max": str(_MAX_EMOJI_LENGTH)},
             )
+        if not is_single_emoji(resolved_icon):
+            raise TagError("Icon must be a single emoji", code=ErrorCode.INVALID_EMOJI)
     elif resolved_type is MoodScoreIconType.BUILTIN:
         if not is_valid_builtin_icon_slug(resolved_icon):
             raise TagError(

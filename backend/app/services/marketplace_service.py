@@ -901,9 +901,11 @@ def upload_studio_icon(
     )
     icon.search_tags = tags
     db.add(icon)
+    # Insert the icon before pointing the pack cover at it (FK on cover_icon_id).
+    db.flush()
     if pack.cover_icon_id is None:
         pack.cover_icon_id = icon.id
-    db.flush()
+        db.flush()
     return icon
 
 

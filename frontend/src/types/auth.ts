@@ -9,6 +9,7 @@ export type UserPublic = {
   onboarding_completed: boolean
   onboarding_completed_at: string | null
   has_password: boolean
+  is_staff?: boolean
   theme_preference: ThemePreference
   telegram_linked: boolean
   can_unlink_telegram: boolean

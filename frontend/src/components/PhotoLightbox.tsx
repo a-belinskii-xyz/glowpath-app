@@ -169,13 +169,13 @@ export function PhotoLightbox({
       if (!hasMultiple || settlingRef.current) {
         return
       }
-      if (event.key === 'ArrowLeft') {
+      if (event.key === 'ArrowLeft' && index > 0) {
         event.preventDefault()
-        onIndexChange((index - 1 + photos.length) % photos.length)
+        onIndexChange(index - 1)
       }
-      if (event.key === 'ArrowRight') {
+      if (event.key === 'ArrowRight' && index < photos.length - 1) {
         event.preventDefault()
-        onIndexChange((index + 1) % photos.length)
+        onIndexChange(index + 1)
       }
     }
 
@@ -190,8 +190,16 @@ export function PhotoLightbox({
     return null
   }
 
-  const goPrev = () => onIndexChange((index - 1 + photos.length) % photos.length)
-  const goNext = () => onIndexChange((index + 1) % photos.length)
+  const goPrev = () => {
+    if (canPrev && !settlingRef.current) {
+      onIndexChange(index - 1)
+    }
+  }
+  const goNext = () => {
+    if (canNext && !settlingRef.current) {
+      onIndexChange(index + 1)
+    }
+  }
   const addedAt = photo.createdAt
   const slides = hasMultiple
     ? [canPrev ? photos[index - 1] : null, photo, canNext ? photos[index + 1] : null]
@@ -295,71 +303,74 @@ export function PhotoLightbox({
           ×
         </button>
 
-        {hasMultiple ? (
-          <button
-            type="button"
-            className="photo-lightbox-nav photo-lightbox-prev"
-            onClick={goPrev}
-            aria-label={t('media.previousPhoto')}
-          >
-            ‹
-          </button>
-        ) : null}
-
-        <div
-          className={`photo-lightbox-stage${dragging ? ' is-dragging' : ''}`}
-          ref={stageRef}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-        >
+        <div className="photo-lightbox-viewport">
           <div
-            className="photo-lightbox-track"
-            ref={trackRef}
-            style={{
-              transform: hasMultiple
-                ? `translate3d(calc(-100% + ${offset}px), 0, 0)`
-                : `translate3d(${offset}px, 0, 0)`,
-              transition:
-                dragging || !animating
-                  ? 'none'
-                  : `transform ${motion.pager.durationMs}ms ${motion.pager.easing}`,
-            }}
+            className={`photo-lightbox-stage${dragging ? ' is-dragging' : ''}`}
+            ref={stageRef}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
           >
-            {slides.map((slide, slideIndex) => {
-              const edge = slideIndex === 0 ? 'prev' : slideIndex === 2 ? 'next' : 'current'
-              const current = edge === 'current'
-              return (
-                <div
-                  key={slide ? slide.id : `empty-${edge}`}
-                  className="photo-lightbox-slide"
-                  aria-hidden={current ? undefined : true}
-                >
-                  {slide ? (
-                    <AttachmentImage
-                      className="photo-lightbox-image"
-                      entryId={slide.entryId}
-                      attachmentId={slide.id}
-                      alt={current ? slide.originalName : ''}
-                    />
-                  ) : null}
-                </div>
-              )
-            })}
+            <div
+              className="photo-lightbox-track"
+              ref={trackRef}
+              style={{
+                transform: hasMultiple
+                  ? `translate3d(calc(-100% + ${offset}px), 0, 0)`
+                  : `translate3d(${offset}px, 0, 0)`,
+                transition:
+                  dragging || !animating
+                    ? 'none'
+                    : `transform ${motion.pager.durationMs}ms ${motion.pager.easing}`,
+              }}
+            >
+              {slides.map((slide, slideIndex) => {
+                const edge = slideIndex === 0 ? 'prev' : slideIndex === 2 ? 'next' : 'current'
+                const current = edge === 'current'
+                return (
+                  <div
+                    key={slide ? slide.id : `empty-${edge}`}
+                    className="photo-lightbox-slide"
+                    aria-hidden={current ? undefined : true}
+                  >
+                    {slide ? (
+                      <AttachmentImage
+                        className="photo-lightbox-image"
+                        entryId={slide.entryId}
+                        attachmentId={slide.id}
+                        alt={current ? slide.originalName : ''}
+                      />
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
 
-        {hasMultiple ? (
-          <button
-            type="button"
-            className="photo-lightbox-nav photo-lightbox-next"
-            onClick={goNext}
-            aria-label={t('media.nextPhoto')}
-          >
-            ›
-          </button>
-        ) : null}
+          {hasMultiple ? (
+            <>
+              <button
+                type="button"
+                className="photo-lightbox-nav photo-lightbox-prev"
+                onClick={goPrev}
+                disabled={!canPrev}
+                aria-label={t('media.previousPhoto')}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="photo-lightbox-nav photo-lightbox-next"
+                onClick={goNext}
+                disabled={!canNext}
+                aria-label={t('media.nextPhoto')}
+              >
+                ›
+              </button>
+            </>
+          ) : null}
+        </div>
 
         <div className="photo-lightbox-footer">
           {addedAt ? (

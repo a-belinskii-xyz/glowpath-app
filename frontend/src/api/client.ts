@@ -55,6 +55,38 @@ export function getApiBaseUrl(): string {
   return API_BASE_URL
 }
 
+/**
+ * Authenticated fetch for non-JSON bodies (FormData uploads, file downloads).
+ * Retries once after a token refresh; throws ApiError on non-2xx responses.
+ */
+export async function authorizedFetch(
+  path: string,
+  init: { method?: string; body?: BodyInit; headers?: Record<string, string> } = {},
+  retryOnUnauthorized = true,
+): Promise<Response> {
+  const headers: Record<string, string> = { ...apiLocaleHeaders(), ...init.headers }
+  const accessToken = getAccessToken()
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: init.method ?? 'GET',
+    headers,
+    body: init.body,
+  })
+  if (response.status === 401 && retryOnUnauthorized) {
+    const refreshed = await refreshTokensOnce()
+    if (refreshed) {
+      return authorizedFetch(path, init, false)
+    }
+  }
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new ApiError(parseApiError(response.status, payload), response.status)
+  }
+  return response
+}
+
 export async function apiRequest<T>(
   path: string,
   { method = 'GET', body, auth = false, retryOnUnauthorized = true, headers: extraHeaders }: RequestOptions = {},

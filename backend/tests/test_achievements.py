@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.config import settings
 from app.core.achievements import AchievementStatus
 from app.models.achievement import Achievement
 from app.models.achievement_reward import AchievementReward
+from app.models.goal import Goal
 from app.models.user import User
 from app.models.user_achievement import UserAchievement
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from tests.conftest import FakeEmailService, register_verify_and_login
@@ -171,7 +172,7 @@ def test_first_entry_unlocks_and_grants_tokens(
     assert listed.status_code == 200
     card = next(item for item in listed.json()["items"] if item["id"] == str(first.id))
     assert card["unlocked_by_entry_id"] == create.json()["id"]
-    assert isinstance(card["unlock_percent"], (int, float))
+    assert isinstance(card["unlock_percent"], int | float)
 
     progress = db.scalar(
         select(UserAchievement).where(
@@ -406,6 +407,18 @@ def test_custom_goal_unlocks_not_defaults(
     )
     token = register_verify_and_login(auth_client, mailer, f"ach-goal-{uuid.uuid4()}@example.com")
     headers = _auth_headers(token)
+
+    # The criterion tells defaults from custom goals by created_at > user.created_at.
+    # Tests run in one DB transaction where now() is frozen, so move the registration
+    # (user + provisioned default goals) into the past like a real earlier request.
+    me = auth_client.get("/v1/auth/me", headers=headers).json()
+    user_id = uuid.UUID(me["id"])
+    earlier = timedelta(minutes=5)
+    db.execute(update(User).where(User.id == user_id).values(created_at=User.created_at - earlier))
+    db.execute(
+        update(Goal).where(Goal.user_id == user_id).values(created_at=Goal.created_at - earlier)
+    )
+    db.commit()
 
     listed = auth_client.get("/v1/achievements", headers=headers)
     card = next(item for item in listed.json()["items"] if item["id"] == str(first_goal.id))

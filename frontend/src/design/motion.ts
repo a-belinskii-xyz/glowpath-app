@@ -44,13 +44,6 @@ export const motion = {
     durationMs: 72000,
     easing: 'ease-in-out',
   },
-  /** Month recap: a glow planet, or a shareable poster, then a quiet stats reveal. */
-  recap: {
-    formMs: 880,
-    orbitMs: 4200,
-    revealMs: 780,
-    easing: 'cubic-bezier(0.33, 0.05, 0.2, 1)',
-  },
 } as const
 
 export type MotionTokens = typeof motion
