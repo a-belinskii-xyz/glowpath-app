@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="16" fill="#FECACA"/>
-  <path d="M22 38c-5 0-8-4-8-8 0-3.5 2.5-6.5 6-7.5C21 17 26 14 32 14c7 0 12 4.5 13.5 10.5 4 .5 7 4 7 8 0 4.5-3.5 8-8 8H22z" fill="#DC2626"/>
-  <rect x="28" y="36" width="8" height="14" rx="2" fill="#7F1D1D"/>
-  <ellipse cx="32" cy="34" rx="7" ry="3" fill="#FEE2E2"/>
-  <text x="32" y="58" text-anchor="middle" fill="#7F1D1D" font-size="7" font-family="system-ui,sans-serif">MOCK</text>
-</svg>

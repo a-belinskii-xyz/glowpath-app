@@ -2,7 +2,7 @@
 
 **Статус:** имя **выбрано** — **GlowPath**  
 **Дата:** 2026-07-23 (решение) · идеи 2026-07-23  
-**Связь:** [[Mood Tracker.md]] · визуальная система `frontend/src/design/`
+**Связь:** визуальная система `frontend/src/design/`
 
 ---
 
@@ -83,5 +83,4 @@
 ## 6. Связанное
 
 - Визуальная система: `frontend/src/design/` (`chrome`, `moodTheme`, `gradientEngine`, `motion`)
-- Описание wash / day gradient: раздел «Фон дня…» в `Mood Tracker.md`
 - Telegram / reminders: `docs/telegram-integration-plan.md`
