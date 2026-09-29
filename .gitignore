@@ -230,6 +230,7 @@ frontend/dist-ssr/
 # Local helper state (trycloudflare pids/logs)
 .local/
 .neon
+promotion
 
 # Neon CLI local tooling (skills install and config packages)
 .agents/
