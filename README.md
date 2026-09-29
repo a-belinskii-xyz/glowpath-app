@@ -7,7 +7,7 @@ Telegram-first mood diary. The **Telegram Mini App** is the main UI, the **bot**
 | Website / Mini App | https://mood-tracker-l17s.onrender.com |
 | API | https://mood-tracker-back.onrender.com (`/docs`, `/health`) |
 
-Deployment: [`docs/DEPLOY.md`](docs/DEPLOY.md). Branding: [`docs/branding-naming-plan.md`](docs/branding-naming-plan.md).
+Deployment: [`docs/DEPLOY.md`](docs/DEPLOY.md). Local development: [`docs/development.md`](docs/development.md).
 
 ## Features
 
@@ -111,7 +111,7 @@ backend/
   tests/
 frontend/src/    React app       frontend/nginx.conf.template
 telegram-bot/    webhook service
-docs/            deployment, development, design notes
+docs/            deployment, development, feature notes
 render.yaml      Render Blueprint
 docker-compose.yml / docker-compose.prod.yml
 ```

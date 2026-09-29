@@ -120,7 +120,7 @@ The same pattern applies to `FEATURE_ICON_MARKETPLACE*`, `FEATURE_ACHIEVEMENTS*`
 
 ## Telegram
 
-The bot receives updates over a webhook, so locally it needs a public HTTPS URL. The Mini App needs a second HTTPS URL for the frontend. Background: [telegram-integration-plan.md](telegram-integration-plan.md) (historical).
+The bot receives updates over a webhook, so locally it needs a public HTTPS URL. The Mini App needs a second HTTPS URL for the frontend.
 
 ### Configure `backend/.env`
 
