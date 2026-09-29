@@ -676,7 +676,7 @@ export const en = {
     dailyMoodReminder: 'Daily mood reminder',
     goalReminders: 'Goal reminders',
     reminderTime: 'Reminder time',
-    reminderTimeHint: 'Local time for this reminder.',
+    reminderTimeHint: 'Reminders arrive within 5 minutes after the chosen time.',
     reminderFrequency: 'How often',
     scheduleEnabled: 'Send this reminder',
     notificationsTestingNotice:
@@ -1930,7 +1930,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     dailyMoodReminder: 'Ежедневное напоминание отметить настроение',
     goalReminders: 'Напоминания о целях',
     reminderTime: 'Время напоминания',
-    reminderTimeHint: 'Локальное время для этого напоминания.',
+    reminderTimeHint: 'Напоминание приходит в течение 5 минут после выбранного времени.',
     reminderFrequency: 'Как часто',
     scheduleEnabled: 'Отправлять это напоминание',
     notificationsTestingNotice:

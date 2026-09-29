@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import select
+from sqlalchemy import Result, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
@@ -97,6 +99,12 @@ def process_due_reminders(
             stats.skipped += 1
             continue
 
+        previous_sent_at = schedule.last_sent_at
+        if not claim_schedule(db, schedule_id=schedule.id, previous=previous_sent_at, at=instant):
+            # Another tick (overlapping cron call or worker) already took this one.
+            stats.skipped += 1
+            continue
+
         try:
             sent = _deliver_schedule(
                 db,
@@ -115,13 +123,69 @@ def process_due_reminders(
                     stats.goal_reminders_sent += 1
             else:
                 stats.skipped += 1
-            schedule.last_sent_at = instant
             db.commit()
         except Exception as exc:
             db.rollback()
+            release_schedule_claim(
+                db,
+                schedule_id=schedule.id,
+                previous=previous_sent_at,
+                at=instant,
+            )
             stats.errors.append(f"user={user.id}: {exc}")
 
     return stats
+
+
+def claim_schedule(
+    db: Session,
+    *,
+    schedule_id: uuid.UUID,
+    previous: datetime | None,
+    at: datetime,
+) -> bool:
+    """Atomically mark a schedule as sent at ``at`` before delivering it.
+
+    Compare-and-set on ``last_sent_at``: only the first of two overlapping
+    runs wins, so a reminder is never delivered twice.
+    """
+    sent_matches = (
+        UserNotificationSchedule.last_sent_at.is_(None)
+        if previous is None
+        else UserNotificationSchedule.last_sent_at == previous
+    )
+    result = db.execute(
+        update(UserNotificationSchedule)
+        .where(UserNotificationSchedule.id == schedule_id, sent_matches)
+        .values(last_sent_at=at)
+        .execution_options(synchronize_session=False)
+    )
+    db.commit()
+    return _rowcount(result) == 1
+
+
+def release_schedule_claim(
+    db: Session,
+    *,
+    schedule_id: uuid.UUID,
+    previous: datetime | None,
+    at: datetime,
+) -> None:
+    """Undo ``claim_schedule`` after a failed delivery so the next run retries."""
+    db.execute(
+        update(UserNotificationSchedule)
+        .where(
+            UserNotificationSchedule.id == schedule_id,
+            UserNotificationSchedule.last_sent_at == at,
+        )
+        .values(last_sent_at=previous)
+        .execution_options(synchronize_session=False)
+    )
+    db.commit()
+
+
+def _rowcount(result: Result[Any]) -> int:
+    return int(getattr(result, "rowcount", 0) or 0)
 
 
 def _schedule_is_due(

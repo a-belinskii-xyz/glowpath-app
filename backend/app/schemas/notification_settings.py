@@ -106,3 +106,12 @@ def normalize_time_of_day(value: str) -> str:
     if hour < 0 or hour > 23 or minute < 0 or minute > 59:
         raise ValueError("time_of_day must be HH:MM")
     return f"{hour:02d}:{minute:02d}"
+
+
+class ReminderTickResponse(BaseModel):
+    outcome: str
+    users_considered: int
+    daily_mood_sent: int
+    goal_reminders_sent: int
+    skipped: int
+    errors: int

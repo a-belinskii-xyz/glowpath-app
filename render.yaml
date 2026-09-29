@@ -4,6 +4,8 @@
 # Free web services can call each other only via public URLs. They cannot
 # receive private-network traffic. The reminder worker is not here: Render
 # has no free background-worker plan (it still runs in docker compose).
+# Instead cron-job.org calls POST /v1/internal/reminders/tick on the API every
+# 5 minutes (see docs/reminders-cron.md).
 services:
   - type: web
     name: glowpath-api
@@ -35,7 +37,13 @@ services:
       - key: APP_DEBUG
         value: "false"
       - key: FEATURE_NOTIFICATIONS_ENABLED
-        value: "false"
+        value: "true"
+      # Shared with the cron-job.org job ("Authorization: Bearer <secret>").
+      - key: REMINDERS_CRON_SECRET
+        sync: false
+      # Matches the cron-job.org interval so the worker status stays healthy.
+      - key: NOTIFICATIONS_POLL_INTERVAL_SECONDS
+        value: "300"
       - key: TELEGRAM_BOT_SERVICE_TOKEN
         sync: false
       - key: FRONTEND_URL

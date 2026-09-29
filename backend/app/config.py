@@ -84,11 +84,19 @@ class Settings(BaseSettings):
         ge=10,
         validation_alias="NOTIFICATIONS_POLL_INTERVAL_SECONDS",
     )
+    # How long after the user's reminder time a missed tick may still send it
+    # (catch-up). Each schedule is sent at most once per day regardless.
     notifications_match_window_minutes: int = Field(
-        default=2,
+        default=30,
         ge=1,
         le=30,
         validation_alias="NOTIFICATIONS_MATCH_WINDOW_MINUTES",
+    )
+    # Bearer secret for POST /v1/internal/reminders/tick (external scheduler).
+    # Empty disables the endpoint (404).
+    reminders_cron_secret: str = Field(
+        default="",
+        validation_alias="REMINDERS_CRON_SECRET",
     )
 
     # Max tag groups a user can pin to the entry form (rest under "Other")

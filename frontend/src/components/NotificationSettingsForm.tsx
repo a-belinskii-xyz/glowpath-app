@@ -230,6 +230,7 @@ export function NotificationSettingsForm({ timezone }: { timezone: string }) {
                   updateDraft(kind, { timeOfDay: event.target.value }, { debounce: true })
                 }
               />
+              <span className="form-hint">{t('profile.reminderTimeHint')}</span>
             </label>
             <label className="form-field" htmlFor={`${kind}-interval`}>
               <span className="form-label">{t('profile.reminderFrequency')}</span>
