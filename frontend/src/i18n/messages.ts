@@ -318,6 +318,20 @@ export const en = {
   entryActions: {
     ariaLabel: 'Entry actions',
   },
+  shareImage: {
+    open: 'Share as image',
+    title: 'Entry as image',
+    rendering: 'Preparing the image…',
+    previewAlt: 'Preview of the entry image',
+    share: 'Share',
+    download: 'Download',
+    sendToChat: 'Send to bot chat',
+    sending: 'Sending…',
+    sentToChat: 'The image is in your chat with the bot. Forward it anywhere or save it to your gallery from there.',
+    renderFailed: 'Could not prepare the image. Please try again.',
+    shareFailed: 'Could not open the share menu. Try downloading instead.',
+    sendFailed: 'Could not send the image to Telegram. Open the bot, tap Start and try again.',
+  },
   confirm: {
     deleteEntry: 'Delete this mood entry?',
     deleteGroup: 'Delete group “{label}” and all its tags?',
@@ -1568,6 +1582,20 @@ export const ru: DeepStringLeaves<typeof en> = {
   },
   entryActions: {
     ariaLabel: 'Действия с записью',
+  },
+  shareImage: {
+    open: 'Поделиться картинкой',
+    title: 'Запись картинкой',
+    rendering: 'Готовим картинку…',
+    previewAlt: 'Превью картинки с записью',
+    share: 'Поделиться',
+    download: 'Скачать',
+    sendToChat: 'Отправить в чат с ботом',
+    sending: 'Отправляем…',
+    sentToChat: 'Картинка в чате с ботом. Оттуда её можно переслать куда угодно или сохранить в галерею.',
+    renderFailed: 'Не удалось подготовить картинку. Попробуйте ещё раз.',
+    shareFailed: 'Не удалось открыть меню «Поделиться». Попробуйте скачать картинку.',
+    sendFailed: 'Не удалось отправить картинку в Telegram. Откройте бота, нажмите «Старт» и попробуйте снова.',
   },
   confirm: {
     deleteEntry: 'Удалить эту запись?',

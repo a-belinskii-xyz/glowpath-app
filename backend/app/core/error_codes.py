@@ -154,6 +154,7 @@ class ErrorCode(StrEnum):
     TELEGRAM_AUTHORIZATION_FAILED = "telegram_authorization_failed"
     INVALID_TELEGRAM_ID_TOKEN = "invalid_telegram_id_token"
     TELEGRAM_UNLINK_NOT_ALLOWED = "telegram_unlink_not_allowed"
+    SHARE_IMAGE_INVALID = "share_image_invalid"
 
     # Storage
     STORAGE_BUCKET_FAILED = "storage_bucket_failed"
