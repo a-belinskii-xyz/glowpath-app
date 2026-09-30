@@ -38,7 +38,6 @@ from app.schemas.mood_entry import (
 )
 from app.services.entry_share_service import (
     SHARE_IMAGE_MAX_BYTES,
-    EntryShareError,
     send_share_image_to_telegram,
 )
 from app.services.mood_entry_service import (
@@ -66,6 +65,7 @@ from app.services.mood_preferences_service import (
     get_score_label_overrides,
 )
 from app.services.storage import ObjectStorage, StorageError
+from app.services.telegram_delivery import TelegramDeliveryError
 
 router = APIRouter(tags=["mood-entries"])
 
@@ -443,7 +443,7 @@ def send_entry_share_image_to_telegram(
             data=data,
             filename=file.filename or "glowpath.png",
         )
-    except EntryShareError as exc:
+    except TelegramDeliveryError as exc:
         raise_http_error(exc)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

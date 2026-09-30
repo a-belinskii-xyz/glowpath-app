@@ -17,3 +17,8 @@ export async function downloadAccountExport(): Promise<{ blob: Blob; filename: s
 export function deleteAccount(): Promise<void> {
   return apiRequest<void>('/v1/account', { method: 'DELETE', auth: true, body: { confirm: true } })
 }
+
+/** Ask the bot to send the export into the user's Telegram chat; returns how many files were sent. */
+export function sendAccountExportToTelegram(): Promise<{ parts: number }> {
+  return apiRequest<{ parts: number }>('/v1/account/export/telegram', { method: 'POST', auth: true })
+}
