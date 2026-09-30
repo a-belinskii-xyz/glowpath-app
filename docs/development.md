@@ -319,3 +319,11 @@ Open http://localhost:8080; MailHog stays on http://localhost:8025. `make down-p
 ## Pre-commit
 
 `make pre-commit-install` once per clone. Before each commit the hooks run ruff (format + lint), mypy and pytest. Run them manually with `make pre-commit`.
+
+## Tasks and branches
+
+Every feature or notable change is a task `GP-N`, numbered in order. Task cards (problem, decisions, status history) live outside the repo.
+
+- Branch: `GP-N-<short-slug>`, e.g. `GP-2-reminders-cron`.
+- PR title starts with `GP-N:`, e.g. `GP-2: Reminders via cron-job.org`.
+- One task per branch; follow-up work after a merge is a new task.
