@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { listStaffPacks } from '../../api/marketplace'
 import { downloadPresetExport, importPreset } from '../../api/staff'
 import { useLocale } from '../../context/LocaleContext'
+import { saveBlob } from '../../lib/download'
 import { formatApiError } from '../../lib/errors'
 import type { PackCardPublic } from '../../types/marketplace'
 import { Alert } from '../Alert'
@@ -11,17 +12,6 @@ import { PackStatusPill } from './PackStatusPill'
 
 // Every instance seeds essentials from builtin icons, so it never goes into a preset.
 const ESSENTIALS_SLUG = 'essentials'
-
-function saveBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
 
 export function StaffPresetsPanel() {
   const { t } = useLocale()

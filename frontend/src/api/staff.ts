@@ -1,4 +1,5 @@
 import { apiRequest, authorizedFetch } from './client'
+import { filenameFromDisposition } from '../lib/download'
 import { apiLocaleHeaders } from '../lib/locale'
 import type { PackDetailPublic, WalletLedgerListResponse } from '../types/marketplace'
 import type {
@@ -47,11 +48,6 @@ export function archiveStaffPack(packId: string): Promise<PackDetailPublic> {
     auth: true,
     headers: apiLocaleHeaders(),
   })
-}
-
-function filenameFromDisposition(header: string | null, fallback: string): string {
-  const match = header?.match(/filename="?([^";]+)"?/)
-  return match?.[1] ?? fallback
 }
 
 /** Download the preset zip and return it with the server-suggested filename. */
