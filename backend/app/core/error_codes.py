@@ -207,3 +207,6 @@ class ErrorCode(StrEnum):
     PAYMENT_WEBHOOK_INVALID = "payment_webhook_invalid"
     PAYMENT_NOT_FOUND = "payment_not_found"
     INVALID_BILLING_INTERVAL = "invalid_billing_interval"
+
+    # Internal scheduler endpoints
+    INVALID_CRON_SECRET = "invalid_cron_secret"

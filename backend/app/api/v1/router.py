@@ -8,6 +8,7 @@ from app.api.v1 import (
     goals,
     guest,
     health,
+    internal,
     marketplace,
     mood_entries,
     mood_preferences,
@@ -39,6 +40,7 @@ api_v1_router.include_router(billing.router, prefix="/billing")
 api_v1_router.include_router(achievements.router, prefix="/achievements")
 api_v1_router.include_router(staff.router, prefix="/staff")
 api_v1_router.include_router(telegram.router, prefix="/telegram")
+api_v1_router.include_router(internal.router, prefix="/internal")
 
 if settings.debug:
     from app.api.v1 import auth_dev
