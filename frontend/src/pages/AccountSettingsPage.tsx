@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { downloadAccountExport } from '../api/account'
 import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { AttachEmailForm } from '../components/AttachEmailForm'
@@ -8,9 +9,11 @@ import { SettingsSection } from '../components/SettingsSection'
 import { StableButtonLabel } from '../components/StableButtonLabel'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { saveBlob } from '../lib/download'
 import { formatApiError } from '../lib/errors'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
+import { isTelegramMiniApp } from '../platform/telegram'
 
 export function AccountSettingsPage() {
   const { user, updateTimezone } = useAuth()
@@ -20,6 +23,8 @@ export function AccountSettingsPage() {
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetMessage, setResetMessage] = useState<string | null>(null)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   if (!user) {
     return null
@@ -59,10 +64,24 @@ export function AccountSettingsPage() {
     }
   }
 
+  const handleExport = async () => {
+    setExportError(null)
+    setIsExporting(true)
+    try {
+      const { blob, filename } = await downloadAccountExport()
+      saveBlob(blob, filename)
+    } catch (err) {
+      setExportError(formatApiError(err, t, 'settings.exportFailed'))
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <SettingsSection title={t('settings.accountTitle')}>
       <PageErrorAlert error={timezoneError} />
       <PageErrorAlert error={resetError} />
+      <PageErrorAlert error={exportError} />
       {resetMessage ? <Alert variant="success">{resetMessage}</Alert> : null}
 
       <div className="settings-stack">
@@ -163,6 +182,30 @@ export function AccountSettingsPage() {
               </select>
             </div>
           </div>
+        </section>
+
+        <section className="card profile-account" aria-labelledby="settings-data-heading">
+          <h2 id="settings-data-heading" className="profile-settings-subheading">
+            {t('settings.dataTitle')}
+          </h2>
+          {isTelegramMiniApp() ? (
+            <p className="profile-field-hint">{t('settings.exportMiniAppHint')}</p>
+          ) : (
+            <div className="profile-account-password">
+              <button
+                type="button"
+                className="button button-secondary"
+                disabled={isExporting}
+                onClick={() => void handleExport()}
+              >
+                <StableButtonLabel
+                  active={isExporting ? t('settings.exporting') : t('settings.exportButton')}
+                  labels={[t('settings.exportButton'), t('settings.exporting')]}
+                />
+              </button>
+              <p className="profile-field-hint">{t('settings.exportHint')}</p>
+            </div>
+          )}
         </section>
       </div>
     </SettingsSection>
