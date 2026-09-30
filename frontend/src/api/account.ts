@@ -1,4 +1,4 @@
-import { authorizedFetch } from './client'
+import { apiRequest, authorizedFetch } from './client'
 import { filenameFromDisposition } from '../lib/download'
 
 /** Download the full diary export (ZIP with JSON, CSV and attachments). */
@@ -11,4 +11,9 @@ export async function downloadAccountExport(): Promise<{ blob: Blob; filename: s
       'glowpath-export.zip',
     ),
   }
+}
+
+/** Permanently delete the signed-in account and all of its data. */
+export function deleteAccount(): Promise<void> {
+  return apiRequest<void>('/v1/account', { method: 'DELETE', auth: true, body: { confirm: true } })
 }

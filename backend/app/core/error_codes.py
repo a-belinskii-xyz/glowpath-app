@@ -23,6 +23,7 @@ class ErrorCode(StrEnum):
     EMAIL_LINKED_OTHER_GOOGLE = "email_linked_other_google"
     INVALID_TIMEZONE = "invalid_timezone"
     USER_NOT_FOUND = "user_not_found"
+    ACCOUNT_DELETE_NOT_CONFIRMED = "account_delete_not_confirmed"
     ONBOARDING_ALREADY_COMPLETED = "onboarding_already_completed"
     INVALID_ONBOARDING_OPTIONS = "invalid_onboarding_options"
     GUEST_IMPORT_NOT_ALLOWED = "guest_import_not_allowed"

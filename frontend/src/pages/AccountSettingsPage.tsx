@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
-import { downloadAccountExport } from '../api/account'
+import { deleteAccount, downloadAccountExport } from '../api/account'
 import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { AttachEmailForm } from '../components/AttachEmailForm'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { SettingsSection } from '../components/SettingsSection'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -16,7 +18,8 @@ import { timezoneSelectOptions } from '../lib/timezones'
 import { isTelegramMiniApp } from '../platform/telegram'
 
 export function AccountSettingsPage() {
-  const { user, updateTimezone } = useAuth()
+  const { user, updateTimezone, logout } = useAuth()
+  const navigate = useNavigate()
   const { locale, setLocale, t } = useLocale()
   const [timezoneError, setTimezoneError] = useState<string | null>(null)
   const [isSavingTimezone, setIsSavingTimezone] = useState(false)
@@ -25,6 +28,9 @@ export function AccountSettingsPage() {
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   if (!user) {
     return null
@@ -74,6 +80,19 @@ export function AccountSettingsPage() {
       setExportError(formatApiError(err, t, 'settings.exportFailed'))
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleteError(null)
+    setIsDeleting(true)
+    try {
+      await deleteAccount()
+      logout()
+      navigate('/', { replace: true })
+    } catch (err) {
+      setDeleteError(formatApiError(err, t, 'settings.deleteFailed'))
+      setIsDeleting(false)
     }
   }
 
@@ -207,7 +226,41 @@ export function AccountSettingsPage() {
             </div>
           )}
         </section>
+
+        <section className="card profile-account" aria-labelledby="settings-delete-heading">
+          <h2 id="settings-delete-heading" className="profile-settings-subheading">
+            {t('settings.deleteTitle')}
+          </h2>
+          <div className="profile-account-password">
+            <button
+              type="button"
+              className="button button-danger-ghost"
+              onClick={() => setConfirmDelete(true)}
+            >
+              {t('settings.deleteButton')}
+            </button>
+            <p className="profile-field-hint">{t('settings.deleteHint')}</p>
+          </div>
+        </section>
       </div>
+
+      {confirmDelete ? (
+        <ConfirmDialog
+          open
+          title={t('settings.deleteConfirmTitle')}
+          message={t('settings.deleteConfirmMessage')}
+          confirmLabel={t('settings.deleteConfirm')}
+          busyLabel={t('settings.deleting')}
+          isBusy={isDeleting}
+          error={deleteError}
+          onCancel={() => {
+            if (isDeleting) return
+            setConfirmDelete(false)
+            setDeleteError(null)
+          }}
+          onConfirm={() => void handleDelete()}
+        />
+      ) : null}
     </SettingsSection>
   )
 }
