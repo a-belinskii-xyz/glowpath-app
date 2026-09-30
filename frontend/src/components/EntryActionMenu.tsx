@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Link } from 'react-router-dom'
 
 import { ConfirmDialog } from './ConfirmDialog'
+import { EntryShareDialog } from './EntryShareDialog'
+import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { formatApiError } from '../lib/errors'
 import type { MoodEntryPublic } from '../types/mood'
@@ -19,6 +21,9 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const { user } = useAuth()
+  const closeShare = useCallback(() => setShareOpen(false), [])
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -86,6 +91,13 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
           onConfirm={() => void handleConfirmDelete()}
         />
       ) : null}
+      {shareOpen ? (
+        <EntryShareDialog
+          entry={entry}
+          timeZone={user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC'}
+          onClose={closeShare}
+        />
+      ) : null}
       <button
         type="button"
         className="entry-overflow-trigger"
@@ -113,6 +125,17 @@ export function EntryActionMenu({ entry, onDelete, onToggleFavorite }: EntryActi
             onClick={handleToggleFavorite}
           >
             {entry.is_favorite ? t('entries.removeFavorite') : t('entries.addFavorite')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="entry-overflow-item"
+            onClick={() => {
+              setIsOpen(false)
+              setShareOpen(true)
+            }}
+          >
+            {t('shareImage.open')}
           </button>
           <button
             type="button"

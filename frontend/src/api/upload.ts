@@ -37,11 +37,11 @@ async function refreshTokensOnce(): Promise<boolean> {
   return refreshPromise
 }
 
-async function uploadWithAuth(
+async function uploadWithAuth<T>(
   path: string,
   formData: FormData,
   retryOnUnauthorized = true,
-): Promise<AttachmentPublic> {
+): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
   }
@@ -60,7 +60,7 @@ async function uploadWithAuth(
   if (response.status === 401 && retryOnUnauthorized) {
     const refreshed = await refreshTokensOnce()
     if (refreshed) {
-      return uploadWithAuth(path, formData, false)
+      return uploadWithAuth<T>(path, formData, false)
     }
   }
 
@@ -69,7 +69,7 @@ async function uploadWithAuth(
     throw new ApiError(parseApiError(response.status, payload), response.status)
   }
 
-  return payload as AttachmentPublic
+  return payload as T
 }
 
 export function uploadAttachment(
@@ -80,5 +80,11 @@ export function uploadAttachment(
   const formData = new FormData()
   formData.set('kind', kind)
   formData.set('file', file)
-  return uploadWithAuth(path, formData)
+  return uploadWithAuth<AttachmentPublic>(path, formData)
+}
+
+export async function postFormFile(path: string, file: File): Promise<void> {
+  const formData = new FormData()
+  formData.set('file', file)
+  await uploadWithAuth<unknown>(path, formData)
 }

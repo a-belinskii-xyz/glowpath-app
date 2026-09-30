@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { deleteMoodEntry, patchMoodEntry } from '../api/moodEntries'
@@ -7,9 +7,10 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { EntryDetailCard } from '../components/EntryDetailCard'
 import { EntryReaderPager } from '../components/EntryReaderPager'
+import { EntryShareDialog } from '../components/EntryShareDialog'
 import { HeartIcon } from '../components/HeartIcon'
 import { IconButton, IconLinkButton } from '../components/IconButton'
-import { ChevronLeftIcon, DeleteIcon, EditIcon } from '../components/icons'
+import { ChevronLeftIcon, DeleteIcon, EditIcon, ShareIcon } from '../components/icons'
 import { PatternInsights } from '../components/PatternInsights'
 import { useAuth } from '../context/AuthContext'
 import { hasAppAccess } from '../lib/authAccess'
@@ -47,6 +48,8 @@ export function EntryDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const closeShare = useCallback(() => setShareOpen(false), [])
 
   const ambientColors = entry
     ? [
@@ -208,6 +211,13 @@ export function EntryDetailPage() {
             >
               <HeartIcon filled={entry.is_favorite} />
             </IconButton>
+            <IconButton
+              label={t('shareImage.open')}
+              variant="ghost"
+              onClick={() => setShareOpen(true)}
+            >
+              <ShareIcon />
+            </IconButton>
             <IconLinkButton
               label={t('common.edit')}
               to={`/entries/${entry.id}/edit`}
@@ -245,6 +255,10 @@ export function EntryDetailPage() {
           }}
           onConfirm={() => void handleDelete()}
         />
+      ) : null}
+
+      {shareOpen && entry ? (
+        <EntryShareDialog entry={entry} timeZone={timeZone} onClose={closeShare} />
       ) : null}
 
       {feed.isLoading && !entry ? <p className="muted">{t('common.loadingEntry')}</p> : null}

@@ -21,7 +21,7 @@ import type {
   SearchMoodEntriesParams,
 } from '../types/mood'
 import { apiRequest, getApiBaseUrl } from './client'
-import { uploadAttachment } from './upload'
+import { postFormFile, uploadAttachment } from './upload'
 
 let refreshPromise: Promise<boolean> | null = null
 
@@ -253,6 +253,11 @@ export function uploadMoodEntryAttachment(
     return Promise.reject(new Error('Guest attachments disabled'))
   }
   return uploadAttachment(`/v1/mood-entries/${entryId}/attachments`, kind, file)
+}
+
+/** Bot sends the rendered share card to the user's own Telegram chat. */
+export function sendEntryShareImageToTelegram(entryId: string, file: File): Promise<void> {
+  return postFormFile(`/v1/mood-entries/${entryId}/share-image/telegram`, file)
 }
 
 export function deleteMoodEntryAttachment(entryId: string, attachmentId: string): Promise<void> {

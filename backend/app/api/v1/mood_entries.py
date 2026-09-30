@@ -36,6 +36,11 @@ from app.schemas.mood_entry import (
     MoodEntryStreakResponse,
     MoodInsightsResponse,
 )
+from app.services.entry_share_service import (
+    SHARE_IMAGE_MAX_BYTES,
+    EntryShareError,
+    send_share_image_to_telegram,
+)
 from app.services.mood_entry_service import (
     MoodEntryError,
     create_mood_entry,
@@ -412,6 +417,35 @@ async def create_attachment(
         position=attachment.position,
         transcription=attachment.transcription,
     )
+
+
+@router.post(
+    "/{entry_id}/share-image/telegram",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def send_entry_share_image_to_telegram(
+    entry_id: uuid.UUID,
+    file: Annotated[UploadFile, File()],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> Response:
+    """Bot sends the client-rendered entry card to the user's own Telegram chat."""
+    try:
+        get_mood_entry(db, user_id=current_user.id, entry_id=entry_id)
+    except MoodEntryError as exc:
+        _handle_mood_error(exc)
+        raise
+    data = file.file.read(SHARE_IMAGE_MAX_BYTES + 1)
+    try:
+        send_share_image_to_telegram(
+            user=current_user,
+            data=data,
+            filename=file.filename or "glowpath.png",
+        )
+    except EntryShareError as exc:
+        raise_http_error(exc)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put(
