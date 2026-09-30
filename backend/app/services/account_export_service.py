@@ -28,11 +28,19 @@ from app.models.tag_group import TagGroup
 from app.models.user import User
 from app.models.user_notification_schedule import UserNotificationSchedule
 from app.services.storage import ObjectStorage, StorageError
+from app.services.telegram_delivery import ensure_can_deliver, send_to_user_chat
 
 EXPORT_FORMAT_VERSION = 1
 # Small exports stay in memory; bigger ones (many photos) spill to a temp file.
 _SPOOL_MAX_BYTES = 16 * 1024 * 1024
 _CHUNK_BYTES = 64 * 1024
+# Bot API sendDocument accepts files up to 50 MB; stay well under it.
+TELEGRAM_PART_BYTES = 45 * 1024 * 1024
+_TELEGRAM_UPLOAD_TIMEOUT = 120.0
+_TELEGRAM_CAPTIONS = {
+    "ru": ("GlowPath: ваш дневник", "GlowPath: ваш дневник, часть {part} из {total}"),
+    "en": ("GlowPath: your diary", "GlowPath: your diary, part {part} of {total}"),
+}
 
 CSV_COLUMNS = (
     "date",
@@ -149,7 +157,11 @@ def _reminders_payload(db: Session, user_id: uuid.UUID) -> list[dict[str, Any]]:
     ]
 
 
-def _entry_payload(entry: MoodEntry, files: dict[uuid.UUID, str | None]) -> dict[str, Any]:
+def _entry_payload(
+    entry: MoodEntry,
+    files: dict[uuid.UUID, str | None],
+    parts: dict[uuid.UUID, int],
+) -> dict[str, Any]:
     return {
         "id": str(entry.id),
         "recorded_at": _iso(entry.recorded_at),
@@ -168,6 +180,7 @@ def _entry_payload(entry: MoodEntry, files: dict[uuid.UUID, str | None]) -> dict
             {
                 "kind": attachment.kind.value,
                 "file": files.get(attachment.id),
+                "part": parts.get(attachment.id),
                 "mime_type": attachment.mime_type,
                 "size_bytes": attachment.size_bytes,
                 "original_name": attachment.original_name,
@@ -208,21 +221,79 @@ def _entries_csv(entries: list[MoodEntry], *, zone: ZoneInfo, locale: str) -> st
     return "﻿" + buffer.getvalue()
 
 
-def build_account_export(
+# Zip headers and the central directory cost ~150 bytes per file; keep a generous margin.
+_PER_FILE_OVERHEAD = 1024
+# Room kept in part 1 for diary.json and entries.csv on top of their measured size.
+_TEXT_SLACK_BYTES = 64 * 1024
+
+
+def _new_part() -> IO[bytes]:
+    return SpooledTemporaryFile(max_size=_SPOOL_MAX_BYTES)  # noqa: SIM115
+
+
+def build_account_export_parts(
     db: Session,
     *,
     user: User,
     storage: ObjectStorage,
     locale: str,
+    max_part_bytes: int | None = None,
     now: datetime | None = None,
-) -> IO[bytes]:
-    """Write the export ZIP to a spooled temp file and return it rewound to the start."""
+) -> list[IO[bytes]]:
+    """Build the export as one or more standalone ZIP files, each rewound to the start.
+
+    Part 1 always holds ``diary.json`` and ``entries.csv``; photos and voice notes fill
+    part 1 and then spill into further parts so no part grows past ``max_part_bytes``
+    (a single file bigger than that still gets a part of its own). Every attachment
+    in ``diary.json`` names the part that carries it.
+    """
     exported_at = now or datetime.now(UTC)
     entries = _load_entries(db, user.id)
-    output: IO[bytes] = SpooledTemporaryFile(max_size=_SPOOL_MAX_BYTES)  # noqa: SIM115
+    base_payload = {
+        "format_version": EXPORT_FORMAT_VERSION,
+        "exported_at": _iso(exported_at),
+        "account": {
+            "email": user.email,
+            "timezone": user.timezone,
+            "created_at": _iso(user.created_at),
+            "theme_preference": user.theme_preference,
+            "telegram_linked": user.telegram_linked,
+        },
+        "tag_groups": _tag_groups_payload(db, user.id),
+        "goals": _goals_payload(db, user.id),
+        "note_templates": _note_templates_payload(db, user.id),
+        "reminders": _reminders_payload(db, user.id),
+    }
+    entries_csv = _entries_csv(entries, zone=_user_zone(user), locale=locale)
 
-    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        files: dict[uuid.UUID, str | None] = {}
+    def render_json(files: dict[uuid.UUID, str | None], parts: dict[uuid.UUID, int]) -> str:
+        payload = {
+            **base_payload,
+            "entries": [_entry_payload(entry, files, parts) for entry in entries],
+        }
+        return json.dumps(payload, ensure_ascii=False, indent=2)
+
+    limit = max_part_bytes if max_part_bytes is not None else float("inf")
+    # Worst-case text size: every attachment present and placed in a multi-digit part.
+    all_files: dict[uuid.UUID, str | None] = {
+        attachment.id: _attachment_path(attachment)
+        for entry in entries
+        for attachment in entry.attachments
+    }
+    worst_parts = dict.fromkeys(all_files, 999)
+    text_reserve = (
+        len(render_json(all_files, worst_parts).encode())
+        + len(entries_csv.encode())
+        + _TEXT_SLACK_BYTES
+    )
+
+    outputs = [_new_part()]
+    first = zipfile.ZipFile(outputs[0], "w", compression=zipfile.ZIP_DEFLATED)
+    current = first
+    used = text_reserve
+    files: dict[uuid.UUID, str | None] = {}
+    parts: dict[uuid.UUID, int] = {}
+    try:
         for entry in entries:
             for attachment in entry.attachments:
                 try:
@@ -231,32 +302,45 @@ def build_account_export(
                     # A lost object must not block the rest of the export.
                     files[attachment.id] = None
                     continue
+                cost = len(data) + _PER_FILE_OVERHEAD
+                part_has_files = used > (text_reserve if current is first else 0)
+                if used + cost > limit and part_has_files:
+                    if current is not first:
+                        current.close()
+                    outputs.append(_new_part())
+                    current = zipfile.ZipFile(outputs[-1], "w")
+                    used = 0
                 path = _attachment_path(attachment)
                 # Photos and audio are already compressed.
-                archive.writestr(path, data, compress_type=zipfile.ZIP_STORED)
+                current.writestr(path, data, compress_type=zipfile.ZIP_STORED)
+                used += cost
                 files[attachment.id] = path
+                parts[attachment.id] = len(outputs)
+        if current is not first:
+            current.close()
+        first.writestr("diary.json", render_json(files, parts))
+        first.writestr("entries.csv", entries_csv)
+    finally:
+        first.close()
+        if current is not first:
+            current.close()
 
-        payload = {
-            "format_version": EXPORT_FORMAT_VERSION,
-            "exported_at": _iso(exported_at),
-            "account": {
-                "email": user.email,
-                "timezone": user.timezone,
-                "created_at": _iso(user.created_at),
-                "theme_preference": user.theme_preference,
-                "telegram_linked": user.telegram_linked,
-            },
-            "tag_groups": _tag_groups_payload(db, user.id),
-            "goals": _goals_payload(db, user.id),
-            "note_templates": _note_templates_payload(db, user.id),
-            "reminders": _reminders_payload(db, user.id),
-            "entries": [_entry_payload(entry, files) for entry in entries],
-        }
-        archive.writestr("diary.json", json.dumps(payload, ensure_ascii=False, indent=2))
-        archive.writestr("entries.csv", _entries_csv(entries, zone=_user_zone(user), locale=locale))
+    for output in outputs:
+        output.seek(0)
+    return outputs
 
-    output.seek(0)
-    return output
+
+def build_account_export(
+    db: Session,
+    *,
+    user: User,
+    storage: ObjectStorage,
+    locale: str,
+    now: datetime | None = None,
+) -> IO[bytes]:
+    """Write the whole export into one ZIP and return it rewound to the start."""
+    (archive,) = build_account_export_parts(db, user=user, storage=storage, locale=locale, now=now)
+    return archive
 
 
 def iter_file(handle: IO[bytes]) -> Iterator[bytes]:
@@ -270,3 +354,48 @@ def iter_file(handle: IO[bytes]) -> Iterator[bytes]:
 def export_filename(now: datetime | None = None) -> str:
     stamp = (now or datetime.now(UTC)).strftime("%Y-%m-%d")
     return f"glowpath-export-{stamp}.zip"
+
+
+def send_account_export_to_telegram(
+    db: Session,
+    *,
+    user: User,
+    storage: ObjectStorage,
+    locale: str,
+    now: datetime | None = None,
+) -> int:
+    """Have the bot send the export into the user's chat; return the number of files sent."""
+    ensure_can_deliver(user)
+    stamp = now or datetime.now(UTC)
+    archives = build_account_export_parts(
+        db,
+        user=user,
+        storage=storage,
+        locale=locale,
+        max_part_bytes=TELEGRAM_PART_BYTES,
+        now=stamp,
+    )
+    total = len(archives)
+    single_caption, part_caption = _TELEGRAM_CAPTIONS.get(locale, _TELEGRAM_CAPTIONS["en"])
+    base_name = export_filename(stamp).removesuffix(".zip")
+    try:
+        for index, archive in enumerate(archives, start=1):
+            if total == 1:
+                filename, caption = f"{base_name}.zip", single_caption
+            else:
+                filename = f"{base_name}-part{index}of{total}.zip"
+                caption = part_caption.format(part=index, total=total)
+            send_to_user_chat(
+                user=user,
+                method="sendDocument",
+                field="document",
+                filename=filename,
+                data=archive.read(),
+                content_type="application/zip",
+                caption=caption,
+                timeout=_TELEGRAM_UPLOAD_TIMEOUT,
+            )
+    finally:
+        for archive in archives:
+            archive.close()
+    return total

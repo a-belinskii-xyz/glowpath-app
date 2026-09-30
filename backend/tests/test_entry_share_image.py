@@ -69,7 +69,7 @@ def test_share_image_sends_photo_to_linked_chat(
         calls.append({"url": url, **kwargs})
         return _FakeResponse({"ok": True})
 
-    monkeypatch.setattr("app.services.entry_share_service.httpx.post", fake_post)
+    monkeypatch.setattr("app.services.telegram_delivery.httpx.post", fake_post)
 
     response = _send(auth_client, token, entry_id)
 
@@ -94,7 +94,7 @@ def test_share_image_rejects_non_png_and_unlinked(
     def fail_post(url: str, **kwargs: Any) -> _FakeResponse:
         raise AssertionError("Telegram must not be called")
 
-    monkeypatch.setattr("app.services.entry_share_service.httpx.post", fail_post)
+    monkeypatch.setattr("app.services.telegram_delivery.httpx.post", fail_post)
 
     not_png = _send(auth_client, token, entry_id, data=b"GIF89a")
     assert not_png.status_code == 400
@@ -132,7 +132,7 @@ def test_share_image_reports_telegram_rejection(
     _link_telegram(db, email, chat_id=888)
     monkeypatch.setattr(settings, "telegram_bot_token", "test-token")
     monkeypatch.setattr(
-        "app.services.entry_share_service.httpx.post",
+        "app.services.telegram_delivery.httpx.post",
         lambda url, **kwargs: _FakeResponse(
             {"ok": False, "error_code": 403, "description": "bot was blocked by the user"}
         ),

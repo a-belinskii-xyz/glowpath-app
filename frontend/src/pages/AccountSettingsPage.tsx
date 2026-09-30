@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { deleteAccount, downloadAccountExport } from '../api/account'
+import { deleteAccount, downloadAccountExport, sendAccountExportToTelegram } from '../api/account'
 import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { AttachEmailForm } from '../components/AttachEmailForm'
@@ -15,7 +15,7 @@ import { saveBlob } from '../lib/download'
 import { formatApiError } from '../lib/errors'
 import { LOCALE_OPTIONS, type ApiLocale } from '../lib/locale'
 import { timezoneSelectOptions } from '../lib/timezones'
-import { isTelegramMiniApp } from '../platform/telegram'
+import { hapticNotification, isTelegramMiniApp } from '../platform/telegram'
 
 export function AccountSettingsPage() {
   const { user, updateTimezone, logout } = useAuth()
@@ -28,6 +28,8 @@ export function AccountSettingsPage() {
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [isSendingExport, setIsSendingExport] = useState(false)
+  const [exportNotice, setExportNotice] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -37,6 +39,7 @@ export function AccountSettingsPage() {
   }
 
   const timezoneOptions = timezoneSelectOptions(user.timezone)
+  const inMiniApp = isTelegramMiniApp()
 
   const handleTimezoneChange = async (nextTimezone: string) => {
     if (nextTimezone === user.timezone) {
@@ -83,6 +86,26 @@ export function AccountSettingsPage() {
     }
   }
 
+  const handleSendExport = async () => {
+    setExportError(null)
+    setExportNotice(null)
+    setIsSendingExport(true)
+    try {
+      const { parts } = await sendAccountExportToTelegram()
+      hapticNotification('success')
+      setExportNotice(
+        parts > 1
+          ? t('settings.exportTelegramSentParts', { count: String(parts) })
+          : t('settings.exportTelegramSent'),
+      )
+    } catch {
+      hapticNotification('error')
+      setExportError(t('settings.exportTelegramFailed'))
+    } finally {
+      setIsSendingExport(false)
+    }
+  }
+
   const handleDelete = async () => {
     setDeleteError(null)
     setIsDeleting(true)
@@ -101,6 +124,7 @@ export function AccountSettingsPage() {
       <PageErrorAlert error={timezoneError} />
       <PageErrorAlert error={resetError} />
       <PageErrorAlert error={exportError} />
+      {exportNotice ? <Alert variant="success">{exportNotice}</Alert> : null}
       {resetMessage ? <Alert variant="success">{resetMessage}</Alert> : null}
 
       <div className="settings-stack">
@@ -207,9 +231,7 @@ export function AccountSettingsPage() {
           <h2 id="settings-data-heading" className="profile-settings-subheading">
             {t('settings.dataTitle')}
           </h2>
-          {isTelegramMiniApp() ? (
-            <p className="profile-field-hint">{t('settings.exportMiniAppHint')}</p>
-          ) : (
+          {inMiniApp ? null : (
             <div className="profile-account-password">
               <button
                 type="button"
@@ -225,6 +247,26 @@ export function AccountSettingsPage() {
               <p className="profile-field-hint">{t('settings.exportHint')}</p>
             </div>
           )}
+          {user.telegram_linked ? (
+            <div className="profile-account-password">
+              <button
+                type="button"
+                className="button button-secondary"
+                disabled={isSendingExport}
+                onClick={() => void handleSendExport()}
+              >
+                <StableButtonLabel
+                  active={
+                    isSendingExport
+                      ? t('settings.exportTelegramSending')
+                      : t('settings.exportTelegramButton')
+                  }
+                  labels={[t('settings.exportTelegramButton'), t('settings.exportTelegramSending')]}
+                />
+              </button>
+              <p className="profile-field-hint">{t('settings.exportTelegramHint')}</p>
+            </div>
+          ) : null}
         </section>
 
         <section className="card profile-account" aria-labelledby="settings-delete-heading">
