@@ -29,9 +29,8 @@ router = APIRouter(tags=["wallet"])
 
 
 def _require_wallet(user: User) -> None:
-    marketplace_on = is_feature_enabled_for_user(FeatureFlag.ICON_MARKETPLACE, user)
-    achievements_on = is_feature_enabled_for_user(FeatureFlag.ACHIEVEMENTS, user)
-    if not marketplace_on and not achievements_on:
+    # Tokens are spent only in the marketplace, so the wallet follows its flag.
+    if not is_feature_enabled_for_user(FeatureFlag.ICON_MARKETPLACE, user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=structured_detail(

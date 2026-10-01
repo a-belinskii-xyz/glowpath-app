@@ -6,6 +6,8 @@ import json
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import pytest
+from app.config import settings
 from app.core.billing import Entitlement, PlanSlug
 from app.core.error_codes import ErrorCode
 from app.models.payment import Payment
@@ -25,8 +27,17 @@ def _auth_headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_plans_catalog_is_public(auth_client: TestClient) -> None:
-    response = auth_client.get("/v1/billing/plans")
+@pytest.fixture(autouse=True)
+def _billing_on_for_everyone(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "feature_billing", True)
+    monkeypatch.setattr(settings, "feature_billing_percent", 100)
+    monkeypatch.setattr(settings, "feature_billing_emails", "")
+    monkeypatch.setattr(settings, "feature_billing_user_ids", "")
+
+
+def test_plans_catalog(auth_client: TestClient, mailer: FakeEmailService) -> None:
+    token = register_verify_and_login(auth_client, mailer, "plans-catalog@example.com")
+    response = auth_client.get("/v1/billing/plans", headers=_auth_headers(token))
     assert response.status_code == 200
     body = response.json()
     assert body["currency"] == "RUB"
@@ -38,6 +49,40 @@ def test_plans_catalog_is_public(auth_client: TestClient) -> None:
     assert body["current"]["plan_slug"] == "free"
     assert body["current"]["is_paid"] is False
     assert "fake" in body["providers"]
+
+
+def test_plans_catalog_hidden_from_anonymous(auth_client: TestClient) -> None:
+    response = auth_client.get("/v1/billing/plans")
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == ErrorCode.BILLING_DISABLED.value
+
+
+def test_billing_only_for_allowlisted_testers(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "feature_billing_percent", 0)
+    monkeypatch.setattr(settings, "feature_billing_emails", "Tester@Example.com")
+    outsider = register_verify_and_login(auth_client, mailer, "plans-outsider@example.com")
+    tester = register_verify_and_login(auth_client, mailer, "tester@example.com")
+
+    me = auth_client.get("/v1/auth/me", headers=_auth_headers(outsider)).json()
+    assert me["features"]["billing"] is False
+    for method, path, body in (
+        ("get", "/v1/billing/plans", None),
+        ("get", "/v1/billing/subscription", None),
+        ("post", "/v1/billing/checkout", {"plan_slug": "plus", "interval": "month"}),
+        ("post", "/v1/billing/cancel", None),
+    ):
+        response = auth_client.request(method, path, headers=_auth_headers(outsider), json=body)
+        assert response.status_code == 403, path
+        assert response.json()["detail"]["code"] == ErrorCode.BILLING_DISABLED.value
+
+    me = auth_client.get("/v1/auth/me", headers=_auth_headers(tester)).json()
+    assert me["features"]["billing"] is True
+    plans = auth_client.get("/v1/billing/plans", headers=_auth_headers(tester))
+    assert plans.status_code == 200
 
 
 def test_me_includes_free_plan_by_default(
