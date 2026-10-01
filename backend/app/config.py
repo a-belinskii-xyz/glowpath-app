@@ -160,8 +160,9 @@ class Settings(BaseSettings):
         default=True,
         validation_alias="FEATURE_ICON_MARKETPLACE",
     )
+    # Monetization is hidden by default: only allowlisted testers see it (GP-15).
     feature_icon_marketplace_percent: int = Field(
-        default=100,
+        default=0,
         ge=0,
         le=100,
         validation_alias="FEATURE_ICON_MARKETPLACE_PERCENT",
@@ -173,6 +174,26 @@ class Settings(BaseSettings):
     feature_icon_marketplace_user_ids: str = Field(
         default="",
         validation_alias="FEATURE_ICON_MARKETPLACE_USER_IDS",
+    )
+
+    # Plans page and billing API (Free / Plus / Pro). Testers only by default.
+    feature_billing: bool = Field(
+        default=True,
+        validation_alias="FEATURE_BILLING",
+    )
+    feature_billing_percent: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        validation_alias="FEATURE_BILLING_PERCENT",
+    )
+    feature_billing_emails: str = Field(
+        default="",
+        validation_alias="FEATURE_BILLING_EMAILS",
+    )
+    feature_billing_user_ids: str = Field(
+        default="",
+        validation_alias="FEATURE_BILLING_USER_IDS",
     )
 
     # Achievements (catalog unlocks + token / pack / icon rewards).

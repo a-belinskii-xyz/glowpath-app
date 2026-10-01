@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppBootGate } from './components/AppBootGate'
 import { AuthCardLayout } from './components/AuthCardLayout'
-import { AppRoute, AccountRoute, RegisteredOnly } from './components/AppRoute'
+import { AppRoute, AccountRoute, BillingOnly, RegisteredOnly } from './components/AppRoute'
 import { GuestRoute } from './components/GuestRoute'
 import { Layout } from './components/Layout'
 import { AmbientGlowProvider } from './context/AmbientGlowContext'
@@ -55,7 +55,9 @@ function App() {
                 <Routes>
                   <Route element={<Layout />}>
                     <Route index element={<HomePage />} />
-                    <Route path="plans" element={<PlansPage />} />
+                    <Route element={<BillingOnly />}>
+                      <Route path="plans" element={<PlansPage />} />
+                    </Route>
                     <Route path="verify-email" element={<VerifyEmailPage />} />
                     <Route path="auth/google/callback" element={<GoogleCallbackPage />} />
                     <Route path="auth/telegram/callback" element={<TelegramCallbackPage />} />

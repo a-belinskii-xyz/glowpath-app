@@ -86,7 +86,7 @@ function ShellChrome({
   const location = useLocation()
   const hideBottomNav = isFocusedEntryFlow(location.pathname)
   const guestShell = isGuestDiaryMode()
-  const showMarket = Boolean(user?.features?.icon_marketplace) || guestShell
+  const showMarket = Boolean(user?.features?.icon_marketplace)
   const showAchievements = Boolean(user?.features?.achievements) || guestShell
   // Plans has no sidebar entry of its own; it lives under the Profile hub.
   const profileLinkActive =
@@ -138,7 +138,6 @@ function ShellChrome({
                 {location.pathname !== '/register' ? (
                   <Link to="/register">{t('nav.register')}</Link>
                 ) : null}
-                {location.pathname !== '/plans' ? <Link to="/plans">{t('nav.plans')}</Link> : null}
               </>
             ) : null}
           </nav>

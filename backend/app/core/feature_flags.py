@@ -32,6 +32,7 @@ class FeatureUser(Protocol):
 class FeatureFlag(StrEnum):
     WEEKLY_FREQUENT_TAGS = "weekly_frequent_tags"
     ICON_MARKETPLACE = "icon_marketplace"
+    BILLING = "billing"
     ACHIEVEMENTS = "achievements"
     GUEST_LOCAL_DIARY = "guest_local_diary"
     NOTIFICATIONS = "notifications"
@@ -78,6 +79,13 @@ def targeting_for(flag: FeatureFlag) -> FeatureTargeting:
                 email.lower() for email in parse_csv(settings.feature_icon_marketplace_emails)
             ),
             user_ids=parse_uuid_csv(settings.feature_icon_marketplace_user_ids),
+        )
+    if flag is FeatureFlag.BILLING:
+        return FeatureTargeting(
+            enabled=settings.feature_billing,
+            percent=settings.feature_billing_percent,
+            emails=frozenset(email.lower() for email in parse_csv(settings.feature_billing_emails)),
+            user_ids=parse_uuid_csv(settings.feature_billing_user_ids),
         )
     if flag is FeatureFlag.ACHIEVEMENTS:
         return FeatureTargeting(
@@ -146,6 +154,10 @@ def features_for_user(user: FeatureUser) -> dict[str, bool]:
         ),
         FeatureFlag.ICON_MARKETPLACE.value: is_feature_enabled_for_user(
             FeatureFlag.ICON_MARKETPLACE,
+            user,
+        ),
+        FeatureFlag.BILLING.value: is_feature_enabled_for_user(
+            FeatureFlag.BILLING,
             user,
         ),
         FeatureFlag.ACHIEVEMENTS.value: is_feature_enabled_for_user(

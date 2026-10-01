@@ -196,6 +196,7 @@ class ErrorCode(StrEnum):
     ACHIEVEMENT_NOT_UNLOCKED = "achievement_not_unlocked"
 
     # Billing / subscriptions
+    BILLING_DISABLED = "billing_disabled"
     PLAN_NOT_FOUND = "plan_not_found"
     PLAN_NOT_PURCHASABLE = "plan_not_purchasable"
     PLAN_PRICE_UNAVAILABLE = "plan_price_unavailable"

@@ -28,7 +28,7 @@ from app.services.achievements import (
     list_achievements_for_user,
     mark_achievement_seen,
 )
-from app.services.achievements.service import serialize_achievement_public
+from app.services.achievements.service import rewards_visible, serialize_achievement_public
 
 router = APIRouter(tags=["achievements"])
 
@@ -53,9 +53,7 @@ def get_achievements(
     _require_achievements(current_user)
     items = list_achievements_for_user(db, user=current_user, locale=locale)
     db.commit()
-    return AchievementListResponse(
-        items=[AchievementPublic.model_validate(item) for item in items]
-    )
+    return AchievementListResponse(items=[AchievementPublic.model_validate(item) for item in items])
 
 
 @router.get("/summary", response_model=AchievementSummaryResponse)
@@ -105,6 +103,7 @@ def post_achievement_seen(
             achievement,
             progress=progress,
             locale=locale,
+            show_rewards=rewards_visible(current_user),
         )
         db.commit()
     except AchievementError as exc:
