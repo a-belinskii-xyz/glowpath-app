@@ -34,6 +34,7 @@ class EmailNotifier(BaseNotifier):
                 subject=message.subject,
                 body=message.body,
                 html_body=message.html_body,
+                headers=(message.metadata or {}).get("email_headers"),
             )
         except OSError as exc:
             raise NotificationError(

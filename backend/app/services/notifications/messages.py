@@ -18,6 +18,7 @@ def daily_mood_reminder_message(
     channel: NotificationChannel,
     hour: int = 12,
     locale: str = DEFAULT_LOCALE,
+    unsubscribe_token: str | None = None,
 ) -> NotificationMessage:
     source = format_mood_entry_source(
         channel=channel.value,
@@ -28,9 +29,7 @@ def daily_mood_reminder_message(
     intro = daily_reminder_intro(hour=hour, locale=locale)
 
     if channel is NotificationChannel.TELEGRAM:
-        prompt = (
-            "Log your mood in GlowPath." if locale != "ru" else "Запиши настроение в GlowPath."
-        )
+        prompt = "Log your mood in GlowPath." if locale != "ru" else "Запиши настроение в GlowPath."
         button = "Log mood" if locale != "ru" else "Записать настроение"
         markup = _telegram_open_markup(startapp=STARTAPP_CREATE_DAILY, button_text=button)
         return NotificationMessage(
@@ -71,8 +70,7 @@ def daily_mood_reminder_message(
             f'<p><a href="{log_url}">Log your mood</a></p>'
             "<p>You can change reminder settings in your profile.</p>"
         )
-    return NotificationMessage(
-        subject=subject,
+    body, html_body, metadata = _with_unsubscribe(
         body=body,
         html_body=html_body,
         metadata={
@@ -80,7 +78,10 @@ def daily_mood_reminder_message(
             "channel": channel.value,
             "source": source,
         },
+        token=unsubscribe_token,
+        locale=locale,
     )
+    return NotificationMessage(subject=subject, body=body, html_body=html_body, metadata=metadata)
 
 
 def goal_reminder_message(
@@ -88,6 +89,7 @@ def goal_reminder_message(
     channel: NotificationChannel,
     goal_labels: list[str],
     locale: str = DEFAULT_LOCALE,
+    unsubscribe_token: str | None = None,
 ) -> NotificationMessage:
     source = format_mood_entry_source(
         channel=channel.value,
@@ -95,11 +97,7 @@ def goal_reminder_message(
     )
     goals_url = f"{settings.frontend_url.rstrip('/')}/goals?{urlencode({'from': source})}"
     bullet_lines = "\n".join(f"  • {label}" for label in goal_labels)
-    subject = (
-        "Your weekly goals need attention"
-        if locale != "ru"
-        else "Цели на неделю отстают"
-    )
+    subject = "Your weekly goals need attention" if locale != "ru" else "Цели на неделю отстают"
 
     if channel is NotificationChannel.TELEGRAM:
         heading = (
@@ -138,8 +136,7 @@ def goal_reminder_message(
         f'<p><a href="{goals_url}">Review your goals</a></p>'
         "<p>You can turn goal reminders off in notification settings.</p>"
     )
-    return NotificationMessage(
-        subject=subject,
+    body, html_body, metadata = _with_unsubscribe(
         body=body,
         html_body=html_body,
         metadata={
@@ -148,7 +145,47 @@ def goal_reminder_message(
             "source": source,
             "goals": goal_labels,
         },
+        token=unsubscribe_token,
+        locale=locale,
     )
+    return NotificationMessage(subject=subject, body=body, html_body=html_body, metadata=metadata)
+
+
+def unsubscribe_page_url(token: str) -> str:
+    return f"{settings.frontend_url.rstrip('/')}/unsubscribe?{urlencode({'token': token})}"
+
+
+def one_click_unsubscribe_url(token: str) -> str:
+    # The web frontend proxies /v1 to the API, so one public origin serves both.
+    base = settings.frontend_url.rstrip("/")
+    return f"{base}/v1/notification-settings/unsubscribe?{urlencode({'token': token})}"
+
+
+def _with_unsubscribe(
+    *,
+    body: str,
+    html_body: str,
+    metadata: dict[str, Any],
+    token: str | None,
+    locale: str,
+) -> tuple[str, str, dict[str, Any]]:
+    """Append an unsubscribe link and RFC 8058 headers to a reminder email."""
+    if not token:
+        return body, html_body, metadata
+    page_url = unsubscribe_page_url(token)
+    label = "Отписаться от писем" if locale == "ru" else "Unsubscribe from emails"
+    body = f"{body}\n{label}: {page_url}\n"
+    html_body = (
+        f'{html_body}<p style="font-size:12px;color:#888"><a href="{page_url}">{label}</a></p>'
+    )
+    metadata = {
+        **metadata,
+        "email_headers": {
+            "List-Unsubscribe": f"<{one_click_unsubscribe_url(token)}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+    }
+    return body, html_body, metadata
 
 
 def _telegram_open_markup(*, startapp: str, button_text: str) -> dict[str, Any] | None:

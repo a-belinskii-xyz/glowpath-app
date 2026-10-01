@@ -123,6 +123,33 @@ def update_schedule(
     return list_settings(db, user_id=user_id, locale=locale)
 
 
+def unsubscribe_email(db: Session, *, user_id: uuid.UUID) -> int:
+    """Stop all email reminders for a user (unsubscribe link and one-click header).
+
+    Email is dropped from multi-channel schedules; email-only schedules are switched off
+    so the channel list stays valid. Returns how many schedules changed.
+    """
+    rows = db.scalars(
+        select(UserNotificationSchedule).where(UserNotificationSchedule.user_id == user_id)
+    ).all()
+    changed = 0
+    email = NotificationChannel.EMAIL.value
+    for row in rows:
+        channels = list(row.channels or [])
+        if email not in channels:
+            continue
+        others = [channel for channel in channels if channel != email]
+        if others:
+            row.channels = others
+        elif row.enabled:
+            row.enabled = False
+        else:
+            continue
+        changed += 1
+    db.commit()
+    return changed
+
+
 def serialize_schedule(row: UserNotificationSchedule) -> dict[str, Any]:
     return _serialize(row).model_dump(mode="json")
 

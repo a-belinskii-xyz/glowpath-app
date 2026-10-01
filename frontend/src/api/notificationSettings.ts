@@ -31,3 +31,10 @@ export function patchNotificationSchedule(
     body,
   })
 }
+
+export function unsubscribeFromEmails(token: string): Promise<{ unsubscribed: boolean }> {
+  return apiRequest<{ unsubscribed: boolean }>(
+    `/v1/notification-settings/unsubscribe?${new URLSearchParams({ token }).toString()}`,
+    { method: 'POST' },
+  )
+}

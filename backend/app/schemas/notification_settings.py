@@ -115,3 +115,7 @@ class ReminderTickResponse(BaseModel):
     goal_reminders_sent: int
     skipped: int
     errors: int
+
+
+class UnsubscribeResponse(BaseModel):
+    unsubscribed: bool

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.config import settings
 from app.core.i18n import DEFAULT_LOCALE, normalize_locale, resolve_label
 from app.core.identity import user_has_verified_identity
+from app.core.security import create_email_unsubscribe_token
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.user import User
@@ -237,6 +238,7 @@ def _deliver_schedule(
                     channel=channel,
                     hour=local_hour,
                     locale=locale,
+                    unsubscribe_token=_unsubscribe_token(user, channel),
                 ),
             )
         return True
@@ -254,11 +256,18 @@ def _deliver_schedule(
                     channel=channel,
                     goal_labels=labels,
                     locale=locale,
+                    unsubscribe_token=_unsubscribe_token(user, channel),
                 ),
             )
         return True
 
     return False
+
+
+def _unsubscribe_token(user: User, channel: NotificationChannel) -> str | None:
+    if channel is NotificationChannel.EMAIL:
+        return create_email_unsubscribe_token(user.id)
+    return None
 
 
 def _parse_channels(raw: list[str]) -> list[NotificationChannel]:

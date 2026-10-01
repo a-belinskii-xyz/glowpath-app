@@ -46,6 +46,11 @@ services:
         value: "300"
       - key: TELEGRAM_BOT_SERVICE_TOKEN
         sync: false
+      # Mail via Resend HTTPS API (Render free blocks SMTP ports).
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
       - key: FRONTEND_URL
         fromService:
           name: glowpath-web

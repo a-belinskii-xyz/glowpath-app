@@ -1,5 +1,5 @@
 import re
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 
 import pytest
 from app.api.deps import get_email_service, get_storage_service
@@ -61,8 +61,9 @@ class FakeEmailService(EmailService):
         subject: str,
         body: str,
         html_body: str | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
-        del html_body
+        del html_body, headers
         self._outbox.append(SentEmail(to=to, subject=subject, body=body))
 
 
