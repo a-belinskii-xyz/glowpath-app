@@ -185,6 +185,8 @@ The Compose `reminders` service (`python -m app.jobs.reminders`) polls every `NO
 
 Telegram reminders carry a Mini App button (`startapp=create_daily` or `goal_reminder`). An entry saved from a reminder stores `source` as `{channel}:{kind}` for analytics; it is not returned in public entry JSON.
 
+Every sent reminder is logged in `notification_deliveries` with a random token that reminder links carry as `?n=`; the web app reports it to `POST /v1/notification-settings/engaged`. A reminder counts as answered when its link was followed or an entry was created before the next one. Unanswered reminders in a row stretch the gap (1, 1, 2, 4, 4, 7, 7 days); after seven the schedule sends one "pausing reminders" message and sets `paused_at`. Turning the schedule back on clears the pause and starts a fresh count (`backoff_reset_at`). Logic: `app/services/notifications/backoff.py`.
+
 ## Feature flags
 
 Flags are env variables read at process start; restart `app` after changing them. Each rollout flag has a master switch, a percent (stable hash bucket) and allowlists:

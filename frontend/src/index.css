@@ -8254,6 +8254,17 @@ code {
   font-size: 0.85rem;
 }
 
+.onboarding-email-reminders {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.onboarding-email-reminders .form-hint {
+  margin: 0;
+}
+
 @media (max-width: 899px) {
   html,
   body {

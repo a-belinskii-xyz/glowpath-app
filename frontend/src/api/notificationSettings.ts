@@ -38,3 +38,10 @@ export function unsubscribeFromEmails(token: string): Promise<{ unsubscribed: bo
     { method: 'POST' },
   )
 }
+
+export function reportNotificationEngaged(token: string): Promise<void> {
+  return apiRequest<void>(
+    `/v1/notification-settings/engaged?${new URLSearchParams({ token }).toString()}`,
+    { method: 'POST' },
+  )
+}

@@ -23,6 +23,7 @@ type ScheduleDraft = {
   timeOfDay: string
   intervalDays: number
   telegramChannel: boolean
+  paused: boolean
 }
 
 function draftFromSchedule(schedule: NotificationSchedule): ScheduleDraft {
@@ -31,6 +32,7 @@ function draftFromSchedule(schedule: NotificationSchedule): ScheduleDraft {
     timeOfDay: schedule.time_of_day.slice(0, 5),
     intervalDays: schedule.interval_days,
     telegramChannel: schedule.channels.includes('telegram'),
+    paused: schedule.paused_at !== null,
   }
 }
 
@@ -219,6 +221,9 @@ export function NotificationSettingsForm({ timezone }: { timezone: string }) {
               />
               <span>{t('profile.scheduleEnabled')}</span>
             </label>
+            {draft.paused && !locked ? (
+              <p className="form-hint">{t('profile.remindersPaused')}</p>
+            ) : null}
             <label className="form-field" htmlFor={`${kind}-time`}>
               <span className="form-label">{t('profile.reminderTime')}</span>
               <input

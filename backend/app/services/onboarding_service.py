@@ -19,6 +19,7 @@ from app.core.onboarding_packs import (
     load_onboarding_catalog,
 )
 from app.models.user import User
+from app.services.notification_settings_service import enable_daily_email_reminder
 from app.services.user_provisioning import provision_composed_defaults
 
 
@@ -113,6 +114,7 @@ def complete_onboarding(
     option_keys: list[str] | None,
     tag_group_slugs: list[str] | None = None,
     note_template_slugs: list[str] | None = None,
+    email_reminders: bool = False,
 ) -> User:
     if user.onboarding_completed_at is not None:
         raise OnboardingError(
@@ -146,6 +148,9 @@ def complete_onboarding(
                 include_goals=False,
                 update_existing_visibility=False,
             )
+
+    if email_reminders:
+        enable_daily_email_reminder(db, user=user)
 
     user.onboarding_completed_at = datetime.now(UTC)
     db.commit()

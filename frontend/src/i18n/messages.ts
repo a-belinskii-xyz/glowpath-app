@@ -714,6 +714,7 @@ export const en = {
     reminderTimeHint: 'Reminders arrive within 5 minutes after the chosen time.',
     reminderFrequency: 'How often',
     scheduleEnabled: 'Send this reminder',
+    remindersPaused: 'We paused this reminder because the last ones went unanswered. Turn it on again if you want it back.',
     notificationsTestingNotice:
       'Notifications are off for now while the app is in testing. We will turn them on soon.',
     notificationsWorkerOfflineNotice:
@@ -935,6 +936,8 @@ export const en = {
     skipHint: 'Keep the default tags and templates',
     finish: 'Finish setup',
     finishing: 'Saving…',
+    emailReminders: 'Remind me by email once a day at 21:00',
+    emailRemindersHint: 'If you stop opening them, we write less often and then stop. You can turn reminders off any time.',
   },
   errors: {
     passwordsMismatch: 'Passwords do not match',
@@ -2054,6 +2057,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     reminderTimeHint: 'Напоминание приходит в течение 5 минут после выбранного времени.',
     reminderFrequency: 'Как часто',
     scheduleEnabled: 'Отправлять это напоминание',
+    remindersPaused: 'Мы поставили напоминание на паузу: на последние вы не отвечали. Включите его снова, если хотите.',
     notificationsTestingNotice:
       'Уведомления временно отключены, так как приложение находится на этапе обкатки и тестирования. Скоро включим!',
     notificationsWorkerOfflineNotice:
@@ -2277,6 +2281,8 @@ export const ru: DeepStringLeaves<typeof en> = {
     skipHint: 'Оставить базовые теги и шаблоны',
     finish: 'Завершить',
     finishing: 'Сохраняем…',
+    emailReminders: 'Напоминать на почту раз в день в 21:00',
+    emailRemindersHint: 'Если перестанете их открывать, будем писать реже, а потом перестанем. Выключить можно в любой момент.',
   },
   errors: {
     passwordsMismatch: 'Пароли не совпадают',
