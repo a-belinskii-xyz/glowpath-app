@@ -68,6 +68,8 @@ class User(TimestampMixin, Base):
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_staff: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     theme_preference: Mapped[str] = mapped_column(String(16), server_default="system")
+    # Interface language picked on the site or in the Mini App; null until the app sends it.
+    locale: Mapped[str | None] = mapped_column(String(16))
 
     telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger)
