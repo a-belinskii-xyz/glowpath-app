@@ -66,7 +66,7 @@ def test_export_contains_entries_csv_and_attachments(
     assert {"diary.json", "entries.csv"} <= names
 
     payload = json.loads(archive.read("diary.json"))
-    assert payload["format_version"] == 1
+    assert payload["format_version"] == 2
     assert payload["account"]["email"] == "export@example.com"
     assert payload["tag_groups"]
     assert len(payload["entries"]) == 1
