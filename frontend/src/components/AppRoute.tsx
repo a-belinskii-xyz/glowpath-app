@@ -51,6 +51,18 @@ export function AccountRoute() {
   return <Navigate to="/login" replace state={{ from: location }} />
 }
 
+/** Plans and checkout are for allowlisted testers only (GP-15). */
+export function BillingOnly() {
+  const { user, isLoading } = useAuth()
+  const { t } = useLocale()
+
+  if (isLoading) {
+    return <p className="muted">{t('common.loading')}</p>
+  }
+
+  return user?.features?.billing ? <Outlet /> : <Navigate to="/" replace />
+}
+
 /** Account-backed settings have nothing to show in the local guest diary. */
 export function RegisteredOnly() {
   const { isAuthenticated } = useAuth()

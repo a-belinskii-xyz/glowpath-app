@@ -98,6 +98,12 @@ class Goal(TimestampMixin, Base):
         nullable=False,
         server_default=DEFAULT_GOAL_ICON,
     )
+    # Set when this row was created by restoring an export archive (GP-20).
+    restore_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("diary_restores"), ondelete="SET NULL"),
+        nullable=True,
+    )
 
     user: Mapped["User"] = relationship(back_populates="goals")
     entry_links: Mapped[list["MoodEntryGoal"]] = relationship(back_populates="goal")

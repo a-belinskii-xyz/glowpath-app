@@ -42,7 +42,8 @@ All backend settings live in `backend/app/config.py`; `backend/.env.example` lis
 | Flag | Default | Controls |
 |------|---------|----------|
 | `FEATURE_NOTIFICATIONS_ENABLED` | `false` | Reminder delivery and the settings UI |
-| `FEATURE_ICON_MARKETPLACE` | `true` | Market and wallet |
+| `FEATURE_ICON_MARKETPLACE` | `true`, percent `0` | Market, wallet and token/pack rewards on achievements |
+| `FEATURE_BILLING` | `true`, percent `0` | Plans page and `/v1/billing/*` (webhooks stay open) |
 | `FEATURE_ACHIEVEMENTS` | `true` | Achievements |
 | `FEATURE_WEEKLY_FREQUENT_TAGS` | `false` | "Often this week" tag shortcuts |
 | `FEATURE_GUEST_LOCAL_DIARY` | `false` | Guest experiment |
@@ -201,7 +202,9 @@ FEATURE_WEEKLY_FREQUENT_TAGS_PERCENT=20
 FEATURE_WEEKLY_FREQUENT_TAGS=false
 ```
 
-The same pattern applies to `FEATURE_ICON_MARKETPLACE*`, `FEATURE_ACHIEVEMENTS*` and `FEATURE_GUEST_LOCAL_DIARY*` (see [guest-local-diary-experiment.md](guest-local-diary-experiment.md)). All variables are listed in `backend/.env.example`.
+Monetization (`FEATURE_ICON_MARKETPLACE*`, `FEATURE_BILLING*`) defaults to percent `0`: only people in the `_EMAILS` / `_USER_IDS` allowlists see it. Achievements stay on for everyone; their rewards are still granted but only shown where the marketplace is on.
+
+The same pattern applies to `FEATURE_ICON_MARKETPLACE*`, `FEATURE_BILLING*`, `FEATURE_ACHIEVEMENTS*` and `FEATURE_GUEST_LOCAL_DIARY*` (see [guest-local-diary-experiment.md](guest-local-diary-experiment.md)). All variables are listed in `backend/.env.example`.
 
 ## Telegram
 
@@ -319,6 +322,14 @@ Open http://localhost:8080; MailHog stays on http://localhost:8025. `make down-p
 ## Pre-commit
 
 `make pre-commit-install` once per clone. Before each commit the hooks run ruff (format + lint), mypy and pytest. Run them manually with `make pre-commit`.
+
+## Diary export and restore
+
+`GET /v1/account/export` returns a ZIP with `diary.json` (the source of truth), `entries.csv` (for people) and the photos and voice notes; the Telegram export splits it into parts under 45 MB. `diary.json` is described by the pydantic models in `backend/app/services/diary_archive/schema.py`, which the export builds and the restore reads.
+
+Restore (`/v1/account/restores`) is two steps: upload the part(s) and get a preview, then `apply` or `cancel`. It merges: entries already in the diary (same id, or restored before from the same archive id via `mood_entries.origin_id`) are skipped, and tag groups, tags, goals and note templates are matched by slug. Rows it creates carry `restore_id` (see `diary_restores`); restored entries also get `source = "restore"`. Account settings and reminders are never touched.
+
+Changing the format: bump `CURRENT_VERSION`, update the models, and add one step to `UPGRADES` in `diary_archive/upgrades.py` that turns the previous version into the new one. Never edit a released step, and keep a fixture of every old version in `backend/tests/fixtures/`.
 
 ## Tasks and branches
 

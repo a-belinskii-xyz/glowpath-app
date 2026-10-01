@@ -1,0 +1,98 @@
+{
+  "format_version": 1,
+  "exported_at": "2026-09-30T10:00:00+00:00",
+  "account": {
+    "email": "old@example.com",
+    "timezone": "Europe/Moscow",
+    "created_at": "2026-01-01T09:00:00+00:00",
+    "theme_preference": "system",
+    "telegram_linked": false
+  },
+  "tag_groups": [
+    {
+      "slug": "v1-life",
+      "labels": {"en": "Life", "ru": "Жизнь"},
+      "show_on_entry": true,
+      "tags": [
+        {"slug": "v1-walk", "labels": {"en": "Walk", "ru": "Прогулка"}, "color": "#22c55e"},
+        {"slug": "v1-shared", "labels": {"en": "Shared", "ru": "Общий"}, "color": "#94a3b8"}
+      ]
+    },
+    {
+      "slug": "v1-work",
+      "labels": {"en": "Work", "ru": "Работа"},
+      "show_on_entry": false,
+      "tags": [
+        {"slug": "v1-shared", "labels": {"en": "Shared", "ru": "Общий"}, "color": "#f97316"}
+      ]
+    }
+  ],
+  "goals": [
+    {
+      "slug": "v1-water",
+      "labels": {"en": "Water", "ru": "Вода"},
+      "tracking_kind": "quantity",
+      "times_per_week": 7,
+      "target_amount": 8,
+      "unit": "glasses",
+      "starts_on": "2026-01-01",
+      "ends_on": null,
+      "color": "#60a5fa"
+    }
+  ],
+  "note_templates": [
+    {"slug": "v1-evening", "labels": {"en": "Evening"}, "bodies": {"en": "What went well?"}}
+  ],
+  "reminders": [
+    {
+      "kind": "daily_mood",
+      "enabled": true,
+      "time_of_day": "21:00",
+      "interval_days": 1,
+      "days_of_week": null,
+      "channels": ["telegram"]
+    }
+  ],
+  "entries": [
+    {
+      "id": "0b1f2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+      "recorded_at": "2026-03-10T18:30:00+00:00",
+      "logged_on": "2026-03-10",
+      "logged_timezone": "Europe/Moscow",
+      "score": 4,
+      "score_color": "#84cc16",
+      "note": "Старая запись из v1",
+      "is_favorite": true,
+      "tags": [
+        {"slug": "v1-walk", "labels": {"en": "Walk"}},
+        {"slug": "v1-shared", "labels": {"en": "Shared"}}
+      ],
+      "goals": [{"slug": "v1-water", "labels": {"en": "Water"}, "amount": 6}],
+      "attachments": [
+        {
+          "kind": "photo",
+          "file": "attachments/0b1f2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d/photo.jpg",
+          "part": 1,
+          "mime_type": "image/jpeg",
+          "size_bytes": 10,
+          "original_name": "photo.jpg",
+          "position": 1,
+          "transcription": null
+        }
+      ]
+    },
+    {
+      "id": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+      "recorded_at": "2026-03-11T08:00:00+00:00",
+      "logged_on": null,
+      "logged_timezone": null,
+      "score": 2,
+      "score_color": "#f97316",
+      "note": null,
+      "is_favorite": false,
+      "tags": [],
+      "goals": [],
+      "attachments": []
+    }
+  ]
+}

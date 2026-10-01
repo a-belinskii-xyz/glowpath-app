@@ -4,6 +4,7 @@ from app.models.achievement_reward import AchievementReward
 from app.models.auth_token import AuthToken
 from app.models.catalog_icon import CatalogIcon
 from app.models.catalog_icon_search_tag import CatalogIconSearchTag
+from app.models.diary_restore import DiaryRestore
 from app.models.goal import Goal
 from app.models.guest_device import GuestDevice
 from app.models.icon_pack import IconPack
@@ -41,6 +42,7 @@ __all__ = [
     "Base",
     "CatalogIcon",
     "CatalogIconSearchTag",
+    "DiaryRestore",
     "Goal",
     "GuestDevice",
     "IconPack",

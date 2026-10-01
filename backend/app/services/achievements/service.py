@@ -115,6 +115,15 @@ def unlock_rates_by_achievement(
     return rates
 
 
+def rewards_visible(user: User) -> bool:
+    """Token and pack rewards only mean something where the marketplace is on.
+
+    Rewards are still granted for everyone, so a user added to the marketplace
+    allowlist later finds the tokens and packs they already earned.
+    """
+    return is_feature_enabled_for_user(FeatureFlag.ICON_MARKETPLACE, user)
+
+
 def evaluate_user_achievements(
     db: Session,
     *,
@@ -202,6 +211,7 @@ def serialize_achievement_public(
     *,
     progress: UserAchievement | None,
     locale: str,
+    show_rewards: bool,
     unlock_percent: float | None = None,
 ) -> dict[str, Any]:
     unlocked = progress is not None and progress.unlocked_at is not None
@@ -226,7 +236,9 @@ def serialize_achievement_public(
         serialize_reward_public(db, reward, locale=locale)
         for reward in sorted(achievement.rewards, key=lambda r: r.sort_order)
     ]
-    if unlocked and progress is not None and progress.rewards_snapshot:
+    if not show_rewards:
+        rewards = []
+    elif unlocked and progress is not None and progress.rewards_snapshot:
         # Prefer live cover/preview ids when snapshot is older.
         live_by_kind = {
             (r.get("kind"), r.get("pack_id") or r.get("catalog_icon_id")): r for r in rewards
@@ -284,12 +296,14 @@ def list_achievements_for_user(
         db,
         achievement_ids=[achievement.id for achievement in achievements],
     )
+    show_rewards = rewards_visible(user)
     return [
         serialize_achievement_public(
             db,
             achievement,
             progress=progress_map.get(achievement.id),
             locale=locale,
+            show_rewards=show_rewards,
             unlock_percent=rates.get(achievement.id, 0.0),
         )
         for achievement in achievements
@@ -345,12 +359,14 @@ def serialize_unlocked_list(
         db,
         achievement_ids=[achievement.id for achievement in unlocked],
     )
+    show_rewards = rewards_visible(user)
     return [
         serialize_achievement_public(
             db,
             achievement,
             progress=progress_map.get(achievement.id),
             locale=locale,
+            show_rewards=show_rewards,
             unlock_percent=rates.get(achievement.id, 0.0),
         )
         for achievement in unlocked

@@ -6,6 +6,7 @@ import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { AttachEmailForm } from '../components/AttachEmailForm'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { DiaryRestoreCard } from '../components/DiaryRestoreCard'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { SettingsSection } from '../components/SettingsSection'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -267,6 +268,7 @@ export function AccountSettingsPage() {
               <p className="profile-field-hint">{t('settings.exportTelegramHint')}</p>
             </div>
           ) : null}
+          <DiaryRestoreCard />
         </section>
 
         <section className="card profile-account" aria-labelledby="settings-delete-heading">

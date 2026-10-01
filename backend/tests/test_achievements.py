@@ -13,6 +13,7 @@ from app.models.achievement_reward import AchievementReward
 from app.models.goal import Goal
 from app.models.user import User
 from app.models.user_achievement import UserAchievement
+from app.services.wallet_service import get_or_create_wallet
 from fastapi.testclient import TestClient
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -184,6 +185,64 @@ def test_first_entry_unlocks_and_grants_tokens(
     assert progress.unlocked_at is not None
     assert progress.unlocked_by_entry_id is not None
     assert str(progress.unlocked_by_entry_id) == create.json()["id"]
+
+
+def test_rewards_hidden_without_marketplace_but_still_granted(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "feature_icon_marketplace_percent", 0)
+    achievement = Achievement(
+        slug=f"hidden_reward_{uuid.uuid4().hex[:8]}",
+        category="getting_started",
+        visibility="visible",
+        status=AchievementStatus.PUBLISHED.value,
+        labels={"en": "First step", "ru": "Первый шаг"},
+        descriptions={"en": "First", "ru": "Первый"},
+        icon_type="emoji",
+        icon="🌱",
+        criteria={"type": "entry_count", "count": 1},
+        sort_order=10,
+    )
+    db.add(achievement)
+    db.flush()
+    db.add(
+        AchievementReward(achievement_id=achievement.id, kind="tokens", amount=10, sort_order=10)
+    )
+    db.commit()
+
+    token = register_verify_and_login(auth_client, mailer, f"ach-hidden-{uuid.uuid4()}@example.com")
+    user = _user_from_token(db, auth_client, token)
+    user.onboarding_completed_at = datetime.now(UTC)
+    user.timezone = "UTC"
+    db.commit()
+
+    create = auth_client.post(
+        "/v1/mood-entries",
+        headers=_auth_headers(token),
+        json={
+            "score": 4,
+            "recorded_at": "2026-01-15T12:00:00+00:00",
+            "note": None,
+            "tag_ids": [],
+            "goal_ids": [],
+        },
+    )
+    assert create.status_code == 201, create.text
+    unlocked = create.json().get("unlocked_achievements") or []
+    toast = next(item for item in unlocked if item["id"] == str(achievement.id))
+    assert toast["rewards"] == []
+
+    listed = auth_client.get("/v1/achievements", headers=_auth_headers(token))
+    card = next(item for item in listed.json()["items"] if item["id"] == str(achievement.id))
+    assert card["unlocked"] is True
+    assert card["rewards"] == []
+
+    assert auth_client.get("/v1/wallet", headers=_auth_headers(token)).status_code == 403
+    db.expire_all()
+    assert get_or_create_wallet(db, user_id=user.id).balance >= 10
 
 
 def test_friday_the_13th_in_user_timezone(

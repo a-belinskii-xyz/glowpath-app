@@ -25,7 +25,9 @@ export function ProfilePage() {
 
   const marketplaceEnabled = Boolean(user?.features?.icon_marketplace)
   const achievementsEnabled = Boolean(user?.features?.achievements)
-  const walletEnabled = marketplaceEnabled || achievementsEnabled
+  const billingEnabled = Boolean(user?.features?.billing)
+  // Tokens are spent only in the marketplace, so the balance follows its flag.
+  const walletEnabled = marketplaceEnabled
   const [achievementSummary, setAchievementSummary] = useState<{
     unlocked: number
     total_visible: number
@@ -111,12 +113,6 @@ export function ProfilePage() {
             icon={<TrophyIcon />}
             title={t('nav.achievements')}
             lead={t('profile.achievementsLink')}
-          />
-          <ShortcutLink
-            to="/market"
-            icon={<NavMarketIcon />}
-            title={t('nav.market')}
-            lead={t('market.lead')}
           />
           {settingsLink}
         </nav>
@@ -205,18 +201,20 @@ export function ProfilePage() {
             lead={t('market.lead')}
           />
         ) : null}
-        <ShortcutLink
-          to="/plans"
-          icon={<SparkleIcon />}
-          title={t('nav.plans')}
-          lead={
-            user.plan && user.plan !== 'free'
-              ? t('plans.youAreOn', {
-                  plan: t(`plans.${user.plan}.name` as 'plans.plus.name'),
-                })
-              : t('profile.plansLink')
-          }
-        />
+        {billingEnabled ? (
+          <ShortcutLink
+            to="/plans"
+            icon={<SparkleIcon />}
+            title={t('nav.plans')}
+            lead={
+              user.plan && user.plan !== 'free'
+                ? t('plans.youAreOn', {
+                    plan: t(`plans.${user.plan}.name` as 'plans.plus.name'),
+                  })
+                : t('profile.plansLink')
+            }
+          />
+        ) : null}
         {settingsLink}
         {user.is_staff ? (
           <ShortcutLink
