@@ -454,6 +454,7 @@ def patch_me(
             user_id=current_user.id,
             timezone=body.timezone,
             theme_preference=body.theme_preference,
+            locale=body.locale,
         )
     except AuthError as exc:
         _handle_auth_error(exc)

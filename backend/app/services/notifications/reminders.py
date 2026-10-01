@@ -276,6 +276,7 @@ def _deliver_schedule(
                     locale=locale,
                     unsubscribe_token=_unsubscribe_token(user, channel),
                     tracking_token=tracking_token,
+                    variant_seed=f"{user.id}:{local_day.isoformat()}",
                 ),
             )
         return True
@@ -284,7 +285,7 @@ def _deliver_schedule(
         behind = _behind_goals(db, user=user, local_day=local_day)
         if not behind:
             return False
-        labels = [resolve_label(goal.labels, DEFAULT_LOCALE) for goal in behind]
+        labels = [resolve_label(goal.labels, locale) for goal in behind]
         for channel in channels:
             dispatcher.send(
                 user=user,
@@ -337,7 +338,9 @@ def _pause_after_ignored(
 
 
 def _user_locale(user: User) -> str:
-    return normalize_locale(user.telegram_locale) if user.telegram_locale else DEFAULT_LOCALE
+    """Interface language from the app first, then the Telegram client language."""
+    chosen = user.locale or user.telegram_locale
+    return normalize_locale(chosen) if chosen else DEFAULT_LOCALE
 
 
 def _unsubscribe_token(user: User, channel: NotificationChannel) -> str | None:

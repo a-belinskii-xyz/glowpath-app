@@ -7,6 +7,8 @@ from app.config import settings
 from app.core.companion import daily_reminder_intro, daily_reminder_subject
 from app.core.i18n import DEFAULT_LOCALE
 from app.core.mood_entry_source import MoodEntryAttributionKind, format_mood_entry_source
+from app.core.notification_copy import NotificationText as T
+from app.core.notification_copy import notification_text
 from app.services.notifications.base import NotificationChannel, NotificationMessage
 
 STARTAPP_CREATE_DAILY = "create_daily"
@@ -20,6 +22,7 @@ def daily_mood_reminder_message(
     locale: str = DEFAULT_LOCALE,
     unsubscribe_token: str | None = None,
     tracking_token: str | None = None,
+    variant_seed: str = "",
 ) -> NotificationMessage:
     source = format_mood_entry_source(
         channel=channel.value,
@@ -29,11 +32,11 @@ def daily_mood_reminder_message(
         _link_params(source=source, tracking_token=tracking_token)
     )
     subject = daily_reminder_subject(hour=hour, locale=locale)
-    intro = daily_reminder_intro(hour=hour, locale=locale)
+    intro = daily_reminder_intro(hour=hour, locale=locale, seed=variant_seed)
 
     if channel is NotificationChannel.TELEGRAM:
-        prompt = "Log your mood in GlowPath." if locale != "ru" else "Запиши настроение в GlowPath."
-        button = "Log mood" if locale != "ru" else "Записать настроение"
+        prompt = notification_text(T.DAILY_PROMPT, locale)
+        button = notification_text(T.DAILY_BUTTON, locale)
         markup = _telegram_open_markup(
             startapp=STARTAPP_CREATE_DAILY,
             button_text=button,
@@ -51,32 +54,13 @@ def daily_mood_reminder_message(
             },
         )
 
-    if locale == "ru":
-        body = (
-            "Привет,\n\n"
-            f"{intro}\n\n"
-            f"Записать настроение: {log_url}\n\n"
-            "Напоминания можно изменить в профиле.\n"
-        )
-        html_body = (
-            "<p>Привет,</p>"
-            f"<p>{intro}</p>"
-            f'<p><a href="{log_url}">Записать настроение</a></p>'
-            "<p>Напоминания можно изменить в профиле.</p>"
-        )
-    else:
-        body = (
-            "Hi,\n\n"
-            f"{intro}\n\n"
-            f"Log your mood: {log_url}\n\n"
-            "You can change reminder settings in your profile.\n"
-        )
-        html_body = (
-            "<p>Hi,</p>"
-            f"<p>{intro}</p>"
-            f'<p><a href="{log_url}">Log your mood</a></p>'
-            "<p>You can change reminder settings in your profile.</p>"
-        )
+    greeting = notification_text(T.GREETING, locale)
+    link_label = notification_text(T.DAILY_LINK, locale)
+    footer = notification_text(T.DAILY_FOOTER, locale)
+    body = f"{greeting}\n\n{intro}\n\n{link_label}: {log_url}\n\n{footer}\n"
+    html_body = (
+        f'<p>{greeting}</p><p>{intro}</p><p><a href="{log_url}">{link_label}</a></p><p>{footer}</p>'
+    )
     body, html_body, metadata = _with_unsubscribe(
         body=body,
         html_body=html_body,
@@ -107,15 +91,11 @@ def goal_reminder_message(
         _link_params(source=source, tracking_token=tracking_token)
     )
     bullet_lines = "\n".join(f"  • {label}" for label in goal_labels)
-    subject = "Your weekly goals need attention" if locale != "ru" else "Цели на неделю отстают"
+    subject = notification_text(T.GOAL_SUBJECT, locale)
 
     if channel is NotificationChannel.TELEGRAM:
-        heading = (
-            "Some weekly goals are still behind:"
-            if locale != "ru"
-            else "Некоторые цели на неделю ещё отстают:"
-        )
-        button = "Open goals" if locale != "ru" else "Открыть цели"
+        heading = notification_text(T.GOAL_HEADING, locale)
+        button = notification_text(T.GOAL_BUTTON, locale)
         markup = _telegram_open_markup(
             startapp=STARTAPP_GOAL_REMINDER,
             button_text=button,
@@ -135,20 +115,18 @@ def goal_reminder_message(
             },
         )
 
-    body = (
-        "Hi,\n\n"
-        "Some of your GlowPath goals are still behind for this week:\n\n"
-        f"{bullet_lines}\n\n"
-        f"Review your goals: {goals_url}\n\n"
-        "You can turn goal reminders off in notification settings.\n"
-    )
+    greeting = notification_text(T.GREETING, locale)
+    lead = notification_text(T.GOAL_EMAIL_LEAD, locale)
+    link_label = notification_text(T.GOAL_LINK, locale)
+    footer = notification_text(T.GOAL_FOOTER, locale)
+    body = f"{greeting}\n\n{lead}\n\n{bullet_lines}\n\n{link_label}: {goals_url}\n\n{footer}\n"
     items = "".join(f"<li>{label}</li>" for label in goal_labels)
     html_body = (
-        "<p>Hi,</p>"
-        "<p>Some of your GlowPath goals are still behind for this week:</p>"
+        f"<p>{greeting}</p>"
+        f"<p>{lead}</p>"
         f"<ul>{items}</ul>"
-        f'<p><a href="{goals_url}">Review your goals</a></p>'
-        "<p>You can turn goal reminders off in notification settings.</p>"
+        f'<p><a href="{goals_url}">{link_label}</a></p>'
+        f"<p>{footer}</p>"
     )
     body, html_body, metadata = _with_unsubscribe(
         body=body,
@@ -187,7 +165,7 @@ def _with_unsubscribe(
     if not token:
         return body, html_body, metadata
     page_url = unsubscribe_page_url(token)
-    label = "Отписаться от писем" if locale == "ru" else "Unsubscribe from emails"
+    label = notification_text(T.UNSUBSCRIBE, locale)
     body = f"{body}\n{label}: {page_url}\n"
     html_body = (
         f'{html_body}<p style="font-size:12px;color:#888"><a href="{page_url}">{label}</a></p>'
@@ -210,20 +188,9 @@ def reminders_paused_message(
 ) -> NotificationMessage:
     """Last message before a schedule pauses itself after ignored reminders."""
     settings_url = f"{settings.frontend_url.rstrip('/')}/settings/notifications"
-    if locale == "ru":
-        subject = "Ставим напоминания на паузу"
-        text = (
-            "Похоже, напоминания сейчас не к месту, поэтому мы больше не будем их присылать. "
-            "Дневник никуда не делся. Если захотите вернуть напоминания, включите их в настройках."
-        )
-        link_label = "Настройки уведомлений"
-    else:
-        subject = "Pausing your reminders"
-        text = (
-            "It looks like reminders are not helpful right now, so we will stop sending them. "
-            "Your diary is still here. Turn reminders back on in settings whenever you like."
-        )
-        link_label = "Notification settings"
+    subject = notification_text(T.PAUSED_SUBJECT, locale)
+    text = notification_text(T.PAUSED_TEXT, locale)
+    link_label = notification_text(T.PAUSED_LINK, locale)
     metadata: dict[str, Any] = {"type": "reminders_paused", "channel": channel.value}
     if channel is NotificationChannel.TELEGRAM:
         return NotificationMessage(subject=subject, body=text, html_body=None, metadata=metadata)

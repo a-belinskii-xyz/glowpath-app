@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -14,6 +15,7 @@ import {
   setThemePreference,
   type ThemePreference,
 } from '../design/themePreference'
+import { useLocale } from './LocaleContext'
 import { clearTokens, getAccessToken, setTokens } from '../lib/storage'
 import { getVisitorId } from '../lib/guestMode'
 import { tryImportGuestDiaryAfterAuth } from '../lib/guestImport'
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [telegramAuthError, setTelegramAuthError] = useState<string | null>(null)
   const [bootId, setBootId] = useState(0)
   const isTelegram = isTelegramMiniApp()
+  const { locale, setLocale } = useLocale()
 
   const refreshUser = useCallback(async () => {
     if (!getAccessToken()) {
@@ -194,6 +197,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setThemePreference(serverThemePreference)
     }
   }, [serverThemePreference])
+
+  // The account keeps the interface language so reminders can use it. Once per account
+  // (and whenever the saved value changes) the saved language wins over this device's;
+  // an account without one adopts the language this device is showing.
+  const userId = user?.id
+  const serverLocale = user?.locale ?? null
+  const reconciledRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!userId) {
+      reconciledRef.current = null
+      return
+    }
+    const key = `${userId}:${serverLocale ?? ''}`
+    if (reconciledRef.current === key) {
+      return
+    }
+    reconciledRef.current = key
+    if (serverLocale) {
+      if (serverLocale !== locale) {
+        setLocale(serverLocale)
+      }
+      return
+    }
+    authApi
+      .updateMe({ locale })
+      .then(setUser)
+      .catch(() => undefined)
+  }, [userId, serverLocale, locale, setLocale])
+
+  // Language picked in the app afterwards is saved to the account.
+  const previousLocaleRef = useRef(locale)
+  useEffect(() => {
+    const changed = previousLocaleRef.current !== locale
+    previousLocaleRef.current = locale
+    if (!changed || !userId || !serverLocale || serverLocale === locale) {
+      return
+    }
+    authApi
+      .updateMe({ locale })
+      .then(setUser)
+      .catch(() => undefined)
+  }, [locale, userId, serverLocale])
 
   const value = useMemo(
     () => ({

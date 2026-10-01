@@ -1,5 +1,6 @@
 import { apiRequest, getApiBaseUrl } from './client'
 import type { ThemePreference } from '../design/themePreference'
+import type { ApiLocale } from '../lib/locale'
 import type {
   LoginRequest,
   MessageResponse,
@@ -60,6 +61,7 @@ export function getMe(): Promise<UserPublic> {
 export function updateMe(body: {
   timezone?: string
   theme_preference?: ThemePreference
+  locale?: ApiLocale
 }): Promise<UserPublic> {
   return apiRequest<UserPublic>('/v1/auth/me', {
     method: 'PATCH',

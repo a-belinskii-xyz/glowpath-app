@@ -426,7 +426,9 @@ def test_telegram_notifier_sends_web_app_keyboard(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr("app.services.notifications.telegram.httpx.post", fake_post)
     notifier = TelegramNotifier(bot_token="test-token")
-    markup = {"inline_keyboard": [[{"text": "Log mood", "web_app": {"url": "https://app.example"}}]]}
+    markup = {
+        "inline_keyboard": [[{"text": "Log mood", "web_app": {"url": "https://app.example"}}]]
+    }
     notifier.send(
         recipient="999",
         message=NotificationMessage(
@@ -706,3 +708,76 @@ def test_notifications_flag_is_on_auth_me(
     assert me.status_code == 200
     assert me.json()["features"]["notifications"] is False
 
+
+def _due_telegram_daily_user(db: Session, **user_fields: object) -> tuple[User, datetime]:
+    tz_name = "Europe/Minsk"
+    local_now = datetime(2026, 7, 15, 20, 30, 10, tzinfo=ZoneInfo(tz_name))
+    user = User(
+        email=f"tg-locale-{uuid.uuid4()}@example.com",
+        password_hash="hash",
+        timezone=tz_name,
+        email_verified_at=datetime.now(UTC),
+        telegram_user_id=int(uuid.uuid4().int % 10**9),
+        telegram_chat_id=555,
+        telegram_linked_at=datetime.now(UTC),
+        **user_fields,
+    )
+    db.add(user)
+    db.flush()
+    db.add(
+        UserNotificationSchedule(
+            user_id=user.id,
+            kind="daily_mood",
+            enabled=True,
+            time_of_day="20:30",
+            interval_days=1,
+            channels=["telegram"],
+        )
+    )
+    db.commit()
+    return user, local_now.astimezone(UTC)
+
+
+@pytest.mark.parametrize(
+    ("user_fields", "expected_phrase"),
+    [
+        ({"locale": "ru"}, "Запиши настроение"),
+        ({"locale": "ru", "telegram_locale": "en"}, "Запиши настроение"),
+        ({"locale": "en", "telegram_locale": "ru"}, "Log your mood"),
+        ({"telegram_locale": "ru"}, "Запиши настроение"),
+        ({}, "Log your mood"),
+    ],
+)
+def test_reminder_language_prefers_app_locale_over_telegram(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    user_fields: dict[str, object],
+    expected_phrase: str,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.notifications.reminders.settings.notifications_match_window_minutes",
+        5,
+    )
+    _user, now_utc = _due_telegram_daily_user(db, **user_fields)
+
+    tg = FakeNotifier(channel=NotificationChannel.TELEGRAM)
+    stats = process_due_reminders(
+        db, NotificationDispatcher({NotificationChannel.TELEGRAM: tg}), now=now_utc
+    )
+
+    assert stats.daily_mood_sent == 1
+    assert expected_phrase in tg.outbox[0].body
+
+
+def test_goal_reminder_email_is_localized() -> None:
+    from app.services.notifications.messages import goal_reminder_message
+
+    message = goal_reminder_message(
+        channel=NotificationChannel.EMAIL,
+        goal_labels=["Спорт"],
+        locale="ru",
+    )
+    assert message.html_body is not None
+    assert "Привет," in message.body
+    assert "Посмотреть цели" in message.body
+    assert "Hi," not in message.body

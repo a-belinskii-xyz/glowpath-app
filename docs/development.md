@@ -189,6 +189,8 @@ Telegram reminders carry a Mini App button (`startapp=create_daily` or `goal_rem
 
 Every sent reminder is logged in `notification_deliveries` with a random token that reminder links carry as `?n=`; the web app reports it to `POST /v1/notification-settings/engaged`. A reminder counts as answered when its link was followed or an entry was created before the next one. Unanswered reminders in a row stretch the gap (1, 1, 2, 4, 4, 7, 7 days); after seven the schedule sends one "pausing reminders" message and sets `paused_at`. Turning the schedule back on clears the pause and starts a fresh count (`backoff_reset_at`). Logic: `app/services/notifications/backoff.py`.
 
+Reminders speak the account's interface language: `users.locale`, which the web app and Mini App save through `PATCH /v1/auth/me` when the language is picked (or on first sign-in), then the Telegram client language, then English. All reminder wording lives in two files: time-of-day phrases (daily reminder subject and intro, several variants per daypart, one picked per person and day) in `app/core/companion.py`, everything else in `app/core/notification_copy.py`. Both are grouped by `CompanionStyle`, so another companion style only adds its own phrases.
+
 ## Feature flags
 
 Flags are env variables read at process start; restart `app` after changing them. Each rollout flag has a master switch, a percent (stable hash bucket) and allowlists:

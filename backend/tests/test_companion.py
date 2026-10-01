@@ -1,9 +1,12 @@
 from app.core.companion import (
+    _DAILY_REMINDER_INTRO,
     CompanionDaypart,
     companion_daypart_for_hour,
+    daily_reminder_intro,
     daily_reminder_subject,
     pick_companion_variant,
 )
+from app.core.notification_copy import NotificationText, notification_text
 from app.services.notifications.base import NotificationChannel
 from app.services.notifications.messages import daily_mood_reminder_message
 
@@ -48,3 +51,27 @@ def test_daily_mood_reminder_uses_local_hour() -> None:
     assert evening.html_body is None
     assert "evening" in evening.subject.lower() or "today" in evening.body.lower()
     assert "log your mood" in evening.body.lower()
+
+
+def test_daily_reminder_intro_is_stable_per_seed_and_varies_across_days() -> None:
+    first = daily_reminder_intro(hour=20, locale="ru", seed="user:2026-10-01")
+    assert first == daily_reminder_intro(hour=20, locale="ru", seed="user:2026-10-01")
+    seen = {
+        daily_reminder_intro(hour=20, locale="en", seed=f"user:2026-10-{day:02d}")
+        for day in range(1, 29)
+    }
+    assert len(seen) > 1
+
+
+def test_every_companion_and_notification_phrase_has_ru_and_en() -> None:
+    for hour in range(24):
+        for locale in ("en", "ru"):
+            assert daily_reminder_subject(hour=hour, locale=locale)
+    for phrases in _DAILY_REMINDER_INTRO.values():
+        for variants in phrases.values():
+            for labels in variants:
+                assert set(labels) == {"en", "ru"}
+    for key in NotificationText:
+        en = notification_text(key, "en")
+        ru = notification_text(key, "ru")
+        assert en and ru and en != ru

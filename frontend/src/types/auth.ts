@@ -1,4 +1,5 @@
 import type { ThemePreference } from '../design/themePreference'
+import type { ApiLocale } from '../lib/locale'
 
 export type UserPublic = {
   id: string
@@ -11,6 +12,8 @@ export type UserPublic = {
   has_password: boolean
   is_staff?: boolean
   theme_preference: ThemePreference
+  /** Interface language saved on the account; null until the app has sent it. */
+  locale: ApiLocale | null
   telegram_linked: boolean
   can_unlink_telegram: boolean
   features: Record<string, boolean>
