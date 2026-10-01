@@ -22,6 +22,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [timezone] = useState(detectTimezone)
+  const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -105,6 +106,20 @@ export function RegisterPage() {
           value={timezone}
           hint={t('auth.timezoneHint')}
         />
+        <label className="auth-consent">
+          <input
+            type="checkbox"
+            required
+            checked={privacyAccepted}
+            onChange={(event) => setPrivacyAccepted(event.target.checked)}
+          />
+          <span>
+            {t('auth.privacyConsent')}{' '}
+            <Link to="/privacy" target="_blank" rel="noopener">
+              {t('auth.privacyConsentLink')}
+            </Link>
+          </span>
+        </label>
         <button className="button button-block" type="submit" disabled={isSubmitting}>
           <StableButtonLabel
             active={isSubmitting ? t('auth.creatingAccount') : t('nav.register')}
@@ -117,6 +132,9 @@ export function RegisterPage() {
       <a className="button button-secondary button-block" href={getTelegramBrowserLoginUrl(timezone)}>
         {t('auth.continueWithTelegram')}
       </a>
+      <p className="muted auth-consent-note">
+        <Link to="/privacy">{t('auth.privacyTelegramNote')}</Link>
+      </p>
 
       <AuthFooterLink to="/login">{t('auth.alreadyHaveAccount')}</AuthFooterLink>
       <p className="auth-footer">

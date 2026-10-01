@@ -1,5 +1,5 @@
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
-import { BellIcon, NavProfileIcon, PaletteIcon, SettingsIcon } from '../components/icons'
+import { BellIcon, LockIcon, NavProfileIcon, PaletteIcon, SettingsIcon } from '../components/icons'
 import { ShortcutLink } from '../components/ShortcutLink'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useLocale } from '../context/LocaleContext'
@@ -48,6 +48,12 @@ export function SettingsPage() {
             />
           </>
         )}
+        <ShortcutLink
+          to="/privacy"
+          icon={<LockIcon />}
+          title={t('settings.privacyTitle')}
+          lead={t('settings.privacyLink')}
+        />
       </nav>
     </section>
   )

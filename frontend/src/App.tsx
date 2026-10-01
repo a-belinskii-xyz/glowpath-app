@@ -28,6 +28,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { MarketPage } from './pages/MarketPage'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { PlansPage } from './pages/PlansPage'
+import { PrivacyPage } from './pages/PrivacyPage'
 import { AccountSettingsPage } from './pages/AccountSettingsPage'
 import { AppearanceSettingsPage } from './pages/AppearanceSettingsPage'
 import {
@@ -56,6 +57,7 @@ function App() {
                   <Route element={<Layout />}>
                     <Route index element={<HomePage />} />
                     <Route path="plans" element={<PlansPage />} />
+                    <Route path="privacy" element={<PrivacyPage />} />
                     <Route path="verify-email" element={<VerifyEmailPage />} />
                     <Route path="auth/google/callback" element={<GoogleCallbackPage />} />
                     <Route path="auth/telegram/callback" element={<TelegramCallbackPage />} />
