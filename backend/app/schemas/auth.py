@@ -1,4 +1,6 @@
+from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
@@ -62,6 +64,27 @@ class GoogleIdTokenRequest(BaseModel):
 class TelegramAuthRequest(BaseModel):
     init_data: str = Field(min_length=1, max_length=8192)
     timezone: str = Field(default="Europe/Minsk", max_length=64)
+
+
+class TelegramBotLoginStartRequest(BaseModel):
+    timezone: str = Field(default="Europe/Minsk", max_length=64)
+
+
+class TelegramBotLoginStartResponse(BaseModel):
+    poll_token: str
+    deep_link: str
+    expires_at: datetime
+
+
+class TelegramBotLoginPollRequest(BaseModel):
+    poll_token: str = Field(min_length=16, max_length=128)
+
+
+class TelegramBotLoginPollResponse(BaseModel):
+    status: Literal["pending", "confirmed", "expired"]
+    access_token: str | None = None
+    refresh_token: str | None = None
+    user_created: bool | None = None
 
 
 class AttachEmailRequest(BaseModel):

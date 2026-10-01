@@ -38,9 +38,6 @@ export function HomePage() {
         <Link className="button button-secondary" to="/login">
           {t('nav.logIn')}
         </Link>
-        <Link className="button button-secondary" to="/register">
-          {t('nav.register')}
-        </Link>
       </p>
     </section>
   )

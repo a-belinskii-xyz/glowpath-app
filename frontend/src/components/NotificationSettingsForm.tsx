@@ -50,8 +50,9 @@ export function NotificationSettingsForm({ timezone }: { timezone: string }) {
   const timeTimers = useRef<Partial<Record<NotificationScheduleKind, number>>>({})
 
   const locked = status?.status_code === 'DISABLED_STAGE_TESTING'
-  const showEmailChannel = Boolean(user?.email)
-  const telegramRequired = Boolean(user?.telegram_linked && !user.email)
+  // Reminders go to Telegram; email stays only for older accounts without Telegram (GP-28).
+  const showEmailChannel = Boolean(user?.email) && !user?.telegram_linked
+  const telegramRequired = Boolean(user?.telegram_linked)
 
   useEffect(() => {
     let cancelled = false
@@ -118,10 +119,10 @@ export function NotificationSettingsForm({ timezone }: { timezone: string }) {
       return
     }
     const channels: NotificationChannel[] = []
-    if (user?.email) {
+    if (showEmailChannel) {
       channels.push('email')
     }
-    const telegramOn = Boolean(user?.telegram_linked) && (draft.telegramChannel || !user?.email)
+    const telegramOn = Boolean(user?.telegram_linked)
     if (telegramOn || (telegramLinked && draft.telegramChannel)) {
       channels.push('telegram')
     }

@@ -158,3 +158,40 @@ def test_start_onboarded_user_gets_home_keyboard(monkeypatch: pytest.MonkeyPatch
         assert rows[0][0]["web_app"]["url"].endswith("tgWebAppStartParam=create")
         assert rows[1][0]["text"] == "Открыть приложение"
         assert rows[1][0]["web_app"] == {"url": "https://app.example"}
+
+
+def _start_update(text: str) -> dict:
+    return {
+        "message": {
+            "chat": {"id": 1},
+            "from": {"id": 2, "language_code": "ru"},
+            "text": text,
+        }
+    }
+
+
+def test_start_login_confirms_website_sign_in() -> None:
+    with (
+        patch("bot.handlers.api_client.confirm_login", new_callable=AsyncMock) as confirm,
+        patch("bot.handlers.api_client.link", new_callable=AsyncMock) as link,
+        patch("bot.handlers.send_message", new_callable=AsyncMock) as send,
+    ):
+        asyncio.run(handle_update(_start_update("/start login_abcdefgh123")))
+    confirm.assert_awaited_once_with(code="abcdefgh123", telegram_user_id=2, locale="ru")
+    link.assert_not_awaited()
+    assert "Вход подтверждён" in send.await_args.kwargs["text"]
+
+
+def test_start_login_reports_expired_link() -> None:
+    from bot.api_client import ApiClientError
+
+    with (
+        patch(
+            "bot.handlers.api_client.confirm_login",
+            new_callable=AsyncMock,
+            side_effect=ApiClientError("expired", status_code=400),
+        ),
+        patch("bot.handlers.send_message", new_callable=AsyncMock) as send,
+    ):
+        asyncio.run(handle_update(_start_update("/start login_abcdefgh123")))
+    assert "устарела" in send.await_args.kwargs["text"]

@@ -32,7 +32,7 @@ export function GuestRegistrationCallout({ message }: GuestRegistrationCalloutPr
         <LockIcon />
       </span>
       <p className="guest-registration-callout__text">{message}</p>
-      <Link className="guest-registration-callout__cta" to="/register">
+      <Link className="guest-registration-callout__cta" to="/login">
         {t('guest.banner.createAccount')}
       </Link>
     </div>

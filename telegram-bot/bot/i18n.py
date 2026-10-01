@@ -41,6 +41,8 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
             "Open the app anytime, or wait for reminders in this chat."
         ),
         "link_failed": "Could not link account: {detail}",
+        "login_ok": "Sign-in confirmed. Go back to the browser, GlowPath is opening there.",
+        "login_failed": "This sign-in link is expired or already used. Start again on the website.",
         "unlinked_ok": "Telegram has been unlinked from GlowPath.",
         "unlink_failed": "Could not unlink: {detail}",
         "not_linked": "Open GlowPath with the button below to get started.",
@@ -112,6 +114,8 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
             "Открывайте приложение в любой момент или ждите напоминания в этом чате."
         ),
         "link_failed": "Не удалось привязать: {detail}",
+        "login_ok": "Вход подтверждён. Вернитесь в браузер, GlowPath уже открывается там.",
+        "login_failed": "Ссылка для входа устарела или уже использована. Начните заново на сайте.",
         "unlinked_ok": "Telegram отвязан от GlowPath.",
         "unlink_failed": "Не удалось отвязать: {detail}",
         "not_linked": "Откройте GlowPath кнопкой ниже, чтобы начать.",

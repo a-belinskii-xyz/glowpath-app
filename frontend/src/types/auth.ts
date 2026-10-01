@@ -65,3 +65,16 @@ export type ResetPasswordRequest = {
   new_password: string
   password_confirm: string
 }
+
+export type TelegramBotLoginStart = {
+  poll_token: string
+  deep_link: string
+  expires_at: string
+}
+
+export type TelegramBotLoginPoll = {
+  status: 'pending' | 'confirmed' | 'expired'
+  access_token: string | null
+  refresh_token: string | null
+  user_created: boolean | null
+}

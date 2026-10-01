@@ -66,7 +66,7 @@ export function GuestDataBanner() {
     <div className="guest-data-banner" role="status">
       <p>{t('guest.banner.message', { count: String(entryCount) })}</p>
       <div className="guest-data-banner__actions">
-        <Link to="/register" className="guest-data-banner__cta">
+        <Link to="/login" className="guest-data-banner__cta">
           {t('guest.banner.createAccount')}
         </Link>
         <button

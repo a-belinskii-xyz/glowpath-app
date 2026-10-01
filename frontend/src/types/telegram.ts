@@ -16,4 +16,6 @@ export type TelegramLinkCodeCreateResponse = {
 export type TelegramEntryPointPublic = {
   bot_username: string | null
   bot_url: string | null
+  bot_login: boolean
+  browser_login: boolean
 }

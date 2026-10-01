@@ -25,6 +25,8 @@ class TelegramLinkPublic(BaseModel):
 class TelegramEntryPointPublic(BaseModel):
     bot_username: str | None = None
     bot_url: str | None = None
+    bot_login: bool = False
+    browser_login: bool = False
 
 
 class TelegramLinkCodeCreateResponse(BaseModel):
@@ -37,6 +39,12 @@ class TelegramBotLinkRequest(BaseModel):
     code: str = Field(min_length=8, max_length=64)
     telegram_user_id: int = Field(gt=0)
     telegram_chat_id: int
+    locale: str | None = Field(default=None, max_length=16)
+
+
+class TelegramBotLoginConfirmRequest(BaseModel):
+    code: str = Field(min_length=8, max_length=64)
+    telegram_user_id: int = Field(gt=0)
     locale: str | None = Field(default=None, max_length=16)
 
 

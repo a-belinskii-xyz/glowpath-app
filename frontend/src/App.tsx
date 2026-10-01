@@ -23,7 +23,7 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { ProfilePage } from './pages/ProfilePage'
-import { RegisterPage } from './pages/RegisterPage'
+import { EmailLoginPage } from './pages/EmailLoginPage'
 import { ResendVerificationPage } from './pages/ResendVerificationPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { MarketPage } from './pages/MarketPage'
@@ -71,7 +71,8 @@ function App() {
                     <Route element={<GuestRoute />}>
                       <Route element={<AuthCardLayout />}>
                         <Route path="login" element={<LoginPage />} />
-                        <Route path="register" element={<RegisterPage />} />
+                        <Route path="login/email" element={<EmailLoginPage />} />
+                        <Route path="register" element={<Navigate to="/login" replace />} />
                         <Route path="forgot-password" element={<ForgotPasswordPage />} />
                         <Route path="resend-verification" element={<ResendVerificationPage />} />
                       </Route>
