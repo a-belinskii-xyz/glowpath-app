@@ -124,6 +124,9 @@ export function ProfilePage() {
     return null
   }
 
+  // Sign-in is Telegram-only (GP-28); show email only for accounts that have no Telegram yet.
+  const showEmailSignIn = Boolean(user.email) && !user.telegram_linked
+
   const balanceLabel =
     walletBalance === null
       ? '—'
@@ -140,25 +143,35 @@ export function ProfilePage() {
 
       <div className="card profile-account">
         <div className="profile-account-row">
-          <div className="profile-account-email">
-            <span className="profile-account-label">{t('common.email')}</span>
-            <div className="profile-account-email-value">
-              <span className="profile-account-email-text">
-                {user.email ?? t('profile.signedInWithTelegram')}
-              </span>
-              {user.email ? (
-                <span
-                  className={`status-pill${user.email_verified ? ' status-pill--ok' : ' status-pill--warn'}`}
-                >
-                  {user.email_verified
-                    ? t('profile.emailVerifiedShort')
-                    : t('profile.emailUnverifiedShort')}
+          {showEmailSignIn ? (
+            <div className="profile-account-email">
+              <span className="profile-account-label">{t('common.email')}</span>
+              <div className="profile-account-email-value">
+                <span className="profile-account-email-text">
+                  {user.email ?? t('profile.signedInWithTelegram')}
                 </span>
-              ) : (
-                <span className="status-pill status-pill--ok">{t('profile.telegramLinkedShort')}</span>
-              )}
+                {user.email ? (
+                  <span
+                    className={`status-pill${user.email_verified ? ' status-pill--ok' : ' status-pill--warn'}`}
+                  >
+                    {user.email_verified
+                      ? t('profile.emailVerifiedShort')
+                      : t('profile.emailUnverifiedShort')}
+                  </span>
+                ) : (
+                  <span className="status-pill status-pill--ok">{t('profile.telegramLinkedShort')}</span>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="profile-account-email">
+              <span className="profile-account-label">{t('profile.telegramTitle')}</span>
+              <div className="profile-account-email-value">
+                <span className="profile-account-email-text">{t('profile.signedInWithTelegram')}</span>
+                <span className="status-pill status-pill--ok">{t('profile.telegramLinkedShort')}</span>
+              </div>
+            </div>
+          )}
           {walletEnabled ? (
             <div className="profile-wallet">
               <span className="profile-account-label">{t('profile.walletBalance')}</span>

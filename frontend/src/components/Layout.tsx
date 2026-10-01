@@ -103,7 +103,6 @@ function ShellChrome({
             {isTelegram ? null : guestShell ? (
               <>
                 <Link to="/login">{t('nav.logIn')}</Link>
-                <Link to="/register">{t('nav.register')}</Link>
               </>
             ) : (
               <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>
@@ -134,9 +133,6 @@ function ShellChrome({
               <>
                 {location.pathname !== '/login' ? (
                   <Link to="/login">{t('nav.logIn')}</Link>
-                ) : null}
-                {location.pathname !== '/register' ? (
-                  <Link to="/register">{t('nav.register')}</Link>
                 ) : null}
               </>
             ) : null}
@@ -191,7 +187,7 @@ function ShellChrome({
             {t('nav.settings')}
           </NavLink>
           {guestShell ? (
-            <Link to="/register" className="app-nav-link">
+            <Link to="/login" className="app-nav-link">
               {t('guest.banner.createAccount')}
             </Link>
           ) : isTelegram ? null : (

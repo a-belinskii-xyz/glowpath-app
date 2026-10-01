@@ -701,7 +701,7 @@ export const en = {
     telegramCodeFallback: 'Or send this to the bot: /start {code}',
     telegramUnlinked: 'Telegram unlinked.',
     telegramBotHint: 'Telegram bot is not configured on the server yet.',
-    telegramUnlinkDisabled: 'Telegram is how you sign in. Add email sign-in before unlinking.',
+    telegramUnlinkDisabled: 'Telegram is how you sign in, so it cannot be unlinked.',
     signedInWithTelegram: 'Signed in with Telegram',
     attachEmailTitle: 'Add email sign-in',
     attachEmailLead:
@@ -728,7 +728,7 @@ export const en = {
     reminderTimeRequired: 'Choose a reminder time to enable mood or goal reminders.',
     saveNotifications: 'Save notification settings',
     notificationsSaved: 'Notification settings saved.',
-    notificationsLink: 'Reminders via email and Telegram',
+    notificationsLink: 'Reminders in Telegram',
     appearanceLink: 'Theme, streak badge and colors on past entries',
     themeTitle: 'Theme',
     themeHint: 'System follows your device setting.',
@@ -853,7 +853,7 @@ export const en = {
     loginWarning:
       'Signing in to an existing account will not upload your local guest diary. It stays in this browser until you register a new account.',
     registerHint:
-      'After email verification and sign-in, your local entries will be saved to your new account.',
+      'After you sign in with Telegram, your local entries will be saved to your new account.',
     locked: {
       common: 'Data in guest mode is stored only in this browser and may be lost.',
       gallery: {
@@ -870,14 +870,19 @@ export const en = {
       },
       profile: {
         title: 'Profile requires an account',
-        body: 'Email, notifications, and Telegram linking need a registered account.',
+        body: 'Reminders and Telegram need an account.',
       },
     },
   },
   auth: {
     logInTitle: 'Log in',
     logInSubtitle: 'Website accounts can sign in with email and password, Telegram, or Google.',
-    telegramPrimary: 'GlowPath lives in Telegram. Open the bot to start — no website account needed.',
+    telegramPrimary: 'GlowPath lives in Telegram. Sign in with the bot or your Telegram account, no password needed.',
+    loginViaBot: 'Sign in with the bot',
+    loginViaBotStarting: 'Preparing the link…',
+    openBot: 'Open the bot',
+    loginViaBotWaiting: 'Press Start in the bot. Sign-in finishes here on its own.',
+    loginViaBotExpired: 'The link has expired. Try again.',
     openInTelegram: 'Open in Telegram',
     signIn: 'Sign in',
     signingIn: 'Signing in…',
@@ -936,8 +941,6 @@ export const en = {
     skipHint: 'Keep the default tags and templates',
     finish: 'Finish setup',
     finishing: 'Saving…',
-    emailReminders: 'Remind me by email once a day at 21:00',
-    emailRemindersHint: 'If you stop opening them, we write less often and then stop. You can turn reminders off any time.',
   },
   errors: {
     passwordsMismatch: 'Passwords do not match',
@@ -1267,7 +1270,7 @@ export const en = {
     entitlements: {
       core_diary: 'Mood diary, calendar, and stats',
       unlimited_entries: 'Unlimited mood entries',
-      reminders: 'Email and Telegram reminders',
+      reminders: 'Reminders in Telegram',
       custom_mood_icons: 'Extra mood icon slots',
       extra_icon_slots: 'More goal and tag icons',
       custom_themes: 'Custom appearance themes',
@@ -2044,7 +2047,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     telegramCodeFallback: 'Или отправьте боту: /start {code}',
     telegramUnlinked: 'Telegram отвязан.',
     telegramBotHint: 'Бот Telegram на сервере ещё не настроен.',
-    telegramUnlinkDisabled: 'Telegram — ваш способ входа. Сначала привяжите email, потом можно отвязать.',
+    telegramUnlinkDisabled: 'Telegram — ваш способ входа, отвязать его нельзя.',
     signedInWithTelegram: 'Вход через Telegram',
     attachEmailTitle: 'Добавить вход по email',
     attachEmailLead:
@@ -2071,7 +2074,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     reminderTimeRequired: 'Укажите время, чтобы включить напоминания о настроении или целях.',
     saveNotifications: 'Сохранить уведомления',
     notificationsSaved: 'Настройки уведомлений сохранены.',
-    notificationsLink: 'Напоминания в email и Telegram',
+    notificationsLink: 'Напоминания в Telegram',
     appearanceLink: 'Тема, плашка стрика и цвета прошлых записей',
     themeTitle: 'Тема',
     themeHint: '«Системная» повторяет настройку устройства.',
@@ -2197,7 +2200,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     loginWarning:
       'Вход в существующий аккаунт не загрузит локальный гостевой дневник. Он останется в этом браузере, пока вы не зарегистрируете новый аккаунт.',
     registerHint:
-      'После подтверждения email и входа локальные записи сохранятся в новом аккаунте.',
+      'После входа через Telegram локальные записи сохранятся в новом аккаунте.',
     locked: {
       common: 'В гостевом режиме данные хранятся только в этом браузере и могут быть потеряны.',
       gallery: {
@@ -2214,14 +2217,19 @@ export const ru: DeepStringLeaves<typeof en> = {
       },
       profile: {
         title: 'Профиль доступен после регистрации',
-        body: 'Email, уведомления и Telegram нужен зарегистрированный аккаунт.',
+        body: 'Для напоминаний и Telegram нужен аккаунт.',
       },
     },
   },
   auth: {
     logInTitle: 'Вход',
     logInSubtitle: 'Аккаунты с сайта входят по email и паролю, через Telegram или Google.',
-    telegramPrimary: 'GlowPath живёт в Telegram. Откройте бота, чтобы начать — аккаунт на сайте не нужен.',
+    telegramPrimary: 'GlowPath живёт в Telegram. Войдите через бота или аккаунт Telegram, пароль не нужен.',
+    loginViaBot: 'Войти через бота',
+    loginViaBotStarting: 'Готовим ссылку…',
+    openBot: 'Открыть бота',
+    loginViaBotWaiting: 'Нажмите «Старт» в боте. Вход завершится здесь сам.',
+    loginViaBotExpired: 'Ссылка устарела. Попробуйте ещё раз.',
     openInTelegram: 'Открыть в Telegram',
     signIn: 'Войти',
     signingIn: 'Вход…',
@@ -2281,8 +2289,6 @@ export const ru: DeepStringLeaves<typeof en> = {
     skipHint: 'Оставить базовые теги и шаблоны',
     finish: 'Завершить',
     finishing: 'Сохраняем…',
-    emailReminders: 'Напоминать на почту раз в день в 21:00',
-    emailRemindersHint: 'Если перестанете их открывать, будем писать реже, а потом перестанем. Выключить можно в любой момент.',
   },
   errors: {
     passwordsMismatch: 'Пароли не совпадают',
@@ -2611,7 +2617,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     entitlements: {
       core_diary: 'Дневник настроения, календарь и статистика',
       unlimited_entries: 'Безлимитные записи',
-      reminders: 'Напоминания по email и в Telegram',
+      reminders: 'Напоминания в Telegram',
       custom_mood_icons: 'Больше иконок настроения',
       extra_icon_slots: 'Больше иконок целей и тегов',
       custom_themes: 'Свои темы оформления',

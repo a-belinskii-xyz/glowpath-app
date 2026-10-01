@@ -21,6 +21,7 @@ from app.models.payment_webhook_event import PaymentWebhookEvent
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
 from app.models.telegram_link_code import TelegramLinkCode
+from app.models.telegram_login_request import TelegramLoginRequest
 from app.models.telegram_session import TelegramSession
 from app.models.user import User
 from app.models.user_achievement import UserAchievement
@@ -59,6 +60,7 @@ __all__ = [
     "Tag",
     "TagGroup",
     "TelegramLinkCode",
+    "TelegramLoginRequest",
     "TelegramSession",
     "User",
     "UserAchievement",

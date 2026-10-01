@@ -47,6 +47,19 @@ class MoodTrackerApiClient:
             },
         )
 
+    async def confirm_login(
+        self,
+        *,
+        code: str,
+        telegram_user_id: int,
+        locale: str | None,
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            "/v1/telegram/bot/login-confirm",
+            json={"code": code, "telegram_user_id": telegram_user_id, "locale": locale},
+        )
+
     async def unlink(self, *, telegram_user_id: int) -> dict[str, Any]:
         return await self._request(
             "POST",

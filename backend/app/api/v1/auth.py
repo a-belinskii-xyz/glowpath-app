@@ -25,6 +25,10 @@ from app.schemas.auth import (
     RegisterRequest,
     ResetPasswordRequest,
     TelegramAuthRequest,
+    TelegramBotLoginPollRequest,
+    TelegramBotLoginPollResponse,
+    TelegramBotLoginStartRequest,
+    TelegramBotLoginStartResponse,
     TokenResponse,
     VerificationResendResponse,
     VerificationResendStatus,
@@ -53,6 +57,7 @@ from app.services.telegram_auth_service import (
     begin_telegram_browser_login,
     complete_telegram_browser_login,
 )
+from app.services.telegram_bot_login_service import poll_bot_login, start_bot_login
 from app.services.user_public import to_user_public
 
 router = APIRouter(tags=["auth"])
@@ -393,6 +398,43 @@ def telegram_mini_app_login(
     except AuthError as exc:
         _handle_auth_error(exc)
     return _to_token_response(tokens)
+
+
+@router.post("/telegram/bot-login", response_model=TelegramBotLoginStartResponse)
+def telegram_bot_login_start(
+    body: TelegramBotLoginStartRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> TelegramBotLoginStartResponse:
+    try:
+        visitor_id = parse_visitor_id(request.cookies.get(settings.guest_visitor_cookie_name))
+        started = start_bot_login(db, timezone=body.timezone, visitor_id=visitor_id)
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    return TelegramBotLoginStartResponse(
+        poll_token=started.poll_token,
+        deep_link=started.deep_link,
+        expires_at=started.expires_at,
+    )
+
+
+@router.post("/telegram/bot-login/poll", response_model=TelegramBotLoginPollResponse)
+def telegram_bot_login_poll(
+    body: TelegramBotLoginPollRequest,
+    db: Session = Depends(get_db),
+) -> TelegramBotLoginPollResponse:
+    try:
+        result = poll_bot_login(db, poll_token=body.poll_token)
+    except AuthError as exc:
+        _handle_auth_error(exc)
+    if result.tokens is None:
+        return TelegramBotLoginPollResponse(status=result.status)
+    return TelegramBotLoginPollResponse(
+        status=result.status,
+        access_token=result.tokens.access_token,
+        refresh_token=result.tokens.refresh_token,
+        user_created=result.tokens.user_created or None,
+    )
 
 
 @router.get("/me", response_model=UserPublic)

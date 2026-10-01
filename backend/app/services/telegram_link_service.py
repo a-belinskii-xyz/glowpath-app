@@ -13,6 +13,7 @@ from app.core.errors import AppError
 from app.core.i18n import normalize_locale
 from app.core.identity import telegram_is_only_auth_method
 from app.core.security import hash_token
+from app.core.telegram_oidc import telegram_oidc_configured
 from app.models.telegram_link_code import TelegramLinkCode
 from app.models.user import User
 from app.models.user_notification_schedule import UserNotificationSchedule
@@ -27,11 +28,16 @@ def bot_is_configured() -> bool:
     return bool(settings.telegram_bot_token.strip() and settings.telegram_bot_username.strip())
 
 
-def serialize_entry_point() -> dict[str, str | None]:
+def serialize_entry_point() -> dict[str, object]:
     username = settings.telegram_bot_username.strip() or None
     return {
         "bot_username": username,
         "bot_url": f"https://t.me/{username}" if username else None,
+        "bot_login": bot_is_configured(),
+        "browser_login": telegram_oidc_configured(
+            client_id=settings.telegram_oidc_client_id,
+            client_secret=settings.telegram_oidc_client_secret,
+        ),
     }
 
 
