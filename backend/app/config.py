@@ -68,6 +68,8 @@ class Settings(BaseSettings):
     smtp_user: str = Field(default="", validation_alias="SMTP_USER")
     smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
     email_from: str = Field(default="noreply@mood-tracker.local", validation_alias="EMAIL_FROM")
+    # When set, mail goes through the Resend HTTPS API instead of SMTP.
+    resend_api_key: str = Field(default="", validation_alias="RESEND_API_KEY")
 
     # Reminder worker (daily mood + goal notifications).
     # Product kill switch: false hides delivery and locks the settings UI.

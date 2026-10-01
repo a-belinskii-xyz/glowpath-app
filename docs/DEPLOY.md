@@ -48,13 +48,15 @@ All backend variables are defined in `backend/app/config.py` and documented in `
 | `TELEGRAM_BOT_SERVICE_TOKEN` | same value as on the bot | bot → API calls |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` | BotFather | Mini App sign-in (`initData` check) and account linking |
 | `TELEGRAM_MINI_APP_URL` | frontend public URL | Mini App buttons |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` | mail provider | email verification, password reset |
+| `RESEND_API_KEY`, `EMAIL_FROM` | [Resend](https://resend.com), verified sending domain | email verification, password reset, email reminders |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Google Cloud | Google sign-in (optional) |
 | `TELEGRAM_OIDC_CLIENT_ID`, `TELEGRAM_OIDC_CLIENT_SECRET`, `TELEGRAM_OIDC_REDIRECT_URI` | BotFather Login Widget | Telegram sign-in on the website (optional) |
 | `GUEST_EXPERIMENT_SECRET` | random string | guest experiment, if enabled |
 | `BILLING_DEFAULT_PROVIDER`, `BILLING_ENABLED_PROVIDERS` | see warning below | plans |
 
-`render.yaml` does not declare the Telegram token and username, `TELEGRAM_MINI_APP_URL`, SMTP, OAuth, `GUEST_EXPERIMENT_SECRET` or billing variables; they have to be added in the dashboard.
+`render.yaml` does not declare the Telegram token and username, `TELEGRAM_MINI_APP_URL`, OAuth, `GUEST_EXPERIMENT_SECRET` or billing variables; they have to be added in the dashboard.
+
+Mail goes through the Resend HTTPS API whenever `RESEND_API_KEY` is set. Render free web services block outbound SMTP ports, so `SMTP_*` only matter for local MailHog or a self-hosted server. `EMAIL_FROM` must use the domain verified in Resend, e.g. `GlowPath <hello@mail.example.com>`. Reminder emails carry an unsubscribe link (`/unsubscribe`) and a one-click `List-Unsubscribe` header pointing at `FRONTEND_URL/v1/notification-settings/unsubscribe`, which the frontend proxies to the API.
 
 > **Billing:** the default provider is `fake`, which completes checkout instantly without payment and accepts unsigned webhooks. Do not leave `fake` enabled in production once paid plans are visible to users.
 

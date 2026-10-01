@@ -40,6 +40,7 @@ import {
 import { NotificationSettingsPage } from './pages/NotificationSettingsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { StaffPage } from './pages/StaffPage'
+import { UnsubscribePage } from './pages/UnsubscribePage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { TelegramNavigation } from './platform/TelegramNavigation'
 
@@ -61,6 +62,7 @@ function App() {
                     </Route>
                     <Route path="privacy" element={<PrivacyPage />} />
                     <Route path="verify-email" element={<VerifyEmailPage />} />
+                    <Route path="unsubscribe" element={<UnsubscribePage />} />
                     <Route path="auth/google/callback" element={<GoogleCallbackPage />} />
                     <Route path="auth/telegram/callback" element={<TelegramCallbackPage />} />
 

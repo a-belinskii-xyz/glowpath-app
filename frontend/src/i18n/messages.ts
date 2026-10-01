@@ -1316,6 +1316,16 @@ export const en = {
       secrets: 'Secrets',
     },
   },
+  unsubscribe: {
+    title: 'Email reminders',
+    prompt: 'Stop GlowPath reminder emails? Your diary stays as it is.',
+    confirm: 'Unsubscribe',
+    working: 'Unsubscribing…',
+    done: 'Done. We will not send you reminder emails anymore. You can turn them back on in notification settings.',
+    missingToken: 'The unsubscribe link is incomplete.',
+    failed: 'Could not unsubscribe. The link may be broken.',
+    toSettings: 'Notification settings',
+  },
   boot: {
     phaseSpace: 'Setting up your space…',
     phaseSync: 'Syncing your data…',
@@ -2646,6 +2656,16 @@ export const ru: DeepStringLeaves<typeof en> = {
       collection: 'Коллекция',
       secrets: 'Секреты',
     },
+  },
+  unsubscribe: {
+    title: 'Письма-напоминания',
+    prompt: 'Отписаться от писем-напоминаний GlowPath? Дневник останется как есть.',
+    confirm: 'Отписаться',
+    working: 'Отписываем…',
+    done: 'Готово. Писем-напоминаний больше не будет. Включить их снова можно в настройках уведомлений.',
+    missingToken: 'Ссылка для отписки неполная.',
+    failed: 'Не получилось отписаться. Возможно, ссылка повреждена.',
+    toSettings: 'Настройки уведомлений',
   },
   boot: {
     phaseSpace: 'Настраиваем пространство...',

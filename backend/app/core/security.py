@@ -12,6 +12,7 @@ password_hasher = PasswordHash.recommended()
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_TYPE = "access"
 REFRESH_TOKEN_TYPE = "refresh"
+EMAIL_UNSUBSCRIBE_TOKEN_TYPE = "email_unsubscribe"
 
 
 def hash_password(password: str) -> str:
@@ -67,6 +68,16 @@ def decode_access_token(token: str) -> uuid.UUID:
 
 def decode_refresh_token(token: str) -> uuid.UUID:
     return _decode_token(token, expected_type=REFRESH_TOKEN_TYPE)
+
+
+def create_email_unsubscribe_token(user_id: uuid.UUID) -> str:
+    """Signed, non-expiring token for the unsubscribe link in reminder emails."""
+    payload = {"sub": str(user_id), "type": EMAIL_UNSUBSCRIBE_TOKEN_TYPE}
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=JWT_ALGORITHM)
+
+
+def decode_email_unsubscribe_token(token: str) -> uuid.UUID:
+    return _decode_token(token, expected_type=EMAIL_UNSUBSCRIBE_TOKEN_TYPE)
 
 
 def auth_token_expires_at() -> datetime:
