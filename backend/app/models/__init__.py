@@ -15,6 +15,7 @@ from app.models.mood_entry_attachment import MoodEntryAttachment
 from app.models.mood_entry_goal import MoodEntryGoal
 from app.models.mood_entry_tag import MoodEntryTag
 from app.models.note_template import NoteTemplate
+from app.models.notification_delivery import NotificationDelivery
 from app.models.payment import Payment
 from app.models.payment_webhook_event import PaymentWebhookEvent
 from app.models.tag import Tag
@@ -66,6 +67,7 @@ __all__ = [
     "UserMoodIcon",
     "UserMoodPreferences",
     "SystemWorkerHeartbeat",
+    "NotificationDelivery",
     "UserNotificationSchedule",
     "UserSubscription",
     "UserTagIcon",

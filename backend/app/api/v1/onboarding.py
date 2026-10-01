@@ -68,6 +68,7 @@ def onboarding_complete(
             option_keys=None if body.skip else body.option_keys,
             tag_group_slugs=None if body.skip else body.tag_group_slugs,
             note_template_slugs=None if body.skip else body.note_template_slugs,
+            email_reminders=body.email_reminders,
         )
     except OnboardingError as exc:
         raise_http_error(exc)

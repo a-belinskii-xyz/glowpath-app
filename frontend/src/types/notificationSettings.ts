@@ -21,6 +21,7 @@ export type NotificationSchedule = {
   days_of_week: number[] | null
   channels: NotificationChannel[]
   last_sent_at: string | null
+  paused_at: string | null
 }
 
 export type NotificationSettingsPublic = {

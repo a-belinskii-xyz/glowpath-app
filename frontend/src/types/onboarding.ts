@@ -46,4 +46,5 @@ export type OnboardingCompleteRequest = {
   option_keys?: string[]
   tag_group_slugs?: string[]
   note_template_slugs?: string[]
+  email_reminders?: boolean
 }

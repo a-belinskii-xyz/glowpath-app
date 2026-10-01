@@ -5,6 +5,7 @@ import { AuthCardLayout } from './components/AuthCardLayout'
 import { AppRoute, AccountRoute, BillingOnly, RegisteredOnly } from './components/AppRoute'
 import { GuestRoute } from './components/GuestRoute'
 import { Layout } from './components/Layout'
+import { NotificationLinkTracker } from './components/NotificationLinkTracker'
 import { AmbientGlowProvider } from './context/AmbientGlowContext'
 import { AuthProvider } from './context/AuthContext'
 import { GuestExperimentProvider } from './context/GuestExperimentContext'
@@ -54,6 +55,7 @@ function App() {
             <AmbientGlowProvider>
               <BrowserRouter>
                 <TelegramNavigation />
+                <NotificationLinkTracker />
                 <Routes>
                   <Route element={<Layout />}>
                     <Route index element={<HomePage />} />

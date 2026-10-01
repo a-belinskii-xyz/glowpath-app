@@ -20,6 +20,7 @@ from app.services.notification_settings_service import (
     unsubscribe_email,
     update_schedule,
 )
+from app.services.notifications.backoff import mark_engaged
 from app.services.notifications.worker_status import system_status
 
 router = APIRouter(tags=["notification-settings"])
@@ -52,6 +53,15 @@ def post_unsubscribe(
         )
     unsubscribe_email(db, user_id=user_id)
     return UnsubscribeResponse(unsubscribed=True)
+
+
+@router.post("/engaged", status_code=204)
+def post_engaged(
+    token: str = Query(min_length=1, max_length=64),
+    db: Session = Depends(get_db),
+) -> None:
+    """Record that a reminder link was followed (``?n=`` from email or Telegram)."""
+    mark_engaged(db, token=token)
 
 
 @router.get("", response_model=NotificationSettingsPublic)

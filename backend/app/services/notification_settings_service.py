@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -19,6 +20,7 @@ from app.schemas.notification_settings import (
     NotificationScheduleUpdate,
     NotificationSettingsPublic,
 )
+from app.services.notifications.backoff import resume_schedule
 from app.services.notifications.base import NotificationChannel
 from app.services.notifications.worker_status import system_status
 from app.services.user_provisioning import provision_notification_settings
@@ -108,6 +110,8 @@ def update_schedule(
 
     if body.enabled is not None:
         row.enabled = body.enabled
+        if body.enabled and row.paused_at is not None:
+            resume_schedule(row, at=datetime.now(UTC))
     if body.time_of_day is not None:
         row.time_of_day = body.time_of_day
     if body.interval_days is not None:
@@ -121,6 +125,25 @@ def update_schedule(
     db.commit()
     db.refresh(row)
     return list_settings(db, user_id=user_id, locale=locale)
+
+
+def enable_daily_email_reminder(db: Session, *, user: User) -> bool:
+    """Opt-in from onboarding: daily mood reminder by email at the default time.
+
+    Only for accounts that have a verified email and no Telegram (Telegram users get
+    reminders in the bot). Does nothing while notifications are switched off.
+    """
+    if not settings.feature_notifications_enabled:
+        return False
+    if not user.email or user.email_verified_at is None or user.telegram_linked:
+        return False
+    rows = ensure_schedules(db, user_id=user.id)
+    row = next(item for item in rows if item.kind == NotificationScheduleKind.DAILY_MOOD.value)
+    row.enabled = True
+    row.channels = [NotificationChannel.EMAIL.value]
+    if row.paused_at is not None:
+        resume_schedule(row, at=datetime.now(UTC))
+    return True
 
 
 def unsubscribe_email(db: Session, *, user_id: uuid.UUID) -> int:
@@ -157,12 +180,13 @@ def serialize_schedule(row: UserNotificationSchedule) -> dict[str, Any]:
 def _serialize(row: UserNotificationSchedule) -> NotificationSchedulePublic:
     return NotificationSchedulePublic(
         kind=NotificationScheduleKind(row.kind),
-        enabled=row.enabled,
+        enabled=row.enabled and row.paused_at is None,
         time_of_day=row.time_of_day,
         interval_days=row.interval_days,
         days_of_week=list(row.days_of_week) if row.days_of_week else None,
         channels=[NotificationChannel(channel) for channel in row.channels],
         last_sent_at=row.last_sent_at,
+        paused_at=row.paused_at,
     )
 
 

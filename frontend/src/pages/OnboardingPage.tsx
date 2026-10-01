@@ -31,6 +31,11 @@ export function OnboardingPage() {
   const [questions, setQuestions] = useState<OnboardingQuestion[]>([])
   const [phase, setPhase] = useState<Phase>('questions')
   const [stepIndex, setStepIndex] = useState(0)
+  // Accounts without Telegram get reminders only by email, so offer them here (GP-27).
+  const canOfferEmailReminders = Boolean(
+    !isGuestDiaryMode() && user?.email && user.email_verified && !user.telegram_linked,
+  )
+  const [emailReminders, setEmailReminders] = useState(true)
   const [selected, setSelected] = useState<Record<string, string[]>>({})
   const [suggestions, setSuggestions] = useState<OnboardingSuggestions | null>(null)
   const [selectedGroupSlugs, setSelectedGroupSlugs] = useState<string[]>([])
@@ -158,14 +163,17 @@ export function OnboardingPage() {
       setError(null)
       try {
         await completeOnboarding(
-          skip
-            ? { skip: true, option_keys: [], tag_group_slugs: [], note_template_slugs: [] }
-            : {
-                skip: false,
-                option_keys: optionKeys,
-                tag_group_slugs: selectedGroupSlugs,
-                note_template_slugs: selectedTemplateSlugs,
-              },
+          {
+            ...(skip
+              ? { skip: true, option_keys: [], tag_group_slugs: [], note_template_slugs: [] }
+              : {
+                  skip: false,
+                  option_keys: optionKeys,
+                  tag_group_slugs: selectedGroupSlugs,
+                  note_template_slugs: selectedTemplateSlugs,
+                }),
+            email_reminders: canOfferEmailReminders && emailReminders,
+          },
         )
         if (isGuestDiaryMode()) {
           await refreshGuestMeta()
@@ -180,6 +188,8 @@ export function OnboardingPage() {
       }
     },
     [
+      canOfferEmailReminders,
+      emailReminders,
       navigate,
       optionKeys,
       refreshGuestMeta,
@@ -460,6 +470,20 @@ export function OnboardingPage() {
       {!isLoading ? (
         <div className="onboarding-sticky-bar">
           <div className="onboarding-sticky-actions">
+            {canOfferEmailReminders ? (
+              <div className="onboarding-email-reminders">
+                <label className="tag-visibility-toggle">
+                  <input
+                    type="checkbox"
+                    checked={emailReminders}
+                    disabled={isSubmitting}
+                    onChange={(event) => setEmailReminders(event.target.checked)}
+                  />
+                  <span>{t('onboarding.emailReminders')}</span>
+                </label>
+                <p className="form-hint">{t('onboarding.emailRemindersHint')}</p>
+              </div>
+            ) : null}
             {phase === 'questions' && current ? (
               <div className="button-row onboarding-actions">
                 <button

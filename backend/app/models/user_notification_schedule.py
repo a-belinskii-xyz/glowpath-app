@@ -55,5 +55,11 @@ class UserNotificationSchedule(TimestampMixin, Base):
         server_default=text("ARRAY['telegram']::varchar[]"),
     )
     last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set when ignored reminders stopped this schedule; cleared when the person turns it on.
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Deliveries before this moment no longer count towards the ignored streak.
+    backoff_reset_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     user: Mapped["User"] = relationship(back_populates="notification_schedules")

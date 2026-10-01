@@ -53,3 +53,5 @@ class OnboardingCompleteRequest(BaseModel):
     option_keys: list[str] = Field(default_factory=list)
     tag_group_slugs: list[str] = Field(default_factory=list)
     note_template_slugs: list[str] = Field(default_factory=list)
+    # Opt-in toggle shown to accounts without Telegram: daily reminder by email.
+    email_reminders: bool = False

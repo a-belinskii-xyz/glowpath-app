@@ -55,6 +55,8 @@ class NotificationSchedulePublic(BaseModel):
     days_of_week: list[int] | None = None
     channels: list[NotificationChannel]
     last_sent_at: datetime | None = None
+    # Set when reminders stopped because they were ignored; ``enabled`` is then false.
+    paused_at: datetime | None = None
 
 
 class NotificationSettingsPublic(BaseModel):

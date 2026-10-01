@@ -18,11 +18,19 @@ from app.models.mood_entry import MoodEntry
 from app.models.user import User
 from app.models.user_notification_schedule import UserNotificationSchedule
 from app.services.goal_service import goal_is_active_on, week_completion_counts
+from app.services.notifications.backoff import (
+    BackoffState,
+    backoff_state,
+    new_delivery_token,
+    pause_schedule,
+    record_delivery,
+)
 from app.services.notifications.base import NotificationChannel
 from app.services.notifications.dispatcher import NotificationDispatcher
 from app.services.notifications.messages import (
     daily_mood_reminder_message,
     goal_reminder_message,
+    reminders_paused_message,
 )
 
 
@@ -31,6 +39,7 @@ class ReminderRunStats:
     users_considered: int = 0
     daily_mood_sent: int = 0
     goal_reminders_sent: int = 0
+    paused: int = 0
     skipped: int = 0
     errors: list[str] = field(default_factory=list)
 
@@ -52,7 +61,10 @@ def process_due_reminders(
     schedules = list(
         db.scalars(
             select(UserNotificationSchedule)
-            .where(UserNotificationSchedule.enabled.is_(True))
+            .where(
+                UserNotificationSchedule.enabled.is_(True),
+                UserNotificationSchedule.paused_at.is_(None),
+            )
             .options(joinedload(UserNotificationSchedule.user))
         )
         .unique()
@@ -100,6 +112,12 @@ def process_due_reminders(
             stats.skipped += 1
             continue
 
+        backoff = backoff_state(db, schedule, now=instant)
+        db.commit()  # keep engagement found while computing the streak
+        if _backoff_holds(backoff, local_day=local_now.date(), tz=tz):
+            stats.skipped += 1
+            continue
+
         previous_sent_at = schedule.last_sent_at
         if not claim_schedule(db, schedule_id=schedule.id, previous=previous_sent_at, at=instant):
             # Another tick (overlapping cron call or worker) already took this one.
@@ -107,6 +125,15 @@ def process_due_reminders(
             continue
 
         try:
+            if backoff.should_pause:
+                _pause_after_ignored(
+                    db, dispatcher, schedule=schedule, user=user, channels=deliverable, at=instant
+                )
+                stats.paused += 1
+                db.commit()
+                continue
+
+            token = new_delivery_token()
             sent = _deliver_schedule(
                 db,
                 dispatcher,
@@ -116,8 +143,16 @@ def process_due_reminders(
                 local_day=local_now.date(),
                 local_hour=local_now.hour,
                 tz=tz,
+                tracking_token=token,
             )
             if sent:
+                record_delivery(
+                    db,
+                    schedule=schedule,
+                    channels=[channel.value for channel in deliverable],
+                    token=token,
+                    at=instant,
+                )
                 if schedule.kind == "daily_mood":
                     stats.daily_mood_sent += 1
                 elif schedule.kind == "goal_tracking":
@@ -225,8 +260,9 @@ def _deliver_schedule(
     local_day: date,
     local_hour: int,
     tz: ZoneInfo,
+    tracking_token: str | None = None,
 ) -> bool:
-    locale = normalize_locale(user.telegram_locale) if user.telegram_locale else DEFAULT_LOCALE
+    locale = _user_locale(user)
     if schedule.kind == "daily_mood":
         if _has_mood_entry_on_local_day(db, user=user, local_day=local_day, tz=tz):
             return False
@@ -239,6 +275,7 @@ def _deliver_schedule(
                     hour=local_hour,
                     locale=locale,
                     unsubscribe_token=_unsubscribe_token(user, channel),
+                    tracking_token=tracking_token,
                 ),
             )
         return True
@@ -257,11 +294,50 @@ def _deliver_schedule(
                     goal_labels=labels,
                     locale=locale,
                     unsubscribe_token=_unsubscribe_token(user, channel),
+                    tracking_token=tracking_token,
                 ),
             )
         return True
 
     return False
+
+
+def _backoff_holds(backoff: BackoffState, *, local_day: date, tz: ZoneInfo) -> bool:
+    """True while an ignored streak asks for a longer gap than has passed."""
+    if backoff.last_delivery_at is None or backoff.min_gap_days <= 1:
+        return False
+    last = backoff.last_delivery_at
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=UTC)
+    return (local_day - last.astimezone(tz).date()).days < backoff.min_gap_days
+
+
+def _pause_after_ignored(
+    db: Session,
+    dispatcher: NotificationDispatcher,
+    *,
+    schedule: UserNotificationSchedule,
+    user: User,
+    channels: list[NotificationChannel],
+    at: datetime,
+) -> None:
+    """Say goodbye once, then stop this schedule until the person turns it back on."""
+    locale = _user_locale(user)
+    for channel in channels:
+        dispatcher.send(
+            user=user,
+            channels=[channel],
+            message=reminders_paused_message(
+                channel=channel,
+                locale=locale,
+                unsubscribe_token=_unsubscribe_token(user, channel),
+            ),
+        )
+    pause_schedule(schedule, at=at)
+
+
+def _user_locale(user: User) -> str:
+    return normalize_locale(user.telegram_locale) if user.telegram_locale else DEFAULT_LOCALE
 
 
 def _unsubscribe_token(user: User, channel: NotificationChannel) -> str | None:
