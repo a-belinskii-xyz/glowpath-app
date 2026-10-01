@@ -195,6 +195,15 @@ class ErrorCode(StrEnum):
     ACHIEVEMENT_NOT_FOUND = "achievement_not_found"
     ACHIEVEMENT_NOT_UNLOCKED = "achievement_not_unlocked"
 
+    # Diary restore from an export archive
+    RESTORE_INVALID_ARCHIVE = "restore_invalid_archive"
+    RESTORE_UNSUPPORTED_VERSION = "restore_unsupported_version"
+    RESTORE_ARCHIVE_TOO_LARGE = "restore_archive_too_large"
+    RESTORE_DIARY_MISSING = "restore_diary_missing"
+    RESTORE_PART_UNKNOWN = "restore_part_unknown"
+    RESTORE_NOT_FOUND = "restore_not_found"
+    RESTORE_NOT_IN_PREVIEW = "restore_not_in_preview"
+
     # Billing / subscriptions
     BILLING_DISABLED = "billing_disabled"
     PLAN_NOT_FOUND = "plan_not_found"

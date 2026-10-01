@@ -31,5 +31,11 @@ class NoteTemplate(TimestampMixin, Base):
     labels: Mapped[dict[str, str]] = mapped_column(JSONB)
     bodies: Mapped[dict[str, str]] = mapped_column(JSONB)
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
+    # Set when this row was created by restoring an export archive (GP-20).
+    restore_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("diary_restores"), ondelete="SET NULL"),
+        nullable=True,
+    )
 
     user: Mapped["User"] = relationship(back_populates="note_templates")

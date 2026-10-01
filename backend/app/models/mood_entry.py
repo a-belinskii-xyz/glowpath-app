@@ -57,6 +57,12 @@ class MoodEntry(TimestampMixin, Base):
             "source",
         ),
         Index(
+            index_name("mood_entries", "user_id__origin_id"),
+            "user_id",
+            "origin_id",
+            postgresql_where=text("origin_id IS NOT NULL"),
+        ),
+        Index(
             index_name("mood_entries", "user_id__logged_on"),
             "user_id",
             "logged_on",
@@ -91,6 +97,14 @@ class MoodEntry(TimestampMixin, Base):
     # Attribution for analytics, ``{channel}:{kind}`` (e.g. email:daily_mood_reminder);
     # not shown in UI.
     source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Set when this row was created by restoring an export archive (GP-20).
+    restore_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("diary_restores"), ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Id the entry had in the archive it was restored from; restores skip it next time.
+    origin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # Semantic search vector (fastembed); null when entry has no searchable text.
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMS), nullable=True)
 

@@ -58,6 +58,12 @@ class Tag(TimestampMixin, Base):
         nullable=False,
         server_default=DEFAULT_TAG_ICON,
     )
+    # Set when this row was created by restoring an export archive (GP-20).
+    restore_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("diary_restores"), ondelete="SET NULL"),
+        nullable=True,
+    )
 
     group: Mapped["TagGroup"] = relationship(back_populates="tags")
     user: Mapped["User"] = relationship()

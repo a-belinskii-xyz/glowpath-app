@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.user_goal_icon import UserGoalIcon
 from app.models.user_mood_icon import UserMoodIcon
 from app.models.user_tag_icon import UserTagIcon
+from app.services.diary_archive.restore import restore_temp_keys
 from app.services.storage import ObjectStorage, StorageError
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ def _user_storage_keys(db: Session, user_id: uuid.UUID) -> set[str]:
             keys.add(key)
             if source_key:
                 keys.add(source_key)
+    keys.update(restore_temp_keys(db, user_id=user_id))
     return keys
 
 

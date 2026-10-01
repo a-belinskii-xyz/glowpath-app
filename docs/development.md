@@ -323,6 +323,14 @@ Open http://localhost:8080; MailHog stays on http://localhost:8025. `make down-p
 
 `make pre-commit-install` once per clone. Before each commit the hooks run ruff (format + lint), mypy and pytest. Run them manually with `make pre-commit`.
 
+## Diary export and restore
+
+`GET /v1/account/export` returns a ZIP with `diary.json` (the source of truth), `entries.csv` (for people) and the photos and voice notes; the Telegram export splits it into parts under 45 MB. `diary.json` is described by the pydantic models in `backend/app/services/diary_archive/schema.py`, which the export builds and the restore reads.
+
+Restore (`/v1/account/restores`) is two steps: upload the part(s) and get a preview, then `apply` or `cancel`. It merges: entries already in the diary (same id, or restored before from the same archive id via `mood_entries.origin_id`) are skipped, and tag groups, tags, goals and note templates are matched by slug. Rows it creates carry `restore_id` (see `diary_restores`); restored entries also get `source = "restore"`. Account settings and reminders are never touched.
+
+Changing the format: bump `CURRENT_VERSION`, update the models, and add one step to `UPGRADES` in `diary_archive/upgrades.py` that turns the previous version into the new one. Never edit a released step, and keep a fixture of every old version in `backend/tests/fixtures/`.
+
 ## Tasks and branches
 
 Every feature or notable change is a task `GP-N`, numbered in order. Task cards (problem, decisions, status history) live outside the repo.
