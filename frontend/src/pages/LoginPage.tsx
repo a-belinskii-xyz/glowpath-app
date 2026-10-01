@@ -1,18 +1,15 @@
-import { FormEvent, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
-import { getGoogleLoginUrl, getTelegramBrowserLoginUrl } from '../api/auth'
+import { getTelegramBrowserLoginUrl } from '../api/auth'
+import { getTelegramEntryPoint } from '../api/telegram'
 import { Alert } from '../components/Alert'
-import { PageErrorAlert } from '../components/PageErrorAlert'
-import { AuthFooterLink } from '../components/AuthCardLayout'
-import { FormField } from '../components/FormField'
-import { StableButtonLabel } from '../components/StableButtonLabel'
-import { TelegramOpenCta } from '../components/TelegramOpenCta'
+import { TelegramBotLogin } from '../components/TelegramBotLogin'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import { detectTimezone } from '../lib/timezones'
-import { ApiError, formatApiError } from '../lib/errors'
+import type { TelegramEntryPointPublic } from '../types/telegram'
 
 const AUTH_RETURN_TO_KEY = 'auth_return_to'
 
@@ -31,106 +28,65 @@ function postLoginPath(state: LoginLocationState | null): string {
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login } = useAuth()
+  const { completeLogin } = useAuth()
   const { t } = useLocale()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [entryPoint, setEntryPoint] = useState<TelegramEntryPointPublic | null>(null)
+  const returnTo = postLoginPath(location.state as LoginLocationState | null)
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      await login({ email, password })
-      navigate(postLoginPath(location.state as LoginLocationState | null), { replace: true })
-    } catch (err) {
-      if (err instanceof ApiError && (err.code === 'email_not_verified' || err.status === 403)) {
-        setError(t('errors.emailNotVerified'))
-      } else {
-        setError(formatApiError(err, t, 'errors.loginFailed'))
-      }
-    } finally {
-      setIsSubmitting(false)
+  useEffect(() => {
+    let cancelled = false
+    void getTelegramEntryPoint()
+      .then((payload) => {
+        if (!cancelled) {
+          setEntryPoint(payload)
+        }
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
     }
-  }
+  }, [])
+
+  const handleTokens = useCallback(
+    async (accessToken: string, refreshToken: string, userCreated: boolean) => {
+      await completeLogin(accessToken, refreshToken, userCreated)
+      navigate(returnTo, { replace: true })
+    },
+    [completeLogin, navigate, returnTo],
+  )
 
   return (
     <>
       <h1>{t('auth.logInTitle')}</h1>
       <p className="muted">{t('auth.telegramPrimary')}</p>
-      <TelegramOpenCta />
-      <p className="muted">{t('auth.logInSubtitle')}</p>
 
-      <PageErrorAlert error={error} />
       {isGuestDiaryMode() ? (
         <Alert variant="warning">{t('guest.loginWarning')}</Alert>
       ) : null}
 
-      <form className="form" onSubmit={handleSubmit}>
-        <FormField
-          id="email"
-          label={t('common.email')}
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <FormField
-          id="password"
-          label={t('common.password')}
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        <button className="button button-block" type="submit" disabled={isSubmitting}>
-          <StableButtonLabel
-            active={isSubmitting ? t('auth.signingIn') : t('auth.signIn')}
-            labels={[t('auth.signIn'), t('auth.signingIn')]}
-          />
-        </button>
-      </form>
-
-      <div className="divider">{t('common.or')}</div>
-
       <div className="auth-oauth-actions">
-        <a
-          className="button button-secondary button-block"
-          href={getTelegramBrowserLoginUrl(detectTimezone())}
-          onClick={() => {
-            const returnTo = postLoginPath(location.state as LoginLocationState | null)
-            if (returnTo !== '/') {
-              sessionStorage.setItem(AUTH_RETURN_TO_KEY, returnTo)
-            }
-          }}
-        >
-          {t('auth.continueWithTelegram')}
-        </a>
+        {entryPoint?.bot_login ? <TelegramBotLogin onTokens={handleTokens} /> : null}
 
-        <a
-          className="button button-secondary button-block"
-          href={getGoogleLoginUrl()}
-          onClick={() => {
-            const returnTo = postLoginPath(location.state as LoginLocationState | null)
-            if (returnTo !== '/') {
-              sessionStorage.setItem(AUTH_RETURN_TO_KEY, returnTo)
-            }
-          }}
-        >
-          {t('auth.continueWithGoogle')}
-        </a>
+        {entryPoint?.browser_login ? (
+          <a
+            className="button button-secondary button-block"
+            href={getTelegramBrowserLoginUrl(detectTimezone())}
+            onClick={() => {
+              if (returnTo !== '/') {
+                sessionStorage.setItem(AUTH_RETURN_TO_KEY, returnTo)
+              }
+            }}
+          >
+            {t('auth.continueWithTelegram')}
+          </a>
+        ) : null}
+
+        {entryPoint?.bot_url ? (
+          <a className="button button-secondary button-block" href={entryPoint.bot_url}>
+            {t('auth.openInTelegram')}
+          </a>
+        ) : null}
       </div>
-
-      <AuthFooterLink to="/forgot-password">{t('auth.forgotPassword')}</AuthFooterLink>
-      <AuthFooterLink to="/resend-verification">{t('auth.resendVerification')}</AuthFooterLink>
-      <p className="auth-footer">
-        {t('auth.noAccount')} <Link to="/register">{t('nav.register')}</Link>
-      </p>
     </>
   )
 }

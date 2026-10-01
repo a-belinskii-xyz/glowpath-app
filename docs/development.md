@@ -161,6 +161,8 @@ curl -s -X POST http://localhost:8000/v1/auth/google \
 
 ### Telegram browser login
 
+"Sign in with the bot" needs only `TELEGRAM_BOT_TOKEN` and `TELEGRAM_BOT_USERNAME`: the site opens `t.me/<bot>?start=login_<code>`, the bot confirms the code through `/v1/telegram/bot/login-confirm`, and the page polls `/v1/auth/telegram/bot-login/poll` for tokens. The login page shows only Telegram options; email login stays at `/login/email` for older accounts.
+
 "Continue with Telegram" uses OpenID Connect from BotFather → Login Widget. Set `TELEGRAM_OIDC_CLIENT_ID`, `TELEGRAM_OIDC_CLIENT_SECRET`, `TELEGRAM_OIDC_REDIRECT_URI` and register the redirect URI as an allowed URL. The `id` claim is the Telegram user id, the same as in Mini App `initData`.
 
 ## Reminders

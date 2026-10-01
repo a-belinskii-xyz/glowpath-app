@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { deleteAccount, downloadAccountExport, sendAccountExportToTelegram } from '../api/account'
 import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
-import { AttachEmailForm } from '../components/AttachEmailForm'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { DiaryRestoreCard } from '../components/DiaryRestoreCard'
 import { PageErrorAlert } from '../components/PageErrorAlert'
@@ -38,6 +37,9 @@ export function AccountSettingsPage() {
   if (!user) {
     return null
   }
+
+  // Sign-in is Telegram-only (GP-28); show email only for accounts that have no Telegram yet.
+  const showEmailSignIn = Boolean(user.email) && !user.telegram_linked
 
   const timezoneOptions = timezoneSelectOptions(user.timezone)
   const inMiniApp = isTelegramMiniApp()
@@ -134,28 +136,38 @@ export function AccountSettingsPage() {
             {t('settings.signInTitle')}
           </h2>
           <div className="profile-account-row">
-            <div className="profile-account-email">
-              <span className="profile-account-label">{t('common.email')}</span>
-              <div className="profile-account-email-value">
-                <span className="profile-account-email-text">
-                  {user.email ?? t('profile.signedInWithTelegram')}
-                </span>
-                {user.email ? (
-                  <span
-                    className={`status-pill${user.email_verified ? ' status-pill--ok' : ' status-pill--warn'}`}
-                  >
-                    {user.email_verified
-                      ? t('profile.emailVerifiedShort')
-                      : t('profile.emailUnverifiedShort')}
+            {showEmailSignIn ? (
+              <div className="profile-account-email">
+                <span className="profile-account-label">{t('common.email')}</span>
+                <div className="profile-account-email-value">
+                  <span className="profile-account-email-text">
+                    {user.email ?? t('profile.signedInWithTelegram')}
                   </span>
-                ) : (
-                  <span className="status-pill status-pill--ok">
-                    {t('profile.telegramLinkedShort')}
-                  </span>
-                )}
+                  {user.email ? (
+                    <span
+                      className={`status-pill${user.email_verified ? ' status-pill--ok' : ' status-pill--warn'}`}
+                    >
+                      {user.email_verified
+                        ? t('profile.emailVerifiedShort')
+                        : t('profile.emailUnverifiedShort')}
+                    </span>
+                  ) : (
+                    <span className="status-pill status-pill--ok">
+                      {t('profile.telegramLinkedShort')}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-            {user.has_password ? (
+            ) : (
+              <div className="profile-account-email">
+                <span className="profile-account-label">{t('profile.telegramTitle')}</span>
+                <div className="profile-account-email-value">
+                  <span className="profile-account-email-text">{t('profile.signedInWithTelegram')}</span>
+                  <span className="status-pill status-pill--ok">{t('profile.telegramLinkedShort')}</span>
+                </div>
+              </div>
+            )}
+            {showEmailSignIn && user.has_password ? (
               <div className="profile-account-password">
                 <button
                   type="button"
@@ -177,12 +189,6 @@ export function AccountSettingsPage() {
             ) : null}
           </div>
         </section>
-
-        {!user.email ? (
-          <div className="card">
-            <AttachEmailForm />
-          </div>
-        ) : null}
 
         <section className="card profile-account" aria-labelledby="settings-region-heading">
           <h2 id="settings-region-heading" className="profile-settings-subheading">

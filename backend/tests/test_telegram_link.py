@@ -34,11 +34,15 @@ def test_telegram_entry_point_is_public(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "telegram_bot_username", "glowpath_bot")
+    monkeypatch.setattr(settings, "telegram_bot_token", "test-bot-token")
+    monkeypatch.setattr(settings, "telegram_oidc_client_id", "")
     response = client.get("/v1/telegram/entry-point")
     assert response.status_code == 200
     assert response.json() == {
         "bot_username": "glowpath_bot",
         "bot_url": "https://t.me/glowpath_bot",
+        "bot_login": True,
+        "browser_login": False,
     }
 
 

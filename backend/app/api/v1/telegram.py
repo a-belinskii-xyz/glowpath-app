@@ -18,6 +18,7 @@ from app.schemas.telegram import (
     TelegramBotCatalogPublic,
     TelegramBotEntryCreate,
     TelegramBotLinkRequest,
+    TelegramBotLoginConfirmRequest,
     TelegramBotMePublic,
     TelegramBotSessionPublic,
     TelegramBotSessionUpsert,
@@ -26,12 +27,14 @@ from app.schemas.telegram import (
     TelegramLinkCodeCreateResponse,
     TelegramLinkPublic,
 )
+from app.services.auth_service import AuthError
 from app.services.mood_entry_service import MoodEntryError, serialize_mood_entry, upload_attachment
 from app.services.mood_preferences_service import (
     get_color_display_settings,
     get_score_label_overrides,
 )
 from app.services.storage import ObjectStorage, StorageError
+from app.services.telegram_bot_login_service import confirm_bot_login
 from app.services.telegram_bot_service import (
     TelegramBotError,
     build_catalog,
@@ -143,6 +146,22 @@ def bot_link_telegram(
     except TelegramLinkError as exc:
         raise_http_error(exc)
     return _bot_me_public(user)
+
+
+@bot_router.post("/login-confirm", status_code=status.HTTP_204_NO_CONTENT)
+def bot_confirm_login(
+    body: TelegramBotLoginConfirmRequest,
+    db: Session = Depends(get_db),
+) -> None:
+    try:
+        confirm_bot_login(
+            db,
+            code=body.code,
+            telegram_user_id=body.telegram_user_id,
+            locale=body.locale,
+        )
+    except AuthError as exc:
+        raise_http_error(exc)
 
 
 @bot_router.post("/unlink", response_model=TelegramBotMePublic)

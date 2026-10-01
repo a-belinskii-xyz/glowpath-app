@@ -17,6 +17,9 @@ from bot.telegram_api import answer_callback_query, send_message
 
 logger = logging.getLogger(__name__)
 
+# Website sign-in: /start login_<code> (see telegram_bot_login_service in the API).
+LOGIN_START_PREFIX = "login_"
+
 
 async def handle_update(update: dict[str, Any]) -> None:
     callback = update.get("callback_query")
@@ -164,6 +167,15 @@ async def _handle_start(
         await _open_log(chat_id=chat_id, locale=locale, start=start)
         return
 
+    if payload and payload.startswith(LOGIN_START_PREFIX):
+        await _confirm_login(
+            chat_id=chat_id,
+            telegram_user_id=telegram_user_id,
+            locale=locale,
+            code=payload.removeprefix(LOGIN_START_PREFIX),
+        )
+        return
+
     if payload == START_ONBOARDING:
         await _open_onboarding(
             chat_id=chat_id,
@@ -233,6 +245,22 @@ async def _handle_start(
         locale=linked_locale,
         text=t(linked_locale, "linked_ok"),
     )
+
+
+async def _confirm_login(
+    *,
+    chat_id: int,
+    telegram_user_id: int,
+    locale: str | None,
+    code: str,
+) -> None:
+    try:
+        await api_client.confirm_login(code=code, telegram_user_id=telegram_user_id, locale=locale)
+    except ApiClientError as exc:
+        logger.info("login confirm failed: %s", exc.message)
+        await send_message(chat_id=chat_id, text=t(locale, "login_failed"))
+        return
+    await send_message(chat_id=chat_id, text=t(locale, "login_ok"))
 
 
 async def _handle_unlink(*, chat_id: int, telegram_user_id: int, locale: str | None) -> None:

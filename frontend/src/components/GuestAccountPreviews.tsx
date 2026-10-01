@@ -21,10 +21,9 @@ export function GuestProfilePreview() {
         <div className="card profile-account">
           <div className="profile-account-row guest-profile-locked-field">
             <div className="profile-account-email">
-              <span className="profile-account-label">{t('common.email')}</span>
+              <span className="profile-account-label">{t('profile.telegramTitle')}</span>
               <div className="profile-account-email-value">
-                <span className="profile-account-email-text">user@example.com</span>
-                <span className="status-pill status-pill--warn">{t('profile.emailUnverifiedShort')}</span>
+                <span className="profile-account-email-text">{t('profile.signedInWithTelegram')}</span>
               </div>
             </div>
           </div>

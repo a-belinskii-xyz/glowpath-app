@@ -6,6 +6,8 @@ import type {
   PasswordResetRequestResponse,
   RegisterRequest,
   ResetPasswordRequest,
+  TelegramBotLoginPoll,
+  TelegramBotLoginStart,
   TokenResponse,
   UserPublic,
   VerificationResendResponse,
@@ -92,4 +94,18 @@ export function getGoogleLoginUrl(): string {
 export function getTelegramBrowserLoginUrl(timezone: string): string {
   const params = new URLSearchParams({ timezone })
   return `${getApiBaseUrl()}/v1/auth/telegram/login?${params.toString()}`
+}
+
+export function startTelegramBotLogin(timezone: string): Promise<TelegramBotLoginStart> {
+  return apiRequest<TelegramBotLoginStart>('/v1/auth/telegram/bot-login', {
+    method: 'POST',
+    body: { timezone },
+  })
+}
+
+export function pollTelegramBotLogin(pollToken: string): Promise<TelegramBotLoginPoll> {
+  return apiRequest<TelegramBotLoginPoll>('/v1/auth/telegram/bot-login/poll', {
+    method: 'POST',
+    body: { poll_token: pollToken },
+  })
 }

@@ -193,7 +193,7 @@ export function PlansPage() {
       if (plan.is_default) {
         return { label: t('plans.includedFree'), disabled: true, to: null }
       }
-      return { label: t('plans.createAccount'), disabled: false, to: '/register' }
+      return { label: t('plans.createAccount'), disabled: false, to: '/login' }
     }
     if (plan.is_default) {
       return { label: t('plans.includedFree'), disabled: true, to: null }
