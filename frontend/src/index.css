@@ -11530,6 +11530,7 @@ html.is-telegram .recap-backdrop {
 .mood-preferences-icon-source .segmented-control-option {
   flex: 1 1 auto;
   padding-inline: 0.5rem;
+}
 
 /* Pack preview: mock diary styled with a pack's icons */
 .pack-preview-header {
