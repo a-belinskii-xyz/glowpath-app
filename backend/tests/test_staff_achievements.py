@@ -15,6 +15,7 @@ from app.core.achievement_criteria import (
 )
 from app.core.achievements import CRITERIA_TYPES
 from app.models.achievement import Achievement
+from app.models.icon_pack import IconPack
 from app.models.user import User
 from app.services.preset_service import export_preset, import_preset_archive
 from app.services.storage import FakeStorage
@@ -284,3 +285,48 @@ def test_image_icon_upload_access_and_preset_roundtrip(
     )
     assert switched.json()["icon_type"] == "emoji"
     assert switched.json()["icon"] == "🦊"
+
+
+def test_starter_content_adds_only_missing_achievements(
+    auth_client: TestClient, mailer: FakeEmailService, db: Session
+) -> None:
+    user_token, _ = _login(auth_client, mailer, db, "starter-user")
+    forbidden = auth_client.post("/v1/staff/presets/starter", headers=_headers(user_token))
+    assert forbidden.status_code == 403
+
+    slugs = ["first_entry", "consecutive_days_7", "email_arrival"]
+    db.execute(delete(Achievement).where(Achievement.slug.in_(slugs)))
+    db.commit()
+
+    staff_token, _ = _login(auth_client, mailer, db, "starter-staff", staff=True)
+    first = auth_client.post("/v1/staff/presets/starter", headers=_headers(staff_token))
+    assert first.status_code == 200, first.text
+    report = first.json()
+    assert report["packs"] == ["essentials"]
+    assert report["icons"] > 0
+    assert {"first_entry", "consecutive_days_7"} <= set(report["achievements"])
+    # Archived catalog entries are not created.
+    assert "email_arrival" not in report["achievements"]
+
+    week = db.scalar(select(Achievement).where(Achievement.slug == "consecutive_days_7"))
+    assert week is not None
+    kinds = {reward.kind for reward in week.rewards}
+    has_stub_pack = db.scalar(select(IconPack.id).where(IconPack.slug == "random-pics"))
+    assert kinds == ({"tokens", "icon_pack"} if has_stub_pack else {"tokens"})
+
+    entry = db.scalar(select(Achievement).where(Achievement.slug == "first_entry"))
+    assert entry is not None
+    edited = auth_client.patch(
+        f"/v1/staff/achievements/{entry.id}",
+        headers=_headers(staff_token),
+        json={"labels": {"en": "Edited by staff"}},
+    )
+    assert edited.status_code == 200
+
+    again = auth_client.post("/v1/staff/presets/starter", headers=_headers(staff_token))
+    assert again.status_code == 200
+    assert again.json()["achievements"] == []
+    db.expire_all()
+    entry = db.scalar(select(Achievement).where(Achievement.slug == "first_entry"))
+    assert entry is not None
+    assert entry.labels["en"] == "Edited by staff"

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import { listStaffPacks } from '../../api/marketplace'
-import { downloadPresetExport, importPreset } from '../../api/staff'
+import { downloadPresetExport, importPreset, seedStarterContent } from '../../api/staff'
 import { useLocale } from '../../context/LocaleContext'
 import { saveBlob } from '../../lib/download'
 import { formatApiError } from '../../lib/errors'
@@ -23,6 +23,8 @@ export function StaffPresetsPanel() {
   const [importKey, setImportKey] = useState(0)
   const [isImporting, setIsImporting] = useState(false)
   const [importResult, setImportResult] = useState<string | null>(null)
+  const [isSeeding, setIsSeeding] = useState(false)
+  const [starterResult, setStarterResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const loadPacks = useCallback(async () => {
@@ -93,11 +95,49 @@ export function StaffPresetsPanel() {
     }
   }
 
+  const handleStarter = async () => {
+    if (isSeeding) return
+    setIsSeeding(true)
+    setError(null)
+    setStarterResult(null)
+    try {
+      const report = await seedStarterContent()
+      setStarterResult(
+        t('staff.starterDone', {
+          icons: report.icons,
+          tags: report.search_tags,
+          achievements: report.achievements.length,
+        }),
+      )
+      await loadPacks()
+    } catch (err) {
+      setError(formatApiError(err, t, 'errors.requestFailed'))
+    } finally {
+      setIsSeeding(false)
+    }
+  }
+
   const nothingSelected = selected.size === 0 && !includeAchievements
 
   return (
     <div className="staff-panel">
       <PageErrorAlert error={error} />
+
+      <section className="card staff-card" aria-labelledby="staff-starter-title">
+        <h2 id="staff-starter-title" className="staff-card-title">
+          {t('staff.starterTitle')}
+        </h2>
+        <p className="muted staff-card-meta">{t('staff.starterLead')}</p>
+        {starterResult ? <Alert variant="success">{starterResult}</Alert> : null}
+        <button
+          type="button"
+          className="button"
+          disabled={isSeeding}
+          onClick={() => void handleStarter()}
+        >
+          {isSeeding ? t('staff.starterRunning') : t('staff.starterRun')}
+        </button>
+      </section>
 
       <section className="card staff-card" aria-labelledby="staff-export-title">
         <h2 id="staff-export-title" className="staff-card-title">

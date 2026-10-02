@@ -42,7 +42,7 @@ All backend settings live in `backend/app/config.py`; `backend/.env.example` lis
 | Flag | Default | Controls |
 |------|---------|----------|
 | `FEATURE_NOTIFICATIONS_ENABLED` | `false` | Reminder delivery and the settings UI |
-| `FEATURE_ICON_MARKETPLACE` | `true`, percent `0` | Market, wallet and token/pack rewards on achievements |
+| `FEATURE_ICON_MARKETPLACE` | `true`, percent `100` | Market, wallet and token/pack rewards on achievements |
 | `FEATURE_BILLING` | `true`, percent `0` | Plans page and `/v1/billing/*` (webhooks stay open) |
 | `FEATURE_ACHIEVEMENTS` | `true` | Achievements |
 | `FEATURE_WEEKLY_FREQUENT_TAGS` | `false` | "Often this week" tag shortcuts |
@@ -208,7 +208,7 @@ FEATURE_WEEKLY_FREQUENT_TAGS_PERCENT=20
 FEATURE_WEEKLY_FREQUENT_TAGS=false
 ```
 
-Monetization (`FEATURE_ICON_MARKETPLACE*`, `FEATURE_BILLING*`) defaults to percent `0`: only people in the `_EMAILS` / `_USER_IDS` allowlists see it. Achievements stay on for everyone; their rewards are still granted but only shown where the marketplace is on.
+The icon marketplace (`FEATURE_ICON_MARKETPLACE*`) is open to everyone; tokens come only from achievements and staff grants. Paid plans (`FEATURE_BILLING*`) default to percent `0`: only people in the `_EMAILS` / `_USER_IDS` allowlists see them. A fresh database has no packs or achievements; staff fill it with **Staff → Presets → Starter content**.
 
 The same pattern applies to `FEATURE_ICON_MARKETPLACE*`, `FEATURE_BILLING*`, `FEATURE_ACHIEVEMENTS*` and `FEATURE_GUEST_LOCAL_DIARY*` (see [guest-local-diary-experiment.md](guest-local-diary-experiment.md)). All variables are listed in `backend/.env.example`.
 

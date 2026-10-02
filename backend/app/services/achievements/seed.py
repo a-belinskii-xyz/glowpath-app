@@ -54,10 +54,14 @@ def _require_labels(value: Any, *, field: str, slug: str) -> dict[str, str]:
     return {str(k): str(v) for k, v in value.items()}
 
 
+class MissingRewardTargetError(ValueError):
+    """A reward points at a pack or icon that this database doesn't have."""
+
+
 def _resolve_pack(db: Session, pack_slug: str) -> IconPack:
     pack = db.scalar(select(IconPack).where(IconPack.slug == pack_slug))
     if pack is None:
-        raise ValueError(f"Icon pack not found: {pack_slug}")
+        raise MissingRewardTargetError(f"Icon pack not found: {pack_slug}")
     return pack
 
 
@@ -70,7 +74,7 @@ def _resolve_catalog_icon(db: Session, *, pack_slug: str, icon_slug: str) -> Cat
         )
     )
     if icon is None:
-        raise ValueError(f"Catalog icon not found: {pack_slug}/{icon_slug}")
+        raise MissingRewardTargetError(f"Catalog icon not found: {pack_slug}/{icon_slug}")
     return icon
 
 
@@ -79,6 +83,7 @@ def _parse_rewards(
     *,
     slug: str,
     raw_rewards: list[dict[str, Any]],
+    skip_missing: bool = False,
 ) -> list[dict[str, Any]]:
     parsed: list[dict[str, Any]] = []
     for index, raw in enumerate(raw_rewards):
@@ -101,7 +106,12 @@ def _parse_rewards(
             pack_slug = raw.get("pack_slug")
             if not pack_slug:
                 raise ValueError(f"Achievement {slug}: icon_pack requires pack_slug")
-            item["pack_id"] = _resolve_pack(db, str(pack_slug)).id
+            try:
+                item["pack_id"] = _resolve_pack(db, str(pack_slug)).id
+            except MissingRewardTargetError:
+                if skip_missing:
+                    continue
+                raise
         elif kind == AchievementRewardKind.CATALOG_ICON.value:
             pack_slug = raw.get("pack_slug")
             icon_slug = raw.get("icon_slug")
@@ -109,11 +119,16 @@ def _parse_rewards(
                 raise ValueError(
                     f"Achievement {slug}: catalog_icon requires pack_slug and icon_slug"
                 )
-            item["catalog_icon_id"] = _resolve_catalog_icon(
-                db,
-                pack_slug=str(pack_slug),
-                icon_slug=str(icon_slug),
-            ).id
+            try:
+                item["catalog_icon_id"] = _resolve_catalog_icon(
+                    db,
+                    pack_slug=str(pack_slug),
+                    icon_slug=str(icon_slug),
+                ).id
+            except MissingRewardTargetError:
+                if skip_missing:
+                    continue
+                raise
         parsed.append(item)
     return parsed
 
@@ -136,6 +151,7 @@ def _upsert_one(
     *,
     root: Path | None = None,
     storage: ObjectStorage | None = None,
+    skip_missing_rewards: bool = False,
 ) -> Achievement:
     slug = str(raw["slug"]).strip()
     if not slug:
@@ -167,7 +183,12 @@ def _upsert_one(
     elif icon_type != AchievementIconType.EMOJI.value:
         raise ValueError(f"Achievement {slug}: invalid icon type {icon_type!r}")
 
-    rewards = _parse_rewards(db, slug=slug, raw_rewards=list(raw.get("rewards") or []))
+    rewards = _parse_rewards(
+        db,
+        slug=slug,
+        raw_rewards=list(raw.get("rewards") or []),
+        skip_missing=skip_missing_rewards,
+    )
 
     achievement = db.scalar(
         select(Achievement)
@@ -225,16 +246,33 @@ def seed_achievements(
     *,
     path: Path | None = None,
     storage: ObjectStorage | None = None,
+    only_missing: bool = False,
 ) -> list[Achievement]:
     """Idempotent upsert of catalog achievements. Pack/icon rewards must already exist.
 
     Image icons are read next to the catalog file and need ``storage``; without it
     they fall back to the catalog's emoji.
+
+    ``only_missing`` adds just the published achievements whose slugs aren't in the
+    database yet, so staff edits stay untouched, and drops rewards whose pack or icon
+    doesn't exist here. Returns only the achievements it wrote.
     """
     catalog_path = path or _CATALOG_PATH
     items = _load_catalog(catalog_path)
     root = catalog_path.parent
-    return [_upsert_one(db, raw, root=root, storage=storage) for raw in items]
+    if only_missing:
+        existing = set(db.scalars(select(Achievement.slug)).all())
+        items = [
+            raw
+            for raw in items
+            if str(raw.get("slug", "")).strip() not in existing
+            and raw.get("status", AchievementStatus.PUBLISHED.value)
+            == AchievementStatus.PUBLISHED.value
+        ]
+    return [
+        _upsert_one(db, raw, root=root, storage=storage, skip_missing_rewards=only_missing)
+        for raw in items
+    ]
 
 
 def main() -> None:

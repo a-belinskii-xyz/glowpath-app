@@ -162,9 +162,9 @@ class Settings(BaseSettings):
         default=True,
         validation_alias="FEATURE_ICON_MARKETPLACE",
     )
-    # Monetization is hidden by default: only allowlisted testers see it (GP-15).
+    # Open to everyone (GP-30); tokens come only from achievements and staff grants.
     feature_icon_marketplace_percent: int = Field(
-        default=0,
+        default=100,
         ge=0,
         le=100,
         validation_alias="FEATURE_ICON_MARKETPLACE_PERCENT",
