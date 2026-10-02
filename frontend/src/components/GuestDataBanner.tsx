@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 
 import { useGuestExperiment } from '../context/GuestExperimentContext'
 import { useLocale } from '../context/LocaleContext'
@@ -11,12 +11,15 @@ import {
 } from '../lib/guestBannerDismiss'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import { isTelegramMiniApp } from '../platform/telegram'
+import { InfoIcon } from './icons'
 
 export function GuestDataBanner() {
   const { t, tp } = useLocale()
   const { guestLocalDiary, guestOnboardingCompleted } = useGuestExperiment()
   const [entryCount, setEntryCount] = useState(0)
   const [visible, setVisible] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const detailsId = useId()
 
   const syncVisibility = useCallback((count: number) => {
     setVisible(isGuestBannerVisible(count))
@@ -64,7 +67,7 @@ export function GuestDataBanner() {
 
   return (
     <div className="guest-data-banner" role="status">
-      <div className="guest-data-banner__body">
+      <div className="guest-data-banner__row">
         <p className="guest-data-banner__title">
           {tp(entryCount, {
             one: 'guest.banner.titleOne',
@@ -72,27 +75,39 @@ export function GuestDataBanner() {
             many: 'guest.banner.titleMany',
           })}
         </p>
-        <p>{t('guest.banner.offer')}</p>
-        <ul className="guest-data-banner__benefits">
-          <li>{t('guest.banner.benefitSafe')}</li>
-          <li>{t('guest.banner.benefitTelegram')}</li>
-          <li>{t('guest.banner.benefitReminders')}</li>
-          <li>{t('guest.banner.benefitFeatures')}</li>
-        </ul>
-      </div>
-      <div className="guest-data-banner__actions">
-        <Link to="/login" className="guest-data-banner__cta">
-          {t('guest.banner.signIn')}
-        </Link>
         <button
           type="button"
-          className="guest-data-banner__dismiss"
+          className="guest-data-banner__icon-button"
+          aria-expanded={detailsOpen}
+          aria-controls={detailsId}
+          aria-label={t('guest.banner.details')}
+          onClick={() => setDetailsOpen((open) => !open)}
+        >
+          <InfoIcon />
+        </button>
+        <button
+          type="button"
+          className="guest-data-banner__icon-button"
           onClick={handleDismiss}
           aria-label={t('guest.banner.dismiss')}
         >
           ×
         </button>
       </div>
+      {detailsOpen ? (
+        <div id={detailsId} className="guest-data-banner__details">
+          <p>{t('guest.banner.offer')}</p>
+          <ul className="guest-data-banner__benefits">
+            <li>{t('guest.banner.benefitSafe')}</li>
+            <li>{t('guest.banner.benefitTelegram')}</li>
+            <li>{t('guest.banner.benefitReminders')}</li>
+            <li>{t('guest.banner.benefitFeatures')}</li>
+          </ul>
+        </div>
+      ) : null}
+      <Link to="/login" className="button button-small guest-data-banner__cta">
+        {t('guest.banner.signIn')}
+      </Link>
     </div>
   )
 }
