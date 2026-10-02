@@ -60,6 +60,12 @@ class CatalogIcon(TimestampMixin, Base):
         ARRAY(SmallInteger),
         server_default=text("'{}'::smallint[]"),
     )
+    suggested_usage: Mapped[list[str]] = mapped_column(
+        ARRAY(String(16)),
+        server_default=text("'{}'::varchar[]"),
+    )
+    # Visible square of the image as fractions of its size: {"x", "y", "w", "h"}.
+    crop: Mapped[dict[str, float] | None] = mapped_column(JSONB, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, server_default=text("0"))
 
     pack: Mapped["IconPack"] = relationship(

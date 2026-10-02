@@ -2,27 +2,44 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 import {
   deleteStudioIcon,
+  fetchCatalogIconBlob,
   getMarketplacePack,
   getMarketplaceSearchTags,
   patchStudioIcon,
   patchStudioPack,
   publishStaffPack,
   rejectStaffPack,
+  reorderStudioIcons,
   uploadStudioIcon,
 } from '../../api/marketplace'
 import { archiveStaffPack, setStaffPackSort } from '../../api/staff'
 import { useLocale } from '../../context/LocaleContext'
+import { invalidateCatalogIcon } from '../../lib/catalogIconBlobUrl'
 import { formatApiError } from '../../lib/errors'
-import type { CatalogIconPublic, PackDetailPublic, SearchTagPublic } from '../../types/marketplace'
+import { readMoodIconBlobForCrop } from '../../lib/imageCrop'
+import type {
+  CatalogIconPublic,
+  IconCrop,
+  IconUsage,
+  PackDetailPublic,
+  SearchTagPublic,
+} from '../../types/marketplace'
 import { Alert } from '../Alert'
 import { CatalogIconThumb } from '../CatalogIconThumb'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { ChevronLeftIcon } from '../icons'
+import { ImageCropModal } from '../ImageCropModal'
 import { PageErrorAlert } from '../PageErrorAlert'
 import { PackStatusPill } from './PackStatusPill'
+import { ChipToggleRow } from './ChipToggleRow'
+import { ACCEPTED_ICON_TYPES, ICON_USAGES, MOOD_SCORES } from './iconFields'
+import { StaffIconEditor } from './StaffIconEditor'
 
-const MOOD_SCORES = [1, 2, 3, 4, 5] as const
-const ACCEPTED_TYPES = 'image/svg+xml,image/png,image/jpeg,image/webp,image/gif'
+type CropSession = {
+  icon: CatalogIconPublic
+  image: HTMLImageElement
+  objectUrl: string
+}
 
 type Details = {
   nameEn: string
@@ -49,10 +66,6 @@ function labelFromFileName(name: string): string {
   return stem ? stem.charAt(0).toUpperCase() + stem.slice(1) : 'Icon'
 }
 
-function toggle<T>(list: T[], value: T): T[] {
-  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
-}
-
 export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: () => void }) {
   const { t } = useLocale()
   const [pack, setPack] = useState<PackDetailPublic | null>(null)
@@ -68,12 +81,13 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
   const [color, setColor] = useState('#94a3b8')
   const [scores, setScores] = useState<number[]>([])
   const [tags, setTags] = useState<string[]>([])
+  const [usage, setUsage] = useState<IconUsage[]>([])
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [uploadErrors, setUploadErrors] = useState<string[]>([])
 
   const [editingIconId, setEditingIconId] = useState<string | null>(null)
-  const [iconLabels, setIconLabels] = useState({ en: '', ru: '' })
   const [pendingDelete, setPendingDelete] = useState<CatalogIconPublic | null>(null)
+  const [cropSession, setCropSession] = useState<CropSession | null>(null)
 
   const load = useCallback(async () => {
     const [detail, tagsResponse] = await Promise.all([
@@ -161,6 +175,7 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
           labels: { en: label, ru: label },
           suggested_colors: [color],
           suggested_mood_scores: scores,
+          suggested_usage: usage,
           search_tag_slugs: tags,
         })
         uploaded += 1
@@ -186,9 +201,35 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
     setBusy(null)
   }
 
-  const startEditIcon = (icon: CatalogIconPublic) => {
-    setEditingIconId(icon.id)
-    setIconLabels({ en: icon.labels.en ?? icon.label, ru: icon.labels.ru ?? '' })
+  const openCrop = (icon: CatalogIconPublic) =>
+    void run('crop-load', async () => {
+      const { blob } = await fetchCatalogIconBlob(icon.id)
+      const loaded = await readMoodIconBlobForCrop(blob)
+      if ('error' in loaded) {
+        setError(t('staff.cropUnavailable'))
+        return
+      }
+      setCropSession({ icon, image: loaded.image, objectUrl: loaded.objectUrl })
+    })
+
+  const closeCrop = () => {
+    if (cropSession) URL.revokeObjectURL(cropSession.objectUrl)
+    setCropSession(null)
+  }
+
+  const saveCrop = (icon: CatalogIconPublic, crop: IconCrop | null) =>
+    run('crop', async () => {
+      await patchStudioIcon(icon.id, crop ? { crop } : { clear_crop: true })
+      invalidateCatalogIcon(icon.id)
+      closeCrop()
+    })
+
+  const moveIcon = (index: number, delta: number) => {
+    const ids = pack.icons.map((icon) => icon.id)
+    const target = index + delta
+    if (target < 0 || target >= ids.length) return
+    ;[ids[index], ids[target]] = [ids[target], ids[index]]
+    void run('order', () => reorderStudioIcons(pack.id, ids))
   }
 
   const detailField = (field: keyof Details, label: string, type = 'text') => (
@@ -305,7 +346,7 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
             <input
               key={fileInputKey}
               type="file"
-              accept={ACCEPTED_TYPES}
+              accept={ACCEPTED_ICON_TYPES}
               multiple
               className="visually-hidden"
               onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
@@ -322,37 +363,32 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
               <input type="color" value={color} onChange={(event) => setColor(event.target.value)} />
             </label>
             <div>
+              <span className="form-label">{t('staff.usage')}</span>
+              <ChipToggleRow
+                options={ICON_USAGES}
+                selected={usage}
+                label={(value) => t(`staff.usageOptions.${value}`)}
+                onChange={setUsage}
+              />
+            </div>
+            <div>
               <span className="form-label">{t('staff.scores')}</span>
-              <div className="staff-chip-row">
-                {MOOD_SCORES.map((score) => (
-                  <button
-                    key={score}
-                    type="button"
-                    aria-pressed={scores.includes(score)}
-                    className={`market-tag-chip${scores.includes(score) ? ' is-active' : ''}`}
-                    onClick={() => setScores((current) => toggle(current, score))}
-                  >
-                    {score}
-                  </button>
-                ))}
-              </div>
+              <ChipToggleRow
+                options={MOOD_SCORES}
+                selected={scores}
+                label={(score) => String(score)}
+                onChange={setScores}
+              />
             </div>
             {searchTags.length > 0 ? (
               <div>
                 <span className="form-label">{t('staff.tags')}</span>
-                <div className="staff-chip-row">
-                  {searchTags.map((tag) => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      aria-pressed={tags.includes(tag.slug)}
-                      className={`market-tag-chip${tags.includes(tag.slug) ? ' is-active' : ''}`}
-                      onClick={() => setTags((current) => toggle(current, tag.slug))}
-                    >
-                      {tag.label}
-                    </button>
-                  ))}
-                </div>
+                <ChipToggleRow
+                  options={searchTags.map((tag) => tag.slug)}
+                  selected={tags}
+                  label={(slug) => searchTags.find((tag) => tag.slug === slug)?.label ?? slug}
+                  onChange={setTags}
+                />
               </div>
             ) : null}
           </fieldset>
@@ -382,9 +418,27 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
         <p className="muted">{t('staff.noIcons')}</p>
       ) : (
         <ul className="staff-icon-grid">
-          {pack.icons.map((icon) => {
+          {pack.icons.map((icon, index) => {
             const isCover = pack.cover_icon_id === icon.id
-            const isEditing = editingIconId === icon.id
+            if (editingIconId === icon.id) {
+              return (
+                <li key={icon.id} className="staff-icon-card staff-icon-card-editing">
+                  <CatalogIconThumb
+                    iconId={icon.id}
+                    label={icon.label}
+                    glowColor={icon.suggested_colors[0] ?? null}
+                  />
+                  <StaffIconEditor
+                    icon={icon}
+                    searchTags={searchTags}
+                    busy={busy !== null}
+                    run={run}
+                    onImageChanged={() => invalidateCatalogIcon(icon.id)}
+                    onClose={() => setEditingIconId(null)}
+                  />
+                </li>
+              )
+            }
             return (
               <li key={icon.id} className="staff-icon-card">
                 <CatalogIconThumb
@@ -392,93 +446,102 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
                   label={icon.label}
                   glowColor={icon.suggested_colors[0] ?? null}
                 />
-                {isEditing ? (
-                  <form
-                    className="staff-icon-edit"
-                    onSubmit={(event) => {
-                      event.preventDefault()
-                      void run('icon', async () => {
-                        const en = iconLabels.en.trim()
-                        await patchStudioIcon(icon.id, {
-                          labels: { en, ru: iconLabels.ru.trim() || en },
-                        })
-                        setEditingIconId(null)
-                      })
-                    }}
-                  >
-                    <input
-                      className="form-input"
-                      aria-label={t('staff.labelEn')}
-                      value={iconLabels.en}
-                      required
-                      onChange={(event) => setIconLabels({ ...iconLabels, en: event.target.value })}
-                    />
-                    <input
-                      className="form-input"
-                      aria-label={t('staff.labelRu')}
-                      value={iconLabels.ru}
-                      placeholder={t('staff.labelRu')}
-                      onChange={(event) => setIconLabels({ ...iconLabels, ru: event.target.value })}
-                    />
-                    <div className="staff-icon-actions">
-                      <button type="submit" className="button button-small" disabled={busy !== null}>
-                        {t('common.save')}
-                      </button>
+                <p className="staff-icon-label">{icon.label}</p>
+                <p className="muted staff-icon-slug">
+                  {[
+                    icon.slug,
+                    isCover ? t('staff.cover') : null,
+                    icon.crop ? t('staff.cropped') : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                {icon.suggested_usage.length > 0 ? (
+                  <p className="muted staff-icon-slug">
+                    {icon.suggested_usage
+                      .map((value) => t(`staff.usageOptions.${value}`))
+                      .join(', ')}
+                  </p>
+                ) : null}
+                {editable ? (
+                  <div className="staff-icon-actions">
+                    <button
+                      type="button"
+                      className="button button-secondary button-small"
+                      onClick={() => setEditingIconId(icon.id)}
+                    >
+                      {t('common.edit')}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-secondary button-small"
+                      disabled={busy !== null}
+                      onClick={() => openCrop(icon)}
+                    >
+                      {t('staff.crop')}
+                    </button>
+                    {isCover ? null : (
                       <button
                         type="button"
                         className="button button-secondary button-small"
-                        onClick={() => setEditingIconId(null)}
+                        disabled={busy !== null}
+                        onClick={() =>
+                          void run('cover', () =>
+                            patchStudioPack(pack.id, { cover_icon_id: icon.id }),
+                          )
+                        }
                       >
-                        {t('common.cancel')}
+                        {t('staff.makeCover')}
                       </button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <p className="staff-icon-label">{icon.label}</p>
-                    <p className="muted staff-icon-slug">
-                      {icon.slug}
-                      {isCover ? ` · ${t('staff.cover')}` : ''}
-                    </p>
-                    {editable ? (
-                      <div className="staff-icon-actions">
-                        <button
-                          type="button"
-                          className="button button-secondary button-small"
-                          onClick={() => startEditIcon(icon)}
-                        >
-                          {t('common.edit')}
-                        </button>
-                        {isCover ? null : (
-                          <button
-                            type="button"
-                            className="button button-secondary button-small"
-                            disabled={busy !== null}
-                            onClick={() =>
-                              void run('cover', () =>
-                                patchStudioPack(pack.id, { cover_icon_id: icon.id }),
-                              )
-                            }
-                          >
-                            {t('staff.makeCover')}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="button button-danger-ghost button-small"
-                          onClick={() => setPendingDelete(icon)}
-                        >
-                          {t('common.delete')}
-                        </button>
-                      </div>
-                    ) : null}
-                  </>
-                )}
+                    )}
+                    <button
+                      type="button"
+                      className="button button-secondary button-small"
+                      disabled={busy !== null || index === 0}
+                      aria-label={t('staff.moveUp')}
+                      title={t('staff.moveUp')}
+                      onClick={() => moveIcon(index, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-secondary button-small"
+                      disabled={busy !== null || index === pack.icons.length - 1}
+                      aria-label={t('staff.moveDown')}
+                      title={t('staff.moveDown')}
+                      onClick={() => moveIcon(index, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-danger-ghost button-small"
+                      onClick={() => setPendingDelete(icon)}
+                    >
+                      {t('common.delete')}
+                    </button>
+                  </div>
+                ) : null}
               </li>
             )
           })}
         </ul>
       )}
+
+      {cropSession ? (
+        <ImageCropModal
+          image={cropSession.image}
+          imageUrl={cropSession.objectUrl}
+          fileName={cropSession.icon.slug}
+          initialRegion={cropSession.icon.crop}
+          isSaving={busy === 'crop'}
+          onCancel={closeCrop}
+          onSaveRegion={(region) => saveCrop(cropSession.icon, region)}
+          resetLabel={cropSession.icon.crop ? t('staff.cropReset') : undefined}
+          onReset={() => saveCrop(cropSession.icon, null)}
+        />
+      ) : null}
 
       {pendingDelete ? (
         <ConfirmDialog

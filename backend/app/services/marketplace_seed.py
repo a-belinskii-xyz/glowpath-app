@@ -16,7 +16,10 @@ from app.core.marketplace import (
     ESSENTIALS_PACK_SLUG,
     MAX_CATALOG_ICON_BYTES,
     MAX_SUGGESTED_COLORS,
+    IconUsage,
     PackStatus,
+    parse_icon_crop,
+    parse_icon_usage,
 )
 from app.core.mood_builtin_icons import MOOD_BUILTIN_ICONS
 from app.core.mood_scale import DEFAULT_MOOD_SCORE_COLORS, MoodScore, is_valid_hex_color
@@ -115,6 +118,8 @@ class DiscoveredMockIcon:
     tags: tuple[str, ...]
     colors: tuple[str, ...]
     scores: tuple[int, ...]
+    usage: tuple[str, ...] = ()
+    crop: dict[str, float] | None = None
     sort_order: int | None = None
 
 
@@ -288,6 +293,8 @@ def _discover_icons(pack_dir: Path, pack_meta: dict[str, object]) -> tuple[Disco
                 tags=_string_tuple(override.get("tags")) or default_tags,
                 colors=_color_tuple(override.get("colors"), fallback=default_colors),
                 scores=_score_tuple(override.get("scores")),
+                usage=tuple(parse_icon_usage(override.get("usage")) or ()),
+                crop=parse_icon_crop(override.get("crop")),
                 sort_order=_optional_int(override.get("sort_order")),
             )
         )
@@ -414,6 +421,7 @@ def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
             continue
         data = svg_path.read_bytes()
         scores = [builtin.default_score.value] if builtin.default_score is not None else []
+        usage = [IconUsage.MOOD.value] if scores else []
         icon = existing_icons.get(builtin.slug)
         if icon is None:
             icon_id = uuid.uuid4()
@@ -433,6 +441,7 @@ def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
                 size_bytes=len(data),
                 suggested_colors=list(meta["colors"]),
                 suggested_mood_scores=scores,
+                suggested_usage=usage,
                 sort_order=index,
             )
             db.add(icon)
@@ -441,6 +450,7 @@ def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
             icon.labels = dict(builtin.labels)
             icon.suggested_colors = list(meta["colors"])
             icon.suggested_mood_scores = scores
+            icon.suggested_usage = usage
             icon.sort_order = index
 
         icon.search_tags = [tags_by_slug[slug] for slug in meta["tags"] if slug in tags_by_slug]
@@ -509,6 +519,8 @@ def _seed_one_mock_pack(
                 size_bytes=len(data),
                 suggested_colors=list(item.colors),
                 suggested_mood_scores=list(item.scores),
+                suggested_usage=list(item.usage),
+                crop=item.crop,
                 sort_order=item.sort_order if item.sort_order is not None else index,
             )
             db.add(icon)
@@ -524,6 +536,8 @@ def _seed_one_mock_pack(
             icon.size_bytes = len(data)
             icon.suggested_colors = list(item.colors)
             icon.suggested_mood_scores = list(item.scores)
+            icon.suggested_usage = list(item.usage)
+            icon.crop = item.crop
             icon.sort_order = item.sort_order if item.sort_order is not None else index
 
         icon.search_tags = [tags_by_slug[slug] for slug in item.tags if slug in tags_by_slug]

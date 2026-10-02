@@ -10585,6 +10585,30 @@ a.plans-cta:hover {
   font-size: 0.8rem;
 }
 
+.staff-icon-card-editing {
+  grid-column: 1 / -1;
+  justify-items: stretch;
+}
+
+.staff-icon-card-editing > .catalog-icon-thumb {
+  justify-self: center;
+}
+
+.staff-icon-editor {
+  display: grid;
+  gap: 0.85rem;
+  text-align: start;
+}
+
+.staff-icon-editor .staff-form-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.staff-icon-editor .staff-subtitle {
+  margin: 0;
+}
+
 .staff-icon-actions {
   justify-content: center;
 }

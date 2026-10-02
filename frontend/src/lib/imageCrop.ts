@@ -126,6 +126,53 @@ export function createInitialCropTransform(
   }
 }
 
+export type CropRegion = { x: number; y: number; w: number; h: number }
+
+const roundFraction = (value: number) => Math.round(value * 1e6) / 1e6
+
+/** Visible square as fractions of the image size (what the server stores for catalog icons). */
+export function cropRegionFromTransform(
+  transform: CropTransform,
+  imageWidth: number,
+  imageHeight: number,
+  cropSize: number,
+): CropRegion {
+  const scale = getCoverScale(imageWidth, imageHeight, cropSize) * transform.zoom
+  const side = cropSize / scale
+  const clamp = (value: number) => Math.min(1, Math.max(0, roundFraction(value)))
+  const w = clamp(side / imageWidth)
+  const h = clamp(side / imageHeight)
+  return {
+    x: Math.min(clamp(-transform.offsetX / scale / imageWidth), roundFraction(1 - w)),
+    y: Math.min(clamp(-transform.offsetY / scale / imageHeight), roundFraction(1 - h)),
+    w,
+    h,
+  }
+}
+
+export function transformFromCropRegion(
+  region: CropRegion,
+  imageWidth: number,
+  imageHeight: number,
+  cropSize: number,
+): CropTransform {
+  const side = Math.max(region.w * imageWidth, 1)
+  const scale = cropSize / side
+  const zoom = clampZoom(scale / getCoverScale(imageWidth, imageHeight, cropSize))
+  const actualScale = getCoverScale(imageWidth, imageHeight, cropSize) * zoom
+  const { width, height } = getDisplayedSize(imageWidth, imageHeight, cropSize, zoom)
+  return {
+    zoom,
+    ...clampCropOffset(
+      -region.x * imageWidth * actualScale,
+      -region.y * imageHeight * actualScale,
+      width,
+      height,
+      cropSize,
+    ),
+  }
+}
+
 export function loadImageElement(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()

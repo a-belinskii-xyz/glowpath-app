@@ -109,6 +109,8 @@ def _pack_json(pack: IconPack) -> dict[str, Any]:
             "tags": [tag.slug for tag in icon.search_tags],
             "colors": list(icon.suggested_colors or []),
             "scores": list(icon.suggested_mood_scores or []),
+            "usage": list(icon.suggested_usage or []),
+            **({"crop": icon.crop} if icon.crop else {}),
             "sort_order": icon.sort_order,
         }
         for icon in pack.icons

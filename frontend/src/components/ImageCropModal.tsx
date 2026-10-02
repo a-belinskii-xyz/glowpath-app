@@ -12,6 +12,7 @@ import {
 import { createPortal } from 'react-dom'
 
 import { useLocale } from '../context/LocaleContext'
+import type { IconCrop } from '../types/marketplace'
 import {
   clampCropOffset,
   createInitialCropTransform,
@@ -21,6 +22,8 @@ import {
   MOOD_ICON_MAX_ZOOM,
   type CropShape,
   type CropTransform,
+  cropRegionFromTransform,
+  transformFromCropRegion,
   zoomCropTransform,
 } from '../lib/imageCrop'
 import { StableButtonLabel } from './StableButtonLabel'
@@ -38,7 +41,13 @@ type ImageCropModalProps = {
   cropSize?: number
   isSaving?: boolean
   onCancel: () => void
-  onSave: (file: File) => void | Promise<void>
+  /** Region mode: start from this frame and hand back fractions instead of a cropped file. */
+  initialRegion?: IconCrop | null
+  onSaveRegion?: (region: IconCrop) => void | Promise<void>
+  onSave?: (file: File) => void | Promise<void>
+  /** Optional extra action next to Cancel (e.g. drop a saved crop frame). */
+  resetLabel?: string
+  onReset?: () => void
 }
 
 type DragState = {
@@ -71,7 +80,11 @@ export function ImageCropModal({
   cropSize = DEFAULT_CROP_SIZE,
   isSaving = false,
   onCancel,
+  initialRegion,
+  onSaveRegion,
   onSave,
+  resetLabel,
+  onReset,
 }: ImageCropModalProps) {
   const { t } = useLocale()
   const titleId = useId()
@@ -80,7 +93,9 @@ export function ImageCropModal({
   const dragRef = useRef<DragState | null>(null)
   const pinchRef = useRef<PinchState | null>(null)
   const transformRef = useRef<CropTransform>(
-    createInitialCropTransform(image.naturalWidth, image.naturalHeight, cropSize),
+    initialRegion
+      ? transformFromCropRegion(initialRegion, image.naturalWidth, image.naturalHeight, cropSize)
+      : createInitialCropTransform(image.naturalWidth, image.naturalHeight, cropSize),
   )
 
   const [transform, setTransform] = useState<CropTransform>(() => transformRef.current)
@@ -332,6 +347,17 @@ export function ImageCropModal({
     }
     setIsExporting(true)
     try {
+      if (onSaveRegion) {
+        await onSaveRegion(
+          cropRegionFromTransform(
+            transformRef.current,
+            image.naturalWidth,
+            image.naturalHeight,
+            cropSize,
+          ),
+        )
+        return
+      }
       const file = await exportCroppedImage({
         image,
         transform: transformRef.current,
@@ -340,7 +366,7 @@ export function ImageCropModal({
         fileName,
       })
       assertMoodIconUploadSize(file)
-      await onSave(file)
+      await onSave?.(file)
     } catch {
       // Parent surfaces upload errors; export failures leave the dialog open.
     } finally {
@@ -433,6 +459,16 @@ export function ImageCropModal({
         </div>
 
         <div className="button-row image-crop-actions">
+          {resetLabel && onReset ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={onReset}
+              disabled={busy}
+            >
+              {resetLabel}
+            </button>
+          ) : null}
           <button
             type="button"
             className="button button-secondary"
