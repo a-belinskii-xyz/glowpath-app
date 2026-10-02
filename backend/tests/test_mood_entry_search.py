@@ -1,4 +1,4 @@
-"""Hybrid mood-entry search: substring match plus optional semantic ranking."""
+"""Mood-entry search: full-text or substring match, plus optional semantic ranking."""
 
 from __future__ import annotations
 
@@ -274,3 +274,90 @@ def test_search_isolated_per_user(
     )
     assert response.status_code == 200
     assert response.json()["items"] == []
+
+
+def _search_ids(auth_client: TestClient, token: str, query: str) -> list[str]:
+    response = auth_client.get(
+        "/v1/mood-entries/search",
+        params={"q": query, "limit": 10},
+        headers=_auth_headers(token),
+    )
+    assert response.status_code == 200
+    return [item["id"] for item in response.json()["items"]]
+
+
+def test_search_matches_russian_word_forms(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "search-ru-forms@example.com")
+    tired = _create_entry(auth_client, token, note="Весь день чувствовала усталость")
+    sad = _create_entry(auth_client, token, note="Мне сегодня грустно")
+    _create_entry(auth_client, token, note="Хорошая прогулка в парке")
+
+    assert _search_ids(auth_client, token, "устала") == [tired.json()["id"]]
+    assert _search_ids(auth_client, token, "грусть") == [sad.json()["id"]]
+
+
+def test_search_matches_english_word_forms(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "search-en-forms@example.com")
+    hit = _create_entry(auth_client, token, note="Too many meetings, went running after work")
+    _create_entry(auth_client, token, note="Quiet evening at home")
+
+    assert _search_ids(auth_client, token, "meeting") == [hit.json()["id"]]
+    assert _search_ids(auth_client, token, "run") == [hit.json()["id"]]
+
+
+def test_search_keeps_substring_matches(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "search-substring@example.com")
+    hit = _create_entry(auth_client, token, note="Позвонила маме вечером")
+
+    assert _search_ids(auth_client, token, "звонил") == [hit.json()["id"]]
+
+
+def test_search_stop_words_only_falls_back_to_substring(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "search-stopwords@example.com")
+    hit = _create_entry(auth_client, token, note="Read the book")
+    _create_entry(auth_client, token, note="Coffee")
+
+    assert _search_ids(auth_client, token, "the") == [hit.json()["id"]]
+
+
+def test_search_orders_full_text_hits_by_rank_then_date(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "search-rank@example.com")
+    dense = _create_entry(
+        auth_client,
+        token,
+        note="Тревога утром, тревога днём, тревога вечером",
+        recorded_at="2026-07-01T10:00:00+03:00",
+    )
+    single = _create_entry(
+        auth_client,
+        token,
+        note="Немного тревоги перед встречей и много дел",
+        recorded_at="2026-07-03T10:00:00+03:00",
+    )
+    substring_only = _create_entry(
+        auth_client,
+        token,
+        note="Слушала подкаст «Антитревога»",
+        recorded_at="2026-07-05T10:00:00+03:00",
+    )
+
+    assert _search_ids(auth_client, token, "тревога") == [
+        dense.json()["id"],
+        single.json()["id"],
+        substring_only.json()["id"],
+    ]
