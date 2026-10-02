@@ -56,17 +56,15 @@ def _reward_snapshot_item(
         pack: IconPack = reward.pack
         item["pack_id"] = str(reward.pack_id)
         item["pack_slug"] = pack.slug
-        item["pack_name"] = (
-            resolve_label(
-                (pack.labels or {}).get("name") or {},
-                locale,
-            )
-            or pack.slug
-        )
+        item["pack_name"] = resolve_label(
+            (pack.labels or {}).get("name") or {},
+            locale,
+        ) or pack.slug
         item["cover_icon_id"] = str(pack.cover_icon_id) if pack.cover_icon_id else None
         item["preview_icon_ids"] = _pack_preview_icon_ids(db, pack=pack)
     elif (
-        reward.kind == AchievementRewardKind.CATALOG_ICON.value and reward.catalog_icon is not None
+        reward.kind == AchievementRewardKind.CATALOG_ICON.value
+        and reward.catalog_icon is not None
     ):
         item["catalog_icon_id"] = str(reward.catalog_icon_id)
         item["icon_slug"] = reward.catalog_icon.slug
