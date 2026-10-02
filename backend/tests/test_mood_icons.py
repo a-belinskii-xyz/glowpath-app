@@ -79,8 +79,8 @@ def test_mood_icon_upload_list_select_delete(
     assert len(storage._objects) == 0
 
     prefs_after = auth_client.get("/v1/mood-preferences", headers=headers)
-    assert prefs_after.json()["scores"]["2"]["icon_type"] == "emoji"
-    assert prefs_after.json()["scores"]["2"]["icon"] == "😞"
+    assert prefs_after.json()["scores"]["2"]["icon_type"] == "builtin"
+    assert prefs_after.json()["scores"]["2"]["icon"] == "face-bad-sad"
 
 
 def test_mood_icon_upload_rejects_when_limit_reached(

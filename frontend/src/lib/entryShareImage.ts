@@ -684,7 +684,7 @@ async function resolveIcon(
   }
 }
 
-/** Built-in icons are stroke SVGs with `currentColor`; tint them for the card. */
+/** Line built-ins use `currentColor` and get tinted; face built-ins keep their own colors. */
 async function loadTintedSvg(path: string, color: string): Promise<HTMLImageElement> {
   const response = await fetch(path)
   if (!response.ok) {

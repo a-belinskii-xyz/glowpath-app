@@ -18,6 +18,7 @@ import { EmojiPicker } from './EmojiPicker'
 import { IconButton } from './IconButton'
 import { EditIcon } from './icons'
 import { ImageCropModal } from './ImageCropModal'
+import { BuiltinIconPicker } from './BuiltinIconPicker'
 import { CatalogIconPicker } from './CatalogIconPicker'
 import { GuestLockBadge, GuestRegistrationCallout } from './GuestRegistrationLock'
 import { MoodScoreIcon } from './MoodScoreIcon'
@@ -38,6 +39,7 @@ import { revokeMoodIconObjectUrl } from '../lib/moodIconBlobUrl'
 import {
   DEFAULT_MOOD_SCORE_COLORS,
   MAX_MOOD_SCORE_LABEL_LENGTH,
+  defaultMoodScoreEmoji,
   defaultMoodScoreLabel,
   defaultMoodScoreStyle,
   getMoodScoreOptions,
@@ -61,7 +63,7 @@ type PendingConfirm =
   | { kind: 'reset-all' }
   | { kind: 'remove-icon'; score: number; iconId: string }
 
-type IconSourceUi = 'emoji' | 'upload' | 'catalog'
+type IconSourceUi = 'builtin' | 'emoji' | 'upload' | 'catalog'
 
 const MAX_UPLOADS_PER_SCORE = 3
 const APPEARANCE_SAVE_DELAY_MS = 400
@@ -84,6 +86,9 @@ function resolveIconSourceUi(iconType: MoodScoreIconType): IconSourceUi {
   }
   if (iconType === 'catalog') {
     return 'catalog'
+  }
+  if (iconType === 'builtin') {
+    return 'builtin'
   }
   return 'emoji'
 }
@@ -183,9 +188,7 @@ export function MoodPreferencesForm() {
         Object.fromEntries(
           Object.entries(nextScores).map(([score, style]) => [
             Number(score),
-            style.icon_type === 'emoji'
-              ? style.icon
-              : defaultMoodScoreStyle(Number(score), nextLocale).icon,
+            style.icon_type === 'emoji' ? style.icon : defaultMoodScoreEmoji(Number(score)),
           ]),
         ),
       )
@@ -408,15 +411,25 @@ export function MoodPreferencesForm() {
   }
 
   const handleIconSourceChange = async (score: number, iconType: IconSourceUi) => {
-    if (guestLocked && iconType !== 'emoji') {
+    if (guestLocked && iconType !== 'emoji' && iconType !== 'builtin') {
       return
     }
     setSourceUiByScore((current) => ({ ...current, [score]: iconType }))
     if (iconType === 'emoji') {
       await patchIconStyle(score, {
         icon_type: 'emoji',
-        icon: draftEmojis[score] ?? defaultMoodScoreStyle(score, locale).icon,
+        icon: draftEmojis[score] ?? defaultMoodScoreEmoji(score),
       })
+      return
+    }
+    if (iconType === 'builtin') {
+      const current = scores[String(score)]
+      if (current?.icon_type !== 'builtin') {
+        await patchIconStyle(score, {
+          icon_type: 'builtin',
+          icon: defaultMoodScoreStyle(score, locale).icon,
+        })
+      }
       return
     }
     if (iconType === 'catalog') {
@@ -439,6 +452,15 @@ export function MoodPreferencesForm() {
       return
     }
     await patchIconStyle(score, { icon_type: 'catalog', icon: iconId })
+  }
+
+  const handleBuiltinSelect = async (score: number, slug: string) => {
+    setSourceUiByScore((current) => ({ ...current, [score]: 'builtin' }))
+    const current = scores[String(score)]
+    if (current?.icon_type === 'builtin' && current.icon === slug) {
+      return
+    }
+    await patchIconStyle(score, { icon_type: 'builtin', icon: slug })
   }
 
   const handleEmojiSelect = async (score: number, emoji: string) => {
@@ -610,7 +632,7 @@ export function MoodPreferencesForm() {
     draftLabelsRef.current = nextLabels
     setDraftColors(nextColors)
     setDraftLabels(nextLabels)
-    setDraftEmojis((current) => ({ ...current, [score]: defaultStyle.icon }))
+    setDraftEmojis((current) => ({ ...current, [score]: defaultMoodScoreEmoji(score) }))
 
     setIconBusyScore(score)
     setError(null)
@@ -619,7 +641,7 @@ export function MoodPreferencesForm() {
         scores: {
           [String(score)]: {
             color: nextColor,
-            icon_type: 'emoji',
+            icon_type: defaultStyle.icon_type,
             icon: defaultStyle.icon,
             label: '',
           },
@@ -738,9 +760,10 @@ export function MoodPreferencesForm() {
       color: draftColors[option.score] ?? option.color,
     }
     const iconBusy = iconBusyScore === option.score
-    const sourceUi = guestLocked
-      ? 'emoji'
-      : sourceUiByScore[option.score] ?? resolveIconSourceUi(currentStyle.icon_type)
+    const resolvedSourceUi =
+      sourceUiByScore[option.score] ?? resolveIconSourceUi(currentStyle.icon_type)
+    const sourceUi =
+      guestLocked && resolvedSourceUi !== 'builtin' ? 'emoji' : resolvedSourceUi
     const scoreUploads = uploadedIcons[option.score] ?? []
     const uploadFull = scoreUploads.length >= maxUploadsPerScore
     const label = draftLabels[option.score] ?? option.label
@@ -821,6 +844,14 @@ export function MoodPreferencesForm() {
           >
             <button
               type="button"
+              className={`segmented-control-option${sourceUi === 'builtin' ? ' is-active' : ''}`}
+              aria-pressed={sourceUi === 'builtin'}
+              onClick={() => void handleIconSourceChange(option.score, 'builtin')}
+            >
+              {t('moodPreferences.iconTypeBuiltin')}
+            </button>
+            <button
+              type="button"
               className={`segmented-control-option${sourceUi === 'emoji' ? ' is-active' : ''}`}
               aria-pressed={sourceUi === 'emoji'}
               onClick={() => void handleIconSourceChange(option.score, 'emoji')}
@@ -855,7 +886,14 @@ export function MoodPreferencesForm() {
           {guestLocked ? <GuestRegistrationCallout message={t('guest.uploadIconsLocked')} /> : null}
 
           <div className="mood-preferences-icon-panel">
-            {sourceUi === 'emoji' ? (
+            {sourceUi === 'builtin' ? (
+              <BuiltinIconPicker
+                selectedSlug={currentStyle.icon_type === 'builtin' ? currentStyle.icon : null}
+                suggestedMood={option.score}
+                disabled={iconBusy}
+                onSelect={(slug) => void handleBuiltinSelect(option.score, slug)}
+              />
+            ) : sourceUi === 'emoji' ? (
               <EmojiPicker
                 value={draftEmojis[option.score] ?? ''}
                 groups={MOOD_EMOJI_GROUPS}

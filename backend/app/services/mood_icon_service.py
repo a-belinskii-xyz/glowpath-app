@@ -14,7 +14,7 @@ from app.models.user_mood_icon import UserMoodIcon
 from app.services.mood_entry_service import ALLOWED_PHOTO_MIME_TYPES
 from app.services.mood_preferences_service import (
     get_or_create_preferences,
-    reset_score_to_default_emoji,
+    reset_score_icon_to_default,
     set_upload_icon_preference,
 )
 from app.services.storage import ObjectStorage, StorageError
@@ -281,7 +281,7 @@ def delete_mood_icon_by_id(
                 icon_id=remaining[-1].id,
             )
         else:
-            reset_score_to_default_emoji(db, user_id=user_id, score=mood_score)
+            reset_score_icon_to_default(db, user_id=user_id, score=mood_score)
     db.commit()
 
     with contextlib.suppress(StorageError):

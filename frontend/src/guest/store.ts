@@ -1,5 +1,10 @@
 import { getApiLocale, type ApiLocale } from '../lib/locale'
-import { defaultMoodScoreStyle, defaultMoodScoreLabel, resolveMoodPreferences } from '../lib/moodScale'
+import {
+  defaultMoodScoreEmoji,
+  defaultMoodScoreLabel,
+  defaultMoodScoreStyle,
+  resolveMoodPreferences,
+} from '../lib/moodScale'
 import type { GoalCalendarResponse, GoalListResponse, GoalPatch, GoalPublic, GoalStatsResponse, GoalWrite } from '../types/goal'
 import type {
   CalendarDayPublic,
@@ -581,7 +586,7 @@ function buildEntryPublic(
   return {
     ...entry,
     score_label: style.label ?? String(entry.score),
-    score_emoji: style.icon,
+    score_emoji: defaultMoodScoreEmoji(entry.score),
     score_color: entry.score_color || style.color,
     tags: entry.tags.map((tag) => tagsById.get(tag.id) ?? tag),
     goals: entry.goals.map((goal) => {
@@ -676,7 +681,7 @@ export async function createGuestMoodEntry(body: MoodEntryCreate, locale: ApiLoc
     recorded_at: body.recorded_at,
     score: body.score,
     score_label: style.label ?? String(body.score),
-    score_emoji: style.icon,
+    score_emoji: defaultMoodScoreEmoji(body.score),
     score_color: style.color,
     note: body.note ?? null,
     is_favorite: false,
@@ -740,7 +745,7 @@ export async function patchGuestMoodEntry(
     ...current,
     score: body.score ?? current.score,
     score_label: style.label ?? String(body.score ?? current.score),
-    score_emoji: style.icon,
+    score_emoji: defaultMoodScoreEmoji(body.score ?? current.score),
     score_color: style.color,
     recorded_at: body.recorded_at ?? current.recorded_at,
     note: body.note === undefined ? current.note : body.note,

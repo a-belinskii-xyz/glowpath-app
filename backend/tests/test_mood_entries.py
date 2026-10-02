@@ -90,7 +90,7 @@ def test_create_mood_entry_score_only(
     assert body["score"] == 4
     assert body["score_label"] == "good"
     assert body["score_emoji"] == "🙂"
-    assert body["score_color"] == "#34d399"
+    assert body["score_color"] == "#22c55e"
     assert body["note"] is None
     assert body["tags"] == []
     assert body["goals"] == []
@@ -594,7 +594,7 @@ def test_calendar_groups_by_day_and_caps_scores(
 
     july_15 = days["2026-07-15"]
     assert july_15["entry_count"] == 1
-    assert july_15["scores"] == [{"score": 4, "score_emoji": "🙂", "score_color": "#34d399"}]
+    assert july_15["scores"] == [{"score": 4, "score_emoji": "🙂", "score_color": "#22c55e"}]
 
 
 def test_calendar_rejects_inverted_range(
@@ -924,7 +924,7 @@ def test_create_entry_snapshots_mood_color_and_keeps_it_after_palette_change(
     created = _create_entry(auth_client, token, score=4)
     assert created.status_code == 201
     entry_id = created.json()["id"]
-    assert created.json()["score_color"] == "#34d399"
+    assert created.json()["score_color"] == "#22c55e"
 
     patch_prefs = auth_client.patch(
         "/v1/mood-preferences",
@@ -936,7 +936,7 @@ def test_create_entry_snapshots_mood_color_and_keeps_it_after_palette_change(
 
     stored = auth_client.get(f"/v1/mood-entries/{entry_id}", headers=headers)
     assert stored.status_code == 200
-    assert stored.json()["score_color"] == "#34d399"
+    assert stored.json()["score_color"] == "#22c55e"
 
     live = auth_client.patch(
         "/v1/mood-preferences",
@@ -972,7 +972,7 @@ def test_patch_score_snapshots_current_color_for_new_score(
 
     created = _create_entry(auth_client, token, score=4)
     entry_id = created.json()["id"]
-    assert created.json()["score_color"] == "#34d399"
+    assert created.json()["score_color"] == "#22c55e"
 
     assert (
         auth_client.patch(

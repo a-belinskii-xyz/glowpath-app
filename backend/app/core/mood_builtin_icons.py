@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.core.i18n import LocaleLabels
-from app.core.mood_scale import MoodScore
+from app.core.mood_scale import DEFAULT_MOOD_SCORE_ICONS, MoodScore
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,39 +11,129 @@ class BuiltinMoodIcon:
     slug: str
     labels: LocaleLabels
     asset_path: str
-    default_score: MoodScore | None = None
+    suggested_score: MoodScore | None = None
 
 
 MOOD_BUILTIN_ICONS: dict[str, BuiltinMoodIcon] = {
+    "face-awful-cry": BuiltinMoodIcon(
+        slug="face-awful-cry",
+        labels={"en": "Crying", "ru": "Плачу"},
+        asset_path="/mood-icons/face-awful-cry.svg",
+        suggested_score=MoodScore.AWFUL,
+    ),
+    "face-awful-angry": BuiltinMoodIcon(
+        slug="face-awful-angry",
+        labels={"en": "Angry", "ru": "Злюсь"},
+        asset_path="/mood-icons/face-awful-angry.svg",
+        suggested_score=MoodScore.AWFUL,
+    ),
+    "face-awful-storm": BuiltinMoodIcon(
+        slug="face-awful-storm",
+        labels={"en": "Overwhelmed", "ru": "Накрыло"},
+        asset_path="/mood-icons/face-awful-storm.svg",
+        suggested_score=MoodScore.AWFUL,
+    ),
+    "face-bad-sad": BuiltinMoodIcon(
+        slug="face-bad-sad",
+        labels={"en": "Sad", "ru": "Грустно"},
+        asset_path="/mood-icons/face-bad-sad.svg",
+        suggested_score=MoodScore.BAD,
+    ),
+    "face-bad-tired": BuiltinMoodIcon(
+        slug="face-bad-tired",
+        labels={"en": "Tired", "ru": "Без сил"},
+        asset_path="/mood-icons/face-bad-tired.svg",
+        suggested_score=MoodScore.BAD,
+    ),
+    "face-bad-worried": BuiltinMoodIcon(
+        slug="face-bad-worried",
+        labels={"en": "Worried", "ru": "Тревожно"},
+        asset_path="/mood-icons/face-bad-worried.svg",
+        suggested_score=MoodScore.BAD,
+    ),
+    "face-neutral-flat": BuiltinMoodIcon(
+        slug="face-neutral-flat",
+        labels={"en": "Neutral", "ru": "Ровно"},
+        asset_path="/mood-icons/face-neutral-flat.svg",
+        suggested_score=MoodScore.NEUTRAL,
+    ),
+    "face-neutral-side": BuiltinMoodIcon(
+        slug="face-neutral-side",
+        labels={"en": "Unsure", "ru": "Так себе"},
+        asset_path="/mood-icons/face-neutral-side.svg",
+        suggested_score=MoodScore.NEUTRAL,
+    ),
+    "face-neutral-calm": BuiltinMoodIcon(
+        slug="face-neutral-calm",
+        labels={"en": "Calm", "ru": "Спокойно"},
+        asset_path="/mood-icons/face-neutral-calm.svg",
+        suggested_score=MoodScore.NEUTRAL,
+    ),
+    "face-good-smile": BuiltinMoodIcon(
+        slug="face-good-smile",
+        labels={"en": "Smile", "ru": "Улыбка"},
+        asset_path="/mood-icons/face-good-smile.svg",
+        suggested_score=MoodScore.GOOD,
+    ),
+    "face-good-wink": BuiltinMoodIcon(
+        slug="face-good-wink",
+        labels={"en": "Wink", "ru": "Подмигиваю"},
+        asset_path="/mood-icons/face-good-wink.svg",
+        suggested_score=MoodScore.GOOD,
+    ),
+    "face-good-blush": BuiltinMoodIcon(
+        slug="face-good-blush",
+        labels={"en": "Pleased", "ru": "Приятно"},
+        asset_path="/mood-icons/face-good-blush.svg",
+        suggested_score=MoodScore.GOOD,
+    ),
+    "face-great-grin": BuiltinMoodIcon(
+        slug="face-great-grin",
+        labels={"en": "Laughing", "ru": "Смеюсь"},
+        asset_path="/mood-icons/face-great-grin.svg",
+        suggested_score=MoodScore.GREAT,
+    ),
+    "face-great-stars": BuiltinMoodIcon(
+        slug="face-great-stars",
+        labels={"en": "Starstruck", "ru": "В восторге"},
+        asset_path="/mood-icons/face-great-stars.svg",
+        suggested_score=MoodScore.GREAT,
+    ),
+    "face-great-love": BuiltinMoodIcon(
+        slug="face-great-love",
+        labels={"en": "In love", "ru": "Любовь"},
+        asset_path="/mood-icons/face-great-love.svg",
+        suggested_score=MoodScore.GREAT,
+    ),
     "awful-cloud": BuiltinMoodIcon(
         slug="awful-cloud",
         labels={"en": "Rain cloud", "ru": "Дождливая туча"},
         asset_path="/mood-icons/awful-cloud.svg",
-        default_score=MoodScore.AWFUL,
+        suggested_score=MoodScore.AWFUL,
     ),
     "bad-droplet": BuiltinMoodIcon(
         slug="bad-droplet",
         labels={"en": "Droplet", "ru": "Капля"},
         asset_path="/mood-icons/bad-droplet.svg",
-        default_score=MoodScore.BAD,
+        suggested_score=MoodScore.BAD,
     ),
     "neutral-line": BuiltinMoodIcon(
         slug="neutral-line",
         labels={"en": "Flat line", "ru": "Ровная линия"},
         asset_path="/mood-icons/neutral-line.svg",
-        default_score=MoodScore.NEUTRAL,
+        suggested_score=MoodScore.NEUTRAL,
     ),
     "good-sun": BuiltinMoodIcon(
         slug="good-sun",
         labels={"en": "Sun", "ru": "Солнце"},
         asset_path="/mood-icons/good-sun.svg",
-        default_score=MoodScore.GOOD,
+        suggested_score=MoodScore.GOOD,
     ),
     "great-star": BuiltinMoodIcon(
         slug="great-star",
         labels={"en": "Star", "ru": "Звезда"},
         asset_path="/mood-icons/great-star.svg",
-        default_score=MoodScore.GREAT,
+        suggested_score=MoodScore.GREAT,
     ),
     "heart": BuiltinMoodIcon(
         slug="heart",
@@ -78,7 +168,4 @@ def is_valid_builtin_icon_slug(slug: str) -> bool:
 
 
 def default_builtin_slug_for_score(score: MoodScore) -> str:
-    for icon in MOOD_BUILTIN_ICONS.values():
-        if icon.default_score == score:
-            return icon.slug
-    return "neutral-line"
+    return DEFAULT_MOOD_SCORE_ICONS[score]

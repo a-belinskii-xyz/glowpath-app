@@ -84,6 +84,7 @@ class BuiltinMoodIconPublic(BaseModel):
     slug: str
     label: str
     asset_path: str
+    suggested_score: int | None = None
     default_score: int | None = None
 
 
