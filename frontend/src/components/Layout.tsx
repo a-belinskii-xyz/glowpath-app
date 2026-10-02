@@ -131,7 +131,8 @@ function ShellChrome({
             <LanguageSwitcher id="guest-language" compact />
             {guestNav ? (
               <>
-                {location.pathname !== '/login' ? (
+                {/* `/` and `/login` already show the sign-in block. */}
+                {location.pathname !== '/' && location.pathname !== '/login' ? (
                   <Link to="/login">{t('nav.logIn')}</Link>
                 ) : null}
               </>

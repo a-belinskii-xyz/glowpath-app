@@ -9,7 +9,8 @@ from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import and_, case, exists, func, or_, select
+from sqlalchemy import Text, and_, case, cast, exists, func, or_, select
+from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql.elements import ColumnElement
@@ -36,7 +37,7 @@ from app.core.mood_scale import (
 )
 from app.core.streak import check_in_date, current_streak
 from app.models.goal import Goal
-from app.models.mood_entry import MoodEntry
+from app.models.mood_entry import SEARCH_TS_CONFIG, MoodEntry
 from app.models.mood_entry_attachment import MAX_PHOTOS_PER_ENTRY, MoodEntryAttachment
 from app.models.mood_entry_goal import MoodEntryGoal
 from app.models.mood_entry_tag import MoodEntryTag
@@ -446,7 +447,22 @@ def _like_contains_pattern(value: str) -> str:
     return f"%{escaped}%"
 
 
-def _lexical_search_match(query: str) -> ColumnElement[bool]:
+def _prefix_tsquery(query: str) -> ColumnElement[Any]:
+    """Stem the query like notes are stemmed, then match each stem as a prefix.
+
+    Prefixes bridge forms the stemmer keeps apart, e.g. «грусть» (груст) also
+    finds «грустно» (грустн). Lexemes with digits stay exact so «100» does not
+    match «1000».
+    """
+    stemmed = cast(func.plainto_tsquery(SEARCH_TS_CONFIG, query), Text)
+    prefixed = func.regexp_replace(stemmed, "'([^'[:digit:]]+)'( |$)", "'\\1':*\\2", "g")
+    return cast(prefixed, TSQUERY)
+
+
+def _lexical_search_match(query: str) -> tuple[ColumnElement[bool], ColumnElement[Any]]:
+    """Full-text or substring match, plus a rank that is 0 for substring-only hits."""
+    tsquery = _prefix_tsquery(query)
+    fulltext_hit = MoodEntry.search_tsv.op("@@")(tsquery)
     pattern = _like_contains_pattern(query)
     transcription_hit = exists(
         select(1).where(
@@ -454,10 +470,13 @@ def _lexical_search_match(query: str) -> ColumnElement[bool]:
             MoodEntryAttachment.transcription.ilike(pattern, escape=_LIKE_ESCAPE),
         )
     )
-    return or_(
+    match = or_(
+        fulltext_hit,
         MoodEntry.note.ilike(pattern, escape=_LIKE_ESCAPE),
         transcription_hit,
     )
+    rank = case((fulltext_hit, func.ts_rank(MoodEntry.search_tsv, tsquery)), else_=0)
+    return match, rank
 
 
 def search_mood_entries(
@@ -473,7 +492,7 @@ def search_mood_entries(
             "Search query must not be empty", code=ErrorCode.SEARCH_QUERY_EMPTY, status_code=400
         )
 
-    lexical_match = _lexical_search_match(cleaned)
+    lexical_match, lexical_rank = _lexical_search_match(cleaned)
     use_semantic = (
         settings.embedding_enabled and len(cleaned.split()) >= _SEMANTIC_SEARCH_MIN_TOKENS
     )
@@ -483,7 +502,11 @@ def search_mood_entries(
             select(MoodEntry)
             .options(*_entry_load_options())
             .where(MoodEntry.user_id == user_id, lexical_match)
-            .order_by(MoodEntry.recorded_at.desc(), MoodEntry.created_at.desc())
+            .order_by(
+                lexical_rank.desc(),
+                MoodEntry.recorded_at.desc(),
+                MoodEntry.created_at.desc(),
+            )
             .limit(limit)
         )
         return list(db.scalars(stmt).all())
@@ -506,6 +529,7 @@ def search_mood_entries(
         )
         .order_by(
             case((lexical_match, 0), else_=1),
+            lexical_rank.desc(),
             case((lexical_match, MoodEntry.recorded_at)).desc(),
             distance.asc().nulls_last(),
             MoodEntry.recorded_at.desc(),

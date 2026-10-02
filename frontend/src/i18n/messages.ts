@@ -83,7 +83,11 @@ export const en = {
   home: {
     lead: 'Track your mood in Telegram. The website is optional.',
     createAccount: 'Create account',
-    orWebsite: 'Or use the website',
+    entryLead: 'A mood diary that lives in Telegram. No password needed.',
+    telegramTitle: 'In Telegram',
+    telegramText: 'Log your mood right in the chat with the bot. Reminders and the diary app are there too.',
+    websiteTitle: 'On the website',
+    websiteText: 'The same diary in your browser. You confirm sign-in in the Telegram bot.',
   },
   telegramApp: {
     authFailedTitle: 'Could not open GlowPath',
@@ -924,6 +928,7 @@ export const en = {
     signIn: 'Sign in',
     signingIn: 'Signing in…',
     continueWithTelegram: 'Continue with Telegram',
+    signInWithTelegramLogin: 'Sign in with Telegram Login',
     continueWithGoogle: 'Continue with Google',
     forgotPassword: 'Forgot password?',
     resendVerification: 'Resend verification email',
@@ -1463,7 +1468,11 @@ export const ru: DeepStringLeaves<typeof en> = {
   home: {
     lead: 'Отмечайте настроение в Telegram. Сайт необязателен.',
     createAccount: 'Создать аккаунт',
-    orWebsite: 'Или на сайте',
+    entryLead: 'Дневник настроения, который живёт в Telegram. Пароль не нужен.',
+    telegramTitle: 'В Telegram',
+    telegramText: 'Отмечайте настроение прямо в чате с ботом. Там же напоминания и мини-приложение с дневником.',
+    websiteTitle: 'На сайте',
+    websiteText: 'Тот же дневник в браузере. Вход подтверждаете в Telegram-боте.',
   },
   telegramApp: {
     authFailedTitle: 'Не удалось открыть GlowPath',
@@ -2308,6 +2317,7 @@ export const ru: DeepStringLeaves<typeof en> = {
     signIn: 'Войти',
     signingIn: 'Вход…',
     continueWithTelegram: 'Продолжить с Telegram',
+    signInWithTelegramLogin: 'Войти через Telegram Login',
     continueWithGoogle: 'Продолжить с Google',
     forgotPassword: 'Забыли пароль?',
     resendVerification: 'Отправить письмо ещё раз',

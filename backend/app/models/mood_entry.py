@@ -6,6 +6,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     ForeignKey,
@@ -15,7 +16,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE
@@ -24,6 +25,8 @@ from app.db.mixins import TimestampMixin
 from app.db.names import fk_column, index_name, table_name
 
 EMBEDDING_DIMS = 384
+# Text search config for notes; also stems Latin words via english_stem.
+SEARCH_TS_CONFIG = "russian"
 
 
 if TYPE_CHECKING:
@@ -68,6 +71,11 @@ class MoodEntry(TimestampMixin, Base):
             "logged_on",
             postgresql_where=text("logged_on IS NOT NULL"),
         ),
+        Index(
+            index_name("mood_entries", "search_tsv"),
+            "search_tsv",
+            postgresql_using="gin",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -107,6 +115,12 @@ class MoodEntry(TimestampMixin, Base):
     origin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # Semantic search vector (fastembed); null when entry has no searchable text.
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMS), nullable=True)
+    # Full-text search vector over the note, maintained by Postgres.
+    search_tsv: Mapped[str] = mapped_column(
+        TSVECTOR,
+        Computed(f"to_tsvector('{SEARCH_TS_CONFIG}', coalesce(note, ''))", persisted=True),
+        deferred=True,
+    )
 
     user: Mapped["User"] = relationship(back_populates="mood_entries")
     tag_links: Mapped[list["MoodEntryTag"]] = relationship(
