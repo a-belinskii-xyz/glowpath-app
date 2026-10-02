@@ -534,7 +534,7 @@
     "slug": "email_arrival",
     "category": "secrets",
     "visibility": "secret",
-    "status": "published",
+    "status": "archived",
     "sort_order": 360,
     "labels": { "en": "Letter arrived", "ru": "Письмо пришло" },
     "descriptions": {

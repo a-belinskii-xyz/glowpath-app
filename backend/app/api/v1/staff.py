@@ -38,6 +38,7 @@ from app.services.preset_service import (
     PresetError,
     export_preset,
     import_preset_archive,
+    seed_starter_content,
 )
 from app.services.staff_service import (
     archive_pack,
@@ -228,6 +229,26 @@ async def post_preset_import(
         report = import_preset_archive(db, storage=storage, data=data)
         db.commit()
     except (PresetError, StorageError) as exc:
+        db.rollback()
+        raise_http_error(exc)
+    return PresetImportResponse(
+        search_tags=report.search_tags,
+        packs=report.packs,
+        icons=report.icons,
+        achievements=report.achievements,
+    )
+
+
+@router.post("/presets/starter", response_model=PresetImportResponse)
+def post_preset_starter(
+    db: Session = Depends(get_db),
+    _staff: User = Depends(get_current_staff_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+) -> PresetImportResponse:
+    try:
+        report = seed_starter_content(db, storage=storage)
+        db.commit()
+    except StorageError as exc:
         db.rollback()
         raise_http_error(exc)
     return PresetImportResponse(

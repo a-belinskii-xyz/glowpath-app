@@ -701,6 +701,11 @@ export const en = {
     import: 'Import',
     importing: 'Importing…',
     imported: 'Imported {packs} packs ({icons} icons), {achievements} achievements, {tags} search tags.',
+    starterTitle: 'Starter content',
+    starterLead: 'Adds the free Essentials pack, default search tags and the built-in achievements. Achievements that already exist are left as they are, so staff edits are kept.',
+    starterRun: 'Add starter content',
+    starterRunning: 'Adding…',
+    starterDone: 'Essentials pack ready ({icons} icons), {tags} search tags. New achievements: {achievements}.',
   },
   profile: {
     title: 'Profile',
@@ -2234,6 +2239,11 @@ export const ru: DeepStringLeaves<typeof en> = {
     import: 'Импортировать',
     importing: 'Импортируем…',
     imported: 'Импортировано паков: {packs} (иконок: {icons}), ачивок: {achievements}, тегов: {tags}.',
+    starterTitle: 'Стартовый набор',
+    starterLead: 'Добавляет бесплатный пак «Базовый», поисковые теги и встроенные ачивки. Уже существующие ачивки не трогает, правки стаффа сохраняются.',
+    starterRun: 'Добавить стартовый набор',
+    starterRunning: 'Добавляем…',
+    starterDone: 'Пак «Базовый» готов (иконок: {icons}), тегов: {tags}. Новых ачивок: {achievements}.',
   },
   profile: {
     title: 'Профиль',

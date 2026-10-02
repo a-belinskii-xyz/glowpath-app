@@ -347,6 +347,19 @@ def import_preset_dir(db: Session, *, storage: ObjectStorage, root: Path) -> Pre
     return report
 
 
+def seed_starter_content(db: Session, *, storage: ObjectStorage) -> PresetImportReport:
+    """Search tags, the free essentials pack and the repo achievements, for an empty
+    database (prod never runs seeds). Existing achievements are left as they are."""
+    report = PresetImportReport()
+    report.search_tags = len(seed_default_search_tags(db))
+    essentials = seed_essentials_pack(db, storage=storage)
+    report.packs = [essentials.slug]
+    report.icons = len(essentials.icons)
+    achievements = seed_achievements(db, storage=storage, only_missing=True)
+    report.achievements = [achievement.slug for achievement in achievements]
+    return report
+
+
 def _preset_root(extracted: Path) -> Path:
     """Accept archives with files at the root or wrapped in one top-level folder."""
     if (extracted / "marketplace").is_dir() or (extracted / "achievements").is_dir():

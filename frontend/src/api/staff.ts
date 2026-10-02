@@ -92,6 +92,13 @@ export async function importPreset(file: File): Promise<PresetImportResponse> {
   return (await response.json()) as PresetImportResponse
 }
 
+export function seedStarterContent(): Promise<PresetImportResponse> {
+  return apiRequest<PresetImportResponse>('/v1/staff/presets/starter', {
+    method: 'POST',
+    auth: true,
+  })
+}
+
 export function listStaffAchievements(): Promise<{ items: StaffAchievementPublic[] }> {
   return apiRequest<{ items: StaffAchievementPublic[] }>('/v1/staff/achievements', {
     auth: true,
