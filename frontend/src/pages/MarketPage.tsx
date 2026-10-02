@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import {
   listMarketplaceIcons,
@@ -294,6 +294,12 @@ export function MarketPage() {
                     ) : null}
                   </div>
                   <div className="market-pack-actions">
+                    <Link
+                      className="button button-secondary button-small"
+                      to={`/market/packs/${group.pack.id}/preview`}
+                    >
+                      {t('market.preview')}
+                    </Link>
                     {locked ? (
                       <>
                         <span className="market-price">

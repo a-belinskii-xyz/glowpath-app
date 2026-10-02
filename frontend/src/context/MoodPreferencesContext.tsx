@@ -158,3 +158,28 @@ export function useMoodPreferences(): MoodPreferencesContextValue {
   }
   return context
 }
+
+/** Swap the mood scale for a subtree (pack preview) without touching saved preferences. */
+export function MoodPreferencesOverride({
+  scores,
+  children,
+}: {
+  scores: Record<string, MoodScoreStylePublic>
+  children: ReactNode
+}) {
+  const parent = useMoodPreferences()
+  const { locale } = useLocale()
+  const value = useMemo(
+    () => ({
+      ...parent,
+      scores,
+      useHistoricalColors: false,
+      getScoreColor: (score: number) => getMoodScoreColor(score, scores),
+      getScoreStyle: (score: number) => getMoodScoreStyle(score, scores, locale),
+    }),
+    [parent, scores, locale],
+  )
+  return (
+    <MoodPreferencesContext.Provider value={value}>{children}</MoodPreferencesContext.Provider>
+  )
+}

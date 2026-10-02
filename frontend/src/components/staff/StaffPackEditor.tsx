@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 import {
   deleteStudioIcon,
@@ -266,6 +267,12 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
           </p>
         </div>
         <div className="staff-pack-actions">
+          <Link
+            className="button button-secondary button-small"
+            to={`/market/packs/${pack.id}/preview`}
+          >
+            {t('market.preview')}
+          </Link>
           {pack.status !== 'published' ? (
             <button
               type="button"
