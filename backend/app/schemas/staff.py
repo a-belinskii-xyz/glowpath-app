@@ -37,3 +37,25 @@ class PresetImportResponse(BaseModel):
     packs: list[str]
     icons: int
     achievements: list[str]
+
+
+class StaffSignupSourcePublic(BaseModel):
+    source: str
+    last_7_days: int
+    last_30_days: int
+    total: int
+
+
+class StaffWeekMetricsPublic(BaseModel):
+    starts_at: datetime
+    ends_at: datetime
+    signups: int
+    active: int
+    regular: int
+
+
+class StaffMetricsResponse(BaseModel):
+    generated_at: datetime
+    regular_min_days: int
+    sources: list[StaffSignupSourcePublic]
+    weeks: list[StaffWeekMetricsPublic]

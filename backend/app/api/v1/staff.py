@@ -19,10 +19,13 @@ from app.schemas.marketplace import (
 )
 from app.schemas.staff import (
     PresetImportResponse,
+    StaffMetricsResponse,
     StaffPackCreate,
     StaffPackSortBody,
+    StaffSignupSourcePublic,
     StaffUserListResponse,
     StaffUserPublic,
+    StaffWeekMetricsPublic,
 )
 from app.services.marketplace_service import (
     MarketplaceError,
@@ -30,6 +33,7 @@ from app.services.marketplace_service import (
     serialize_icon,
     serialize_pack_card,
 )
+from app.services.metrics_service import REGULAR_MIN_DAYS, build_metrics_report
 from app.services.preset_service import (
     PresetError,
     export_preset,
@@ -73,6 +77,37 @@ def get_users(
             )
             for user, balance in search_users(db, q=q, limit=limit)
         ]
+    )
+
+
+@router.get("/metrics", response_model=StaffMetricsResponse)
+def get_metrics(
+    db: Session = Depends(get_db),
+    _staff: User = Depends(get_current_staff_user),
+) -> StaffMetricsResponse:
+    report = build_metrics_report(db)
+    return StaffMetricsResponse(
+        generated_at=report.generated_at,
+        regular_min_days=REGULAR_MIN_DAYS,
+        sources=[
+            StaffSignupSourcePublic(
+                source=item.source,
+                last_7_days=item.last_7_days,
+                last_30_days=item.last_30_days,
+                total=item.total,
+            )
+            for item in report.sources
+        ],
+        weeks=[
+            StaffWeekMetricsPublic(
+                starts_at=week.starts_at,
+                ends_at=week.ends_at,
+                signups=week.signups,
+                active=week.active,
+                regular=week.regular,
+            )
+            for week in report.weeks
+        ],
     )
 
 

@@ -64,10 +64,12 @@ class GoogleIdTokenRequest(BaseModel):
 class TelegramAuthRequest(BaseModel):
     init_data: str = Field(min_length=1, max_length=8192)
     timezone: str = Field(default="Europe/Minsk", max_length=64)
+    signup_source: str | None = Field(default=None, max_length=64)
 
 
 class TelegramBotLoginStartRequest(BaseModel):
     timezone: str = Field(default="Europe/Minsk", max_length=64)
+    signup_source: str | None = Field(default=None, max_length=64)
 
 
 class TelegramBotLoginStartResponse(BaseModel):

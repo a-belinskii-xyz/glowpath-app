@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 # Website sign-in: /start login_<code> (see telegram_bot_login_service in the API).
 LOGIN_START_PREFIX = "login_"
+# Marketing links: /start src_<label>; the label rides into the Mini App as its start param.
+SIGNUP_SOURCE_PREFIX = "src_"
 
 
 async def handle_update(update: dict[str, Any]) -> None:
@@ -105,14 +107,14 @@ def _log_markup(locale: str | None, *, start: str) -> dict[str, Any] | None:
     return mini_app_keyboard(locale=locale, url=url, start=start, button_key="log_mood")
 
 
-def _onboarding_markup(locale: str | None) -> dict[str, Any] | None:
+def _onboarding_markup(locale: str | None, *, start: str) -> dict[str, Any] | None:
     url = _mini_app_url()
     if not url:
         return None
     return mini_app_keyboard(
         locale=locale,
         url=url,
-        start=START_ONBOARDING,
+        start=start,
         button_key="open_app",
     )
 
@@ -130,8 +132,14 @@ async def send_app_message(
     await send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
 
-async def _open_onboarding(*, chat_id: int, locale: str | None, text: str) -> None:
-    markup = _onboarding_markup(locale)
+async def _open_onboarding(
+    *,
+    chat_id: int,
+    locale: str | None,
+    text: str,
+    start: str = START_ONBOARDING,
+) -> None:
+    markup = _onboarding_markup(locale, start=start)
     if markup is None:
         await send_message(chat_id=chat_id, text=t(locale, "mini_app_not_configured"))
         return
@@ -176,6 +184,13 @@ async def _handle_start(
         )
         return
 
+    # A new user from a labelled link opens the Mini App with that label, so the
+    # account records where it came from; the app sends new users to onboarding anyway.
+    onboarding_start = START_ONBOARDING
+    if payload and payload.startswith(SIGNUP_SOURCE_PREFIX):
+        onboarding_start = payload
+        payload = None
+
     if payload == START_ONBOARDING:
         await _open_onboarding(
             chat_id=chat_id,
@@ -193,6 +208,7 @@ async def _handle_start(
                 chat_id=chat_id,
                 locale=locale,
                 text=t(locale, "welcome"),
+                start=onboarding_start,
             )
             return
         if me.get("linked") and me.get("onboarding_completed"):
@@ -209,12 +225,14 @@ async def _handle_start(
                 chat_id=chat_id,
                 locale=linked_locale,
                 text=t(linked_locale, "continue_onboarding"),
+                start=onboarding_start,
             )
             return
         await _open_onboarding(
             chat_id=chat_id,
             locale=locale,
             text=t(locale, "welcome"),
+            start=onboarding_start,
         )
         return
 

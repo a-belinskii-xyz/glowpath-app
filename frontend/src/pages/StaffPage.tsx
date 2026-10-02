@@ -1,5 +1,6 @@
 import { Navigate, useSearchParams } from 'react-router-dom'
 
+import { StaffMetricsPanel } from '../components/staff/StaffMetricsPanel'
 import { StaffPacksPanel } from '../components/staff/StaffPacksPanel'
 import { StaffPresetsPanel } from '../components/staff/StaffPresetsPanel'
 import { StaffTokensPanel } from '../components/staff/StaffTokensPanel'
@@ -7,12 +8,13 @@ import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 
-type StaffTab = 'tokens' | 'packs' | 'presets'
+type StaffTab = 'tokens' | 'packs' | 'presets' | 'metrics'
 
 const TABS = [
   { id: 'tokens', labelKey: 'staff.tabTokens' },
   { id: 'packs', labelKey: 'staff.tabPacks' },
   { id: 'presets', labelKey: 'staff.tabPresets' },
+  { id: 'metrics', labelKey: 'staff.tabMetrics' },
 ] as const satisfies readonly { id: StaffTab; labelKey: string }[]
 
 function resolveTab(value: string | null): StaffTab {
@@ -58,8 +60,10 @@ export function StaffPage() {
         <StaffTokensPanel />
       ) : tab === 'packs' ? (
         <StaffPacksPanel />
-      ) : (
+      ) : tab === 'presets' ? (
         <StaffPresetsPanel />
+      ) : (
+        <StaffMetricsPanel />
       )}
     </section>
   )

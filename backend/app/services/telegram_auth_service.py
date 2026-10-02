@@ -10,6 +10,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.i18n import normalize_locale
+from app.core.signup_source import (
+    DIRECT_SIGNUP_SOURCE,
+    normalize_signup_source,
+    signup_source_from_start_param,
+)
 from app.core.telegram_init_data import TelegramInitDataError, validate_init_data
 from app.core.telegram_oidc import (
     build_authorization_url,
@@ -42,6 +47,7 @@ def authenticate_telegram_init_data(
     *,
     init_data: str,
     timezone: str,
+    signup_source: str | None = None,
 ) -> TokenPair:
     bot_token = settings.telegram_bot_token.strip()
     if not bot_token:
@@ -71,6 +77,8 @@ def authenticate_telegram_init_data(
         telegram_user_id=parsed.user.id,
         timezone=timezone_name,
         locale=locale,
+        signup_source=normalize_signup_source(signup_source)
+        or signup_source_from_start_param(parsed.start_param),
     )
 
 
@@ -96,6 +104,7 @@ def complete_telegram_browser_login(
     code_verifier: str,
     timezone: str,
     visitor_id: uuid.UUID | None = None,
+    signup_source: str | None = None,
 ) -> TokenPair:
     _require_oidc_config()
     timezone_name = _timezone_or_error(timezone)
@@ -113,6 +122,7 @@ def complete_telegram_browser_login(
         timezone=timezone_name,
         locale=None,
         visitor_id=visitor_id,
+        signup_source=normalize_signup_source(signup_source),
     )
 
 
@@ -123,6 +133,7 @@ def login_or_create_telegram_user(
     timezone: str,
     locale: str | None,
     visitor_id: uuid.UUID | None = None,
+    signup_source: str | None = None,
 ) -> TokenPair:
     now = datetime.now(UTC)
     existing = db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
@@ -143,6 +154,7 @@ def login_or_create_telegram_user(
         telegram_linked_at=now,
         telegram_locale=locale,
         timezone=timezone,
+        signup_source=signup_source or DIRECT_SIGNUP_SOURCE,
     )
     db.add(user)
     db.flush()
