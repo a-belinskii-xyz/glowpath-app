@@ -33,6 +33,14 @@ class Achievement(TimestampMixin, Base):
             "status IN ('draft', 'published', 'archived')",
             name="achievement_status_values",
         ),
+        CheckConstraint(
+            "icon_type IN ('emoji', 'image')",
+            name="achievement_icon_type_values",
+        ),
+        CheckConstraint(
+            "icon_type <> 'image' OR (icon_storage_key IS NOT NULL AND icon_mime_type IS NOT NULL)",
+            name="achievement_image_icon_fields",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -56,6 +64,9 @@ class Achievement(TimestampMixin, Base):
         nullable=False,
         server_default=DEFAULT_ACHIEVEMENT_ICON,
     )
+    # Set when icon_type is "image"; ``icon`` then keeps a fallback emoji.
+    icon_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    icon_mime_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     criteria: Mapped[dict[str, Any]] = mapped_column(JSONB)
     sort_order: Mapped[int] = mapped_column(Integer, server_default=text("0"))
 

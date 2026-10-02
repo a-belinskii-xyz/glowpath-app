@@ -1,4 +1,4 @@
-import { apiRequest } from './client'
+import { apiRequest, authorizedFetch } from './client'
 import { apiLocaleHeaders } from '../lib/locale'
 import type {
   AchievementListResponse,
@@ -26,4 +26,9 @@ export function markAchievementSeen(achievementId: string): Promise<AchievementP
     auth: true,
     headers: apiLocaleHeaders(),
   })
+}
+
+export async function fetchAchievementIconBlob(achievementId: string): Promise<Blob> {
+  const response = await authorizedFetch(`/v1/achievements/${achievementId}/icon`)
+  return response.blob()
 }

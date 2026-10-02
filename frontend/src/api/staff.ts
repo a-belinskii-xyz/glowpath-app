@@ -1,6 +1,12 @@
 import { apiRequest, authorizedFetch } from './client'
 import { filenameFromDisposition } from '../lib/download'
 import { apiLocaleHeaders } from '../lib/locale'
+import type {
+  CriteriaSpec,
+  StaffAchievementCreate,
+  StaffAchievementPatch,
+  StaffAchievementPublic,
+} from '../types/achievement'
 import type { PackDetailPublic, WalletLedgerListResponse } from '../types/marketplace'
 import type {
   PresetExportParams,
@@ -84,4 +90,54 @@ export async function importPreset(file: File): Promise<PresetImportResponse> {
     headers: { Accept: 'application/json' },
   })
   return (await response.json()) as PresetImportResponse
+}
+
+export function listStaffAchievements(): Promise<{ items: StaffAchievementPublic[] }> {
+  return apiRequest<{ items: StaffAchievementPublic[] }>('/v1/staff/achievements', {
+    auth: true,
+    headers: apiLocaleHeaders(),
+  })
+}
+
+export function listCriteriaSpecs(): Promise<{ items: CriteriaSpec[] }> {
+  return apiRequest<{ items: CriteriaSpec[] }>('/v1/staff/achievements/criteria-types', {
+    auth: true,
+  })
+}
+
+export function createStaffAchievement(
+  body: StaffAchievementCreate,
+): Promise<StaffAchievementPublic> {
+  return apiRequest<StaffAchievementPublic>('/v1/staff/achievements', {
+    method: 'POST',
+    auth: true,
+    body,
+    headers: apiLocaleHeaders(),
+  })
+}
+
+export function patchStaffAchievement(
+  achievementId: string,
+  body: StaffAchievementPatch,
+): Promise<StaffAchievementPublic> {
+  return apiRequest<StaffAchievementPublic>(`/v1/staff/achievements/${achievementId}`, {
+    method: 'PATCH',
+    auth: true,
+    body,
+    headers: apiLocaleHeaders(),
+  })
+}
+
+export async function uploadStaffAchievementIcon(
+  achievementId: string,
+  file: File,
+): Promise<StaffAchievementPublic> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await authorizedFetch(`/v1/staff/achievements/${achievementId}/icon`, {
+    method: 'PUT',
+    body: formData,
+    headers: { Accept: 'application/json' },
+  })
+  return (await response.json()) as StaffAchievementPublic
 }

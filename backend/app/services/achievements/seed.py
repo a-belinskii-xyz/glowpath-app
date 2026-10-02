@@ -17,6 +17,7 @@ from app.core.achievements import (
     CRITERIA_TYPES,
     DEFAULT_ACHIEVEMENT_ICON,
     DEFAULT_ACHIEVEMENT_ICON_TYPE,
+    AchievementIconType,
     AchievementRewardKind,
     AchievementStatus,
 )
@@ -24,6 +25,17 @@ from app.models.achievement import Achievement
 from app.models.achievement_reward import AchievementReward
 from app.models.catalog_icon import CatalogIcon
 from app.models.icon_pack import IconPack
+from app.services.achievements.staff import set_achievement_icon_image
+from app.services.storage import ObjectStorage
+
+_MIME_BY_EXTENSION: dict[str, str] = {
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
 
 _CATALOG_PATH = Path(__file__).resolve().parents[2] / "data" / "achievements" / "catalog.json"
 
@@ -106,7 +118,25 @@ def _parse_rewards(
     return parsed
 
 
-def _upsert_one(db: Session, raw: dict[str, Any]) -> Achievement:
+def _read_icon_file(root: Path | None, file_name: Any) -> tuple[bytes, str] | None:
+    if root is None or not isinstance(file_name, str) or not file_name:
+        return None
+    path = (root / file_name).resolve()
+    if not path.is_relative_to(root.resolve()) or not path.is_file():
+        return None
+    mime_type = _MIME_BY_EXTENSION.get(path.suffix.lower())
+    if mime_type is None:
+        return None
+    return path.read_bytes(), mime_type
+
+
+def _upsert_one(
+    db: Session,
+    raw: dict[str, Any],
+    *,
+    root: Path | None = None,
+    storage: ObjectStorage | None = None,
+) -> Achievement:
     slug = str(raw["slug"]).strip()
     if not slug:
         raise ValueError("Achievement slug is required")
@@ -128,6 +158,14 @@ def _upsert_one(db: Session, raw: dict[str, Any]) -> Achievement:
     icon_meta = raw.get("icon") or {}
     icon_type = str(icon_meta.get("type") or DEFAULT_ACHIEVEMENT_ICON_TYPE)
     icon = str(icon_meta.get("value") or DEFAULT_ACHIEVEMENT_ICON)
+    icon_image: tuple[bytes, str] | None = None
+    if icon_type == AchievementIconType.IMAGE.value:
+        icon_image = _read_icon_file(root, icon_meta.get("file")) if storage else None
+        if icon_image is None:
+            # No image to store: keep the fallback emoji.
+            icon_type = AchievementIconType.EMOJI.value
+    elif icon_type != AchievementIconType.EMOJI.value:
+        raise ValueError(f"Achievement {slug}: invalid icon type {icon_type!r}")
 
     rewards = _parse_rewards(db, slug=slug, raw_rewards=list(raw.get("rewards") or []))
 
@@ -149,15 +187,24 @@ def _upsert_one(db: Session, raw: dict[str, Any]) -> Achievement:
         field="descriptions",
         slug=slug,
     )
-    achievement.icon_type = icon_type
     achievement.icon = icon
+    if icon_image is None:
+        achievement.icon_type = icon_type
     achievement.criteria = criteria
     achievement.sort_order = int(raw.get("sort_order", 0))
     db.flush()
 
-    db.execute(
-        delete(AchievementReward).where(AchievementReward.achievement_id == achievement.id)
-    )
+    if icon_image is not None and storage is not None:
+        data, mime_type = icon_image
+        set_achievement_icon_image(
+            db,
+            achievement_id=achievement.id,
+            storage=storage,
+            data=data,
+            content_type=mime_type,
+        )
+
+    db.execute(delete(AchievementReward).where(AchievementReward.achievement_id == achievement.id))
     for reward in rewards:
         db.add(
             AchievementReward(
@@ -173,10 +220,21 @@ def _upsert_one(db: Session, raw: dict[str, Any]) -> Achievement:
     return achievement
 
 
-def seed_achievements(db: Session, *, path: Path | None = None) -> list[Achievement]:
-    """Idempotent upsert of catalog achievements. Pack/icon rewards must already exist."""
-    items = _load_catalog(path)
-    return [_upsert_one(db, raw) for raw in items]
+def seed_achievements(
+    db: Session,
+    *,
+    path: Path | None = None,
+    storage: ObjectStorage | None = None,
+) -> list[Achievement]:
+    """Idempotent upsert of catalog achievements. Pack/icon rewards must already exist.
+
+    Image icons are read next to the catalog file and need ``storage``; without it
+    they fall back to the catalog's emoji.
+    """
+    catalog_path = path or _CATALOG_PATH
+    items = _load_catalog(catalog_path)
+    root = catalog_path.parent
+    return [_upsert_one(db, raw, root=root, storage=storage) for raw in items]
 
 
 def main() -> None:

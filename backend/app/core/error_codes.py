@@ -197,6 +197,11 @@ class ErrorCode(StrEnum):
     ACHIEVEMENTS_DISABLED = "achievements_disabled"
     ACHIEVEMENT_NOT_FOUND = "achievement_not_found"
     ACHIEVEMENT_NOT_UNLOCKED = "achievement_not_unlocked"
+    ACHIEVEMENT_SLUG_TAKEN = "achievement_slug_taken"
+    INVALID_ACHIEVEMENT_CRITERIA = "invalid_achievement_criteria"
+    INVALID_ACHIEVEMENT_REWARD = "invalid_achievement_reward"
+    INVALID_ACHIEVEMENT_FIELD = "invalid_achievement_field"
+    ACHIEVEMENT_ICON_NOT_FOUND = "achievement_icon_not_found"
 
     # Diary restore from an export archive
     RESTORE_INVALID_ARCHIVE = "restore_invalid_archive"

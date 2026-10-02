@@ -2,6 +2,7 @@ import { type CSSProperties, type MouseEvent, useCallback, useEffect, useMemo, u
 import { Link } from 'react-router-dom'
 
 import { listAchievements, markAchievementSeen } from '../api/achievements'
+import { AchievementIcon } from '../components/AchievementIcon'
 import { Alert } from '../components/Alert'
 import { CatalogIconThumb } from '../components/CatalogIconThumb'
 import { EditorDrawer } from '../components/EditorDrawer'
@@ -211,9 +212,13 @@ function AchievementCard({
       }${item.is_new ? ' is-new' : ''}`}
       onClick={() => onOpen(item)}
     >
-      <span className="achievement-card-icon" aria-hidden="true">
-        {mystery ? '?' : item.icon || '🏆'}
-      </span>
+      {mystery ? (
+        <span className="achievement-card-icon" aria-hidden="true">
+          ?
+        </span>
+      ) : (
+        <AchievementIcon achievement={item} className="achievement-card-icon" />
+      )}
       <span className="achievement-card-body">
         {category && !mystery ? (
           <span className="achievement-card-category">{category}</span>
@@ -517,9 +522,7 @@ export function AchievementsPage() {
                       className="achievements-recent-item"
                       onClick={() => void openDetail(item)}
                     >
-                      <span className="achievements-recent-icon" aria-hidden="true">
-                        {item.icon || '🏆'}
-                      </span>
+                      <AchievementIcon achievement={item} className="achievements-recent-icon" />
                       <span className="achievements-recent-copy">
                         <span className="achievements-recent-name">{item.name}</span>
                         {item.unlocked_at ? (
@@ -585,9 +588,15 @@ export function AchievementsPage() {
       >
         {selected ? (
           <div className="achievement-detail">
-            <p className="achievement-detail-icon" aria-hidden="true">
-              {isMystery(selected) ? '?' : selected.icon || '🏆'}
-            </p>
+            {isMystery(selected) ? (
+              <p className="achievement-detail-icon" aria-hidden="true">
+                ?
+              </p>
+            ) : (
+              <p className="achievement-detail-icon">
+                <AchievementIcon achievement={selected} />
+              </p>
+            )}
             {isMystery(selected) ? (
               <p>{t('achievements.mysteryHint')}</p>
             ) : (

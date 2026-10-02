@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_verified_user, get_locale
+from app.api.deps import get_current_verified_user, get_locale, get_storage_service
 from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error, structured_detail
 from app.core.feature_flags import FeatureFlag, is_feature_enabled_for_user
@@ -29,6 +29,8 @@ from app.services.achievements import (
     mark_achievement_seen,
 )
 from app.services.achievements.service import rewards_visible, serialize_achievement_public
+from app.services.achievements.staff import download_achievement_icon
+from app.services.storage import ObjectStorage, StorageError
 
 router = APIRouter(tags=["achievements"])
 
@@ -66,6 +68,29 @@ def get_achievements_summary(
     summary = achievements_summary(db, user=current_user, locale=locale)
     db.commit()
     return AchievementSummaryResponse.model_validate(summary)
+
+
+@router.get("/{achievement_id}/icon")
+def get_achievement_icon(
+    achievement_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+) -> Response:
+    try:
+        achievement, data = download_achievement_icon(
+            db,
+            user=current_user,
+            achievement_id=achievement_id,
+            storage=storage,
+        )
+    except (AchievementError, StorageError) as exc:
+        raise_http_error(exc)
+    return Response(
+        content=data,
+        media_type=achievement.icon_mime_type or "application/octet-stream",
+        headers={"Cache-Control": "private, max-age=300"},
+    )
 
 
 @router.post("/{achievement_id}/seen", response_model=AchievementPublic)
