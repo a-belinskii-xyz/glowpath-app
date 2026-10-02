@@ -313,6 +313,40 @@ def test_attachments_upload_limits_download_delete(
     assert all(attachment_id not in key for key in storage._objects)
 
 
+def test_attachment_download_streams_in_chunks(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    storage: FakeStorage,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "mood-stream@example.com")
+    entry_id = _create_entry(auth_client, token).json()["id"]
+    audio = bytes(range(256)) * 1024  # 256 KB, several stream chunks
+
+    upload = auth_client.post(
+        f"/v1/mood-entries/{entry_id}/attachments",
+        headers=_auth_headers(token),
+        data={"kind": "audio"},
+        files={"file": ("voice.webm", io.BytesIO(audio), "audio/webm")},
+    )
+    assert upload.status_code == 201
+    attachment_id = upload.json()["id"]
+
+    download = auth_client.get(
+        f"/v1/mood-entries/{entry_id}/attachments/{attachment_id}",
+        headers=_auth_headers(token),
+    )
+    assert download.status_code == 200
+    assert download.content == audio
+    assert download.headers["content-type"].startswith("audio/webm")
+
+    storage.clear()
+    missing = auth_client.get(
+        f"/v1/mood-entries/{entry_id}/attachments/{attachment_id}",
+        headers=_auth_headers(token),
+    )
+    assert missing.status_code == 404
+
+
 def test_reorder_photo_attachments(
     auth_client: TestClient,
     mailer: FakeEmailService,

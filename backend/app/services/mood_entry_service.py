@@ -4,6 +4,7 @@ import contextlib
 import re
 import uuid
 from collections import defaultdict
+from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -1180,7 +1181,7 @@ def download_attachment(
     entry_id: uuid.UUID,
     attachment_id: uuid.UUID,
     storage: ObjectStorage,
-) -> tuple[MoodEntryAttachment, bytes]:
+) -> tuple[MoodEntryAttachment, Iterator[bytes]]:
     attachment = get_attachment(
         db,
         user_id=user_id,
@@ -1188,7 +1189,7 @@ def download_attachment(
         attachment_id=attachment_id,
     )
     try:
-        data = storage.get_object(key=attachment.storage_key)
+        chunks = storage.stream_object(key=attachment.storage_key)
     except StorageError as exc:
         raise MoodEntryError(
             exc.message,
@@ -1196,7 +1197,7 @@ def download_attachment(
             status_code=exc.status_code,
             params=getattr(exc, "params", None),
         ) from exc
-    return attachment, data
+    return attachment, chunks
 
 
 def delete_attachment(

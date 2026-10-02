@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from minio import Minio
 from minio.error import S3Error
 
 from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
+
+STREAM_CHUNK_SIZE = 64 * 1024
 
 
 class StorageError(AppError):
@@ -30,6 +34,10 @@ class ObjectStorage:
         raise NotImplementedError
 
     def get_object(self, *, key: str) -> bytes:
+        raise NotImplementedError
+
+    def stream_object(self, *, key: str) -> Iterator[bytes]:
+        """Open the object now (raises if missing) and return an iterator of chunks."""
         raise NotImplementedError
 
     def delete_object(self, *, key: str) -> None:
@@ -98,6 +106,24 @@ class MinioStorage(ObjectStorage):
             response.close()
             response.release_conn()
 
+    def stream_object(self, *, key: str) -> Iterator[bytes]:
+        self.ensure_bucket()
+        try:
+            response = self._client.get_object(self._bucket, key)
+        except S3Error as exc:
+            raise StorageError(
+                "Object not found", code=ErrorCode.STORAGE_OBJECT_NOT_FOUND, status_code=404
+            ) from exc
+
+        def chunks() -> Iterator[bytes]:
+            try:
+                yield from response.stream(STREAM_CHUNK_SIZE)
+            finally:
+                response.close()
+                response.release_conn()
+
+        return chunks()
+
     def delete_object(self, *, key: str) -> None:
         self.ensure_bucket()
         try:
@@ -128,6 +154,12 @@ class FakeStorage(ObjectStorage):
                 "Object not found", code=ErrorCode.STORAGE_OBJECT_NOT_FOUND, status_code=404
             ) from exc
         return data
+
+    def stream_object(self, *, key: str) -> Iterator[bytes]:
+        data = self.get_object(key=key)
+        return iter(
+            [data[i : i + STREAM_CHUNK_SIZE] for i in range(0, len(data), STREAM_CHUNK_SIZE)]
+        )
 
     def delete_object(self, *, key: str) -> None:
         self._objects.pop(key, None)

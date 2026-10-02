@@ -13,7 +13,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import Response as FastAPIResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale, get_storage_service
@@ -489,9 +489,9 @@ def download_entry_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
     storage: ObjectStorage = Depends(get_storage_service),
-) -> FastAPIResponse:
+) -> StreamingResponse:
     try:
-        attachment, data = download_attachment(
+        attachment, chunks = download_attachment(
             db,
             user_id=current_user.id,
             entry_id=entry_id,
@@ -506,8 +506,8 @@ def download_entry_attachment(
         raise
 
     filename = quote(attachment.original_name)
-    return FastAPIResponse(
-        content=data,
+    return StreamingResponse(
+        chunks,
         media_type=attachment.mime_type,
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
