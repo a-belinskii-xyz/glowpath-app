@@ -10256,6 +10256,32 @@ a.plans-cta:hover {
   gap: 1rem;
 }
 
+.staff-metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.staff-metrics-table th,
+.staff-metrics-table td {
+  padding: 0.45rem 0.2rem;
+  border-bottom: 1px solid var(--chrome-border-default);
+  text-align: right;
+}
+
+.staff-metrics-table th:first-child {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.staff-metrics-table thead th {
+  color: var(--chrome-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
 .staff-search,
 .staff-inline-form {
   display: flex;

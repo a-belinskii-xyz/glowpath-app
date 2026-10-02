@@ -5,9 +5,14 @@ import type { PackDetailPublic, WalletLedgerListResponse } from '../types/market
 import type {
   PresetExportParams,
   PresetImportResponse,
+  StaffMetricsResponse,
   StaffPackCreate,
   StaffUserListResponse,
 } from '../types/staff'
+
+export function getStaffMetrics(): Promise<StaffMetricsResponse> {
+  return apiRequest<StaffMetricsResponse>('/v1/staff/metrics', { auth: true })
+}
 
 export function searchStaffUsers(q: string, limit = 20): Promise<StaffUserListResponse> {
   const query = new URLSearchParams({ limit: String(limit) })

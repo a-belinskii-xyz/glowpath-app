@@ -302,3 +302,58 @@ def test_import_rejects_unsafe_archive(db: Session, storage: FakeStorage) -> Non
         import_preset_archive(db, storage=storage, data=buffer.getvalue())
     with pytest.raises(PresetError):
         import_preset_archive(db, storage=storage, data=b"not a zip")
+
+
+def test_staff_metrics_counts_sources_and_regular_writers(
+    auth_client: TestClient, mailer: FakeEmailService, db: Session
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.mood_entry import MoodEntry
+
+    staff_token, staff = _login(auth_client, mailer, db, "metrics-staff", staff=True)
+    _token, regular = _login(auth_client, mailer, db, "metrics-regular")
+    _token, casual = _login(auth_client, mailer, db, "metrics-casual")
+    regular.signup_source = "tiktok"
+    casual.signup_source = "direct"
+    now = datetime.now(UTC)
+
+    def add_entries(user: User, days_ago: list[int], **extra: object) -> None:
+        for days in days_ago:
+            when = now - timedelta(days=days, hours=1)
+            db.add(
+                MoodEntry(
+                    user_id=user.id,
+                    recorded_at=when,
+                    created_at=when,
+                    score=3,
+                    score_color="#22c55e",
+                    **extra,
+                )
+            )
+
+    add_entries(regular, [0, 0, 2, 4])  # three distinct days this week
+    add_entries(casual, [1, 10])  # one day this week, one the week before
+    add_entries(staff, [0, 1, 2])  # staff are left out
+    db.commit()
+
+    response = auth_client.get("/v1/staff/metrics", headers=_headers(staff_token))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["regular_min_days"] == 3
+
+    sources = {row["source"]: row for row in body["sources"]}
+    assert sources["tiktok"]["last_7_days"] >= 1
+    assert sources["direct"]["total"] >= 1
+    assert all(row["source"] for row in body["sources"])
+
+    this_week, last_week = body["weeks"][0], body["weeks"][1]
+    assert len(body["weeks"]) == 4
+    assert this_week["active"] == 2
+    assert this_week["regular"] == 1
+    assert this_week["signups"] >= 2
+    assert last_week["active"] == 1
+    assert last_week["regular"] == 0
+
+    user_token, _user = _login(auth_client, mailer, db, "metrics-guard")
+    assert auth_client.get("/v1/staff/metrics", headers=_headers(user_token)).status_code == 403

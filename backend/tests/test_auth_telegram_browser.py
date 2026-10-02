@@ -106,7 +106,7 @@ def test_telegram_browser_login_creates_user(
 
     start = auth_client.get(
         "/v1/auth/telegram/login",
-        params={"timezone": "Europe/Minsk"},
+        params={"timezone": "Europe/Minsk", "signup_source": "TikTok"},
         follow_redirects=False,
     )
     assert start.status_code == 302
@@ -133,6 +133,7 @@ def test_telegram_browser_login_creates_user(
     assert user.email is None
     assert user.timezone == "Europe/Minsk"
     assert user.telegram_linked_at is not None
+    assert user.signup_source == "tiktok"
 
 
 def test_telegram_browser_login_rejects_state_mismatch(

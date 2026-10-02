@@ -289,12 +289,14 @@ def google_id_token_login(
 _TELEGRAM_OIDC_STATE = "telegram_oidc_state"
 _TELEGRAM_OIDC_VERIFIER = "telegram_oidc_verifier"
 _TELEGRAM_OIDC_TIMEZONE = "telegram_oidc_timezone"
+_TELEGRAM_OIDC_SIGNUP_SOURCE = "telegram_oidc_signup_source"
 
 
 @router.get("/telegram/login")
 def telegram_browser_login(
     request: Request,
     timezone: str = Query(default="Europe/Minsk", max_length=64),
+    signup_source: str | None = Query(default=None, max_length=64),
 ) -> RedirectResponse:
     if not telegram_oidc_configured(
         client_id=settings.telegram_oidc_client_id,
@@ -314,6 +316,7 @@ def telegram_browser_login(
     request.session[_TELEGRAM_OIDC_STATE] = state
     request.session[_TELEGRAM_OIDC_VERIFIER] = verifier
     request.session[_TELEGRAM_OIDC_TIMEZONE] = timezone_name
+    request.session[_TELEGRAM_OIDC_SIGNUP_SOURCE] = signup_source
     return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
 
 
@@ -340,6 +343,7 @@ def telegram_browser_callback(
     expected_state = request.session.pop(_TELEGRAM_OIDC_STATE, None)
     code_verifier = request.session.pop(_TELEGRAM_OIDC_VERIFIER, None)
     timezone_name = request.session.pop(_TELEGRAM_OIDC_TIMEZONE, None)
+    signup_source = request.session.pop(_TELEGRAM_OIDC_SIGNUP_SOURCE, None)
     if (
         error
         or not code
@@ -365,6 +369,7 @@ def telegram_browser_callback(
             code_verifier=code_verifier,
             timezone=timezone_name,
             visitor_id=visitor_id,
+            signup_source=signup_source if isinstance(signup_source, str) else None,
         )
     except AuthError as exc:
         _handle_auth_error(exc)
@@ -394,6 +399,7 @@ def telegram_mini_app_login(
             db,
             init_data=body.init_data,
             timezone=body.timezone,
+            signup_source=body.signup_source,
         )
     except AuthError as exc:
         _handle_auth_error(exc)
@@ -408,7 +414,12 @@ def telegram_bot_login_start(
 ) -> TelegramBotLoginStartResponse:
     try:
         visitor_id = parse_visitor_id(request.cookies.get(settings.guest_visitor_cookie_name))
-        started = start_bot_login(db, timezone=body.timezone, visitor_id=visitor_id)
+        started = start_bot_login(
+            db,
+            timezone=body.timezone,
+            visitor_id=visitor_id,
+            signup_source=body.signup_source,
+        )
     except AuthError as exc:
         _handle_auth_error(exc)
     return TelegramBotLoginStartResponse(

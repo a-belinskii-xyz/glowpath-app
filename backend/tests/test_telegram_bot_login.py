@@ -136,3 +136,18 @@ def test_start_needs_configured_bot(
     monkeypatch.setattr(settings, "telegram_bot_username", "")
     response = auth_client.post(START_URL, json={"timezone": "UTC"})
     assert response.status_code == 503
+
+
+def test_bot_login_keeps_signup_source_from_site(auth_client: TestClient, db: Session) -> None:
+    response = auth_client.post(START_URL, json={"timezone": "Europe/Minsk", "signup_source": "vk"})
+    assert response.status_code == 200
+    body = response.json()
+    code = urlparse(body["deep_link"]).query.removeprefix("start=login_")
+
+    assert _confirm(auth_client, code, telegram_user_id=7055) == 204
+    assert auth_client.post(POLL_URL, json={"poll_token": body["poll_token"]}).json()["status"] == (
+        "confirmed"
+    )
+    user = db.scalar(select(User).where(User.telegram_user_id == 7055))
+    assert user is not None
+    assert user.signup_source == "vk"

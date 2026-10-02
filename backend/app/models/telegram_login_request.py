@@ -27,6 +27,7 @@ class TelegramLoginRequest(Base):
     poll_hash: Mapped[str] = mapped_column(String(64), unique=True)
     timezone: Mapped[str] = mapped_column(String(64))
     visitor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    signup_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
     telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     telegram_locale: Mapped[str | None] = mapped_column(String(16), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -19,6 +19,7 @@ import { useLocale } from './LocaleContext'
 import { clearTokens, getAccessToken, setTokens } from '../lib/storage'
 import { getVisitorId } from '../lib/guestMode'
 import { tryImportGuestDiaryAfterAuth } from '../lib/guestImport'
+import { getSignupSource } from '../lib/signupSource'
 import {
   applyTelegramChrome,
   isTelegramMiniApp,
@@ -142,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const tokens = await authApi.loginTelegram({
             init_data: webApp.initData,
             timezone: browserTimezone(),
+            signup_source: getSignupSource(),
           })
           if (cancelled) {
             return

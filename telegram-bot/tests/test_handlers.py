@@ -195,3 +195,32 @@ def test_start_login_reports_expired_link() -> None:
     ):
         asyncio.run(handle_update(_start_update("/start login_abcdefgh123")))
     assert "устарела" in send.await_args.kwargs["text"]
+
+
+def test_start_with_source_label_passes_it_to_mini_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    from bot.config import settings
+
+    monkeypatch.setattr(settings, "telegram_mini_app_url", "https://app.example")
+    me = AsyncMock(return_value={"linked": False})
+    link = AsyncMock()
+    with (
+        patch("bot.handlers.api_client.me", me),
+        patch("bot.handlers.api_client.link", link),
+        patch("bot.handlers.send_message", new_callable=AsyncMock) as send,
+    ):
+        asyncio.run(
+            handle_update(
+                {
+                    "message": {
+                        "chat": {"id": 1},
+                        "from": {"id": 2, "language_code": "en"},
+                        "text": "/start src_tiktok",
+                    }
+                }
+            )
+        )
+        link.assert_not_awaited()
+        button = send.await_args.kwargs["reply_markup"]["inline_keyboard"][0][0]
+        assert button["web_app"] == {
+            "url": "https://app.example?tgWebAppStartParam=src_tiktok"
+        }

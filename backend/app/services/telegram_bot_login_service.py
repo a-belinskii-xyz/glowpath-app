@@ -17,6 +17,7 @@ from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.i18n import normalize_locale
 from app.core.security import hash_token
+from app.core.signup_source import normalize_signup_source
 from app.core.timezones import normalize_timezone
 from app.models.telegram_login_request import TelegramLoginRequest
 from app.services.auth_service import AuthError, TokenPair
@@ -44,6 +45,7 @@ def start_bot_login(
     *,
     timezone: str,
     visitor_id: uuid.UUID | None = None,
+    signup_source: str | None = None,
 ) -> BotLoginStart:
     if not bot_is_configured():
         raise AuthError(
@@ -65,6 +67,7 @@ def start_bot_login(
             poll_hash=hash_token(poll_token),
             timezone=timezone_name,
             visitor_id=visitor_id,
+            signup_source=normalize_signup_source(signup_source),
             expires_at=expires_at,
         )
     )
@@ -122,5 +125,6 @@ def poll_bot_login(db: Session, *, poll_token: str) -> BotLoginPoll:
         timezone=row.timezone,
         locale=row.telegram_locale,
         visitor_id=row.visitor_id,
+        signup_source=row.signup_source,
     )
     return BotLoginPoll(status="confirmed", tokens=tokens)

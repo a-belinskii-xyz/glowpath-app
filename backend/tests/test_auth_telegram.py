@@ -50,6 +50,7 @@ def test_telegram_auth_creates_user_without_email(
     assert user is not None
     assert user.email is None
     assert user.telegram_chat_id == telegram_user_id
+    assert user.signup_source == "direct"
     assert count_user_tag_groups(db, user.id) == len(DEFAULT_TAG_GROUPS)
 
     settings_response = auth_client.get(
@@ -217,3 +218,47 @@ def test_attach_email_rejects_existing_address(
     )
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "email_already_registered"
+
+
+@pytest.mark.parametrize(
+    ("telegram_user_id", "start_param", "body_source", "expected"),
+    [
+        (900_051, "src_vk", None, "vk"),
+        (900_052, "create", None, "direct"),
+        (900_053, "src_vk", "src_tiktok", "tiktok"),
+        (900_054, None, "bad label!", "direct"),
+    ],
+)
+def test_telegram_auth_records_signup_source(
+    auth_client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    telegram_user_id: int,
+    start_param: str | None,
+    body_source: str | None,
+    expected: str,
+) -> None:
+    monkeypatch.setattr(settings, "telegram_bot_token", BOT_TOKEN)
+    init_data = build_init_data(
+        user={"id": telegram_user_id, "first_name": "Mila"},
+        extra={"start_param": start_param} if start_param else None,
+    )
+    payload: dict[str, str] = {"init_data": init_data, "timezone": "Europe/Minsk"}
+    if body_source is not None:
+        payload["signup_source"] = body_source
+
+    response = auth_client.post("/v1/auth/telegram", json=payload)
+    assert response.status_code == 200
+
+    user = db.scalar(select(User).where(User.telegram_user_id == telegram_user_id))
+    assert user is not None
+    assert user.signup_source == expected
+
+    # A later login with another label keeps the first source.
+    again = build_init_data(
+        user={"id": telegram_user_id, "first_name": "Mila"},
+        extra={"start_param": "src_other"},
+    )
+    assert auth_client.post("/v1/auth/telegram", json={"init_data": again}).status_code == 200
+    db.refresh(user)
+    assert user.signup_source == expected

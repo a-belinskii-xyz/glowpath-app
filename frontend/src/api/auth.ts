@@ -1,6 +1,7 @@
 import { apiRequest, getApiBaseUrl } from './client'
 import type { ThemePreference } from '../design/themePreference'
 import type { ApiLocale } from '../lib/locale'
+import { getSignupSource } from '../lib/signupSource'
 import type {
   LoginRequest,
   MessageResponse,
@@ -85,6 +86,7 @@ export function attachEmail(body: {
 export function loginTelegram(body: {
   init_data: string
   timezone: string
+  signup_source?: string
 }): Promise<TokenResponse> {
   return apiRequest<TokenResponse>('/v1/auth/telegram', { method: 'POST', body })
 }
@@ -95,13 +97,17 @@ export function getGoogleLoginUrl(): string {
 
 export function getTelegramBrowserLoginUrl(timezone: string): string {
   const params = new URLSearchParams({ timezone })
+  const signupSource = getSignupSource()
+  if (signupSource) {
+    params.set('signup_source', signupSource)
+  }
   return `${getApiBaseUrl()}/v1/auth/telegram/login?${params.toString()}`
 }
 
 export function startTelegramBotLogin(timezone: string): Promise<TelegramBotLoginStart> {
   return apiRequest<TelegramBotLoginStart>('/v1/auth/telegram/bot-login', {
     method: 'POST',
-    body: { timezone },
+    body: { timezone, signup_source: getSignupSource() },
   })
 }
 
