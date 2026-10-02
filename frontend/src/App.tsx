@@ -28,6 +28,7 @@ import { EmailLoginPage } from './pages/EmailLoginPage'
 import { ResendVerificationPage } from './pages/ResendVerificationPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { MarketPage } from './pages/MarketPage'
+import { PackPreviewPage } from './pages/PackPreviewPage'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { PlansPage } from './pages/PlansPage'
 import { PrivacyPage } from './pages/PrivacyPage'
@@ -100,6 +101,7 @@ function App() {
 
                     <Route element={<AccountRoute />}>
                       <Route path="market" element={<MarketPage />} />
+                      <Route path="market/packs/:packId/preview" element={<PackPreviewPage />} />
                       <Route path="achievements" element={<AchievementsPage />} />
                       <Route path="profile" element={<ProfilePage />} />
                       <Route element={<RegisteredOnly />}>

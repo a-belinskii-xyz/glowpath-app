@@ -11514,3 +11514,63 @@ html.is-telegram .recap-backdrop {
     transition: none;
   }
 }
+
+/* Pack preview: mock diary styled with a pack's icons */
+.pack-preview-header {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.pack-preview-header h1,
+.pack-preview-header p {
+  margin: 0;
+}
+
+.pack-preview-card {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+}
+
+.pack-preview-subtitle {
+  margin: 0.4rem 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.pack-preview-scale {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.pack-preview-scale-item {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  text-align: center;
+}
+
+.pack-preview-scale-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 2rem;
+}
+
+.pack-preview-scale-icon img {
+  width: 100%;
+  height: 100%;
+}
+
+.pack-preview-scale-label {
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
