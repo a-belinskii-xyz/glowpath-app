@@ -1325,6 +1325,24 @@ html[data-color-scheme='dark'] .achievement-card.is-mystery .achievement-card-ic
   color: #92400e;
 }
 
+.guest-data-banner__body {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.guest-data-banner__body p {
+  margin: 0 0 0.25rem;
+}
+
+.guest-data-banner__title {
+  font-weight: 600;
+}
+
+.guest-data-banner__benefits {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
+
 .guest-data-banner__actions {
   display: flex;
   align-items: center;
@@ -2091,6 +2109,13 @@ code {
 .confirm-dialog-preview {
   display: flex;
   justify-content: center;
+}
+
+.guest-import-list {
+  width: 100%;
+  margin: 0;
+  padding-left: 1.25rem;
+  text-align: left;
 }
 
 .share-image-dialog {

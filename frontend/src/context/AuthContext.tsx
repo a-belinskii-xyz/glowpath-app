@@ -18,7 +18,11 @@ import {
 import { useLocale } from './LocaleContext'
 import { clearTokens, getAccessToken, setTokens } from '../lib/storage'
 import { getVisitorId } from '../lib/guestMode'
-import { tryImportGuestDiaryAfterAuth } from '../lib/guestImport'
+import {
+  findPendingGuestImport,
+  tryImportGuestDiaryAfterAuth,
+  type PendingGuestImport,
+} from '../lib/guestImport'
 import { getSignupSource } from '../lib/signupSource'
 import {
   applyTelegramChrome,
@@ -42,6 +46,9 @@ type AuthContextValue = {
   updateThemePreference: (themePreference: ThemePreference) => Promise<void>
   completeLogin: (accessToken: string, refreshToken: string, userCreated?: boolean) => Promise<void>
   retryBootstrap: () => void
+  /** Guest entries waiting for the person to move them into an existing account. */
+  pendingGuestImport: PendingGuestImport | null
+  dismissGuestImport: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -59,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [telegramAuthError, setTelegramAuthError] = useState<string | null>(null)
   const [bootId, setBootId] = useState(0)
+  const [pendingGuestImport, setPendingGuestImport] = useState<PendingGuestImport | null>(null)
   const isTelegram = isTelegramMiniApp()
   const { locale, setLocale } = useLocale()
 
@@ -76,7 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(accessToken, refreshToken)
     const profile = await authApi.getMe()
     setUser(profile)
-    await tryImportGuestDiaryAfterAuth(userCreated)
+    if (userCreated) {
+      await tryImportGuestDiaryAfterAuth()
+      return
+    }
+    setPendingGuestImport(await findPendingGuestImport().catch(() => null))
+  }, [])
+
+  const dismissGuestImport = useCallback(() => {
+    setPendingGuestImport(null)
   }, [])
 
   const login = useCallback(
@@ -101,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearTokens()
     setUser(null)
+    setPendingGuestImport(null)
   }, [])
 
   const updateTimezone = useCallback(async (timezone: string) => {
@@ -257,6 +274,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateThemePreference,
       completeLogin,
       retryBootstrap,
+      pendingGuestImport,
+      dismissGuestImport,
     }),
     [
       user,
@@ -271,6 +290,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateThemePreference,
       completeLogin,
       retryBootstrap,
+      pendingGuestImport,
+      dismissGuestImport,
     ],
   )
 

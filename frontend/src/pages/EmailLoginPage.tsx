@@ -59,7 +59,7 @@ export function EmailLoginPage() {
 
       <PageErrorAlert error={error} />
       {isGuestDiaryMode() ? (
-        <Alert variant="warning">{t('guest.loginWarning')}</Alert>
+        <Alert variant="info">{t('guest.loginWarning')}</Alert>
       ) : null}
 
       <form className="form" onSubmit={handleSubmit}>

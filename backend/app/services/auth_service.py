@@ -103,12 +103,16 @@ def _link_pending_guest_device(db: Session, *, user: User, visitor_id: uuid.UUID
     user.pending_guest_device_id = visitor_id
 
 
-def _mark_existing_login_skipped(
+def _link_guest_device_on_existing_login(
     db: Session,
     *,
     user: User,
     visitor_id: uuid.UUID | None,
 ) -> None:
+    """Let a guest diary from this browser be moved into an account that already exists.
+
+    The import itself waits for the person to confirm it in the app.
+    """
     if visitor_id is None:
         return
     mark_visitor_converted(
@@ -117,6 +121,9 @@ def _mark_existing_login_skipped(
         user_id=user.id,
         auth_event=GuestAuthEvent.EXISTING_LOGIN_SKIPPED,
     )
+    if user.pending_guest_device_id != visitor_id:
+        user.pending_guest_device_id = visitor_id
+        user.guest_imported_at = None
 
 
 def normalize_email(email: str) -> str:
@@ -225,7 +232,7 @@ def login_user(
         )
     if user.email_verified_at is None:
         raise EmailNotVerifiedError()
-    _mark_existing_login_skipped(db, user=user, visitor_id=visitor_id)
+    _link_guest_device_on_existing_login(db, user=user, visitor_id=visitor_id)
     db.commit()
     return issue_token_pair(user.id)
 
@@ -358,7 +365,7 @@ def authenticate_google_profile(
     normalized_email = normalize_email(profile.email)
     user_by_google = db.scalar(select(User).where(User.google_sub == profile.sub))
     if user_by_google is not None:
-        _mark_existing_login_skipped(db, user=user_by_google, visitor_id=visitor_id)
+        _link_guest_device_on_existing_login(db, user=user_by_google, visitor_id=visitor_id)
         db.commit()
         return issue_token_pair(user_by_google.id)
 
@@ -373,7 +380,7 @@ def authenticate_google_profile(
         user_by_email.google_sub = profile.sub
         if profile.email_verified and user_by_email.email_verified_at is None:
             user_by_email.email_verified_at = datetime.now(UTC)
-        _mark_existing_login_skipped(db, user=user_by_email, visitor_id=visitor_id)
+        _link_guest_device_on_existing_login(db, user=user_by_email, visitor_id=visitor_id)
         db.commit()
         return issue_token_pair(user_by_email.id)
 

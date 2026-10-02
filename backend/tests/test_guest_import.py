@@ -1,7 +1,9 @@
 import uuid
 
 import pytest
+from app.services.telegram_auth_service import login_or_create_telegram_user
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from tests.conftest import (
     FakeEmailService,
@@ -94,40 +96,19 @@ def test_guest_import_only_for_new_registration(
     assert duplicate.json()["skipped"] is True
 
 
-def test_guest_import_rejected_for_existing_login_without_pending(
-    client: TestClient,
-    auth_client: TestClient,
-    mailer: FakeEmailService,
-    guest_experiment_on: None,
-) -> None:
-    existing_email = f"existing-{uuid.uuid4()}@example.com"
-    register_verify_and_login(auth_client, mailer, existing_email)
-
-    bootstrap = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
-    visitor_id = bootstrap.json()["visitor_id"]
-
-    login = auth_client.post(
-        "/v1/auth/login",
-        json={
-            "email": existing_email,
-            "password": "password123",
-            "visitor_id": visitor_id,
-        },
-    )
-    assert login.status_code == 200
-    token = login.json()["access_token"]
-
-    payload = {
-        "meta": {"onboarding_completed": False},
+def _guest_payload(note: str) -> dict[str, object]:
+    return {
+        "meta": {"onboarding_completed": True},
         "tag_groups": [],
         "tags": [],
         "goals": [],
         "note_templates": [],
+        "mood_preferences": {"show_streak": False},
         "entries": [
             {
                 "score": 3,
                 "recorded_at": "2026-08-28T11:00:00+03:00",
-                "note": "Should not import",
+                "note": note,
                 "is_favorite": False,
                 "tag_ids": [],
                 "goal_ids": [],
@@ -135,9 +116,93 @@ def test_guest_import_rejected_for_existing_login_without_pending(
             }
         ],
     }
-    response = auth_client.post(
-        "/v1/guest/import",
-        json={"visitor_id": visitor_id, "payload": payload},
-        headers={"Authorization": f"Bearer {token}"},
+
+
+def test_guest_import_into_existing_account_after_login(
+    client: TestClient,
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    guest_experiment_on: None,
+) -> None:
+    existing_email = f"existing-{uuid.uuid4()}@example.com"
+    first_token = register_verify_and_login(auth_client, mailer, existing_email)
+    first_headers = {"Authorization": f"Bearer {first_token}"}
+    own_entry = auth_client.post(
+        "/v1/mood-entries",
+        json={"score": 5, "recorded_at": "2026-08-27T10:00:00+03:00"},
+        headers=first_headers,
     )
-    assert response.status_code == 409
+    assert own_entry.status_code == 201
+    prefs_before = auth_client.get("/v1/mood-preferences", headers=first_headers).json()
+
+    bootstrap = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
+    visitor_id = bootstrap.json()["visitor_id"]
+
+    # Before signing in from the guest's browser there is nothing to import into.
+    rejected = auth_client.post(
+        "/v1/guest/import",
+        json={"visitor_id": visitor_id, "payload": _guest_payload("Too early")},
+        headers=first_headers,
+    )
+    assert rejected.status_code == 409
+
+    login = auth_client.post(
+        "/v1/auth/login",
+        json={"email": existing_email, "password": "password123", "visitor_id": visitor_id},
+    )
+    assert login.status_code == 200
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    imported = auth_client.post(
+        "/v1/guest/import",
+        json={"visitor_id": visitor_id, "payload": _guest_payload("From the guest diary")},
+        headers=headers,
+    )
+    assert imported.status_code == 200
+    assert imported.json() == {"imported_entries": 1, "skipped": False}
+
+    duplicate = auth_client.post(
+        "/v1/guest/import",
+        json={"visitor_id": visitor_id, "payload": _guest_payload("From the guest diary")},
+        headers=headers,
+    )
+    assert duplicate.json()["skipped"] is True
+
+    entries = auth_client.get("/v1/mood-entries", headers=headers).json()
+    items = entries["items"] if isinstance(entries, dict) else entries
+    assert sorted(item["note"] or "" for item in items) == ["", "From the guest diary"]
+    # The account had its own entries, so its settings stay as they were.
+    prefs_after = auth_client.get("/v1/mood-preferences", headers=headers).json()
+    assert prefs_after["show_streak"] == prefs_before["show_streak"]
+
+
+def test_guest_import_into_existing_telegram_account(
+    client: TestClient,
+    auth_client: TestClient,
+    db: Session,
+    guest_experiment_on: None,
+) -> None:
+    telegram_user_id = 900_000 + uuid.uuid4().int % 90_000
+    login_or_create_telegram_user(
+        db, telegram_user_id=telegram_user_id, timezone="Europe/Minsk", locale="ru"
+    )
+
+    bootstrap = client.post("/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()})
+    visitor_id = bootstrap.json()["visitor_id"]
+
+    tokens = login_or_create_telegram_user(
+        db,
+        telegram_user_id=telegram_user_id,
+        timezone="Europe/Minsk",
+        locale="ru",
+        visitor_id=uuid.UUID(visitor_id),
+    )
+    assert tokens.user_created is False
+
+    imported = auth_client.post(
+        "/v1/guest/import",
+        json={"visitor_id": visitor_id, "payload": _guest_payload("Before Telegram")},
+        headers={"Authorization": f"Bearer {tokens.access_token}"},
+    )
+    assert imported.status_code == 200
+    assert imported.json()["imported_entries"] == 1

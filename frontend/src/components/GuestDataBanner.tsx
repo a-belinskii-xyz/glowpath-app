@@ -13,7 +13,7 @@ import { isGuestDiaryMode } from '../lib/guestMode'
 import { isTelegramMiniApp } from '../platform/telegram'
 
 export function GuestDataBanner() {
-  const { t } = useLocale()
+  const { t, tp } = useLocale()
   const { guestLocalDiary, guestOnboardingCompleted } = useGuestExperiment()
   const [entryCount, setEntryCount] = useState(0)
   const [visible, setVisible] = useState(false)
@@ -64,10 +64,25 @@ export function GuestDataBanner() {
 
   return (
     <div className="guest-data-banner" role="status">
-      <p>{t('guest.banner.message', { count: String(entryCount) })}</p>
+      <div className="guest-data-banner__body">
+        <p className="guest-data-banner__title">
+          {tp(entryCount, {
+            one: 'guest.banner.titleOne',
+            few: 'guest.banner.titleFew',
+            many: 'guest.banner.titleMany',
+          })}
+        </p>
+        <p>{t('guest.banner.offer')}</p>
+        <ul className="guest-data-banner__benefits">
+          <li>{t('guest.banner.benefitSafe')}</li>
+          <li>{t('guest.banner.benefitTelegram')}</li>
+          <li>{t('guest.banner.benefitReminders')}</li>
+          <li>{t('guest.banner.benefitFeatures')}</li>
+        </ul>
+      </div>
       <div className="guest-data-banner__actions">
         <Link to="/login" className="guest-data-banner__cta">
-          {t('guest.banner.createAccount')}
+          {t('guest.banner.signIn')}
         </Link>
         <button
           type="button"

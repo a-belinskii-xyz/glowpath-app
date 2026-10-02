@@ -858,16 +858,36 @@ export const en = {
   },
   guest: {
     banner: {
-      message:
-        'No account — {count} entries live only in this browser and can be lost. Create an account to save them.',
-      createAccount: 'Create account',
+      titleOne: '{count} entry lives only in this browser',
+      titleFew: '{count} entries live only in this browser',
+      titleMany: '{count} entries live only in this browser',
+      offer:
+        'Sign in with Telegram and we will move them into your diary. Your account is created on first sign-in, no email or password needed.',
+      benefitSafe: 'Entries are not lost if you clear the browser or switch devices',
+      benefitTelegram: 'The diary opens from the bot in one tap, on your phone and computer',
+      benefitReminders: 'The bot gently reminds you to check in, when you choose',
+      benefitFeatures: 'Photos and voice notes, achievements, insights and export become available',
+      signIn: 'Sign in with Telegram',
       dismiss: 'Dismiss',
     },
     attachmentsLocked: 'Photos and voice notes are available after you create an account.',
     uploadIconsLocked: 'Custom icons are available after you create an account.',
     insightsLocked: 'Pattern insights are available after you create an account.',
     loginWarning:
-      'Signing in to an existing account will not upload your local guest diary. It stays in this browser until you register a new account.',
+      'Entries from this browser move into your account after you sign in: into a new account right away, into an existing one once you confirm. Nothing in your account is deleted or replaced.',
+    import: {
+      title: 'Move entries from this browser?',
+      entriesOne: '{count} entry with its mood, note, tags and goals',
+      entriesFew: '{count} entries with their mood, notes, tags and goals',
+      entriesMany: '{count} entries with their mood, notes, tags and goals',
+      extras: 'Your tags, goals and note templates, if the account does not have them yet',
+      message:
+        'You kept the diary without signing in, so these entries are stored only in this browser. They will be added to your account and nothing in it will be deleted or replaced. After the move, the copy in this browser is removed. If these are not your entries, choose “Not now” and we will ask again next time you sign in.',
+      confirm: 'Move entries',
+      later: 'Not now',
+      busy: 'Moving…',
+      failed: 'Could not move the entries. They are still in this browser, try again later.',
+    },
     registerHint:
       'After you sign in with Telegram, your local entries will be saved to your new account.',
     locked: {
@@ -2221,16 +2241,36 @@ export const ru: DeepStringLeaves<typeof en> = {
   },
   guest: {
     banner: {
-      message:
-        'Нет аккаунта — {count} записей хранятся только в этом браузере и могут пропасть. Создайте аккаунт, чтобы сохранить их.',
-      createAccount: 'Создать аккаунт',
+      titleOne: '{count} запись хранится только в этом браузере',
+      titleFew: '{count} записи хранятся только в этом браузере',
+      titleMany: '{count} записей хранятся только в этом браузере',
+      offer:
+        'Войдите через Telegram, и мы перенесём их в ваш дневник. Аккаунт создастся при первом входе, без почты и пароля.',
+      benefitSafe: 'Записи не пропадут, если очистить браузер или сменить устройство',
+      benefitTelegram: 'Дневник открывается из бота в один тап, на телефоне и на компьютере',
+      benefitReminders: 'Бот бережно напомнит отметить настроение, когда вам удобно',
+      benefitFeatures: 'Откроются фото и голосовые заметки, ачивки, инсайты и экспорт',
+      signIn: 'Войти через Telegram',
       dismiss: 'Скрыть',
     },
     attachmentsLocked: 'Фото и голосовые заметки доступны после регистрации.',
     uploadIconsLocked: 'Свои иконки доступны после регистрации.',
     insightsLocked: 'Паттерны и инсайты доступны после регистрации.',
     loginWarning:
-      'Вход в существующий аккаунт не загрузит локальный гостевой дневник. Он останется в этом браузере, пока вы не зарегистрируете новый аккаунт.',
+      'Записи из этого браузера перенесём в аккаунт после входа: в новый сразу, в уже существующий после вашего подтверждения. Ничего в аккаунте не удалится и не заменится.',
+    import: {
+      title: 'Перенести записи из этого браузера?',
+      entriesOne: '{count} запись с настроением, заметкой, тегами и целями',
+      entriesFew: '{count} записи с настроением, заметками, тегами и целями',
+      entriesMany: '{count} записей с настроением, заметками, тегами и целями',
+      extras: 'Ваши теги, цели и шаблоны заметок, если таких ещё нет в аккаунте',
+      message:
+        'Вы вели дневник без входа, поэтому эти записи хранятся только в этом браузере. Они добавятся к вашему аккаунту, ничего в нём не удалится и не заменится. После переноса копия в браузере удалится. Если это не ваши записи, нажмите «Не сейчас», мы спросим снова при следующем входе.',
+      confirm: 'Перенести',
+      later: 'Не сейчас',
+      busy: 'Переносим…',
+      failed: 'Не получилось перенести записи. Они остались в браузере, попробуйте позже.',
+    },
     registerHint:
       'После входа через Telegram локальные записи сохранятся в новом аккаунте.',
     locked: {

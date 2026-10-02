@@ -188,7 +188,7 @@ function ShellChrome({
           </NavLink>
           {guestShell ? (
             <Link to="/login" className="app-nav-link">
-              {t('guest.banner.createAccount')}
+              {t('guest.banner.signIn')}
             </Link>
           ) : isTelegram ? null : (
             <button type="button" className="app-nav-link app-nav-logout" onClick={logout}>

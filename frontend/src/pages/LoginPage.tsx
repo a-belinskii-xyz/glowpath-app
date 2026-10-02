@@ -61,7 +61,7 @@ export function LoginPage() {
       <p className="muted">{t('auth.telegramPrimary')}</p>
 
       {isGuestDiaryMode() ? (
-        <Alert variant="warning">{t('guest.loginWarning')}</Alert>
+        <Alert variant="info">{t('guest.loginWarning')}</Alert>
       ) : null}
 
       <div className="auth-oauth-actions">
@@ -81,7 +81,8 @@ export function LoginPage() {
           </a>
         ) : null}
 
-        {entryPoint?.bot_url ? (
+        {/* The Mini App can't see entries kept in this browser, so a guest signs in here. */}
+        {entryPoint?.bot_url && !isGuestDiaryMode() ? (
           <a className="button button-secondary button-block" href={entryPoint.bot_url}>
             {t('auth.openInTelegram')}
           </a>

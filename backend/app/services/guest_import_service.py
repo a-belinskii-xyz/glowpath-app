@@ -1,4 +1,4 @@
-"""Import guest local diary into a newly registered user account."""
+"""Import a guest local diary into the account the guest signed in to."""
 
 from __future__ import annotations
 
@@ -54,6 +54,12 @@ def import_guest_diary(
         )
     if user.guest_imported_at is not None:
         return {"imported_entries": 0, "skipped": True}
+
+    # A fresh account takes the guest's look and onboarding; an account with its own
+    # entries keeps its settings and only gains the guest's entries, tags and goals.
+    adopt_guest_settings = (
+        db.scalar(select(MoodEntry.id).where(MoodEntry.user_id == user.id).limit(1)) is None
+    )
 
     tag_group_map: dict[str, uuid.UUID] = {}
     tag_map: dict[str, uuid.UUID] = {}
@@ -165,7 +171,7 @@ def import_guest_diary(
         existing_templates[slug] = template
 
     prefs_data = payload.get("mood_preferences")
-    if isinstance(prefs_data, dict):
+    if adopt_guest_settings and isinstance(prefs_data, dict):
         prefs = db.scalar(select(UserMoodPreferences).where(UserMoodPreferences.user_id == user.id))
         if prefs is not None:
             score_styles = prefs_data.get("scores")
@@ -272,7 +278,11 @@ def import_guest_diary(
         imported_entries += 1
 
     meta = payload.get("meta")
-    if isinstance(meta, dict) and bool(meta.get("onboarding_completed")):
+    if (
+        isinstance(meta, dict)
+        and bool(meta.get("onboarding_completed"))
+        and user.onboarding_completed_at is None
+    ):
         user.onboarding_completed_at = datetime.now(UTC)
 
     user.guest_imported_at = datetime.now(UTC)
