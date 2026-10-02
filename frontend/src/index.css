@@ -1084,7 +1084,7 @@ html[data-color-scheme='dark'] .achievement-card.is-mystery .achievement-card-ic
 .telegram-first-landing {
   display: grid;
   gap: 0.85rem;
-  max-width: 48rem;
+  max-width: 28rem;
   margin: 1.5rem auto;
   padding: 0 1rem;
 }
@@ -1095,7 +1095,6 @@ html[data-color-scheme='dark'] .achievement-card.is-mystery .achievement-card-ic
 
 .entry-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: 1rem;
   margin-top: 0.5rem;
 }
@@ -10949,7 +10948,6 @@ html.is-telegram .recap-backdrop {
 
 .recap-pair {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: 1.1rem;
 }
 
