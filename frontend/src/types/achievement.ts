@@ -42,3 +42,76 @@ export type AchievementSummaryResponse = {
   secret_unlocked: number
   secret_total: number
 }
+
+// --- Staff editor ---
+
+export type AchievementCategory = 'getting_started' | 'streaks' | 'collection' | 'secrets'
+export type AchievementVisibility = 'visible' | 'secret'
+export type AchievementStatus = 'draft' | 'published' | 'archived'
+export type AchievementRewardKind = 'tokens' | 'icon_pack' | 'catalog_icon'
+
+export type AchievementCriteria = { type: string } & Record<string, string | number>
+
+export type AchievementText = { en: string; ru?: string | null }
+
+export type AchievementRewardInput = {
+  kind: AchievementRewardKind
+  amount?: number | null
+  pack_id?: string | null
+  catalog_icon_id?: string | null
+}
+
+export type StaffAchievementReward = AchievementRewardInput & {
+  icon_pack_id?: string | null
+  label?: string | null
+}
+
+export type StaffAchievementPublic = {
+  id: string
+  slug: string
+  category: AchievementCategory
+  visibility: AchievementVisibility
+  status: AchievementStatus
+  labels: Record<string, string>
+  descriptions: Record<string, string>
+  name: string
+  icon_type: 'emoji' | 'image'
+  icon: string
+  criteria: AchievementCriteria
+  sort_order: number
+  rewards: StaffAchievementReward[]
+  unlocked_count: number
+  updated_at: string
+}
+
+export type StaffAchievementCreate = {
+  labels: AchievementText
+  descriptions: AchievementText
+  category: AchievementCategory
+  visibility: AchievementVisibility
+  criteria: AchievementCriteria
+  rewards: AchievementRewardInput[]
+  emoji?: string | null
+  slug?: string | null
+  sort_order?: number | null
+}
+
+export type StaffAchievementPatch = Partial<StaffAchievementCreate> & {
+  status?: AchievementStatus
+}
+
+export type CriteriaParamSpec = {
+  name: string
+  kind: 'int' | 'choice'
+  required: boolean
+  minimum: number | null
+  maximum: number | null
+  choices: (string | number)[]
+  default: string | number | null
+}
+
+export type CriteriaSpec = {
+  type: string
+  require_any_of: string[]
+  params: CriteriaParamSpec[]
+}

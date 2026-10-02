@@ -25,7 +25,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.achievements import AchievementRewardKind
+from app.core.achievements import AchievementIconType, AchievementRewardKind
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.marketplace import ESSENTIALS_PACK_SLUG, PackStatus
@@ -148,10 +148,25 @@ def _achievement_json(achievement: Achievement) -> dict[str, Any]:
         "sort_order": achievement.sort_order,
         "labels": achievement.labels,
         "descriptions": achievement.descriptions,
-        "icon": {"type": achievement.icon_type, "value": achievement.icon},
+        "icon": _achievement_icon_json(achievement),
         "criteria": achievement.criteria,
         "rewards": rewards,
     }
+
+
+def _achievement_icon_file(achievement: Achievement) -> str | None:
+    if achievement.icon_type != AchievementIconType.IMAGE.value or not achievement.icon_mime_type:
+        return None
+    extension = _EXTENSION_BY_MIME.get(achievement.icon_mime_type, "")
+    return f"icons/{achievement.slug}{extension}"
+
+
+def _achievement_icon_json(achievement: Achievement) -> dict[str, Any]:
+    icon: dict[str, Any] = {"type": achievement.icon_type, "value": achievement.icon}
+    file_name = _achievement_icon_file(achievement)
+    if file_name is not None:
+        icon["file"] = file_name
+    return icon
 
 
 def _reward_pack_ids(achievements: list[Achievement]) -> set[Any]:
@@ -250,6 +265,11 @@ def export_preset(
         if include_achievements:
             catalog = [_achievement_json(achievement) for achievement in achievements]
             archive.writestr(f"achievements/{ACHIEVEMENTS_FILENAME}", _json_bytes(catalog))
+            for achievement in achievements:
+                file_name = _achievement_icon_file(achievement)
+                if file_name is not None and achievement.icon_storage_key:
+                    data = storage.get_object(key=achievement.icon_storage_key)
+                    archive.writestr(f"achievements/{file_name}", data)
     return buffer.getvalue(), manifest
 
 
@@ -317,7 +337,7 @@ def import_preset_dir(db: Session, *, storage: ObjectStorage, root: Path) -> Pre
         report.icons = sum(len(pack.icons) for pack in packs)
     if catalog_path.is_file():
         try:
-            achievements = seed_achievements(db, path=catalog_path)
+            achievements = seed_achievements(db, path=catalog_path, storage=storage)
         except (ValueError, KeyError, json.JSONDecodeError) as exc:
             raise PresetError(
                 f"Achievements import failed: {exc}",

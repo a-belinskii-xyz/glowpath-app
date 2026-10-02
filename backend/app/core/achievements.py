@@ -29,6 +29,11 @@ class AchievementRewardKind(StrEnum):
     CATALOG_ICON = "catalog_icon"
 
 
+class AchievementIconType(StrEnum):
+    EMOJI = "emoji"
+    IMAGE = "image"
+
+
 class CriteriaType(StrEnum):
     ENTRY_COUNT = "entry_count"
     CONSECUTIVE_DAYS = "consecutive_days"

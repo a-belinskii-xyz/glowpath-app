@@ -11591,3 +11591,88 @@ html.is-telegram .recap-backdrop {
   font-size: 0.75rem;
   overflow-wrap: anywhere;
 }
+
+.achievement-icon {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+}
+
+.achievement-icon img {
+  display: block;
+  width: 1.35em;
+  height: 1.35em;
+  object-fit: contain;
+}
+
+.staff-achievement-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.staff-achievement-row-body {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.staff-achievement-row-icon {
+  display: grid;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  background: color-mix(in oklab, #f59e0b 14%, transparent);
+  font-size: 1.2rem;
+}
+
+.staff-achievement-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.staff-achievement-look {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.staff-achievement-preview {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+  background: color-mix(in oklab, #f59e0b 14%, transparent);
+  font-size: 2rem;
+}
+
+.staff-achievement-look .staff-form-grid {
+  flex: 1;
+  min-width: 0;
+}
+
+.staff-rewards {
+  display: grid;
+  gap: 0.65rem;
+  justify-items: start;
+}
+
+.staff-reward-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
+}
+
+.staff-reward-row .form-field {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.staff-reward-remove {
+  margin-bottom: 0.2rem;
+}

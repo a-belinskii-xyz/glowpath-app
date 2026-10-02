@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 
 import { deleteMoodEntry, getMoodEntryCalendar, getMoodEntryStats, getMoodEntryStreak, getMoodInsights, listMoodEntries, patchMoodEntry, searchMoodEntries } from '../api/moodEntries'
 import { getGoalCalendar, getGoalStats, listGoals } from '../api/goals'
+import { AchievementIcon } from '../components/AchievementIcon'
 import { Alert } from '../components/Alert'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
@@ -922,7 +923,7 @@ export function EntriesPage() {
             <ul>
               {unlockedToast.map((item) => (
                 <li key={item.id}>
-                  <span aria-hidden="true">{item.icon || '🏆'}</span> {item.name}
+                  <AchievementIcon achievement={item} /> {item.name}
                 </li>
               ))}
             </ul>
