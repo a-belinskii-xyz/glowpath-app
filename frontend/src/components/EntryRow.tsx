@@ -20,6 +20,8 @@ type EntryRowProps = {
   timeZone: string
   onDelete: (entryId: string) => void | Promise<void>
   onToggleFavorite: (entryId: string, isFavorite: boolean) => void
+  /** Static row for mock entries (pack preview): no links, menus or attachment loads. */
+  preview?: boolean
 }
 
 function isCompactEntry(entry: MoodEntryPublic): boolean {
@@ -31,38 +33,38 @@ function isCompactEntry(entry: MoodEntryPublic): boolean {
   )
 }
 
-export function EntryRow({ entry, timeLabel, timeZone, onDelete, onToggleFavorite }: EntryRowProps) {
+export function EntryRow({
+  entry,
+  timeLabel,
+  timeZone,
+  onDelete,
+  onToggleFavorite,
+  preview = false,
+}: EntryRowProps) {
   const { t } = useLocale()
   const { scores } = useMoodPreferences()
   const compact = isCompactEntry(entry)
   const moodColor = entryMoodColor(entry, scores)
   const moodStyle = entryMoodStyle(entry, scores)
 
-  return (
-    <article
-      className={`entry-row${compact ? ' is-compact' : ''}`}
-      style={{ '--entry-mood-color': moodColor } as CSSProperties}
-    >
-      <Link
-        className="entry-row-link"
-        to={`/entries/${entry.id}`}
-        state={{ backTo: entriesListPathForInstant(entry.recorded_at, timeZone, entry.id) }}
-      >
-        <div className="entry-row-main">
-          <span className="entry-score">
-            <span className="entry-score-badge">
-              <span style={{ filter: moodGlowFilter(moodColor) }}>
-                <MoodScoreIcon
-                  style={moodStyle}
-                  className="entry-score-icon"
-                  fallbackScore={entry.score}
-                />
-              </span>
-              <span className="entry-score-label">{entry.score_label}</span>
+  const body = (
+    <>
+      <div className="entry-row-main">
+        <span className="entry-score">
+          <span className="entry-score-badge">
+            <span style={{ filter: moodGlowFilter(moodColor) }}>
+              <MoodScoreIcon
+                style={moodStyle}
+                className="entry-score-icon"
+                fallbackScore={entry.score}
+              />
             </span>
+            <span className="entry-score-label">{entry.score_label}</span>
           </span>
-          <div className="entry-row-meta">
-            <span className="entry-time">{timeLabel}</span>
+        </span>
+        <div className="entry-row-meta">
+          <span className="entry-time">{timeLabel}</span>
+          {preview ? null : (
             <button
               type="button"
               className={`entry-favorite-mark${entry.is_favorite ? ' is-favorite' : ''}`}
@@ -84,25 +86,46 @@ export function EntryRow({ entry, timeLabel, timeZone, onDelete, onToggleFavorit
             >
               <HeartIcon filled={entry.is_favorite} />
             </button>
-          </div>
+          )}
         </div>
-        {!compact && entry.note?.trim() ? (
-          <MarkdownNote content={entry.note} compact className="entry-note" />
-        ) : null}
-        {!compact ? <EntryTagsCompact tags={entry.tags} goals={entry.goals} /> : null}
-      </Link>
-      {!compact ? (
+      </div>
+      {!compact && entry.note?.trim() ? (
+        <MarkdownNote content={entry.note} compact className="entry-note" />
+      ) : null}
+      {!compact ? <EntryTagsCompact tags={entry.tags} goals={entry.goals} /> : null}
+    </>
+  )
+
+  return (
+    <article
+      className={`entry-row${compact ? ' is-compact' : ''}`}
+      style={{ '--entry-mood-color': moodColor } as CSSProperties}
+    >
+      {preview ? (
+        <div className="entry-row-link">{body}</div>
+      ) : (
+        <Link
+          className="entry-row-link"
+          to={`/entries/${entry.id}`}
+          state={{ backTo: entriesListPathForInstant(entry.recorded_at, timeZone, entry.id) }}
+        >
+          {body}
+        </Link>
+      )}
+      {!compact && !preview ? (
         <div className="entry-row-media">
           <EntryAttachmentThumbs entryId={entry.id} attachments={entry.attachments} />
         </div>
       ) : null}
-      <div className="entry-row-actions">
-        <EntryActionMenu
-          entry={entry}
-          onDelete={onDelete}
-          onToggleFavorite={onToggleFavorite}
-        />
-      </div>
+      {preview ? null : (
+        <div className="entry-row-actions">
+          <EntryActionMenu
+            entry={entry}
+            onDelete={onDelete}
+            onToggleFavorite={onToggleFavorite}
+          />
+        </div>
+      )}
     </article>
   )
 }

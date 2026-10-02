@@ -29,6 +29,8 @@ type MonthCalendarProps = {
   onDayWithEntries: (date: string) => void
   /** When set, choosing a day also selects its week (goals week mode). */
   onSelectWeekDay?: (date: string) => void
+  /** Static cells for mock data (pack preview): no links, past and future look alike. */
+  readOnly?: boolean
 }
 
 function goalStyleFrom(goal: GoalPublic | undefined): GoalStyle {
@@ -69,6 +71,7 @@ export function MonthCalendar({
   goalsById,
   onDayWithEntries,
   onSelectWeekDay,
+  readOnly = false,
 }: MonthCalendarProps) {
   const { t } = useLocale()
   const { scores: scoreStyles } = useMoodPreferences()
@@ -114,9 +117,9 @@ export function MonthCalendar({
               const entryCount =
                 mode === 'goals' ? (goalDay?.entry_count ?? 0) : (moodDay?.entry_count ?? 0)
               const markCount = mode === 'goals' ? dayGoals.length : dayScores.length
-              const isToday = cell.date === today
-              const isFuture = cell.date ? isFutureDate(cell.date, timeZone) : false
-              const canInteract = Boolean(cell.inMonth && cell.date && !isFuture)
+              const isToday = !readOnly && cell.date === today
+              const isFuture = !readOnly && cell.date ? isFutureDate(cell.date, timeZone) : false
+              const canInteract = Boolean(!readOnly && cell.inMonth && cell.date && !isFuture)
               const hasEntries = entryCount > 0
 
               // Backend may already cap marks; overflow uses total entry_count.
