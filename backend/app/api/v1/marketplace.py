@@ -6,19 +6,31 @@ import json
 import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_locale, get_storage_service
 from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error, structured_detail
 from app.core.feature_flags import FeatureFlag, is_feature_enabled_for_user
+from app.core.marketplace import ICON_CROP_HEADER, ICON_CROP_KEYS
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.marketplace import (
     CatalogIconPublic,
     CatalogIconWithPackPublic,
     IconListResponse,
+    IconOrderBody,
     PackCardPublic,
     PackDetailPublic,
     PackListResponse,
@@ -51,6 +63,8 @@ from app.services.marketplace_service import (
     patch_studio_pack,
     publish_pack,
     reject_pack,
+    reorder_studio_icons,
+    replace_studio_icon_image,
     search_icons,
     serialize_icon,
     serialize_pack_card,
@@ -61,7 +75,6 @@ from app.services.marketplace_service import (
     upload_studio_icon,
 )
 from app.services.storage import ObjectStorage, StorageError
-from fastapi import HTTPException
 
 router = APIRouter(tags=["marketplace"])
 
@@ -257,9 +270,7 @@ def get_icons(
     items: list[CatalogIconWithPackPublic] = []
     for icon in icons:
         payload = serialize_icon(icon, locale=locale)
-        payload["pack"] = serialize_pack_card(
-            db, icon.pack, user=current_user, locale=locale
-        )
+        payload["pack"] = serialize_pack_card(db, icon.pack, user=current_user, locale=locale)
         items.append(CatalogIconWithPackPublic.model_validate(payload))
     return IconListResponse(items=items)
 
@@ -299,9 +310,7 @@ def get_icon_image(
 ) -> Response:
     _require_marketplace(current_user)
     try:
-        icon, data = download_catalog_icon(
-            db, user=current_user, icon_id=icon_id, storage=storage
-        )
+        icon, data = download_catalog_icon(db, user=current_user, icon_id=icon_id, storage=storage)
     except MarketplaceError as exc:
         _handle_marketplace_error(exc)
         raise
@@ -309,11 +318,11 @@ def get_icon_image(
         _handle_storage_error(exc)
         raise
     filename = quote(f"{icon.slug}.{icon.mime_type.split('/')[-1]}")
-    return Response(
-        content=data,
-        media_type=icon.mime_type,
-        headers={"Content-Disposition": f"inline; filename=\"{filename}\""},
-    )
+    headers = {"Content-Disposition": f'inline; filename="{filename}"'}
+    if icon.crop:
+        # Clients render only this frame; the stored file stays uncropped.
+        headers[ICON_CROP_HEADER] = ",".join(str(icon.crop[key]) for key in ICON_CROP_KEYS)
+    return Response(content=data, media_type=icon.mime_type, headers=headers)
 
 
 # --- Studio ---
@@ -408,6 +417,7 @@ async def post_studio_icon(
     labels: str = Form(...),
     suggested_colors: str = Form(...),
     suggested_mood_scores: str | None = Form(None),
+    suggested_usage: str | None = Form(None),
     search_tag_slugs: str | None = Form(None),
     slug: str | None = Form(None),
     db: Session = Depends(get_db),
@@ -420,6 +430,7 @@ async def post_studio_icon(
     labels_obj = _parse_json_form(labels, default={})
     colors_obj = _parse_json_form(suggested_colors, default=[])
     scores_obj = _parse_json_form(suggested_mood_scores, default=None)
+    usage_obj = _parse_json_form(suggested_usage, default=None)
     tags_obj = _parse_json_form(search_tag_slugs, default=None)
     try:
         icon = upload_studio_icon(
@@ -433,6 +444,7 @@ async def post_studio_icon(
             labels=labels_obj,  # type: ignore[arg-type]
             suggested_colors=colors_obj,  # type: ignore[arg-type]
             suggested_mood_scores=scores_obj,  # type: ignore[arg-type]
+            suggested_usage=usage_obj,  # type: ignore[arg-type]
             search_tag_slugs=tags_obj,  # type: ignore[arg-type]
             slug=slug,
         )
@@ -466,8 +478,11 @@ def patch_studio_icon_endpoint(
             labels=body.labels,
             suggested_colors=body.suggested_colors,
             suggested_mood_scores=body.suggested_mood_scores,
+            suggested_usage=body.suggested_usage,
             search_tag_slugs=body.search_tag_slugs,
             sort_order=body.sort_order,
+            crop=body.crop.model_dump() if body.crop else None,
+            clear_crop=body.clear_crop,
         )
         db.commit()
         icon = get_catalog_icon_or_raise(db, icon.id)
@@ -476,6 +491,62 @@ def patch_studio_icon_endpoint(
         _handle_marketplace_error(exc)
         raise
     return CatalogIconPublic.model_validate(serialize_icon(icon, locale=locale))
+
+
+@router.put("/studio/icons/{icon_id}/image", response_model=CatalogIconPublic)
+async def put_studio_icon_image(
+    icon_id: uuid.UUID,
+    file: UploadFile = File(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    storage: ObjectStorage = Depends(get_storage_service),
+    locale: str = Depends(get_locale),
+) -> CatalogIconPublic:
+    _require_marketplace(current_user)
+    data = await file.read()
+    try:
+        icon = replace_studio_icon_image(
+            db,
+            user=current_user,
+            icon_id=icon_id,
+            storage=storage,
+            data=data,
+            content_type=file.content_type or "application/octet-stream",
+            original_name=file.filename or "icon",
+        )
+        db.commit()
+        icon = get_catalog_icon_or_raise(db, icon.id)
+    except MarketplaceError as exc:
+        db.rollback()
+        _handle_marketplace_error(exc)
+        raise
+    except StorageError as exc:
+        db.rollback()
+        _handle_storage_error(exc)
+        raise
+    return CatalogIconPublic.model_validate(serialize_icon(icon, locale=locale))
+
+
+@router.put("/studio/packs/{pack_id}/icon-order", response_model=PackDetailPublic)
+def put_studio_icon_order(
+    pack_id: uuid.UUID,
+    body: IconOrderBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
+) -> PackDetailPublic:
+    _require_marketplace(current_user)
+    try:
+        pack = reorder_studio_icons(db, user=current_user, pack_id=pack_id, icon_ids=body.icon_ids)
+        db.commit()
+        pack = get_pack_detail(db, user=current_user, pack_id=pack.id)
+    except MarketplaceError as exc:
+        db.rollback()
+        _handle_marketplace_error(exc)
+        raise
+    card = serialize_pack_card(db, pack, user=current_user, locale=locale)
+    card["icons"] = [serialize_icon(icon, locale=locale) for icon in pack.icons]
+    return PackDetailPublic.model_validate(card)
 
 
 @router.delete("/studio/icons/{icon_id}", status_code=status.HTTP_204_NO_CONTENT)

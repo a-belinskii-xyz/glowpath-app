@@ -5,6 +5,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api.v1.router import api_v1_router
 from app.config import settings
 from app.core.cors import cors_allow_origin_regex, cors_allow_origins
+from app.core.marketplace import ICON_CROP_HEADER
 
 app = FastAPI(
     title=settings.app_name,
@@ -22,8 +23,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # Lets the SPA read download filenames (staff preset export).
-    expose_headers=["Content-Disposition"],
+    # Lets the SPA read download filenames (staff preset export) and icon crop frames.
+    expose_headers=["Content-Disposition", ICON_CROP_HEADER],
 )
 
 app.include_router(api_v1_router, prefix="/v1")

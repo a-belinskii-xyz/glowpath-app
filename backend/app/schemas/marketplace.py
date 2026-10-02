@@ -43,6 +43,15 @@ class SearchTagPatch(BaseModel):
         return self
 
 
+class IconCropModel(BaseModel):
+    """Visible square of the icon, as fractions of the image width and height."""
+
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    w: float = Field(gt=0, le=1)
+    h: float = Field(gt=0, le=1)
+
+
 class CatalogIconPublic(BaseModel):
     id: UUID
     pack_id: UUID
@@ -53,6 +62,8 @@ class CatalogIconPublic(BaseModel):
     size_bytes: int
     suggested_colors: list[str]
     suggested_mood_scores: list[int]
+    suggested_usage: list[str] = Field(default_factory=list)
+    crop: IconCropModel | None = None
     sort_order: int
     search_tags: list[SearchTagPublic] = Field(default_factory=list)
 
@@ -125,14 +136,21 @@ class StudioIconPatch(BaseModel):
     labels: dict[str, str] | None = None
     suggested_colors: list[str] | None = None
     suggested_mood_scores: list[int] | None = None
+    suggested_usage: list[str] | None = None
     search_tag_slugs: list[str] | None = None
     sort_order: int | None = None
+    crop: IconCropModel | None = None
+    clear_crop: bool = False
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> StudioIconPatch:
         if not self.model_fields_set:
             raise ValueError("At least one field must be provided")
         return self
+
+
+class IconOrderBody(BaseModel):
+    icon_ids: list[UUID]
 
 
 class RejectPackBody(BaseModel):

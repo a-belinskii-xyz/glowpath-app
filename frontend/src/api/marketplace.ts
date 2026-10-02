@@ -6,6 +6,7 @@ import type { TokenResponse } from '../types/auth'
 import type {
   CatalogIconPublic,
   CatalogIconWithPackPublic,
+  IconCrop,
   IconListResponse,
   ListIconsParams,
   ListPacksParams,
@@ -144,10 +145,21 @@ export function getCatalogIconImageUrl(iconId: string): string {
   return `${getApiBaseUrl()}/v1/marketplace/icons/${iconId}/image`
 }
 
+const ICON_CROP_HEADER = 'X-Icon-Crop'
+
+function parseIconCropHeader(raw: string | null): IconCrop | null {
+  if (!raw) return null
+  const values = raw.split(',').map(Number)
+  if (values.length !== 4 || values.some((value) => !Number.isFinite(value))) return null
+  const [x, y, w, h] = values
+  return w > 0 && h > 0 ? { x, y, w, h } : null
+}
+
+/** Original (uncropped) icon file plus the crop frame the server asks clients to show. */
 export async function fetchCatalogIconBlob(
   iconId: string,
   retryOnUnauthorized = true,
-): Promise<Blob> {
+): Promise<{ blob: Blob; crop: IconCrop | null }> {
   const headers: Record<string, string> = { Accept: '*/*' }
   const accessToken = getAccessToken()
   if (accessToken) {
@@ -171,7 +183,10 @@ export async function fetchCatalogIconBlob(
     throw new ApiError(parseApiError(response.status, payload), response.status)
   }
 
-  return response.blob()
+  return {
+    blob: await response.blob(),
+    crop: parseIconCropHeader(response.headers.get(ICON_CROP_HEADER)),
+  }
 }
 
 export function createStudioPack(body: StudioPackCreate): Promise<PackDetailPublic> {
@@ -200,26 +215,12 @@ export function deleteStudioPack(packId: string): Promise<void> {
   })
 }
 
-export async function uploadStudioIcon(
-  packId: string,
-  file: File,
-  fields: UploadStudioIconFields,
+async function sendStudioMultipart(
+  path: string,
+  method: 'POST' | 'PUT',
+  formData: FormData,
   retryOnUnauthorized = true,
 ): Promise<CatalogIconPublic> {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('labels', JSON.stringify(fields.labels))
-  formData.append('suggested_colors', JSON.stringify(fields.suggested_colors))
-  if (fields.suggested_mood_scores) {
-    formData.append('suggested_mood_scores', JSON.stringify(fields.suggested_mood_scores))
-  }
-  if (fields.search_tag_slugs) {
-    formData.append('search_tag_slugs', JSON.stringify(fields.search_tag_slugs))
-  }
-  if (fields.slug) {
-    formData.append('slug', fields.slug)
-  }
-
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...apiLocaleHeaders(),
@@ -229,8 +230,8 @@ export async function uploadStudioIcon(
     headers.Authorization = `Bearer ${accessToken}`
   }
 
-  const response = await fetch(`${getApiBaseUrl()}/v1/marketplace/studio/packs/${packId}/icons`, {
-    method: 'POST',
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    method,
     headers,
     body: formData,
   })
@@ -238,7 +239,7 @@ export async function uploadStudioIcon(
   if (response.status === 401 && retryOnUnauthorized) {
     const refreshed = await refreshTokensOnce()
     if (refreshed) {
-      return uploadStudioIcon(packId, file, fields, false)
+      return sendStudioMultipart(path, method, formData, false)
     }
   }
 
@@ -248,6 +249,46 @@ export async function uploadStudioIcon(
   }
 
   return payload as CatalogIconPublic
+}
+
+export function uploadStudioIcon(
+  packId: string,
+  file: File,
+  fields: UploadStudioIconFields,
+): Promise<CatalogIconPublic> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('labels', JSON.stringify(fields.labels))
+  formData.append('suggested_colors', JSON.stringify(fields.suggested_colors))
+  if (fields.suggested_mood_scores) {
+    formData.append('suggested_mood_scores', JSON.stringify(fields.suggested_mood_scores))
+  }
+  if (fields.suggested_usage) {
+    formData.append('suggested_usage', JSON.stringify(fields.suggested_usage))
+  }
+  if (fields.search_tag_slugs) {
+    formData.append('search_tag_slugs', JSON.stringify(fields.search_tag_slugs))
+  }
+  if (fields.slug) {
+    formData.append('slug', fields.slug)
+  }
+  return sendStudioMultipart(`/v1/marketplace/studio/packs/${packId}/icons`, 'POST', formData)
+}
+
+/** Swap the icon file; the server drops the crop frame because it no longer fits. */
+export function replaceStudioIconImage(iconId: string, file: File): Promise<CatalogIconPublic> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return sendStudioMultipart(`/v1/marketplace/studio/icons/${iconId}/image`, 'PUT', formData)
+}
+
+export function reorderStudioIcons(packId: string, iconIds: string[]): Promise<PackDetailPublic> {
+  return apiRequest<PackDetailPublic>(`/v1/marketplace/studio/packs/${packId}/icon-order`, {
+    method: 'PUT',
+    auth: true,
+    body: { icon_ids: iconIds },
+    headers: apiLocaleHeaders(),
+  })
 }
 
 export function patchStudioIcon(iconId: string, body: StudioIconPatch): Promise<CatalogIconPublic> {

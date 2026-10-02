@@ -51,7 +51,9 @@ marketplace/
       "labels": {"en": "Happy fox", "ru": "Весёлый лис"},
       "tags": ["joy", "animals"],
       "colors": ["#f97316", "#f59e0b"],
-      "scores": [4, 5]
+      "scores": [4, 5],
+      "usage": ["mood", "tag"],
+      "crop": {"x": 0.1, "y": 0, "w": 0.8, "h": 1}
     }
   }
 }
@@ -75,7 +77,7 @@ marketplace/
 
 `published: false` — черновик, в витрине не показывается. Альтернатива: `"status": "draft"` / `"published"` / `"archived"`.
 
-Ключи в `icons` — slug или имя файла. Поля, которых нет, берутся из дефолтов пака / имени файла. `scores` — suggested mood 1–5. `sort_order` у иконки задаёт порядок в паке (иначе — по имени файла).
+Ключи в `icons` — slug или имя файла. Поля, которых нет, берутся из дефолтов пака / имени файла. `scores` — suggested mood 1–5. `usage` — где иконку рекомендуем: `mood`, `tag`, `goal` (пользователь может поставить её куда угодно). `crop` — видимый квадрат картинки в долях ширины и высоты (`x`, `y`, `w`, `h`), файл не обрезается. `sort_order` у иконки задаёт порядок в паке (иначе — по имени файла).
 
 Готовые теги: `joy`, `sadness`, `calm`, `energy`, `sport`, `fitness`, `animals`, `nature`, `weather`, `night`. Неизвестный тег игнорируется — сначала добавьте его в `DEFAULT_SEARCH_TAGS` в `backend/app/services/marketplace_seed.py`.
 

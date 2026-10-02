@@ -23,6 +23,8 @@ from app.core.marketplace import (
     MIN_SUGGESTED_COLORS,
     PackStatus,
     WalletLedgerKind,
+    parse_icon_crop,
+    parse_icon_usage,
 )
 from app.core.mood_scale import MoodScore, is_valid_hex_color
 from app.models.catalog_icon import CatalogIcon
@@ -181,6 +183,28 @@ def _normalize_suggested_mood_scores(raw: Any) -> list[int]:
             seen.add(score.value)
             scores.append(score.value)
     return scores
+
+
+def _normalize_suggested_usage(raw: Any) -> list[str]:
+    if raw is None:
+        return []
+    usage = parse_icon_usage(raw)
+    if usage is None:
+        raise MarketplaceError(
+            "suggested_usage must list mood, tag or goal",
+            code=ErrorCode.INVALID_SUGGESTED_USAGE,
+        )
+    return usage
+
+
+def _normalize_crop(raw: Any) -> dict[str, float]:
+    crop = parse_icon_crop(raw)
+    if crop is None:
+        raise MarketplaceError(
+            "crop must be {x, y, w, h} fractions inside the image",
+            code=ErrorCode.INVALID_ICON_CROP,
+        )
+    return crop
 
 
 def _resolve_search_tags(db: Session, *, slugs: list[str] | None) -> list[IconSearchTag]:
@@ -858,6 +882,7 @@ def upload_studio_icon(
     labels: dict[str, str],
     suggested_colors: list[str],
     suggested_mood_scores: list[int] | None = None,
+    suggested_usage: list[str] | None = None,
     search_tag_slugs: list[str] | None = None,
     slug: str | None = None,
 ) -> CatalogIcon:
@@ -897,6 +922,7 @@ def upload_studio_icon(
         size_bytes=len(data),
         suggested_colors=_normalize_suggested_colors(suggested_colors),
         suggested_mood_scores=_normalize_suggested_mood_scores(suggested_mood_scores),
+        suggested_usage=_normalize_suggested_usage(suggested_usage),
         sort_order=int(sort_order) + 1 if sort_order is not None else 0,
     )
     icon.search_tags = tags
@@ -917,8 +943,11 @@ def patch_studio_icon(
     labels: dict[str, str] | None = None,
     suggested_colors: list[str] | None = None,
     suggested_mood_scores: list[int] | None = None,
+    suggested_usage: list[str] | None = None,
     search_tag_slugs: list[str] | None = None,
     sort_order: int | None = None,
+    crop: dict[str, float] | None = None,
+    clear_crop: bool = False,
 ) -> CatalogIcon:
     icon = get_catalog_icon_or_raise(db, icon_id)
     _assert_pack_editable(icon.pack, user)
@@ -932,12 +961,72 @@ def patch_studio_icon(
         icon.suggested_colors = _normalize_suggested_colors(suggested_colors)
     if suggested_mood_scores is not None:
         icon.suggested_mood_scores = _normalize_suggested_mood_scores(suggested_mood_scores)
+    if suggested_usage is not None:
+        icon.suggested_usage = _normalize_suggested_usage(suggested_usage)
     if search_tag_slugs is not None:
         icon.search_tags = _resolve_search_tags(db, slugs=search_tag_slugs)
     if sort_order is not None:
         icon.sort_order = sort_order
+    if clear_crop:
+        icon.crop = None
+    elif crop is not None:
+        icon.crop = _normalize_crop(crop)
     db.flush()
     return icon
+
+
+def replace_studio_icon_image(
+    db: Session,
+    *,
+    user: User,
+    icon_id: uuid.UUID,
+    storage: ObjectStorage,
+    data: bytes,
+    content_type: str,
+    original_name: str,
+) -> CatalogIcon:
+    """Swap the icon file in place; the old crop frame no longer fits, so it is dropped."""
+    icon = get_catalog_icon_or_raise(db, icon_id)
+    _assert_pack_editable(icon.pack, user)
+    mime_type = _validate_image_payload(data=data, content_type=content_type)
+    old_key = icon.storage_key
+    new_key = _build_catalog_storage_key(
+        pack_id=icon.pack_id,
+        icon_id=uuid.uuid4(),
+        original_name=original_name,
+    )
+    storage.put_object(key=new_key, data=data, content_type=mime_type)
+    icon.storage_key = new_key
+    icon.mime_type = mime_type
+    icon.size_bytes = len(data)
+    icon.crop = None
+    db.flush()
+    with contextlib.suppress(StorageError):
+        storage.delete_object(key=old_key)
+    return icon
+
+
+def reorder_studio_icons(
+    db: Session,
+    *,
+    user: User,
+    pack_id: uuid.UUID,
+    icon_ids: list[uuid.UUID],
+) -> IconPack:
+    """Set icon order from the full list of the pack's icon ids."""
+    pack = get_pack_or_raise(db, pack_id)
+    _assert_pack_editable(pack, user)
+    icons = {icon.id: icon for icon in pack.icons}
+    if len(icon_ids) != len(icons) or set(icon_ids) != set(icons):
+        raise MarketplaceError(
+            "icon_ids must list every icon of the pack exactly once",
+            code=ErrorCode.ICON_ORDER_MISMATCH,
+        )
+    for index, icon_id in enumerate(icon_ids):
+        icons[icon_id].sort_order = index
+    db.flush()
+    db.expire(pack, ["icons"])
+    return pack
 
 
 def delete_studio_icon(
@@ -1097,6 +1186,8 @@ def serialize_icon(icon: CatalogIcon, *, locale: str) -> dict[str, Any]:
         "size_bytes": icon.size_bytes,
         "suggested_colors": list(icon.suggested_colors or []),
         "suggested_mood_scores": list(icon.suggested_mood_scores or []),
+        "suggested_usage": list(icon.suggested_usage or []),
+        "crop": icon.crop,
         "sort_order": icon.sort_order,
         "search_tags": [
             serialize_search_tag(tag, locale=locale) for tag in (icon.search_tags or [])

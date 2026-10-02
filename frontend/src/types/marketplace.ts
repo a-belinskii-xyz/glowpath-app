@@ -18,6 +18,16 @@ export type SearchTagListResponse = {
   items: SearchTagPublic[]
 }
 
+export type IconUsage = 'mood' | 'tag' | 'goal'
+
+/** Visible square of a catalog icon, as fractions of the image width and height. */
+export type IconCrop = {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export type CatalogIconPublic = {
   id: string
   pack_id: string
@@ -28,6 +38,8 @@ export type CatalogIconPublic = {
   size_bytes: number
   suggested_colors: string[]
   suggested_mood_scores: number[]
+  suggested_usage: IconUsage[]
+  crop: IconCrop | null
   sort_order: number
   search_tags: SearchTagPublic[]
 }
@@ -102,8 +114,11 @@ export type StudioIconPatch = {
   labels?: Record<string, string> | null
   suggested_colors?: string[] | null
   suggested_mood_scores?: number[] | null
+  suggested_usage?: IconUsage[] | null
   search_tag_slugs?: string[] | null
   sort_order?: number | null
+  crop?: IconCrop | null
+  clear_crop?: boolean
 }
 
 export type SearchTagCreate = {
@@ -169,6 +184,7 @@ export type UploadStudioIconFields = {
   labels: Record<string, string>
   suggested_colors: string[]
   suggested_mood_scores?: number[]
+  suggested_usage?: IconUsage[]
   search_tag_slugs?: string[]
   slug?: string
 }
