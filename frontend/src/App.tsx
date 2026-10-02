@@ -69,8 +69,8 @@ function App() {
                     <Route path="auth/telegram/callback" element={<TelegramCallbackPage />} />
 
                     <Route element={<GuestRoute />}>
+                      <Route path="login" element={<LoginPage />} />
                       <Route element={<AuthCardLayout />}>
-                        <Route path="login" element={<LoginPage />} />
                         <Route path="login/email" element={<EmailLoginPage />} />
                         <Route path="register" element={<Navigate to="/login" replace />} />
                         <Route path="forgot-password" element={<ForgotPasswordPage />} />

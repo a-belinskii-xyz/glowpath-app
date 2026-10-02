@@ -4,11 +4,7 @@ import { getTelegramEntryPoint } from '../api/telegram'
 import { useLocale } from '../context/LocaleContext'
 import { isTelegramMiniApp } from '../platform/telegram'
 
-export function TelegramOpenCta({
-  variant = 'compact',
-}: {
-  variant?: 'hero' | 'compact'
-}) {
+export function TelegramOpenCta() {
   const { t } = useLocale()
   const [botUrl, setBotUrl] = useState<string | null>(null)
 
@@ -35,14 +31,6 @@ export function TelegramOpenCta({
 
   if (isTelegramMiniApp() || !botUrl) {
     return null
-  }
-
-  if (variant === 'hero') {
-    return (
-      <a className="button button-block" href={botUrl}>
-        {t('auth.openInTelegram')}
-      </a>
-    )
   }
 
   return (
