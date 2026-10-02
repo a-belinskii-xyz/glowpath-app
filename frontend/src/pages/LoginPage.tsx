@@ -7,6 +7,7 @@ import { Alert } from '../components/Alert'
 import { TelegramBotLogin } from '../components/TelegramBotLogin'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
+import { getGuestLocalEntryCount } from '../lib/guestImport'
 import { isGuestDiaryMode } from '../lib/guestMode'
 import { detectTimezone } from '../lib/timezones'
 import { isTelegramMiniApp } from '../platform/telegram'
@@ -34,8 +35,16 @@ export function LoginPage() {
   const { t } = useLocale()
   const [entryPoint, setEntryPoint] = useState<TelegramEntryPointPublic | null>(null)
   const returnTo = postLoginPath(location.state as LoginLocationState | null)
-  // Inside the Mini App the user is already in Telegram.
-  const showTelegramCard = Boolean(entryPoint?.bot_url) && !isTelegramMiniApp()
+  const [guestEntryCount, setGuestEntryCount] = useState(0)
+  // Inside the Mini App the user is already in Telegram. A guest with entries signs in on the
+  // website instead: the Mini App can't see entries kept in this browser.
+  const showTelegramCard =
+    Boolean(entryPoint?.bot_url) && !isTelegramMiniApp() && guestEntryCount === 0
+
+  useEffect(() => {
+    if (!isGuestDiaryMode()) return
+    void getGuestLocalEntryCount().then(setGuestEntryCount)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -65,7 +74,7 @@ export function LoginPage() {
       <p className="muted">{t('home.entryLead')}</p>
 
       {isGuestDiaryMode() ? (
-        <Alert variant="warning">{t('guest.loginWarning')}</Alert>
+        <Alert variant="info">{t('guest.loginWarning')}</Alert>
       ) : null}
 
       <div className="entry-cards">

@@ -29,8 +29,8 @@ from app.models.user import User
 from app.services.auth_service import (
     AuthError,
     TokenPair,
+    _link_guest_device_on_existing_login,
     _link_pending_guest_device,
-    _mark_existing_login_skipped,
     issue_token_pair,
 )
 from app.services.user_provisioning import (
@@ -143,7 +143,7 @@ def login_or_create_telegram_user(
             existing.telegram_linked_at = now
         if locale:
             existing.telegram_locale = locale
-        _mark_existing_login_skipped(db, user=existing, visitor_id=visitor_id)
+        _link_guest_device_on_existing_login(db, user=existing, visitor_id=visitor_id)
         db.commit()
         return issue_token_pair(existing.id)
 

@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppBootGate } from './components/AppBootGate'
 import { AuthCardLayout } from './components/AuthCardLayout'
 import { AppRoute, AccountRoute, BillingOnly, RegisteredOnly } from './components/AppRoute'
+import { GuestImportPrompt } from './components/GuestImportPrompt'
 import { GuestRoute } from './components/GuestRoute'
 import { Layout } from './components/Layout'
 import { NotificationLinkTracker } from './components/NotificationLinkTracker'
@@ -56,6 +57,7 @@ function App() {
               <BrowserRouter>
                 <TelegramNavigation />
                 <NotificationLinkTracker />
+                <GuestImportPrompt />
                 <Routes>
                   <Route element={<Layout />}>
                     <Route index element={<HomePage />} />

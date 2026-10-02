@@ -481,6 +481,16 @@ export function LockIcon(props: IconProps) {
   )
 }
 
+export function InfoIcon(props: IconProps) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M12 11v5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <circle cx="12" cy="8" r="1.1" fill="currentColor" />
+    </BaseIcon>
+  )
+}
+
 export function PaletteIcon(props: IconProps) {
   return (
     <BaseIcon {...props}>
