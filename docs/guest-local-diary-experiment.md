@@ -28,58 +28,59 @@ Telemetry: `POST /v1/guest/heartbeat` (entry count, onboarding flag, timezone, l
 | Calendar, stats, streak (client-side) | Pattern insights (server ML) |
 | Onboarding suggestions (public API) | Email, Telegram, reminders |
 
-## Sync on registration (import)
+## Moving the guest diary into an account (import)
 
-Guest data is merged into the server **only** when:
+Guest data is merged into the server when:
 
-1. User **registers** a new account (email) or signs in with Google and a **new** user row is created, **and**
-2. `visitor_id` from the guest session was stored on the user as `pending_guest_device_id`, **and**
-3. After login, frontend calls `POST /v1/guest/import` with the IndexedDB payload.
+1. The guest signs in from the same browser (Telegram bot sign-in, Telegram Login, Google, email), **and**
+2. `visitor_id` from the guest session is stored on the user as `pending_guest_device_id`, **and**
+3. The frontend calls `POST /v1/guest/import` with the IndexedDB payload.
 
 Backend guard in `import_guest_diary`:
 
 ```text
-user.pending_guest_device_id == visitor_id   → import allowed
-otherwise                                    → 409 guest_import_not_allowed
+user.pending_guest_device_id != visitor_id   → 409 guest_import_not_allowed
+user.guest_imported_at is set                → { skipped: true } (already imported from this browser)
+otherwise                                    → import
 ```
 
-`pending_guest_device_id` is set only in:
+`pending_guest_device_id` is set:
 
-- `register_user` (email signup)
-- `authenticate_google_profile` when a **new** Google user is created
+- when a **new** account is created with a `visitor_id` (`_link_pending_guest_device`);
+- on sign-in to an **existing** account with a `visitor_id` (`_link_guest_device_on_existing_login`).
+  A different `visitor_id` than the stored one also resets `guest_imported_at`, so each browser can be imported once.
 
-It is **not** set on login to an existing account.
+The Mini App never sends a `visitor_id` and has no guest mode: it can't see entries kept in a browser.
 
-### Existing account login (`existing_login_skipped`)
+### New account
 
-When a treatment guest logs into an **existing** account (email+password or Google account already in DB):
+Import runs right after sign-in, without asking. The account takes the guest's mood preferences and onboarding state.
 
-1. Backend calls `mark_visitor_converted(..., auth_event=existing_login_skipped)`.
-2. **`pending_guest_device_id` is not set** — import API returns 409.
-3. Local guest diary **stays in the browser**; frontend shows a warning on the login page.
-4. IndexedDB is **not** cleared.
+### Existing account
 
-Important: analytics fields `converted_user_id` / `converted_at` on `mt_visitors` and `mt_guest_devices` are still filled. That means the visitor is counted as “converted” in experiment summaries even though **no data was imported**. Check `mt_guest_devices.last_auth_event`:
+The frontend asks first (`GuestImportPrompt`): what moves (entries with mood, notes, tags and goals; tags, goals and note
+templates missing from the account) and that nothing in the account is replaced. On “Not now” the entries stay in the
+browser and the question comes back at the next sign-in. When the account already has entries, it keeps its own mood
+preferences and onboarding state; tags, goals and templates are merged by slug.
+
+`mt_guest_devices.last_auth_event`:
 
 | `last_auth_event` | Meaning |
 |-------------------|---------|
-| `imported` | Guest diary was merged into the account (`guest_imported_at` set on user) |
-| `existing_login_skipped` | User signed into an existing account; local data intentionally not merged |
+| `imported` | Guest diary was merged into the account |
+| `existing_login_skipped` | User signed into an existing account and has not moved the entries (yet) |
 | `none` | No auth event yet |
 
-Staff summary: `GET /v1/guest/experiment/summary` exposes `treatment_converted` (any conversion) and `treatment_existing_login_skipped` (existing-login path only).
+Staff summary: `GET /v1/guest/experiment/summary` exposes `treatment_converted` (any conversion) and `treatment_existing_login_skipped`.
 
-### Email registration flow
-
-1. Guest → Register (with `visitor_id`) → `pending_guest_device_id` linked.
-2. Verify email → Login → import runs on first authenticated import call.
-3. On success: `guest_imported_at` set, `last_auth_event = imported`, IndexedDB cleared.
-
-Repeat import returns `{ skipped: true }`.
+After a successful import IndexedDB is cleared. Imported entries don't count toward the streak: the server counts only
+entries written on the day they record, and the payload has no write time.
 
 ## Frontend notes
 
-- `tryImportGuestDiaryAfterAuth` runs after every login; backend rejects import for existing accounts (errors are swallowed; local data kept).
+- `completeLogin` imports for a new account and sets `pendingGuestImport` for an existing one.
+- The guest banner invites signing in with Telegram and lists what an account gives; the login page hides
+  “Open in Telegram” for guests, since the Mini App can't see the browser's entries.
 - Guest entry count in the top banner is driven by `subscribeGuestEntryCount` (updates when local entries change, not only on page load).
 
 ## Related code
@@ -92,10 +93,10 @@ Repeat import returns `{ skipped: true }`.
 | Import | `backend/app/services/guest_import_service.py` |
 | Experiment telemetry | `backend/app/services/visitor_experiment_service.py` |
 | IndexedDB store | `frontend/src/guest/store.ts` |
-| Import after auth | `frontend/src/lib/guestImport.ts` |
+| Import after auth | `frontend/src/lib/guestImport.ts`, `frontend/src/components/GuestImportPrompt.tsx` |
 
 ## Tests
 
-- `backend/tests/test_guest_import.py` — import allowed after registration; rejected after existing login
+- `backend/tests/test_guest_import.py` — import after registration, into an existing account after sign-in (email and Telegram)
 - `backend/tests/test_guest_experiment_api.py` — bootstrap, heartbeat
 - `backend/tests/test_guest_experiment_flags.py` — rollout bucketing
