@@ -1,4 +1,5 @@
 import type { ApiLocale } from './locale'
+import { defaultBuiltinSlugForScore } from './moodBuiltinIcons'
 import type { MoodScoreStylePublic } from '../types/moodPreferences'
 
 export type MoodScoreOption = {
@@ -20,11 +21,11 @@ const MOOD_SCORE_META: { score: number; labels: MoodScoreLabels; emoji: string }
 ]
 
 export const DEFAULT_MOOD_SCORE_COLORS: Record<number, string> = {
-  1: '#64748b',
-  2: '#94a3b8',
-  3: '#60a5fa',
-  4: '#34d399',
-  5: '#f59e0b',
+  1: '#ef4444',
+  2: '#f97316',
+  3: '#eab308',
+  4: '#22c55e',
+  5: '#3b82f6',
 }
 
 export const MAX_MOOD_SCORE_LABEL_LENGTH = 40
@@ -37,14 +38,19 @@ export function defaultMoodScoreLabel(score: number, locale: ApiLocale): string 
   return meta.labels[locale] ?? meta.labels.en
 }
 
+/** Plain-text emoji for a score, used where an image icon can't be shown. */
+export function defaultMoodScoreEmoji(score: number): string {
+  return MOOD_SCORE_META.find((item) => item.score === score)?.emoji ?? '😐'
+}
+
 export function defaultMoodScoreStyle(
   score: number,
   locale: ApiLocale = 'en',
 ): MoodScoreStylePublic {
   return {
     color: DEFAULT_MOOD_SCORE_COLORS[score] ?? '#94a3b8',
-    icon_type: 'emoji',
-    icon: MOOD_SCORE_META.find((item) => item.score === score)?.emoji ?? '😐',
+    icon_type: 'builtin',
+    icon: defaultBuiltinSlugForScore(score),
     label: defaultMoodScoreLabel(score, locale),
   }
 }

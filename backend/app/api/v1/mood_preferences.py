@@ -9,6 +9,7 @@ from app.api.deps import get_current_verified_user, get_locale, get_storage_serv
 from app.core.errors import raise_http_error
 from app.core.i18n import resolve_label
 from app.core.mood_builtin_icons import MOOD_BUILTIN_ICONS
+from app.core.mood_scale import DEFAULT_MOOD_SCORE_ICONS
 from app.db.session import get_db
 from app.models.user import User
 from app.models.user_mood_icon import UserMoodIcon
@@ -104,6 +105,9 @@ def patch_mood_preferences(
     return MoodPreferencesPublic.model_validate(serialize_preferences(db, prefs, locale=locale))
 
 
+_DEFAULT_SCORE_BY_SLUG = {slug: score.value for score, slug in DEFAULT_MOOD_SCORE_ICONS.items()}
+
+
 @router.get("/icon-catalog", response_model=MoodIconCatalogResponse)
 def get_mood_icon_catalog(
     locale: str = Depends(get_locale),
@@ -113,7 +117,10 @@ def get_mood_icon_catalog(
             slug=icon.slug,
             label=resolve_label(icon.labels, locale),
             asset_path=icon.asset_path,
-            default_score=icon.default_score.value if icon.default_score is not None else None,
+            suggested_score=(
+                icon.suggested_score.value if icon.suggested_score is not None else None
+            ),
+            default_score=_DEFAULT_SCORE_BY_SLUG.get(icon.slug),
         )
         for icon in MOOD_BUILTIN_ICONS.values()
     ]

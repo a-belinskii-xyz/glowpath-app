@@ -36,11 +36,20 @@ class MoodScoreStyle:
 
 
 DEFAULT_MOOD_SCORE_COLORS: dict[MoodScore, str] = {
-    MoodScore.AWFUL: "#64748b",
-    MoodScore.BAD: "#94a3b8",
-    MoodScore.NEUTRAL: "#60a5fa",
-    MoodScore.GOOD: "#34d399",
-    MoodScore.GREAT: "#f59e0b",
+    MoodScore.AWFUL: "#ef4444",
+    MoodScore.BAD: "#f97316",
+    MoodScore.NEUTRAL: "#eab308",
+    MoodScore.GOOD: "#22c55e",
+    MoodScore.GREAT: "#3b82f6",
+}
+
+# Builtin face slugs (see mood_builtin_icons) used as the default scale icons.
+DEFAULT_MOOD_SCORE_ICONS: dict[MoodScore, str] = {
+    MoodScore.AWFUL: "face-awful-cry",
+    MoodScore.BAD: "face-bad-sad",
+    MoodScore.NEUTRAL: "face-neutral-flat",
+    MoodScore.GOOD: "face-good-smile",
+    MoodScore.GREAT: "face-great-grin",
 }
 
 
@@ -59,8 +68,8 @@ MAX_MOOD_SCORE = int(MoodScore.GREAT)
 def default_mood_score_style(score: MoodScore) -> MoodScoreStyle:
     return MoodScoreStyle(
         color=DEFAULT_MOOD_SCORE_COLORS[score],
-        icon_type=MoodScoreIconType.EMOJI,
-        icon=mood_score_emoji(score),
+        icon_type=MoodScoreIconType.BUILTIN,
+        icon=DEFAULT_MOOD_SCORE_ICONS[score],
     )
 
 

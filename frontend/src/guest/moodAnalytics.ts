@@ -1,5 +1,5 @@
 import type { ApiLocale } from '../lib/locale'
-import { defaultMoodScoreStyle, getMoodScoreStyle } from '../lib/moodScale'
+import { defaultMoodScoreEmoji, defaultMoodScoreStyle, getMoodScoreStyle } from '../lib/moodScale'
 import { dayKey } from '../lib/datetime'
 import type { GoalPublic } from '../types/goal'
 import type {
@@ -121,7 +121,7 @@ export function computeGuestStats(
     scores.push({
       score,
       score_label: style.label ?? defaultMoodScoreStyle(score, locale).label ?? String(score),
-      score_emoji: style.icon,
+      score_emoji: defaultMoodScoreEmoji(score),
       count,
     })
   }

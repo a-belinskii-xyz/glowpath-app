@@ -22,7 +22,7 @@ from app.core.marketplace import (
     parse_icon_usage,
 )
 from app.core.mood_builtin_icons import MOOD_BUILTIN_ICONS
-from app.core.mood_scale import DEFAULT_MOOD_SCORE_COLORS, MoodScore, is_valid_hex_color
+from app.core.mood_scale import is_valid_hex_color
 from app.models.catalog_icon import CatalogIcon
 from app.models.icon_pack import IconPack
 from app.models.icon_search_tag import IconSearchTag
@@ -44,6 +44,7 @@ _IMAGE_MIME_BY_SUFFIX: dict[str, str] = {
     ".gif": "image/gif",
 }
 _DEFAULT_ICON_COLOR = "#94a3b8"
+_ESSENTIALS_COVER_SLUG = "face-good-smile"
 
 
 def _marketplace_dir() -> Path:
@@ -65,25 +66,40 @@ DEFAULT_SEARCH_TAGS: list[tuple[str, dict[str, str], int]] = [
 
 # Suggested search tags + colors for each builtin slug
 _BUILTIN_META: dict[str, dict[str, list[str]]] = {
+    "face-awful-cry": {"tags": ["sadness"], "colors": ["#ef4444"]},
+    "face-awful-angry": {"tags": ["energy"], "colors": ["#dc2626"]},
+    "face-awful-storm": {"tags": ["sadness"], "colors": ["#8b5cf6"]},
+    "face-bad-sad": {"tags": ["sadness"], "colors": ["#f97316"]},
+    "face-bad-tired": {"tags": ["sadness", "night"], "colors": ["#fb923c"]},
+    "face-bad-worried": {"tags": ["sadness"], "colors": ["#f59e0b"]},
+    "face-neutral-flat": {"tags": ["calm"], "colors": ["#eab308"]},
+    "face-neutral-side": {"tags": ["calm"], "colors": ["#a3a3a3"]},
+    "face-neutral-calm": {"tags": ["calm"], "colors": ["#14b8a6"]},
+    "face-good-smile": {"tags": ["joy"], "colors": ["#22c55e"]},
+    "face-good-wink": {"tags": ["joy"], "colors": ["#84cc16"]},
+    "face-good-blush": {"tags": ["joy"], "colors": ["#ec4899"]},
+    "face-great-grin": {"tags": ["joy", "energy"], "colors": ["#3b82f6"]},
+    "face-great-stars": {"tags": ["joy", "energy"], "colors": ["#6366f1"]},
+    "face-great-love": {"tags": ["joy"], "colors": ["#f43f5e"]},
     "awful-cloud": {
         "tags": ["sadness", "weather"],
-        "colors": [DEFAULT_MOOD_SCORE_COLORS[MoodScore.AWFUL], "#94a3b8"],
+        "colors": ["#64748b", "#94a3b8"],
     },
     "bad-droplet": {
         "tags": ["sadness", "weather"],
-        "colors": [DEFAULT_MOOD_SCORE_COLORS[MoodScore.BAD], "#60a5fa"],
+        "colors": ["#94a3b8", "#60a5fa"],
     },
     "neutral-line": {
         "tags": ["calm"],
-        "colors": [DEFAULT_MOOD_SCORE_COLORS[MoodScore.NEUTRAL], "#94a3b8"],
+        "colors": ["#60a5fa", "#94a3b8"],
     },
     "good-sun": {
         "tags": ["joy", "weather"],
-        "colors": [DEFAULT_MOOD_SCORE_COLORS[MoodScore.GOOD], "#f59e0b"],
+        "colors": ["#34d399", "#f59e0b"],
     },
     "great-star": {
         "tags": ["joy", "energy"],
-        "colors": [DEFAULT_MOOD_SCORE_COLORS[MoodScore.GREAT], "#eab308"],
+        "colors": ["#f59e0b", "#eab308"],
     },
     "heart": {
         "tags": ["joy"],
@@ -420,7 +436,7 @@ def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
         if not svg_path.is_file():
             continue
         data = svg_path.read_bytes()
-        scores = [builtin.default_score.value] if builtin.default_score is not None else []
+        scores = [builtin.suggested_score.value] if builtin.suggested_score is not None else []
         usage = [IconUsage.MOOD.value] if scores else []
         icon = existing_icons.get(builtin.slug)
         if icon is None:
@@ -454,7 +470,7 @@ def seed_essentials_pack(db: Session, *, storage: ObjectStorage) -> IconPack:
             icon.sort_order = index
 
         icon.search_tags = [tags_by_slug[slug] for slug in meta["tags"] if slug in tags_by_slug]
-        if cover_id is None:
+        if cover_id is None and builtin.slug == _ESSENTIALS_COVER_SLUG:
             cover_id = icon.id
 
     pack.cover_icon_id = cover_id

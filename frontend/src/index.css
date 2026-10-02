@@ -4817,6 +4817,7 @@ code {
   background: var(--chrome-surface-inset);
   border: 1px solid var(--chrome-border-default);
   width: fit-content;
+  max-width: 100%;
 }
 
 .segmented-control-option {
@@ -4845,6 +4846,8 @@ code {
 }
 
 .mood-preferences-icon-source {
+  min-inline-size: 0;
+  grid-template-columns: minmax(0, 1fr);
   border: none;
   margin: 0;
   padding: 0;
@@ -11513,4 +11516,18 @@ html.is-telegram .recap-backdrop {
   .recap-top-track > span {
     transition: none;
   }
+}
+
+.builtin-icon-picker .catalog-icon-picker-tile img {
+  width: 1.95rem;
+  height: 1.95rem;
+}
+
+.mood-preferences-icon-source .segmented-control {
+  width: 100%;
+}
+
+.mood-preferences-icon-source .segmented-control-option {
+  flex: 1 1 auto;
+  padding-inline: 0.5rem;
 }

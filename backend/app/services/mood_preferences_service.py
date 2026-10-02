@@ -18,7 +18,6 @@ from app.core.mood_scale import (
     default_mood_score_style,
     default_mood_score_styles,
     is_valid_hex_color,
-    mood_score_emoji,
     mood_score_label,
 )
 from app.models.user_mood_icon import UserMoodIcon
@@ -178,15 +177,15 @@ def set_upload_icon_preference(
     db.flush()
 
 
-def reset_score_to_default_emoji(db: Session, *, user_id: uuid.UUID, score: MoodScore) -> None:
+def reset_score_icon_to_default(db: Session, *, user_id: uuid.UUID, score: MoodScore) -> None:
     prefs = get_or_create_preferences(db, user_id=user_id)
     merged = dict(prefs.score_styles or {})
     default_style = default_mood_score_style(score)
     existing = merged.get(str(score.value), {})
     next_style: dict[str, Any] = {
         "color": existing.get("color", default_style.color),
-        "icon_type": MoodScoreIconType.EMOJI.value,
-        "icon": mood_score_emoji(score),
+        "icon_type": default_style.icon_type.value,
+        "icon": default_style.icon,
     }
     if isinstance(existing.get("label"), str) and existing["label"].strip():
         next_style["label"] = existing["label"].strip()

@@ -19,8 +19,8 @@ def test_get_mood_preferences_returns_defaults(auth_client: TestClient, mailer) 
     payload = response.json()
     assert set(payload["scores"].keys()) == {"1", "2", "3", "4", "5"}
     assert payload["scores"]["5"]["color"] == DEFAULT_MOOD_SCORE_COLORS[MoodScore.GREAT]
-    assert payload["scores"]["5"]["icon_type"] == "emoji"
-    assert payload["scores"]["5"]["icon"] == "😄"
+    assert payload["scores"]["5"]["icon_type"] == "builtin"
+    assert payload["scores"]["5"]["icon"] == "face-great-grin"
     assert payload["scores"]["5"]["label"] == "great"
     assert payload["scores"]["1"]["label"] == "awful"
     assert payload["use_historical_colors"] is True

@@ -68,6 +68,7 @@ export type BuiltinMoodIconPublic = {
   slug: string
   label: string
   asset_path: string
+  suggested_score: number | null
   default_score: number | null
 }
 
