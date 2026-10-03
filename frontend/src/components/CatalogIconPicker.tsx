@@ -24,6 +24,8 @@ type CatalogIconPickerProps = {
   glowColor?: string | null
   suggestedMood?: number
   disabled?: boolean
+  /** Packs shown elsewhere in the picker; a selected icon from them still shows. */
+  hiddenPackSlugs?: string[]
   onSelect: (icon: CatalogIconWithPackPublic) => void
 }
 
@@ -45,6 +47,7 @@ export function CatalogIconPicker({
   glowColor,
   suggestedMood,
   disabled = false,
+  hiddenPackSlugs,
   onSelect,
 }: CatalogIconPickerProps) {
   const { t } = useLocale()
@@ -89,7 +92,9 @@ export function CatalogIconPicker({
   }, [t])
 
   const sorted = useMemo(() => {
-    const copy = [...icons]
+    const copy = icons.filter(
+      (icon) => icon.id === selectedIconId || !hiddenPackSlugs?.includes(icon.pack.slug),
+    )
     copy.sort((a, b) => {
       const aOk = isCatalogIconAssignable(a, user?.id) ? 0 : 1
       const bOk = isCatalogIconAssignable(b, user?.id) ? 0 : 1
@@ -109,7 +114,7 @@ export function CatalogIconPicker({
       return a.sort_order - b.sort_order
     })
     return copy
-  }, [icons, suggestedMood, user?.id])
+  }, [icons, suggestedMood, user?.id, selectedIconId, hiddenPackSlugs])
 
   const filtered = useMemo(
     () => sorted.filter((icon) => catalogIconMatchesQuery(icon, query)),

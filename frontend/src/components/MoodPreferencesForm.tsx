@@ -63,9 +63,12 @@ type PendingConfirm =
   | { kind: 'reset-all' }
   | { kind: 'remove-icon'; score: number; iconId: string }
 
-type IconSourceUi = 'builtin' | 'emoji' | 'upload' | 'catalog'
+/** Faces (builtin icons) live in the market tab next to the catalog packs. */
+type IconSourceUi = 'emoji' | 'upload' | 'catalog'
 
 const MAX_UPLOADS_PER_SCORE = 3
+/** The Essentials pack is a stored copy of the faces shown above the catalog packs. */
+const FACES_PACK_SLUGS = ['essentials']
 const APPEARANCE_SAVE_DELAY_MS = 400
 
 type AppearancePatch = { color?: string; label?: string }
@@ -84,11 +87,8 @@ function resolveIconSourceUi(iconType: MoodScoreIconType): IconSourceUi {
   if (iconType === 'upload') {
     return 'upload'
   }
-  if (iconType === 'catalog') {
+  if (iconType === 'catalog' || iconType === 'builtin') {
     return 'catalog'
-  }
-  if (iconType === 'builtin') {
-    return 'builtin'
   }
   return 'emoji'
 }
@@ -411,7 +411,7 @@ export function MoodPreferencesForm() {
   }
 
   const handleIconSourceChange = async (score: number, iconType: IconSourceUi) => {
-    if (guestLocked && iconType !== 'emoji' && iconType !== 'builtin') {
+    if (guestLocked && iconType === 'upload') {
       return
     }
     setSourceUiByScore((current) => ({ ...current, [score]: iconType }))
@@ -420,16 +420,6 @@ export function MoodPreferencesForm() {
         icon_type: 'emoji',
         icon: draftEmojis[score] ?? defaultMoodScoreEmoji(score),
       })
-      return
-    }
-    if (iconType === 'builtin') {
-      const current = scores[String(score)]
-      if (current?.icon_type !== 'builtin') {
-        await patchIconStyle(score, {
-          icon_type: 'builtin',
-          icon: defaultMoodScoreStyle(score, locale).icon,
-        })
-      }
       return
     }
     if (iconType === 'catalog') {
@@ -455,7 +445,7 @@ export function MoodPreferencesForm() {
   }
 
   const handleBuiltinSelect = async (score: number, slug: string) => {
-    setSourceUiByScore((current) => ({ ...current, [score]: 'builtin' }))
+    setSourceUiByScore((current) => ({ ...current, [score]: 'catalog' }))
     const current = scores[String(score)]
     if (current?.icon_type === 'builtin' && current.icon === slug) {
       return
@@ -762,8 +752,7 @@ export function MoodPreferencesForm() {
     const iconBusy = iconBusyScore === option.score
     const resolvedSourceUi =
       sourceUiByScore[option.score] ?? resolveIconSourceUi(currentStyle.icon_type)
-    const sourceUi =
-      guestLocked && resolvedSourceUi !== 'builtin' ? 'emoji' : resolvedSourceUi
+    const sourceUi = guestLocked && resolvedSourceUi === 'upload' ? 'emoji' : resolvedSourceUi
     const scoreUploads = uploadedIcons[option.score] ?? []
     const uploadFull = scoreUploads.length >= maxUploadsPerScore
     const label = draftLabels[option.score] ?? option.label
@@ -844,11 +833,11 @@ export function MoodPreferencesForm() {
           >
             <button
               type="button"
-              className={`segmented-control-option${sourceUi === 'builtin' ? ' is-active' : ''}`}
-              aria-pressed={sourceUi === 'builtin'}
-              onClick={() => void handleIconSourceChange(option.score, 'builtin')}
+              className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}`}
+              aria-pressed={sourceUi === 'catalog'}
+              onClick={() => void handleIconSourceChange(option.score, 'catalog')}
             >
-              {t('moodPreferences.iconTypeBuiltin')}
+              {t('moodPreferences.iconTypeCatalog')}
             </button>
             <button
               type="button"
@@ -868,32 +857,11 @@ export function MoodPreferencesForm() {
               {t('moodPreferences.iconTypeUpload')}
               {guestLocked ? <GuestLockBadge inline /> : null}
             </button>
-            {guestLocked ||
-            marketplaceEnabled ||
-            currentStyle.icon_type === 'catalog' ? (
-              <button
-                type="button"
-                className={`segmented-control-option${sourceUi === 'catalog' ? ' is-active' : ''}${guestLocked ? ' is-guest-locked-tab' : ''}`}
-                aria-pressed={sourceUi === 'catalog'}
-                disabled={guestLocked || iconBusy}
-                onClick={() => void handleIconSourceChange(option.score, 'catalog')}
-              >
-                {t('moodPreferences.iconTypeCatalog')}
-                {guestLocked ? <GuestLockBadge inline /> : null}
-              </button>
-            ) : null}
           </div>
           {guestLocked ? <GuestRegistrationCallout message={t('guest.uploadIconsLocked')} /> : null}
 
           <div className="mood-preferences-icon-panel">
-            {sourceUi === 'builtin' ? (
-              <BuiltinIconPicker
-                selectedSlug={currentStyle.icon_type === 'builtin' ? currentStyle.icon : null}
-                suggestedMood={option.score}
-                disabled={iconBusy}
-                onSelect={(slug) => void handleBuiltinSelect(option.score, slug)}
-              />
-            ) : sourceUi === 'emoji' ? (
+            {sourceUi === 'emoji' ? (
               <EmojiPicker
                 value={draftEmojis[option.score] ?? ''}
                 groups={MOOD_EMOJI_GROUPS}
@@ -903,15 +871,34 @@ export function MoodPreferencesForm() {
                 label={t('moodPreferences.chooseEmoji')}
               />
             ) : sourceUi === 'catalog' ? (
-              <CatalogIconPicker
-                selectedIconId={
-                  currentStyle.icon_type === 'catalog' ? currentStyle.icon : null
-                }
-                glowColor={previewStyle.color}
-                suggestedMood={option.score}
-                disabled={iconBusy}
-                onSelect={(icon) => void handleCatalogSelect(option.score, icon.id)}
-              />
+              <div className="mood-preferences-market">
+                <div className="mood-preferences-market-group">
+                  <span className="emoji-picker-group-label">{t('moodPreferences.facesGroup')}</span>
+                  <BuiltinIconPicker
+                    selectedSlug={currentStyle.icon_type === 'builtin' ? currentStyle.icon : null}
+                    suggestedMood={option.score}
+                    disabled={iconBusy}
+                    onSelect={(slug) => void handleBuiltinSelect(option.score, slug)}
+                  />
+                </div>
+                {!guestLocked && (marketplaceEnabled || currentStyle.icon_type === 'catalog') ? (
+                  <div className="mood-preferences-market-group">
+                    <span className="emoji-picker-group-label">
+                      {t('moodPreferences.packsGroup')}
+                    </span>
+                    <CatalogIconPicker
+                      selectedIconId={
+                        currentStyle.icon_type === 'catalog' ? currentStyle.icon : null
+                      }
+                      glowColor={previewStyle.color}
+                      suggestedMood={option.score}
+                      disabled={iconBusy}
+                      hiddenPackSlugs={FACES_PACK_SLUGS}
+                      onSelect={(icon) => void handleCatalogSelect(option.score, icon.id)}
+                    />
+                  </div>
+                ) : null}
+              </div>
             ) : (
               <div className="mood-preferences-upload-section">
                 <div className="mood-preferences-upload-row">
