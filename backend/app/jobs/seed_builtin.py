@@ -31,10 +31,10 @@ def seed_builtin_content(db: Session) -> list[Achievement]:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     with SessionLocal() as db:
-        added = seed_builtin_content(db)
+        added = [achievement.slug for achievement in seed_builtin_content(db)]
         db.commit()
     if added:
-        logger.info("Added built-in achievements: %s", ", ".join(a.slug for a in added))
+        logger.info("Added built-in achievements: %s", ", ".join(added))
 
 
 if __name__ == "__main__":
