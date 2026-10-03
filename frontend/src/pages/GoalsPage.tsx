@@ -520,6 +520,11 @@ export function GoalsPage() {
             onPendingCatalogChange={
               editor?.kind === 'create' ? setPendingCatalogIconId : undefined
             }
+            onCatalogIconPicked={
+              editor?.kind === 'create'
+                ? (icon) => setName((current) => (current.trim() ? current : icon.label))
+                : undefined
+            }
             onGoalChange={
               editor?.kind === 'edit'
                 ? (updated) => {

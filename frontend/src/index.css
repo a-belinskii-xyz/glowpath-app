@@ -4320,6 +4320,16 @@ code {
   gap: 0.35rem;
 }
 
+.image-crop-dialog-with-fields {
+  width: min(100%, 40rem);
+}
+
+.image-crop-fields {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
 .image-crop-title {
   margin: 0;
   font-size: 1.15rem;
@@ -10600,13 +10610,37 @@ a.plans-cta:hover {
   font-size: 0.8rem;
 }
 
-.staff-icon-card-editing {
-  grid-column: 1 / -1;
-  justify-items: stretch;
+.staff-icon-open {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
 }
 
-.staff-icon-card-editing > .catalog-icon-thumb {
-  justify-self: center;
+button.staff-icon-open {
+  cursor: pointer;
+}
+
+button.staff-icon-open:hover .staff-icon-label,
+button.staff-icon-open:focus-visible .staff-icon-label {
+  text-decoration: underline;
+}
+
+.staff-icon-order {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.staff-icon-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .staff-icon-editor {

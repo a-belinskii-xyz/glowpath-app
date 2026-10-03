@@ -16,6 +16,7 @@ import { EmojiPicker } from './EmojiPicker'
 import { GoalIcon } from './GoalIcon'
 import { ImageCropModal } from './ImageCropModal'
 import { CatalogIconPicker } from './CatalogIconPicker'
+import type { CatalogIconWithPackPublic } from '../types/marketplace'
 import { GuestLockBadge, GuestRegistrationCallout } from './GuestRegistrationLock'
 import { useAuth } from '../context/AuthContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
@@ -67,6 +68,8 @@ type GoalIconEditorProps = {
   onPendingUploadChange?: (upload: PendingIconUpload | null) => void
   pendingCatalogIconId?: string | null
   onPendingCatalogChange?: (iconId: string | null) => void
+  /** Create mode: a market icon was picked; its name can prefill the new item's name. */
+  onCatalogIconPicked?: (icon: CatalogIconWithPackPublic) => void
   disabled?: boolean
 }
 
@@ -95,6 +98,7 @@ export function GoalIconEditor({
   onPendingUploadChange,
   pendingCatalogIconId = null,
   onPendingCatalogChange,
+  onCatalogIconPicked,
   disabled = false,
 }: GoalIconEditorProps) {
   const { t } = useLocale()
@@ -218,8 +222,10 @@ export function GoalIconEditor({
     }
   }
 
-  const applyCatalogStyle = async (iconId: string) => {
+  const applyCatalogStyle = async (icon: CatalogIconWithPackPublic) => {
+    const iconId = icon.id
     onPendingUploadChange?.(null)
+    onCatalogIconPicked?.(icon)
     if (!goal || !onGoalChange) {
       onPendingCatalogChange?.(iconId)
       setSourceUi('catalog')
@@ -570,7 +576,7 @@ export function GoalIconEditor({
               selectedIconId={previewCatalogId}
               glowColor={color}
               disabled={busy}
-              onSelect={(icon) => void applyCatalogStyle(icon.id)}
+              onSelect={(icon) => void applyCatalogStyle(icon)}
             />
           ) : goal ? (
             <div className="mood-preferences-upload-section">
