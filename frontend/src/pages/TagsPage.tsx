@@ -470,6 +470,11 @@ export function TagsPage() {
               onPendingCatalogChange={
                 editor.kind === 'create-tag' ? setPendingCatalogIconId : undefined
               }
+              onCatalogIconPicked={
+                editor.kind === 'create-tag'
+                  ? (icon) => setName((current) => (current.trim() ? current : icon.label))
+                  : undefined
+              }
               onTagChange={
                 editor.kind === 'edit-tag'
                   ? (updated) => {

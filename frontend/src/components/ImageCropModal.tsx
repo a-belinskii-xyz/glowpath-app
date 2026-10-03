@@ -1,5 +1,6 @@
 import {
   type FormEvent,
+  type ReactNode,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type TouchEvent as ReactTouchEvent,
@@ -48,6 +49,11 @@ type ImageCropModalProps = {
   /** Optional extra action next to Cancel (e.g. drop a saved crop frame). */
   resetLabel?: string
   onReset?: () => void
+  /** Header text instead of the default crop title and hint. */
+  title?: string
+  hint?: string
+  /** Extra form fields under the crop area; submitted with the crop. */
+  children?: ReactNode
 }
 
 type DragState = {
@@ -85,6 +91,9 @@ export function ImageCropModal({
   onSave,
   resetLabel,
   onReset,
+  title,
+  hint,
+  children,
 }: ImageCropModalProps) {
   const { t } = useLocale()
   const titleId = useId()
@@ -380,7 +389,7 @@ export function ImageCropModal({
   return createPortal(
     <div className="image-crop-backdrop" role="presentation" onClick={() => !busy && onCancel()}>
       <form
-        className="image-crop-dialog card"
+        className={`image-crop-dialog card${children ? ' image-crop-dialog-with-fields' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -389,9 +398,9 @@ export function ImageCropModal({
       >
         <header className="image-crop-header">
           <h2 id={titleId} className="image-crop-title">
-            {t('moodPreferences.cropTitle')}
+            {title ?? t('moodPreferences.cropTitle')}
           </h2>
-          <p className="image-crop-hint">{t('moodPreferences.cropHint')}</p>
+          <p className="image-crop-hint">{hint ?? t('moodPreferences.cropHint')}</p>
         </header>
 
         <div className="image-crop-body">
@@ -457,6 +466,8 @@ export function ImageCropModal({
             />
           </div>
         </div>
+
+        {children ? <div className="image-crop-fields">{children}</div> : null}
 
         <div className="button-row image-crop-actions">
           {resetLabel && onReset ? (

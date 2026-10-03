@@ -11,6 +11,7 @@ import {
   publishStaffPack,
   rejectStaffPack,
   reorderStudioIcons,
+  replaceStudioIconImage,
   uploadStudioIcon,
 } from '../../api/marketplace'
 import { archiveStaffPack, setStaffPackSort } from '../../api/staff'
@@ -21,7 +22,6 @@ import { readMoodIconBlobForCrop } from '../../lib/imageCrop'
 import type {
   CatalogIconPublic,
   IconCrop,
-  IconUsage,
   PackDetailPublic,
   SearchTagPublic,
 } from '../../types/marketplace'
@@ -29,17 +29,25 @@ import { Alert } from '../Alert'
 import { CatalogIconThumb } from '../CatalogIconThumb'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { ChevronLeftIcon } from '../icons'
-import { ImageCropModal } from '../ImageCropModal'
 import { PageErrorAlert } from '../PageErrorAlert'
 import { PackStatusPill } from './PackStatusPill'
-import { ChipToggleRow } from './ChipToggleRow'
-import { ACCEPTED_ICON_TYPES, ICON_USAGES, MOOD_SCORES } from './iconFields'
-import { StaffIconEditor } from './StaffIconEditor'
+import { ACCEPTED_ICON_TYPES } from './iconFields'
+import { StaffIconDialog, type IconImage } from './StaffIconDialog'
+import {
+  draftFromIcon,
+  emptyIconDraft,
+  iconFieldsFromDraft,
+  type IconDraft,
+} from './StaffIconFields'
 
-type CropSession = {
-  icon: CatalogIconPublic
-  image: HTMLImageElement
-  objectUrl: string
+/** One dialog at a time: a new file from the upload queue, or an existing icon. */
+type IconSession =
+  | { mode: 'new'; file: File; source: IconImage; index: number; total: number }
+  | { mode: 'edit'; icon: CatalogIconPublic; source: IconImage }
+
+async function readIconImage(blob: Blob, fileName: string): Promise<IconImage | null> {
+  const loaded = await readMoodIconBlobForCrop(blob)
+  return 'error' in loaded ? null : { ...loaded, fileName }
 }
 
 type Details = {
@@ -62,11 +70,6 @@ function detailsFromPack(pack: PackDetailPublic): Details {
   }
 }
 
-function labelFromFileName(name: string): string {
-  const stem = name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim()
-  return stem ? stem.charAt(0).toUpperCase() + stem.slice(1) : 'Icon'
-}
-
 export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: () => void }) {
   const { t } = useLocale()
   const [pack, setPack] = useState<PackDetailPublic | null>(null)
@@ -77,18 +80,14 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
   const [busy, setBusy] = useState<string | null>(null)
   const [rejectNote, setRejectNote] = useState('')
 
-  const [files, setFiles] = useState<File[]>([])
   const [fileInputKey, setFileInputKey] = useState(0)
-  const [color, setColor] = useState('#94a3b8')
-  const [scores, setScores] = useState<number[]>([])
-  const [tags, setTags] = useState<string[]>([])
-  const [usage, setUsage] = useState<IconUsage[]>([])
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [queue, setQueue] = useState<File[]>([])
+  const [session, setSession] = useState<IconSession | null>(null)
+  // Usage, scores, colors and tags carry over to the next file of one upload.
+  const [lastDraft, setLastDraft] = useState<IconDraft | undefined>(undefined)
+  const [uploadedCount, setUploadedCount] = useState(0)
   const [uploadErrors, setUploadErrors] = useState<string[]>([])
-
-  const [editingIconId, setEditingIconId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<CatalogIconPublic | null>(null)
-  const [cropSession, setCropSession] = useState<CropSession | null>(null)
 
   const load = useCallback(async () => {
     const [detail, tagsResponse] = await Promise.all([
@@ -160,70 +159,115 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
     )
   }
 
-  const handleUpload = async () => {
-    if (files.length === 0 || busy) return
-    setBusy('upload')
-    setError(null)
-    setNotice(null)
-    setUploadErrors([])
-    const failures: string[] = []
-    let uploaded = 0
-    for (const [index, file] of files.entries()) {
-      setProgress({ done: index, total: files.length })
-      const label = labelFromFileName(file.name)
-      try {
-        await uploadStudioIcon(pack.id, file, {
-          labels: { en: label, ru: label },
-          suggested_colors: [color],
-          suggested_mood_scores: scores,
-          suggested_usage: usage,
-          search_tag_slugs: tags,
-        })
-        uploaded += 1
-      } catch (err) {
-        failures.push(
-          t('staff.uploadFailed', {
-            file: file.name,
-            error: formatApiError(err, t, 'errors.requestFailed'),
-          }),
-        )
-      }
-    }
-    setProgress(null)
-    setUploadErrors(failures)
-    setFiles([])
-    setFileInputKey((key) => key + 1)
-    try {
-      await load()
-    } catch (err) {
-      setError(formatApiError(err, t, 'errors.failedLoadMarket'))
-    }
-    if (uploaded > 0) setNotice(t('staff.uploaded', { count: uploaded }))
-    setBusy(null)
+  const closeSession = () => {
+    if (session) URL.revokeObjectURL(session.source.objectUrl)
+    setSession(null)
   }
 
-  const openCrop = (icon: CatalogIconPublic) =>
-    void run('crop-load', async () => {
+  /** Opens the next readable file of the upload; files the browser can't read are reported. */
+  const openNext = async (files: File[], done: number, total: number, failures: string[]) => {
+    let rest = files
+    while (rest.length > 0) {
+      const [file, ...others] = rest
+      const source = await readIconImage(file, file.name)
+      if (source) {
+        setQueue(others)
+        setUploadErrors(failures)
+        setSession({ mode: 'new', file, source, index: total - others.length, total })
+        return
+      }
+      failures = [...failures, t('staff.uploadFailed', { file: file.name, error: t('staff.cropUnavailable') })]
+      rest = others
+    }
+    setQueue([])
+    setUploadErrors(failures)
+    setSession(null)
+    if (done > 0) {
+      setNotice(t('staff.uploaded', { count: done }))
+      await load().catch((err) => setError(formatApiError(err, t, 'errors.failedLoadMarket')))
+    }
+  }
+
+  const startUpload = (files: File[]) => {
+    setFileInputKey((key) => key + 1)
+    if (files.length === 0) return
+    setError(null)
+    setNotice(null)
+    setUploadedCount(0)
+    setLastDraft(undefined)
+    void openNext(files, 0, files.length, [])
+  }
+
+  const finishFile = (uploaded: boolean, failure?: string) => {
+    if (!session || session.mode !== 'new') return
+    URL.revokeObjectURL(session.source.objectUrl)
+    const done = uploadedCount + (uploaded ? 1 : 0)
+    setUploadedCount(done)
+    void openNext(queue, done, session.total, failure ? [...uploadErrors, failure] : uploadErrors)
+  }
+
+  const saveNew = async (draft: IconDraft, crop: IconCrop) => {
+    if (!session || session.mode !== 'new' || busy) return
+    setBusy('upload')
+    setLastDraft(draft)
+    try {
+      const icon = await uploadStudioIcon(pack.id, session.file, iconFieldsFromDraft(draft))
+      await patchStudioIcon(icon.id, { crop })
+      finishFile(true)
+    } catch (err) {
+      setError(
+        t('staff.uploadFailed', {
+          file: session.file.name,
+          error: formatApiError(err, t, 'errors.requestFailed'),
+        }),
+      )
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const stopUpload = () => {
+    closeSession()
+    setQueue([])
+    if (uploadedCount > 0) {
+      setNotice(t('staff.uploaded', { count: uploadedCount }))
+      void load().catch((err) => setError(formatApiError(err, t, 'errors.failedLoadMarket')))
+    }
+  }
+
+  const openIcon = (icon: CatalogIconPublic) =>
+    void run('icon-load', async () => {
       const { blob } = await fetchCatalogIconBlob(icon.id)
-      const loaded = await readMoodIconBlobForCrop(blob)
-      if ('error' in loaded) {
+      const source = await readIconImage(blob, icon.slug)
+      if (!source) {
         setError(t('staff.cropUnavailable'))
         return
       }
-      setCropSession({ icon, image: loaded.image, objectUrl: loaded.objectUrl })
+      setSession({ mode: 'edit', icon, source })
     })
 
-  const closeCrop = () => {
-    if (cropSession) URL.revokeObjectURL(cropSession.objectUrl)
-    setCropSession(null)
-  }
+  const saveEdit = (icon: CatalogIconPublic, draft: IconDraft, crop: IconCrop | null) =>
+    run(
+      'icon',
+      async () => {
+        await patchStudioIcon(icon.id, {
+          ...iconFieldsFromDraft(draft),
+          ...(crop ? { crop } : { clear_crop: true }),
+        })
+        invalidateCatalogIcon(icon.id)
+        closeSession()
+      },
+      t('staff.iconSaved'),
+    )
 
-  const saveCrop = (icon: CatalogIconPublic, crop: IconCrop | null) =>
-    run('crop', async () => {
-      await patchStudioIcon(icon.id, crop ? { crop } : { clear_crop: true })
+  const replaceFile = (icon: CatalogIconPublic, file: File | undefined) => {
+    if (!file) return
+    void run('replace', async () => {
+      await replaceStudioIconImage(icon.id, file)
       invalidateCatalogIcon(icon.id)
-      closeCrop()
+      closeSession()
     })
+  }
 
   const moveIcon = (index: number, delta: number) => {
     const ids = pack.icons.map((icon) => icon.id)
@@ -356,58 +400,10 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
               accept={ACCEPTED_ICON_TYPES}
               multiple
               className="visually-hidden"
-              onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+              disabled={busy !== null || session !== null}
+              onChange={(event) => startUpload(Array.from(event.target.files ?? []))}
             />
           </label>
-          {files.length > 0 ? (
-            <p className="staff-card-meta">{t('staff.filesSelected', { count: files.length })}</p>
-          ) : null}
-
-          <fieldset className="staff-fieldset">
-            <legend className="form-hint">{t('staff.uploadDefaults')}</legend>
-            <label className="staff-color-field">
-              <span className="form-label">{t('staff.color')}</span>
-              <input type="color" value={color} onChange={(event) => setColor(event.target.value)} />
-            </label>
-            <div>
-              <span className="form-label">{t('staff.usage')}</span>
-              <ChipToggleRow
-                options={ICON_USAGES}
-                selected={usage}
-                label={(value) => t(`staff.usageOptions.${value}`)}
-                onChange={setUsage}
-              />
-            </div>
-            <div>
-              <span className="form-label">{t('staff.scores')}</span>
-              <ChipToggleRow
-                options={MOOD_SCORES}
-                selected={scores}
-                label={(score) => String(score)}
-                onChange={setScores}
-              />
-            </div>
-            {searchTags.length > 0 ? (
-              <div>
-                <span className="form-label">{t('staff.tags')}</span>
-                <ChipToggleRow
-                  options={searchTags.map((tag) => tag.slug)}
-                  selected={tags}
-                  label={(slug) => searchTags.find((tag) => tag.slug === slug)?.label ?? slug}
-                  onChange={setTags}
-                />
-              </div>
-            ) : null}
-          </fieldset>
-
-          <button
-            type="button"
-            className="button"
-            disabled={files.length === 0 || busy !== null}
-            onClick={() => void handleUpload()}
-          >
-            {progress ? t('staff.uploading', progress) : t('staff.upload')}
-          </button>
           {uploadErrors.length > 0 ? (
             <Alert variant="error">
               <ul className="staff-error-list">
@@ -427,80 +423,40 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
         <ul className="staff-icon-grid">
           {pack.icons.map((icon, index) => {
             const isCover = pack.cover_icon_id === icon.id
-            if (editingIconId === icon.id) {
-              return (
-                <li key={icon.id} className="staff-icon-card staff-icon-card-editing">
-                  <CatalogIconThumb
-                    iconId={icon.id}
-                    label={icon.label}
-                    glowColor={icon.suggested_colors[0] ?? null}
-                  />
-                  <StaffIconEditor
-                    icon={icon}
-                    searchTags={searchTags}
-                    busy={busy !== null}
-                    run={run}
-                    onImageChanged={() => invalidateCatalogIcon(icon.id)}
-                    onClose={() => setEditingIconId(null)}
-                  />
-                </li>
-              )
-            }
-            return (
-              <li key={icon.id} className="staff-icon-card">
+            const meta = [
+              isCover ? t('staff.cover') : null,
+              ...icon.suggested_usage.map((value) => t(`staff.usageOptions.${value}`)),
+            ].filter(Boolean)
+            const body = (
+              <>
                 <CatalogIconThumb
                   iconId={icon.id}
                   label={icon.label}
                   glowColor={icon.suggested_colors[0] ?? null}
                 />
-                <p className="staff-icon-label">{icon.label}</p>
-                <p className="muted staff-icon-slug">
-                  {[
-                    icon.slug,
-                    isCover ? t('staff.cover') : null,
-                    icon.crop ? t('staff.cropped') : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-                {icon.suggested_usage.length > 0 ? (
-                  <p className="muted staff-icon-slug">
-                    {icon.suggested_usage
-                      .map((value) => t(`staff.usageOptions.${value}`))
-                      .join(', ')}
-                  </p>
+                <span className="staff-icon-label">{icon.label}</span>
+                {meta.length > 0 ? (
+                  <span className="muted staff-icon-slug">{meta.join(' · ')}</span>
                 ) : null}
+              </>
+            )
+            return (
+              <li key={icon.id} className="staff-icon-card">
                 {editable ? (
-                  <div className="staff-icon-actions">
-                    <button
-                      type="button"
-                      className="button button-secondary button-small"
-                      onClick={() => setEditingIconId(icon.id)}
-                    >
-                      {t('common.edit')}
-                    </button>
-                    <button
-                      type="button"
-                      className="button button-secondary button-small"
-                      disabled={busy !== null}
-                      onClick={() => openCrop(icon)}
-                    >
-                      {t('staff.crop')}
-                    </button>
-                    {isCover ? null : (
-                      <button
-                        type="button"
-                        className="button button-secondary button-small"
-                        disabled={busy !== null}
-                        onClick={() =>
-                          void run('cover', () =>
-                            patchStudioPack(pack.id, { cover_icon_id: icon.id }),
-                          )
-                        }
-                      >
-                        {t('staff.makeCover')}
-                      </button>
-                    )}
+                  <button
+                    type="button"
+                    className="staff-icon-open"
+                    disabled={busy !== null}
+                    title={t('staff.editIconTitle', { name: icon.label })}
+                    onClick={() => openIcon(icon)}
+                  >
+                    {body}
+                  </button>
+                ) : (
+                  <div className="staff-icon-open">{body}</div>
+                )}
+                {editable ? (
+                  <div className="staff-icon-order">
                     <button
                       type="button"
                       className="button button-secondary button-small"
@@ -509,7 +465,7 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
                       title={t('staff.moveUp')}
                       onClick={() => moveIcon(index, -1)}
                     >
-                      ↑
+                      ←
                     </button>
                     <button
                       type="button"
@@ -519,14 +475,7 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
                       title={t('staff.moveDown')}
                       onClick={() => moveIcon(index, 1)}
                     >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      className="button button-danger-ghost button-small"
-                      onClick={() => setPendingDelete(icon)}
-                    >
-                      {t('common.delete')}
+                      →
                     </button>
                   </div>
                 ) : null}
@@ -536,17 +485,76 @@ export function StaffPackEditor({ packId, onBack }: { packId: string; onBack: ()
         </ul>
       )}
 
-      {cropSession ? (
-        <ImageCropModal
-          image={cropSession.image}
-          imageUrl={cropSession.objectUrl}
-          fileName={cropSession.icon.slug}
-          initialRegion={cropSession.icon.crop}
-          isSaving={busy === 'crop'}
-          onCancel={closeCrop}
-          onSaveRegion={(region) => saveCrop(cropSession.icon, region)}
-          resetLabel={cropSession.icon.crop ? t('staff.cropReset') : undefined}
-          onReset={() => saveCrop(cropSession.icon, null)}
+      {session?.mode === 'new' ? (
+        <StaffIconDialog
+          key={`new-${session.index}-${session.file.name}`}
+          source={session.source}
+          initialDraft={emptyIconDraft(lastDraft)}
+          title={t('staff.newIconTitle', { index: session.index, total: session.total })}
+          hint={t('staff.newIconHint', { file: session.file.name })}
+          searchTags={searchTags}
+          busy={busy === 'upload'}
+          onSave={(draft, crop) => void saveNew(draft, crop)}
+          onCancel={stopUpload}
+          secondaryLabel={session.total > 1 ? t('staff.skipFile') : undefined}
+          onSecondary={() => finishFile(false)}
+        />
+      ) : null}
+
+      {session?.mode === 'edit' ? (
+        <StaffIconDialog
+          key={`edit-${session.icon.id}`}
+          source={session.source}
+          initialDraft={draftFromIcon(session.icon)}
+          initialCrop={session.icon.crop}
+          title={t('staff.editIconTitle', { name: session.icon.label })}
+          searchTags={searchTags}
+          busy={busy !== null}
+          onSave={(draft, crop) => void saveEdit(session.icon, draft, crop)}
+          onCancel={closeSession}
+          secondaryLabel={session.icon.crop ? t('staff.cropReset') : undefined}
+          onSecondary={(draft) => void saveEdit(session.icon, draft, null)}
+          footer={
+            <div className="staff-icon-dialog-actions">
+              {pack.cover_icon_id === session.icon.id ? null : (
+                <button
+                  type="button"
+                  className="button button-secondary button-small"
+                  disabled={busy !== null}
+                  onClick={() =>
+                    void run('cover', async () => {
+                      await patchStudioPack(pack.id, { cover_icon_id: session.icon.id })
+                      closeSession()
+                    })
+                  }
+                >
+                  {t('staff.makeCover')}
+                </button>
+              )}
+              <label className="button button-secondary button-small staff-file-button">
+                {t('staff.replaceFile')}
+                <input
+                  type="file"
+                  accept={ACCEPTED_ICON_TYPES}
+                  className="visually-hidden"
+                  disabled={busy !== null}
+                  onChange={(event) => replaceFile(session.icon, event.target.files?.[0])}
+                />
+              </label>
+              <button
+                type="button"
+                className="button button-danger-ghost button-small"
+                disabled={busy !== null}
+                onClick={() => {
+                  const icon = session.icon
+                  closeSession()
+                  setPendingDelete(icon)
+                }}
+              >
+                {t('common.delete')}
+              </button>
+            </div>
+          }
         />
       ) : null}
 

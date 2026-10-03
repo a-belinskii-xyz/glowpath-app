@@ -16,6 +16,7 @@ import { EmojiPicker } from './EmojiPicker'
 import { ImageCropModal } from './ImageCropModal'
 import { TagIcon } from './TagIcon'
 import { CatalogIconPicker } from './CatalogIconPicker'
+import type { CatalogIconWithPackPublic } from '../types/marketplace'
 import { GuestLockBadge, GuestRegistrationCallout } from './GuestRegistrationLock'
 import { useAuth } from '../context/AuthContext'
 import { isGuestDiaryMode } from '../lib/guestMode'
@@ -69,6 +70,8 @@ type TagIconEditorProps = {
   onPendingUploadChange?: (upload: PendingIconUpload | null) => void
   pendingCatalogIconId?: string | null
   onPendingCatalogChange?: (iconId: string | null) => void
+  /** Create mode: a market icon was picked; its name can prefill the new item's name. */
+  onCatalogIconPicked?: (icon: CatalogIconWithPackPublic) => void
   disabled?: boolean
 }
 
@@ -98,6 +101,7 @@ export function TagIconEditor({
   onPendingUploadChange,
   pendingCatalogIconId = null,
   onPendingCatalogChange,
+  onCatalogIconPicked,
   disabled = false,
 }: TagIconEditorProps) {
   const { t } = useLocale()
@@ -221,8 +225,10 @@ export function TagIconEditor({
     }
   }
 
-  const applyCatalogStyle = async (iconId: string) => {
+  const applyCatalogStyle = async (icon: CatalogIconWithPackPublic) => {
+    const iconId = icon.id
     onPendingUploadChange?.(null)
+    onCatalogIconPicked?.(icon)
     if (!tag || !groupId || !onTagChange) {
       onPendingCatalogChange?.(iconId)
       setSourceUi('catalog')
@@ -578,7 +584,7 @@ export function TagIconEditor({
               selectedIconId={previewCatalogId}
               glowColor={color}
               disabled={busy}
-              onSelect={(icon) => void applyCatalogStyle(icon.id)}
+              onSelect={(icon) => void applyCatalogStyle(icon)}
             />
           ) : tag && groupId ? (
             <div className="mood-preferences-upload-section">
