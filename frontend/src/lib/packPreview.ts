@@ -10,11 +10,21 @@ const DAY_SCORES = [4, 3, 5, 4, 2, 4, 5, 3, 4, 1, 3, 4, 5, 4, 3, 2, 4, 5, 5, 3, 
 const SECOND_ENTRY_EVERY = 4
 const PREVIEW_ENTRY_DAYS = 3
 
-/** Icons the pack recommends for `usage`; a pack without any hints counts for every usage. */
+/**
+ * Icons the pack recommends for `usage`. A pack without any hints still styles the mood
+ * scale, but tags and goals only take icons recommended for them.
+ */
 export function iconsForUsage(icons: CatalogIconPublic[], usage: IconUsage): CatalogIconPublic[] {
   const hasHints = icons.some((icon) => icon.suggested_usage.length > 0)
-  return hasHints ? icons.filter((icon) => icon.suggested_usage.includes(usage)) : icons
+  if (!hasHints) return usage === 'mood' ? icons : []
+  return icons.filter((icon) => icon.suggested_usage.includes(usage))
 }
+
+/** Icons for made-up tags and goals when neither the pack nor the viewer has any. */
+const DEFAULT_TAG_EMOJI = ['💼', '🏃', '👫', '😴', '🏡', '🌴']
+const DEFAULT_GOAL_EMOJI = ['🚶', '📖', '💧', '🧘']
+const DEFAULT_TAG_COLOR = '#60a5fa'
+const DEFAULT_GOAL_COLOR = '#34d399'
 
 function iconColor(icon: CatalogIconPublic, fallback = FALLBACK_COLOR): string {
   return icon.suggested_colors[0] ?? fallback
@@ -69,6 +79,9 @@ export function buildPreviewData(options: {
   goalLabels: string[]
   /** One note per mood score, from awful to great. */
   notes: string[]
+  /** The viewer's own tags and goals, shown when the pack has no icons for them. */
+  ownTags?: MoodEntryTag[]
+  ownGoals?: GoalPublic[]
   now?: Date
 }): PreviewData {
   const { icons, scale, tagLabels, goalLabels, notes } = options
@@ -80,16 +93,17 @@ export function buildPreviewData(options: {
 
   const tagIcons = iconsForUsage(icons, 'tag')
   const goalIcons = iconsForUsage(icons, 'goal')
-  const tags: MoodEntryTag[] = tagIcons.slice(0, tagLabels.length).map((icon, index) => ({
+  const mockTag = (index: number, style: Pick<MoodEntryTag, 'color' | 'icon_type' | 'icon'>) => ({
     id: `preview-tag-${index}`,
     slug: `preview-tag-${index}`,
     label: tagLabels[index],
     group_id: 'preview',
-    color: iconColor(icon),
-    icon_type: 'catalog',
-    icon: icon.id,
-  }))
-  const goals: GoalPublic[] = goalIcons.slice(0, goalLabels.length).map((icon, index) => ({
+    ...style,
+  })
+  const mockGoal = (
+    index: number,
+    style: Pick<GoalPublic, 'color' | 'icon_type' | 'icon'>,
+  ): GoalPublic => ({
     id: `preview-goal-${index}`,
     slug: `preview-goal-${index}`,
     label: goalLabels[index],
@@ -103,12 +117,41 @@ export function buildPreviewData(options: {
     sort_order: index,
     show_on_entry: true,
     show_in_stats: true,
-    color: iconColor(icon),
-    icon_type: 'catalog',
-    icon: icon.id,
     completed_this_week: 0,
     day_amount: 0,
-  }))
+    ...style,
+  })
+
+  const ownTags = (options.ownTags ?? []).slice(0, tagLabels.length)
+  const ownGoals = (options.ownGoals ?? []).slice(0, goalLabels.length)
+  const tags: MoodEntryTag[] =
+    tagIcons.length > 0
+      ? tagIcons.slice(0, tagLabels.length).map((icon, index) =>
+          mockTag(index, { color: iconColor(icon), icon_type: 'catalog', icon: icon.id }),
+        )
+      : ownTags.length > 0
+        ? ownTags
+        : tagLabels.map((_, index) =>
+            mockTag(index, {
+              color: DEFAULT_TAG_COLOR,
+              icon_type: 'emoji',
+              icon: DEFAULT_TAG_EMOJI[index % DEFAULT_TAG_EMOJI.length],
+            }),
+          )
+  const goals: GoalPublic[] =
+    goalIcons.length > 0
+      ? goalIcons.slice(0, goalLabels.length).map((icon, index) =>
+          mockGoal(index, { color: iconColor(icon), icon_type: 'catalog', icon: icon.id }),
+        )
+      : ownGoals.length > 0
+        ? ownGoals
+        : goalLabels.map((_, index) =>
+            mockGoal(index, {
+              color: DEFAULT_GOAL_COLOR,
+              icon_type: 'emoji',
+              icon: DEFAULT_GOAL_EMOJI[index % DEFAULT_GOAL_EMOJI.length],
+            }),
+          )
   const entryGoals: MoodEntryGoal[] = goals.map((goal) => ({
     id: goal.id,
     slug: goal.slug,

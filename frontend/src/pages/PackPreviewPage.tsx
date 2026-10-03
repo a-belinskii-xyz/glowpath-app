@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { listGoals } from '../api/goals'
 import { getMarketplacePack } from '../api/marketplace'
+import { listTagGroups } from '../api/tagGroups'
 import { EntryRow } from '../components/EntryRow'
 import { EntryTagsCompact } from '../components/EntryTagsCompact'
 import { ChevronLeftIcon } from '../components/icons'
@@ -16,7 +18,8 @@ import { formatDayHeading, formatMonthHeading, formatTime } from '../lib/datetim
 import { formatApiError } from '../lib/errors'
 import { buildPreviewData, iconsForUsage, previewMoodScale } from '../lib/packPreview'
 import type { PackDetailPublic } from '../types/marketplace'
-import type { MoodEntryGoal } from '../types/mood'
+import type { GoalPublic } from '../types/goal'
+import type { MoodEntryGoal, MoodEntryTag } from '../types/mood'
 
 /** Mock data is laid out in UTC so days never shift with the viewer's time zone. */
 const PREVIEW_TIME_ZONE = 'UTC'
@@ -32,6 +35,8 @@ export function PackPreviewPage() {
   const [pack, setPack] = useState<PackDetailPublic | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<CalendarMode>('moods')
+  const [ownTags, setOwnTags] = useState<MoodEntryTag[]>([])
+  const [ownGoals, setOwnGoals] = useState<GoalPublic[]>([])
   const dateLocale = intlLocale(locale)
 
   useEffect(() => {
@@ -49,6 +54,27 @@ export function PackPreviewPage() {
     }
   }, [packId, t])
 
+  // Fallback for packs without tag / goal icons; the preview still works without them.
+  useEffect(() => {
+    let cancelled = false
+    listTagGroups()
+      .then((response) => {
+        if (cancelled) return
+        setOwnTags(
+          response.items.filter((group) => group.show_on_entry).flatMap((group) => group.tags),
+        )
+      })
+      .catch(() => undefined)
+    listGoals()
+      .then((response) => {
+        if (!cancelled) setOwnGoals(response.items.filter((goal) => goal.show_on_entry))
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const icons = useMemo(() => pack?.icons ?? [], [pack])
   const scale = useMemo(() => previewMoodScale(icons, ownScale), [icons, ownScale])
   const data = useMemo(
@@ -59,8 +85,10 @@ export function PackPreviewPage() {
         tagLabels: t('packPreview.tags').split('|'),
         goalLabels: t('packPreview.goals').split('|'),
         notes: t('packPreview.notes').split('|'),
+        ownTags,
+        ownGoals,
       }),
-    [icons, scale, t],
+    [icons, scale, t, ownTags, ownGoals],
   )
   const goalsById = useMemo(() => new Map(data.goals.map((goal) => [goal.id, goal])), [data])
   const entryGoals: MoodEntryGoal[] = useMemo(
@@ -91,6 +119,8 @@ export function PackPreviewPage() {
 
   const hasHints = icons.some((icon) => icon.suggested_usage.length > 0)
   const noMoodIcons = icons.length > 0 && iconsForUsage(icons, 'mood').length === 0
+  const noTagIcons = iconsForUsage(icons, 'tag').length === 0
+  const noGoalIcons = iconsForUsage(icons, 'goal').length === 0
 
   return (
     <section className="page page-pack-preview">
@@ -125,18 +155,12 @@ export function PackPreviewPage() {
             </ul>
 
             <h2 className="pack-preview-subtitle">{t('packPreview.tagsTitle')}</h2>
-            {data.tags.length > 0 ? (
-              <EntryTagsCompact tags={data.tags} />
-            ) : (
-              <p className="form-hint">{t('packPreview.notForTags')}</p>
-            )}
+            {noTagIcons ? <p className="form-hint">{t('packPreview.notForTags')}</p> : null}
+            <EntryTagsCompact tags={data.tags} />
 
             <h2 className="pack-preview-subtitle">{t('packPreview.goalsTitle')}</h2>
-            {entryGoals.length > 0 ? (
-              <EntryTagsCompact goals={entryGoals} />
-            ) : (
-              <p className="form-hint">{t('packPreview.notForGoals')}</p>
-            )}
+            {noGoalIcons ? <p className="form-hint">{t('packPreview.notForGoals')}</p> : null}
+            <EntryTagsCompact goals={entryGoals} />
           </div>
 
           <div className="calendar-panel">
