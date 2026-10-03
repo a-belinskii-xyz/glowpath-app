@@ -330,3 +330,21 @@ def test_starter_content_adds_only_missing_achievements(
     entry = db.scalar(select(Achievement).where(Achievement.slug == "first_entry"))
     assert entry is not None
     assert entry.labels["en"] == "Edited by staff"
+
+
+def test_startup_seed_adds_missing_builtin_achievements(db: Session) -> None:
+    from app.jobs.seed_builtin import seed_builtin_content
+
+    db.execute(delete(Achievement).where(Achievement.slug.in_(["first_entry", "streak_3"])))
+    existing = db.scalar(select(Achievement).where(Achievement.slug == "first_note"))
+    if existing is not None:
+        existing.labels = {"en": "Kept", "ru": "Оставлено"}
+    db.flush()
+
+    added = {achievement.slug for achievement in seed_builtin_content(db)}
+    assert {"first_entry", "streak_3"} <= added
+    assert "email_arrival" not in added
+    if existing is not None:
+        assert "first_note" not in added
+        assert existing.labels["en"] == "Kept"
+    assert seed_builtin_content(db) == []
