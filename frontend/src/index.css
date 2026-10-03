@@ -4862,6 +4862,18 @@ code {
   min-height: 2.8rem;
 }
 
+.mood-preferences-market {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.mood-preferences-market-group {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
 .mood-preferences-icon-source-options {
   display: flex;
   flex-wrap: wrap;
