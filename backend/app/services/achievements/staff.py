@@ -64,7 +64,7 @@ def _unique_slug(db: Session, base: str) -> str:
     return candidate
 
 
-def _staff_query() -> Select[Achievement]:
+def _staff_query() -> Select[tuple[Achievement]]:
     return select(Achievement).options(
         selectinload(Achievement.rewards).selectinload(AchievementReward.pack),
         selectinload(Achievement.rewards)
