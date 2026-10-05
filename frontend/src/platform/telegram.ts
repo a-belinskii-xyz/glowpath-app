@@ -540,6 +540,8 @@ export function setTelegramMainButton(options: {
   visible: boolean
   enabled: boolean
   progress?: boolean
+  /** Hide the button for a moment (keyboard up) and keep the in-page fallback hidden too. */
+  suspended?: boolean
   onClick: () => void
 }): () => void {
   const webApp = getTelegramWebApp()
@@ -567,9 +569,14 @@ export function setTelegramMainButton(options: {
   } else {
     button.hideProgress()
   }
-  button.show()
   root.classList.add('has-tg-main-button')
-  root.style.setProperty('--tg-main-button-space', MAIN_BUTTON_SPACE)
+  if (options.suspended) {
+    button.hide()
+    root.style.setProperty('--tg-main-button-space', '0px')
+  } else {
+    button.show()
+    root.style.setProperty('--tg-main-button-space', MAIN_BUTTON_SPACE)
+  }
   const onClick = options.onClick
   button.onClick(onClick)
   return () => {
