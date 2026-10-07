@@ -515,15 +515,19 @@ export function OnboardingPage() {
               </div>
             ) : null}
 
-            <button
-              type="button"
-              className="button button-secondary button-block onboarding-skip"
-              disabled={isSubmitting}
-              onClick={() => void finish(true)}
-            >
-              {t('onboarding.skip')}
-            </button>
-            <p className="muted onboarding-skip-hint">{t('onboarding.skipHint')}</p>
+            {phase === 'questions' ? (
+              <>
+                <button
+                  type="button"
+                  className="button button-secondary button-block onboarding-skip"
+                  disabled={isSubmitting}
+                  onClick={() => void finish(true)}
+                >
+                  {t('onboarding.skip')}
+                </button>
+                <p className="muted onboarding-skip-hint">{t('onboarding.skipHint')}</p>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}
