@@ -18,6 +18,7 @@ import { EntryDetailPage } from './pages/EntryDetailPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { GalleryPage } from './pages/GalleryPage'
 import { GoalsPage } from './pages/GoalsPage'
+import { MyPage } from './pages/MyPage'
 import { GoogleCallbackPage } from './pages/GoogleCallbackPage'
 import { TelegramCallbackPage } from './pages/TelegramCallbackPage'
 import { HomePage } from './pages/HomePage'
@@ -91,6 +92,7 @@ function App() {
                       <Route path="entries/:id/edit" element={<EditEntryPage />} />
                       <Route path="entries/:id" element={<EntryDetailPage />} />
                       <Route path="gallery" element={<GalleryPage />} />
+                      <Route path="me" element={<MyPage />} />
                       <Route path="goals" element={<GoalsPage />} />
                       <Route path="settings" element={<SettingsPage />} />
                       <Route path="settings/diary" element={<DiarySettingsPage />} />

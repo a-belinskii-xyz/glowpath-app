@@ -11722,3 +11722,371 @@ html.is-telegram .recap-backdrop {
 .staff-reward-remove {
   margin-bottom: 0.2rem;
 }
+
+/* GP-44: "Me" — the week's goals and what worked out */
+.page-my {
+  max-width: 36rem;
+  /* Room for the floating "Write" button above the bottom navigation. */
+  padding-bottom: 9rem;
+}
+
+@media (min-width: 900px) {
+  .page-my {
+    padding-bottom: 5.5rem;
+  }
+}
+
+.my-header {
+  margin-bottom: 0.75rem;
+}
+
+.my-header h1 {
+  margin: 0;
+}
+
+.my-week {
+  margin: 0.15rem 0 0;
+  font-size: 0.95rem;
+}
+
+.my-hello {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--chrome-radius-card);
+  background: color-mix(in oklab, var(--chrome-action-quiet) 12%, var(--chrome-surface));
+  line-height: 1.45;
+}
+
+.my-card {
+  padding: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.my-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.my-card-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.my-card-link {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.my-empty {
+  margin: 0.25rem 0 0;
+  color: var(--chrome-text-secondary);
+  line-height: 1.45;
+}
+
+.my-goal-list,
+.my-win-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.my-goal {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--chrome-border-subtle);
+}
+
+.my-goal:first-child {
+  border-top: 0;
+}
+
+.my-goal-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  font-size: 1.35rem;
+}
+
+.my-goal-icon img {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.my-goal-body {
+  display: grid;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.my-goal-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.my-goal-hint {
+  color: var(--chrome-text-secondary);
+  font-size: 0.82rem;
+}
+
+.my-goal-days {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+
+.my-day {
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  background: var(--chrome-surface-inset);
+  color: var(--chrome-text-secondary);
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.my-day.is-full {
+  background: var(--goal-color);
+  color: #fff;
+}
+
+.my-day.is-partial {
+  background: linear-gradient(90deg, var(--goal-color) 50%, var(--chrome-surface-inset) 50%);
+  color: var(--chrome-text-primary);
+}
+
+.my-day.is-today {
+  outline: 2px solid color-mix(in oklab, var(--goal-color) 70%, transparent);
+  outline-offset: 1px;
+}
+
+.my-day.is-before {
+  visibility: hidden;
+}
+
+.my-goal-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid var(--chrome-border-default);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--chrome-text-secondary);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.my-goal-mark.is-full {
+  border-color: var(--goal-color);
+  background: var(--goal-color);
+  color: #fff;
+}
+
+.my-goal-mark.is-partial {
+  border-color: var(--goal-color);
+  background: linear-gradient(90deg, var(--goal-color) 50%, transparent 50%);
+  color: var(--chrome-text-primary);
+}
+
+.my-win,
+.my-win:hover {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--chrome-border-subtle);
+  color: inherit;
+  text-decoration: none;
+}
+
+.my-win-list li:first-child .my-win {
+  border-top: 0;
+}
+
+.my-win-star {
+  color: #e2a83a;
+  line-height: 1.35;
+}
+
+.my-win-body {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.my-win-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.35;
+}
+
+.my-win-date {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--chrome-text-secondary);
+  font-size: 0.82rem;
+}
+
+.my-win-mood {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+}
+
+.my-write {
+  position: fixed;
+  left: 50%;
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+  z-index: 5;
+  width: min(36rem, calc(100% - 2rem));
+  min-height: 3.1rem;
+  transform: translateX(-50%);
+  border: 0;
+  border-radius: var(--chrome-radius-pill);
+  background: var(--chrome-action-quiet);
+  color: var(--chrome-text-inverse);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgb(60 50 120 / 25%);
+  cursor: pointer;
+}
+
+html[data-color-scheme='dark'] .my-write,
+html[data-color-scheme='dark'] .my-primary {
+  color: #171d2a;
+}
+
+@media (min-width: 900px) {
+  .my-write {
+    bottom: 1.5rem;
+  }
+}
+
+.my-primary {
+  background: var(--chrome-action-quiet);
+}
+
+.my-levels {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.my-level {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 0.95rem;
+  border: 2px solid var(--chrome-border-default);
+  border-radius: var(--chrome-radius-card);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.my-level.is-selected {
+  border-color: var(--goal-color);
+  background: color-mix(in oklab, var(--goal-color) 10%, transparent);
+}
+
+.my-level > span:last-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.my-level-dot {
+  flex: none;
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.my-level-hint {
+  color: var(--chrome-text-secondary);
+  font-size: 0.85rem;
+}
+
+.my-gentle {
+  margin: 0.9rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.my-win-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.my-win-input {
+  font: inherit;
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.my-moods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.my-mood {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0.3rem;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--mood-color) 22%, transparent);
+  cursor: pointer;
+}
+
+.my-mood.is-selected {
+  border-color: var(--mood-color);
+  background: color-mix(in oklab, var(--mood-color) 40%, transparent);
+}
+
+.my-mood img,
+.my-mood .mood-score-icon-upload {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.my-star-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--chrome-radius-control);
+  background: var(--chrome-surface-inset);
+  cursor: pointer;
+}
+
+.my-star-toggle > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.my-star-toggle input {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
