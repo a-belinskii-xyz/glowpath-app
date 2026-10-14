@@ -1,6 +1,6 @@
 # Development
 
-Technical guide to GlowPath: stack, local setup, configuration, auth flows, reminders, Telegram, demo data and operator CLIs. Production deployment: [DEPLOY.md](DEPLOY.md).
+Technical guide to GlowPath: stack, local setup, configuration, auth flows, reminders, Telegram, demo data and operator CLIs. Production deployment: [DEPLOY.md](DEPLOY.md). How the parts fit together and why: [architecture.md](architecture.md).
 
 ## Stack
 

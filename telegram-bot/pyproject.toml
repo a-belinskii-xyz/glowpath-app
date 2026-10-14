@@ -1,5 +1,5 @@
 [project]
-name = "mood-tracker-telegram-bot"
+name = "glowpath-telegram-bot"
 version = "0.1.0"
 description = "Telegram webhook bot for GlowPath"
 requires-python = ">=3.12"
