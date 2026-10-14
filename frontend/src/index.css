@@ -12090,3 +12090,85 @@ html[data-color-scheme='dark'] .my-primary {
   height: 1.25rem;
   flex: none;
 }
+
+/* GP-45: calendar from the user's own start */
+.month-calendar-fold-row {
+  display: flex;
+}
+
+.month-calendar-fold {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border: 1px dashed var(--chrome-border-default);
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--chrome-text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.month-calendar-fold[aria-expanded='true'] {
+  border-style: solid;
+}
+
+.month-calendar-cell-before-start {
+  visibility: hidden;
+}
+
+.calendar-start-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  cursor: default;
+}
+
+.calendar-start-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.calendar-start-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--chrome-border-default);
+  border-radius: var(--chrome-radius-control);
+  cursor: pointer;
+}
+
+.calendar-start-option.is-active {
+  border-color: var(--chrome-focus-ring);
+  background: var(--chrome-focus-ring-soft);
+}
+
+.calendar-start-option input {
+  margin-top: 0.2rem;
+}
+
+.calendar-start-option-title {
+  display: block;
+  font-weight: 600;
+}
+
+.calendar-start-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--chrome-border-default);
+}
+
+.calendar-start-row > :first-child {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.calendar-start-date {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}

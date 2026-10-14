@@ -41,6 +41,7 @@ import {
   toPublicGoal,
   type GuestGoal,
 } from './goalAnalytics'
+import { dayKey } from '../lib/datetime'
 import { guestDbGet, guestDbSet } from './db'
 import { computeGuestCalendar, computeGuestStats, computeGuestStreak } from './moodAnalytics'
 import { seedBaseDefaults, seedFromSuggestions } from './provision'
@@ -477,7 +478,11 @@ export async function patchGuestMoodPreferences(
     ...current,
     use_historical_colors: body.use_historical_colors ?? current.use_historical_colors,
     show_streak: body.show_streak ?? current.show_streak,
+    calendar_from_start: body.calendar_from_start ?? current.calendar_from_start,
     scores: { ...current.scores },
+  }
+  if ('calendar_start_on' in body) {
+    next.calendar_start_on = body.calendar_start_on ?? null
   }
   if ('composer_blocks' in body) {
     next.composer_blocks = body.composer_blocks ?? null
@@ -602,14 +607,27 @@ export async function getGuestGoalStats(
   return computeGuestGoalStats(entries, goals, params, timezone)
 }
 
+async function guestFirstEntryOn(): Promise<string | null> {
+  const entries = (await guestDbGet<MoodEntryPublic[]>(KEYS.entries)) ?? []
+  if (entries.length === 0) return null
+  const meta = await getGuestMeta()
+  const timezone = meta?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC'
+  const first = Math.min(...entries.map((entry) => Date.parse(entry.recorded_at)))
+  return dayKey(new Date(first).toISOString(), timezone)
+}
+
 export async function getGuestMoodPreferences(locale: ApiLocale): Promise<MoodPreferencesPublic> {
   const stored = await guestDbGet<MoodPreferencesPublic>(KEYS.moodPreferences)
+  const first_entry_on = await guestFirstEntryOn()
   if (stored) {
     return {
       ...stored,
       composer_blocks: stored.composer_blocks ?? null,
       show_streak: stored.show_streak ?? true,
       use_historical_colors: stored.use_historical_colors ?? true,
+      calendar_from_start: stored.calendar_from_start ?? false,
+      calendar_start_on: stored.calendar_start_on ?? null,
+      first_entry_on,
     }
   }
   const scores = resolveMoodPreferences(null, locale)
@@ -617,6 +635,9 @@ export async function getGuestMoodPreferences(locale: ApiLocale): Promise<MoodPr
     scores,
     use_historical_colors: true,
     show_streak: true,
+    calendar_from_start: false,
+    calendar_start_on: null,
+    first_entry_on,
     composer_blocks: null,
   }
 }

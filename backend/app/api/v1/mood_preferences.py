@@ -96,6 +96,9 @@ def patch_mood_preferences(
             score_updates=updates or None,
             use_historical_colors=body.use_historical_colors,
             show_streak=body.show_streak,
+            calendar_from_start=body.calendar_from_start,
+            calendar_start_on=body.calendar_start_on,
+            update_calendar_start_on="calendar_start_on" in body.model_fields_set,
             composer_blocks=composer_blocks,
             update_composer_blocks=update_composer,
         )
