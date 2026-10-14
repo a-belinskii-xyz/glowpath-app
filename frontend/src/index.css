@@ -11873,7 +11873,7 @@ html.is-telegram .recap-backdrop {
 }
 
 .my-day.is-before {
-  visibility: hidden;
+  opacity: 0.45;
 }
 
 .my-goal-mark {
@@ -11973,8 +11973,15 @@ html[data-color-scheme='dark'] .my-primary {
 }
 
 @media (min-width: 900px) {
+  /* The sidebar shifts the content, so stay in the page column instead of the viewport. */
   .my-write {
+    position: sticky;
+    left: auto;
     bottom: 1.5rem;
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+    transform: none;
   }
 }
 
