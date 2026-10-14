@@ -36,6 +36,7 @@ from app.services.diary_archive.schema import (
     ArchiveEntryGoal,
     ArchiveEntryTag,
     ArchiveGoal,
+    ArchiveGoalCheckin,
     ArchiveNoteTemplate,
     ArchiveReminder,
     ArchiveTag,
@@ -132,7 +133,10 @@ def _tag_groups_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveTagGroup
 
 def _goals_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveGoal]:
     goals = db.scalars(
-        select(Goal).where(Goal.user_id == user_id).order_by(Goal.sort_order, Goal.created_at)
+        select(Goal)
+        .where(Goal.user_id == user_id)
+        .options(selectinload(Goal.checkins))
+        .order_by(Goal.sort_order, Goal.created_at)
     )
     return [
         ArchiveGoal(
@@ -142,6 +146,7 @@ def _goals_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveGoal]:
             times_per_week=goal.times_per_week,
             target_amount=goal.target_amount,
             unit=goal.unit,
+            partial_label=goal.partial_label,
             starts_on=goal.starts_on,
             ends_on=goal.ends_on,
             color=goal.color,
@@ -150,6 +155,10 @@ def _goals_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveGoal]:
             show_in_stats=goal.show_in_stats,
             icon_type=goal.icon_type,
             icon=goal.icon,
+            checkins=[
+                ArchiveGoalCheckin(day=checkin.day, level=checkin.level)
+                for checkin in sorted(goal.checkins, key=lambda item: item.day)
+            ],
         )
         for goal in goals
     ]

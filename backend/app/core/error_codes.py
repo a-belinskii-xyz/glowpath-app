@@ -67,6 +67,8 @@ class ErrorCode(StrEnum):
     GOAL_AMOUNT_REQUIRED = "goal_amount_required"
     INVALID_GOAL_AMOUNT = "invalid_goal_amount"
     INVALID_GOAL_UNIT = "invalid_goal_unit"
+    GOAL_CHECKIN_IN_FUTURE = "goal_checkin_in_future"
+    INVALID_GOAL_PARTIAL_LABEL = "invalid_goal_partial_label"
     PERIOD_END_BEFORE_START = "period_end_before_start"
     ENDS_ON_BEFORE_STARTS_ON = "ends_on_before_starts_on"
 

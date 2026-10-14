@@ -6,6 +6,7 @@ from app.models.catalog_icon import CatalogIcon
 from app.models.catalog_icon_search_tag import CatalogIconSearchTag
 from app.models.diary_restore import DiaryRestore
 from app.models.goal import Goal
+from app.models.goal_checkin import GoalCheckin
 from app.models.guest_device import GuestDevice
 from app.models.icon_pack import IconPack
 from app.models.icon_pack_unlock import IconPackUnlock
@@ -46,6 +47,7 @@ __all__ = [
     "CatalogIconSearchTag",
     "DiaryRestore",
     "Goal",
+    "GoalCheckin",
     "GuestDevice",
     "IconPack",
     "IconPackUnlock",

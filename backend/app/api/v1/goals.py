@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from typing import Annotated
 from urllib.parse import quote
 
@@ -16,6 +16,7 @@ from app.models.user import User
 from app.models.user_goal_icon import UserGoalIcon
 from app.schemas.goal import (
     GoalCalendarResponse,
+    GoalCheckinRequest,
     GoalCreate,
     GoalIconListResponse,
     GoalIconMetaPublic,
@@ -41,6 +42,7 @@ from app.services.goal_service import (
     GoalPeriodProgress,
     create_goal,
     delete_goal,
+    delete_goal_checkin,
     get_goal_calendar,
     get_goal_stats,
     list_goals,
@@ -49,6 +51,8 @@ from app.services.goal_service import (
     reorder_goals,
     serialize_goal,
     serialize_goals,
+    set_goal_checkin,
+    user_today,
 )
 from app.services.storage import ObjectStorage, StorageError
 
@@ -73,6 +77,7 @@ def _to_public(
     locale: str,
     completed_this_week: int = 0,
     day_amount: int = 0,
+    week_marks: dict[date, str] | None = None,
 ) -> GoalPublic:
     return GoalPublic.model_validate(
         serialize_goal(
@@ -80,6 +85,7 @@ def _to_public(
             locale=locale,
             completed_this_week=completed_this_week,
             day_amount=day_amount,
+            week_marks=week_marks,
         )
     )
 
@@ -103,6 +109,7 @@ def _to_list_response(
                 goal_id: item.amount_on(progress_on or _user_today(user))
                 for goal_id, item in progress.items()
             },
+            week_marks_by_goal={goal_id: item.levels for goal_id, item in progress.items()},
         )
     ]
     return GoalListResponse(
@@ -124,19 +131,24 @@ def _snapshot(
     return item.completed_days, item.amount_on(day)
 
 
-def _public_with_week_stats(db: Session, user: User, goal: Goal, locale: str) -> GoalPublic:
-    progress = load_goals_week_stats(db, user=user, goals=[goal])
-    completed, day_amount = _snapshot(progress, goal.id, day=_user_today(user))
-    return _to_public(goal, locale=locale, completed_this_week=completed, day_amount=day_amount)
+def _public_with_week_stats(
+    db: Session, user: User, goal: Goal, locale: str, *, progress_on: date | None = None
+) -> GoalPublic:
+    day = progress_on or _user_today(user)
+    progress = load_goals_week_stats(db, user=user, goals=[goal], reference_date=day)
+    completed, day_amount = _snapshot(progress, goal.id, day=day)
+    item = progress.get(goal.id)
+    return _to_public(
+        goal,
+        locale=locale,
+        completed_this_week=completed,
+        day_amount=day_amount,
+        week_marks=item.levels if item is not None else None,
+    )
 
 
 def _user_today(user: User) -> date:
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
-    try:
-        return datetime.now(ZoneInfo(user.timezone)).date()
-    except ZoneInfoNotFoundError:
-        return datetime.now(UTC).date()
+    return user_today(user.timezone)
 
 
 def _icon_meta(icon: UserGoalIcon) -> GoalIconMetaPublic:
@@ -179,6 +191,7 @@ def create_goal_endpoint(
             tracking_kind=body.tracking_kind,
             target_amount=body.target_amount,
             unit=body.unit,
+            partial_label=body.partial_label,
             starts_on=body.starts_on,
             ends_on=body.ends_on,
             slug=body.slug,
@@ -457,6 +470,8 @@ def update_goal(
             target_amount_set="target_amount" in body.model_fields_set,
             unit=body.unit,
             unit_set="unit" in body.model_fields_set,
+            partial_label=body.partial_label,
+            partial_label_set="partial_label" in body.model_fields_set,
             starts_on=body.starts_on,
             ends_on=body.ends_on,
             ends_on_set="ends_on" in body.model_fields_set,
@@ -485,3 +500,37 @@ def remove_goal(
         _handle_error(exc)
         raise
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/{goal_id}/checkins/{day}", response_model=GoalPublic)
+def put_goal_checkin(
+    goal_id: uuid.UUID,
+    day: date,
+    body: GoalCheckinRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
+) -> GoalPublic:
+    """Mark a goal done on ``day`` without a mood entry; the response covers that day's week."""
+    try:
+        goal = set_goal_checkin(db, user=current_user, goal_id=goal_id, day=day, level=body.level)
+    except GoalError as exc:
+        _handle_error(exc)
+        raise
+    return _public_with_week_stats(db, current_user, goal, locale, progress_on=day)
+
+
+@router.delete("/{goal_id}/checkins/{day}", response_model=GoalPublic)
+def remove_goal_checkin(
+    goal_id: uuid.UUID,
+    day: date,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
+) -> GoalPublic:
+    try:
+        goal = delete_goal_checkin(db, user=current_user, goal_id=goal_id, day=day)
+    except GoalError as exc:
+        _handle_error(exc)
+        raise
+    return _public_with_week_stats(db, current_user, goal, locale, progress_on=day)
