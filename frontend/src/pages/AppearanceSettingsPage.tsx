@@ -1,3 +1,4 @@
+import { CalendarStartSetting } from '../components/CalendarStartSetting'
 import { HistoricalColorsSetting } from '../components/HistoricalColorsSetting'
 import { SettingsSection } from '../components/SettingsSection'
 import { StreakDisplaySetting } from '../components/StreakDisplaySetting'
@@ -18,6 +19,7 @@ export function AppearanceSettingsPage() {
         ) : (
           <>
             <StreakDisplaySetting />
+            <CalendarStartSetting />
             <HistoricalColorsSetting />
           </>
         )}

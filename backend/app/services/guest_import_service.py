@@ -196,6 +196,12 @@ def import_guest_diary(
                 prefs.use_historical_colors = bool(prefs_data["use_historical_colors"])
             if "show_streak" in prefs_data:
                 prefs.show_streak = bool(prefs_data["show_streak"])
+            if "calendar_from_start" in prefs_data:
+                prefs.calendar_from_start = bool(prefs_data["calendar_from_start"])
+            if "calendar_start_on" in prefs_data:
+                prefs.calendar_start_on = _calendar_start(
+                    prefs_data["calendar_start_on"], user.timezone
+                )
             if "composer_blocks" in prefs_data:
                 from app.services.mood_preferences_service import sanitize_composer_blocks
 
@@ -331,6 +337,16 @@ def _import_goal_checkins(
                 continue
             taken.add((goal_id, day))
             db.add(GoalCheckin(user_id=user.id, goal_id=goal_id, day=day, level=level))
+
+
+def _calendar_start(value: object, timezone_name: str) -> date | None:
+    try:
+        day = date.fromisoformat(str(value)) if value else None
+    except ValueError:
+        return None
+    if day is not None and day > _local_today(timezone_name):
+        return None
+    return day
 
 
 def _local_today(timezone_name: str) -> date:

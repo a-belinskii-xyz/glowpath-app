@@ -24,6 +24,9 @@ type MoodPreferencesContextValue = {
   scores: Record<string, MoodScoreStylePublic>
   useHistoricalColors: boolean
   showStreak: boolean
+  calendarFromStart: boolean
+  calendarStartOn: string | null
+  firstEntryOn: string | null
   composerLayout: ResolvedComposerBlock[]
   /** Raw saved layout; null when the user has never customized. */
   composerBlocks: MoodPreferencesPublic['composer_blocks']
@@ -44,6 +47,9 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
   )
   const [useHistoricalColors, setUseHistoricalColors] = useState(true)
   const [showStreak, setShowStreak] = useState(true)
+  const [calendarFromStart, setCalendarFromStart] = useState(false)
+  const [calendarStartOn, setCalendarStartOn] = useState<string | null>(null)
+  const [firstEntryOn, setFirstEntryOn] = useState<string | null>(null)
   const [composerBlocks, setComposerBlocks] = useState<MoodPreferencesPublic['composer_blocks']>(
     null,
   )
@@ -53,6 +59,9 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
     setScores(preferences.scores)
     setUseHistoricalColors(preferences.use_historical_colors)
     setShowStreak(preferences.show_streak ?? true)
+    setCalendarFromStart(preferences.calendar_from_start ?? false)
+    setCalendarStartOn(preferences.calendar_start_on ?? null)
+    setFirstEntryOn(preferences.first_entry_on ?? null)
     setComposerBlocks(preferences.composer_blocks ?? null)
   }, [])
 
@@ -72,6 +81,9 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
       setShowStreak(true)
+      setCalendarFromStart(false)
+      setCalendarStartOn(null)
+      setFirstEntryOn(null)
       setComposerBlocks(null)
       return
     }
@@ -84,6 +96,9 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
       setShowStreak(true)
+      setCalendarFromStart(false)
+      setCalendarStartOn(null)
+      setFirstEntryOn(null)
       setComposerBlocks(null)
     } finally {
       setIsLoading(false)
@@ -107,6 +122,9 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       setScores(defaultMoodPreferences(locale))
       setUseHistoricalColors(true)
       setShowStreak(true)
+      setCalendarFromStart(false)
+      setCalendarStartOn(null)
+      setFirstEntryOn(null)
       setComposerBlocks(null)
       setIsLoading(false)
       return
@@ -125,6 +143,9 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       scores,
       useHistoricalColors,
       showStreak,
+      calendarFromStart,
+      calendarStartOn,
+      firstEntryOn,
       composerLayout,
       composerBlocks,
       isLoading,
@@ -137,6 +158,9 @@ export function MoodPreferencesProvider({ children }: { children: ReactNode }) {
       scores,
       useHistoricalColors,
       showStreak,
+      calendarFromStart,
+      calendarStartOn,
+      firstEntryOn,
       composerLayout,
       composerBlocks,
       isLoading,
