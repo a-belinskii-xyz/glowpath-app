@@ -326,6 +326,7 @@ def create_mood_entry(
     source: str | None = None,
     goal_progress: list[Any] | None = None,
     fill_quantity_from_target: bool = False,
+    is_win: bool = False,
     locale: str = "en",
 ) -> tuple[MoodEntry, list[dict[str, Any]]]:
     recorded_at_utc = _to_utc(recorded_at)
@@ -355,6 +356,7 @@ def create_mood_entry(
         logged_timezone=timezone_name,
         note=note,
         source=source,
+        is_win=is_win,
     )
     db.add(entry)
     db.flush()
@@ -404,6 +406,7 @@ def list_mood_entries(
     recorded_from: datetime | None = None,
     recorded_to: datetime | None = None,
     is_favorite: bool | None = None,
+    is_win: bool | None = None,
 ) -> list[MoodEntry]:
     stmt = select(MoodEntry).options(*_entry_load_options()).where(MoodEntry.user_id == user_id)
     if recorded_from is not None:
@@ -412,6 +415,8 @@ def list_mood_entries(
         stmt = stmt.where(MoodEntry.recorded_at < _to_utc(recorded_to))
     if is_favorite is not None:
         stmt = stmt.where(MoodEntry.is_favorite.is_(is_favorite))
+    if is_win is not None:
+        stmt = stmt.where(MoodEntry.is_win.is_(is_win))
     return list(
         db.scalars(
             stmt.order_by(MoodEntry.recorded_at.desc(), MoodEntry.created_at.desc())
@@ -1345,6 +1350,7 @@ def serialize_mood_entry(
         "score_color": _display_score_color(entry, color_settings),
         "note": entry.note,
         "is_favorite": entry.is_favorite,
+        "is_win": entry.is_win,
         "tags": tags,
         "goals": goals,
         "attachments": attachments,

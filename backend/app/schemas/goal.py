@@ -1,7 +1,7 @@
 import re
 import uuid
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -63,7 +63,10 @@ PartialLabel = Annotated[str, Field(max_length=MAX_GOAL_PARTIAL_LABEL_LENGTH)]
 
 class GoalDayMark(BaseModel):
     date: date
-    level: GoalCheckinLevel
+    # "full" or "partial" count toward the week; "started" is a quantity day below
+    # the amount that counts.
+    level: Literal["full", "partial", "started"]
+    amount: int | None = None
 
 
 class GoalPublic(BaseModel):
@@ -76,6 +79,7 @@ class GoalPublic(BaseModel):
     target_amount: int | None = None
     unit: str | None = None
     partial_label: str | None = None
+    min_amount: int | None = None
     starts_on: date
     ends_on: date | None = None
     sort_order: int
@@ -103,6 +107,7 @@ class GoalCreate(BaseModel):
     target_amount: TargetAmount | None = None
     unit: UnitValue | None = None
     partial_label: PartialLabel | None = None
+    min_amount: TargetAmount | None = None
     starts_on: date
     ends_on: date | None = None
     slug: Slug | None = None
@@ -139,6 +144,7 @@ class GoalPatch(BaseModel):
     target_amount: TargetAmount | None = None
     unit: UnitValue | None = None
     partial_label: PartialLabel | None = None
+    min_amount: TargetAmount | None = None
     starts_on: date | None = None
     ends_on: date | None = None
     sort_order: int | None = None
@@ -198,7 +204,9 @@ class GoalStatsResponse(BaseModel):
 
 
 class GoalCheckinRequest(BaseModel):
-    level: GoalCheckinLevel
+    # Binary goals send a level; quantity goals send the amount done that day.
+    level: GoalCheckinLevel | None = None
+    amount: int | None = Field(default=None, ge=1, le=MAX_GOAL_AMOUNT)
 
 
 class GoalReorderRequest(BaseModel):

@@ -55,6 +55,7 @@ class ArchiveTagGroup(_ArchiveModel):
 class ArchiveGoalCheckin(_ArchiveModel):
     day: date
     level: Literal["partial", "full"] = "full"
+    amount: int | None = Field(default=None, ge=1)
 
 
 class ArchiveGoal(_ArchiveModel):
@@ -65,6 +66,7 @@ class ArchiveGoal(_ArchiveModel):
     target_amount: int | None = Field(default=None, ge=1)
     unit: str | None = Field(default=None, max_length=32)
     partial_label: str | None = Field(default=None, max_length=80)
+    min_amount: int | None = Field(default=None, ge=1)
     starts_on: date | None = None
     ends_on: date | None = None
     color: str = Field(default=DEFAULT_GOAL_COLOR, max_length=7)
@@ -130,6 +132,7 @@ class ArchiveEntry(_ArchiveModel):
     score_color: str | None = Field(default=None, max_length=7)
     note: str | None = None
     is_favorite: bool = False
+    is_win: bool = False
     tags: list[ArchiveEntryTag] = Field(default_factory=list)
     goals: list[ArchiveEntryGoal] = Field(default_factory=list)
     attachments: list[ArchiveAttachment] = Field(default_factory=list)

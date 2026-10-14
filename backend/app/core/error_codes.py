@@ -70,6 +70,9 @@ class ErrorCode(StrEnum):
     GOAL_CHECKIN_IN_FUTURE = "goal_checkin_in_future"
     INVALID_GOAL_PARTIAL_LABEL = "invalid_goal_partial_label"
     CALENDAR_START_IN_FUTURE = "calendar_start_in_future"
+    INVALID_GOAL_MIN_AMOUNT = "invalid_goal_min_amount"
+    GOAL_CHECKIN_AMOUNT_REQUIRED = "goal_checkin_amount_required"
+    GOAL_CHECKIN_LEVEL_REQUIRED = "goal_checkin_level_required"
     PERIOD_END_BEFORE_START = "period_end_before_start"
     ENDS_ON_BEFORE_STARTS_ON = "ends_on_before_starts_on"
 

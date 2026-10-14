@@ -67,15 +67,19 @@ def test_check_in_counts_and_can_be_changed_or_removed(
     marked = _check_in(auth_client, token, goal["id"], today)
     assert marked.status_code == 200, marked.text
     assert marked.json()["completed_this_week"] == 1
-    assert marked.json()["week_marks"] == [{"date": today.isoformat(), "level": "partial"}]
+    assert marked.json()["week_marks"] == [
+        {"date": today.isoformat(), "level": "partial", "amount": None}
+    ]
     # Amounts belong to entries only.
     assert marked.json()["day_amount"] == 0
 
     full = _check_in(auth_client, token, goal["id"], today, "full")
-    assert full.json()["week_marks"] == [{"date": today.isoformat(), "level": "full"}]
+    assert full.json()["week_marks"] == [
+        {"date": today.isoformat(), "level": "full", "amount": None}
+    ]
     listed = _listed(auth_client, token, goal["id"], today)
     assert listed["completed_this_week"] == 1
-    assert listed["week_marks"] == [{"date": today.isoformat(), "level": "full"}]
+    assert listed["week_marks"] == [{"date": today.isoformat(), "level": "full", "amount": None}]
 
     removed = auth_client.delete(
         f"/v1/goals/{goal['id']}/checkins/{today.isoformat()}", headers=_auth(token)
@@ -165,9 +169,9 @@ def test_entry_day_shows_as_full_and_check_ins_feed_stats_and_calendar(
         assert _check_in(auth_client, token, goal["id"], second_day).status_code == 200
 
     listed = _listed(auth_client, token, goal["id"], week_start)
-    expected = [{"date": week_start.isoformat(), "level": "full"}]
+    expected = [{"date": week_start.isoformat(), "level": "full", "amount": None}]
     if second_day <= today:
-        expected.append({"date": second_day.isoformat(), "level": "partial"})
+        expected.append({"date": second_day.isoformat(), "level": "partial", "amount": None})
     assert listed["week_marks"] == expected
     assert listed["completed_this_week"] == len(expected)
 
@@ -255,8 +259,8 @@ def test_check_ins_survive_export_and_restore(
     archived = next(item for item in payload["goals"] if item["slug"] == goal["slug"])
     assert archived["partial_label"] == "a snack"
     assert archived["checkins"] == [
-        {"day": yesterday.isoformat(), "level": "full"},
-        {"day": today.isoformat(), "level": "partial"},
+        {"day": yesterday.isoformat(), "level": "full", "amount": None},
+        {"day": today.isoformat(), "level": "partial", "amount": None},
     ]
 
     target_email = "checkin-import@example.com"
@@ -294,3 +298,66 @@ def test_check_ins_survive_export_and_restore(
     auth_client.post(f"/v1/account/restores/{again.json()['id']}/apply", headers=_auth(target))
     count = len(list(db.scalars(select(GoalCheckin).where(GoalCheckin.goal_id == restored.id))))
     assert count == 2
+
+
+def test_quantity_check_in_counts_from_the_minimum(
+    auth_client: TestClient, mailer: FakeEmailService, db: Session
+) -> None:
+    """GP-46: a quantity day counts from ``min_amount``; less shows as started."""
+    email = "checkin-quantity@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    today = _today(db, email)
+    goal = _create_goal(
+        auth_client,
+        token,
+        tracking_kind="quantity",
+        target_amount=100,
+        unit="pages",
+        min_amount=60,
+    )
+    assert goal["min_amount"] == 60
+
+    needs_amount = _check_in(auth_client, token, goal["id"], today)
+    assert needs_amount.status_code == 422
+    assert needs_amount.json()["detail"]["code"] == "goal_checkin_amount_required"
+
+    def put(amount: int) -> dict[str, Any]:
+        response = auth_client.put(
+            f"/v1/goals/{goal['id']}/checkins/{today.isoformat()}",
+            json={"amount": amount},
+            headers=_auth(token),
+        )
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    below = put(40)
+    assert below["week_marks"] == [{"date": today.isoformat(), "level": "started", "amount": 40}]
+    assert below["completed_this_week"] == 0
+    assert below["day_amount"] == 40
+
+    counted = put(78)
+    assert counted["week_marks"] == [{"date": today.isoformat(), "level": "partial", "amount": 78}]
+    assert counted["completed_this_week"] == 1
+
+    full = put(100)
+    assert full["week_marks"][0]["level"] == "full"
+
+    # Without a minimum only the full target counts.
+    cleared = auth_client.patch(
+        f"/v1/goals/{goal['id']}", json={"min_amount": None}, headers=_auth(token)
+    )
+    assert cleared.json()["min_amount"] is None
+    assert put(78)["completed_this_week"] == 0
+
+    too_big = auth_client.patch(
+        f"/v1/goals/{goal['id']}", json={"min_amount": 150}, headers=_auth(token)
+    )
+    assert too_big.status_code == 400
+    assert too_big.json()["detail"]["code"] == "invalid_goal_min_amount"
+
+    # Lowering the target keeps the minimum inside it.
+    auth_client.patch(f"/v1/goals/{goal['id']}", json={"min_amount": 60}, headers=_auth(token))
+    lowered = auth_client.patch(
+        f"/v1/goals/{goal['id']}", json={"target_amount": 50}, headers=_auth(token)
+    )
+    assert lowered.json()["min_amount"] == 50

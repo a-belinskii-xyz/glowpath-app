@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, String, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Integer, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,5 +39,7 @@ class GoalCheckin(TimestampMixin, Base):
     )
     day: Mapped[date] = mapped_column(Date)
     level: Mapped[str] = mapped_column(String(16))
+    # Quantity goals: how much was done that day (GP-46); null for binary goals.
+    amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     goal: Mapped["Goal"] = relationship(back_populates="checkins")

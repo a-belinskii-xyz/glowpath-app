@@ -261,8 +261,8 @@ def test_guest_import_carries_goal_checkins(
     walk = next(item for item in listed.json()["items"] if item["slug"] == "walk_outside")
     assert walk["partial_label"] == "five minutes at the door"
     assert walk["week_marks"] == [
-        {"date": "2026-08-27", "level": "partial"},
-        {"date": "2026-08-28", "level": "full"},
+        {"date": "2026-08-27", "level": "partial", "amount": None},
+        {"date": "2026-08-28", "level": "full", "amount": None},
     ]
     # GP-45: the calendar start setting comes along too.
     prefs = auth_client.get("/v1/mood-preferences", headers=headers).json()

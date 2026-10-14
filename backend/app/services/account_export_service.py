@@ -147,6 +147,7 @@ def _goals_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveGoal]:
             target_amount=goal.target_amount,
             unit=goal.unit,
             partial_label=goal.partial_label,
+            min_amount=goal.min_amount,
             starts_on=goal.starts_on,
             ends_on=goal.ends_on,
             color=goal.color,
@@ -156,7 +157,7 @@ def _goals_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveGoal]:
             icon_type=goal.icon_type,
             icon=goal.icon,
             checkins=[
-                ArchiveGoalCheckin(day=checkin.day, level=checkin.level)
+                ArchiveGoalCheckin(day=checkin.day, level=checkin.level, amount=checkin.amount)
                 for checkin in sorted(goal.checkins, key=lambda item: item.day)
             ],
         )
@@ -211,6 +212,7 @@ def _entry_payload(
         score_color=entry.score_color,
         note=entry.note,
         is_favorite=entry.is_favorite,
+        is_win=entry.is_win,
         tags=[
             ArchiveEntryTag(
                 group=link.tag.group.slug,

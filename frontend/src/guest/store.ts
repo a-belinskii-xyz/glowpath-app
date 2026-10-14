@@ -8,6 +8,7 @@ import {
 import type {
   GoalCalendarResponse,
   GoalCheckinLevel,
+  GoalCheckinWrite,
   GoalListResponse,
   GoalPatch,
   GoalPublic,
@@ -364,6 +365,7 @@ export async function createGuestGoal(body: GoalWrite, locale: ApiLocale = 'en')
     target_amount: body.target_amount ?? null,
     unit: body.unit ?? null,
     partial_label: body.partial_label?.trim() || null,
+    min_amount: body.tracking_kind === 'quantity' ? (body.min_amount ?? null) : null,
     starts_on: body.starts_on,
     ends_on: body.ends_on ?? null,
     sort_order: body.sort_order ?? goals.length,
@@ -412,6 +414,12 @@ export async function patchGuestGoal(
     icon_type: body.icon_type ?? current.icon_type,
     icon: body.icon ?? current.icon,
   }
+  // Keep the amount that counts inside the target, and only for quantity goals.
+  const minAmount = body.min_amount === undefined ? current.min_amount : body.min_amount
+  next.min_amount =
+    next.tracking_kind === 'quantity' && minAmount != null && next.target_amount != null
+      ? Math.min(minAmount, next.target_amount)
+      : null
   goals[index] = next
   await saveGuestGoals(goals)
   return next
@@ -420,7 +428,11 @@ export async function patchGuestGoal(
 async function updateGuestGoalCheckins(
   goalId: string,
   day: string,
-  update: (checkins: Record<string, GoalCheckinLevel>) => void,
+  update: (
+    checkins: Record<string, GoalCheckinLevel>,
+    amounts: Record<string, number>,
+    goal: GuestGoal,
+  ) => void,
 ): Promise<GoalPublic> {
   const goals = (await guestDbGet<GuestGoal[]>(KEYS.goals)) ?? []
   const index = goals.findIndex((goal) => goal.id === goalId)
@@ -428,8 +440,9 @@ async function updateGuestGoalCheckins(
     throw new Error('Goal not found')
   }
   const checkins = { ...(goals[index].checkins ?? {}) }
-  update(checkins)
-  goals[index] = { ...goals[index], checkins }
+  const amounts = { ...(goals[index].checkin_amounts ?? {}) }
+  update(checkins, amounts, goals[index])
+  goals[index] = { ...goals[index], checkins, checkin_amounts: amounts }
   await saveGuestGoals(goals)
   const { items } = await listGuestGoals({ progressOn: day })
   return items.find((goal) => goal.id === goalId) ?? goals[index]
@@ -438,16 +451,23 @@ async function updateGuestGoalCheckins(
 export function setGuestGoalCheckin(
   goalId: string,
   day: string,
-  level: GoalCheckinLevel,
+  body: GoalCheckinWrite,
 ): Promise<GoalPublic> {
-  return updateGuestGoalCheckins(goalId, day, (checkins) => {
-    checkins[day] = level
+  return updateGuestGoalCheckins(goalId, day, (checkins, amounts, goal) => {
+    if ('amount' in body) {
+      amounts[day] = body.amount
+      checkins[day] = goal.target_amount != null && body.amount >= goal.target_amount ? 'full' : 'partial'
+    } else {
+      checkins[day] = body.level
+      delete amounts[day]
+    }
   })
 }
 
 export function deleteGuestGoalCheckin(goalId: string, day: string): Promise<GoalPublic> {
-  return updateGuestGoalCheckins(goalId, day, (checkins) => {
+  return updateGuestGoalCheckins(goalId, day, (checkins, amounts) => {
     delete checkins[day]
+    delete amounts[day]
   })
 }
 
@@ -705,6 +725,9 @@ export async function listGuestMoodEntries(
   if (params.is_favorite !== undefined) {
     filtered = filtered.filter((e) => e.is_favorite === params.is_favorite)
   }
+  if (params.is_win !== undefined) {
+    filtered = filtered.filter((e) => Boolean(e.is_win) === params.is_win)
+  }
   filtered.sort((a, b) => b.recorded_at.localeCompare(a.recorded_at))
   const offset = params.offset ?? 0
   const limit = params.limit ?? 20
@@ -758,6 +781,7 @@ export async function createGuestMoodEntry(body: MoodEntryCreate, locale: ApiLoc
     score_color: style.color,
     note: body.note ?? null,
     is_favorite: false,
+    is_win: body.is_win ?? false,
     tags: body.tag_ids.map((id) => tagsById.get(id)).filter(Boolean) as TagPublic[],
     goals: body.goal_ids
       .map((id) => {
@@ -931,6 +955,7 @@ export async function buildGuestImportPayload(): Promise<Record<string, unknown>
       target_amount: goal.target_amount,
       unit: goal.unit,
       partial_label: goal.partial_label ?? null,
+      min_amount: goal.min_amount ?? null,
       starts_on: goal.starts_on,
       ends_on: goal.ends_on,
       sort_order: goal.sort_order,
@@ -940,6 +965,7 @@ export async function buildGuestImportPayload(): Promise<Record<string, unknown>
       icon_type: goal.icon_type,
       icon: goal.icon,
       checkins: goal.checkins ?? {},
+      checkin_amounts: goal.checkin_amounts ?? {},
     })),
     note_templates: noteTemplates,
     mood_preferences: moodPreferences,
@@ -948,6 +974,7 @@ export async function buildGuestImportPayload(): Promise<Record<string, unknown>
       recorded_at: entry.recorded_at,
       note: entry.note,
       is_favorite: entry.is_favorite,
+      is_win: entry.is_win ?? false,
       tag_ids: entry.tags.map((tag) => tag.id),
       goal_ids: entry.goals.map((goal) => goal.id),
       goal_progress: entry.goals

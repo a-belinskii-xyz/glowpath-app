@@ -445,6 +445,11 @@ def _new_goal(
         target_amount=(data.target_amount or 1) if quantity else None,
         unit=data.unit if quantity else None,
         partial_label=data.partial_label,
+        min_amount=(
+            min(data.min_amount, data.target_amount or 1)
+            if quantity and data.min_amount is not None
+            else None
+        ),
         starts_on=starts_on,
         ends_on=ends_on,
         sort_order=data.sort_order,
@@ -477,7 +482,13 @@ def _restore_goal_checkins(
                 continue
             taken.add((goal.id, checkin.day))
             db.add(
-                GoalCheckin(user_id=user_id, goal_id=goal.id, day=checkin.day, level=checkin.level)
+                GoalCheckin(
+                    user_id=user_id,
+                    goal_id=goal.id,
+                    day=checkin.day,
+                    level=checkin.level,
+                    amount=checkin.amount if goal.tracking_kind == "quantity" else None,
+                )
             )
 
 
@@ -624,6 +635,7 @@ def _restore_entries(
             ),
             note=data.note,
             is_favorite=data.is_favorite,
+            is_win=data.is_win,
             source=RESTORE_SOURCE,
             origin_id=data.id,
             restore_id=restore.id,
