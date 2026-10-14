@@ -20,6 +20,7 @@ from app.db.mixins import TimestampMixin
 from app.db.names import fk_column, table_name
 
 if TYPE_CHECKING:
+    from app.models.goal_checkin import GoalCheckin
     from app.models.mood_entry_goal import MoodEntryGoal
     from app.models.user import User
     from app.models.user_goal_icon import UserGoalIcon
@@ -70,6 +71,8 @@ class Goal(TimestampMixin, Base):
     )
     target_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
     unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # What "a little" means for this goal, e.g. "at least a snack" (GP-43).
+    partial_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
     starts_on: Mapped[date] = mapped_column(Date)
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
@@ -110,4 +113,9 @@ class Goal(TimestampMixin, Base):
     icons: Mapped[list["UserGoalIcon"]] = relationship(
         back_populates="goal",
         cascade="all, delete-orphan",
+    )
+    checkins: Mapped[list["GoalCheckin"]] = relationship(
+        back_populates="goal",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

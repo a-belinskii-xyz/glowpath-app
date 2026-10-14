@@ -22,6 +22,7 @@ from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.models.diary_restore import DiaryRestore, DiaryRestoreStatus
 from app.models.goal import DEFAULT_GOAL_COLOR, DEFAULT_GOAL_ICON, Goal
+from app.models.goal_checkin import GoalCheckin
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MAX_PHOTOS_PER_ENTRY, MoodEntryAttachment
 from app.models.mood_entry_goal import MoodEntryGoal
@@ -443,6 +444,7 @@ def _new_goal(
         times_per_week=data.times_per_week,
         target_amount=(data.target_amount or 1) if quantity else None,
         unit=data.unit if quantity else None,
+        partial_label=data.partial_label,
         starts_on=starts_on,
         ends_on=ends_on,
         sort_order=data.sort_order,
@@ -453,6 +455,30 @@ def _new_goal(
         icon=icon,
         restore_id=restore_id,
     )
+
+
+def _restore_goal_checkins(
+    db: Session, archive: DiaryArchive, diary: _Diary, *, user_id: uuid.UUID
+) -> None:
+    """Add check-ins for days the goal has none yet; existing marks stay as they are."""
+    goal_ids = [goal.id for goal in diary.goals.values()]
+    taken = {
+        (goal_id, day)
+        for goal_id, day in db.execute(
+            select(GoalCheckin.goal_id, GoalCheckin.day).where(GoalCheckin.goal_id.in_(goal_ids))
+        ).all()
+    }
+    for goal_data in archive.goals:
+        goal = diary.goals.get(goal_data.slug)
+        if goal is None:
+            continue
+        for checkin in goal_data.checkins:
+            if (goal.id, checkin.day) in taken:
+                continue
+            taken.add((goal.id, checkin.day))
+            db.add(
+                GoalCheckin(user_id=user_id, goal_id=goal.id, day=checkin.day, level=checkin.level)
+            )
 
 
 def _restore_setup(
@@ -494,6 +520,7 @@ def _restore_setup(
         db.flush()
         diary.goals[goal.slug] = goal
         counts.goals_new += 1
+    _restore_goal_checkins(db, archive, diary, user_id=user_id)
 
     for template_data in archive.note_templates:
         if template_data.slug in diary.templates:

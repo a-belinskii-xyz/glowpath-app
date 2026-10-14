@@ -2,6 +2,14 @@ import type { MoodScoreIconType } from './moodPreferences'
 
 export type GoalTrackingKind = 'binary' | 'quantity'
 
+/** How a goal was done on a day: "a little" or fully. */
+export type GoalCheckinLevel = 'partial' | 'full'
+
+export type GoalDayMark = {
+  date: string
+  level: GoalCheckinLevel
+}
+
 export type GoalPublic = {
   id: string
   slug: string
@@ -11,6 +19,8 @@ export type GoalPublic = {
   tracking_kind: GoalTrackingKind
   target_amount: number | null
   unit: string | null
+  /** What counts as "a little" for this goal, e.g. "at least a snack". */
+  partial_label: string | null
   starts_on: string
   ends_on: string | null
   sort_order: number
@@ -21,6 +31,8 @@ export type GoalPublic = {
   icon: string
   completed_this_week: number
   day_amount: number
+  /** Completed days of the week asked for (`progress_on`), from entries or check-ins. */
+  week_marks: GoalDayMark[]
 }
 
 export type GoalListResponse = {
@@ -35,6 +47,7 @@ export type GoalWrite = {
   tracking_kind?: GoalTrackingKind
   target_amount?: number | null
   unit?: string | null
+  partial_label?: string | null
   starts_on: string
   ends_on?: string | null
   slug?: string
@@ -53,6 +66,7 @@ export type GoalPatch = {
   tracking_kind?: GoalTrackingKind
   target_amount?: number | null
   unit?: string | null
+  partial_label?: string | null
   starts_on?: string
   ends_on?: string | null
   sort_order?: number

@@ -7,6 +7,7 @@ import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/
 import type { TokenResponse } from '../types/auth'
 import type {
   GoalCalendarResponse,
+  GoalCheckinLevel,
   GoalIconListResponse,
   GoalIconPublic,
   GoalListResponse,
@@ -96,6 +97,34 @@ export function deleteGoal(goalId: string): Promise<void> {
   return apiRequest<void>(`/v1/goals/${goalId}`, {
     method: 'DELETE',
     auth: true,
+  })
+}
+
+/** Mark a goal done on a local day without writing an entry. */
+export function setGoalCheckin(
+  goalId: string,
+  day: string,
+  level: GoalCheckinLevel,
+): Promise<GoalPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.setGuestGoalCheckin(goalId, day, level)
+  }
+  return apiRequest<GoalPublic>(`/v1/goals/${goalId}/checkins/${day}`, {
+    method: 'PUT',
+    auth: true,
+    headers: apiLocaleHeaders(),
+    body: { level },
+  })
+}
+
+export function deleteGoalCheckin(goalId: string, day: string): Promise<GoalPublic> {
+  if (isGuestDiaryMode()) {
+    return guestStore.deleteGuestGoalCheckin(goalId, day)
+  }
+  return apiRequest<GoalPublic>(`/v1/goals/${goalId}/checkins/${day}`, {
+    method: 'DELETE',
+    auth: true,
+    headers: apiLocaleHeaders(),
   })
 }
 

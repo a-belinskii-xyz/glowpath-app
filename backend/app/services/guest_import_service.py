@@ -12,8 +12,10 @@ from sqlalchemy.orm import Session
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
+from app.core.goal_tracking import MAX_GOAL_PARTIAL_LABEL_LENGTH, GoalCheckinLevel
 from app.core.mood_scale import MoodScore, default_mood_score_style
 from app.models.goal import Goal
+from app.models.goal_checkin import GoalCheckin
 from app.models.guest_device import GuestAuthEvent
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_goal import MoodEntryGoal
@@ -142,6 +144,7 @@ def import_guest_diary(
             tracking_kind=str(goal_data.get("tracking_kind", "binary")),
             target_amount=goal_data.get("target_amount"),
             unit=goal_data.get("unit"),
+            partial_label=_partial_label(goal_data.get("partial_label")),
             starts_on=starts_on,
             ends_on=ends_on,
             sort_order=int(goal_data.get("sort_order", 0)),
@@ -155,6 +158,7 @@ def import_guest_diary(
         db.flush()
         goal_map[slug] = goal.id
         existing_goals[slug] = goal
+    _import_goal_checkins(db, user=user, goals=payload.get("goals", []), goal_map=goal_map)
 
     for template_data in payload.get("note_templates", []):
         slug = str(template_data["slug"])
@@ -294,6 +298,39 @@ def import_guest_diary(
     )
     db.commit()
     return {"imported_entries": imported_entries, "skipped": False}
+
+
+def _partial_label(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()[:MAX_GOAL_PARTIAL_LABEL_LENGTH]
+
+
+def _import_goal_checkins(
+    db: Session, *, user: User, goals: list[dict[str, Any]], goal_map: dict[str, uuid.UUID]
+) -> None:
+    """Carry days the guest marked without an entry (GP-43); days already marked stay as is."""
+    taken = {
+        (goal_id, day)
+        for goal_id, day in db.execute(
+            select(GoalCheckin.goal_id, GoalCheckin.day).where(GoalCheckin.user_id == user.id)
+        ).all()
+    }
+    levels = {level.value for level in GoalCheckinLevel}
+    for goal_data in goals:
+        goal_id = goal_map.get(str(goal_data.get("slug")))
+        checkins = goal_data.get("checkins")
+        if goal_id is None or not isinstance(checkins, dict):
+            continue
+        for day_raw, level in checkins.items():
+            try:
+                day = date.fromisoformat(str(day_raw))
+            except ValueError:
+                continue
+            if level not in levels or (goal_id, day) in taken:
+                continue
+            taken.add((goal_id, day))
+            db.add(GoalCheckin(user_id=user.id, goal_id=goal_id, day=day, level=level))
 
 
 def _local_today(timezone_name: str) -> date:

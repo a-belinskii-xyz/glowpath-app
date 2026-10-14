@@ -206,3 +206,60 @@ def test_guest_import_into_existing_telegram_account(
     )
     assert imported.status_code == 200
     assert imported.json()["imported_entries"] == 1
+
+
+def test_guest_import_carries_goal_checkins(
+    client: TestClient,
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    guest_experiment_on: None,
+) -> None:
+    visitor_id = client.post(
+        "/v1/features/bootstrap", json={"fingerprint": _fingerprint_body()}
+    ).json()["visitor_id"]
+    email = f"guest-checkin-{uuid.uuid4()}@example.com"
+    register = auth_client.post(
+        "/v1/auth/register",
+        json={
+            "email": email,
+            "password": "password123",
+            "password_confirm": "password123",
+            "timezone": "Europe/Minsk",
+            "visitor_id": visitor_id,
+        },
+    )
+    assert register.status_code == 201
+    verify_token = extract_token_from_email(mailer.outbox[-1].body)
+    assert auth_client.get(f"/v1/auth/verify-email?token={verify_token}").status_code == 200
+    login = auth_client.post("/v1/auth/login", json={"email": email, "password": "password123"})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    goal = {
+        "local_id": "local-goal",
+        "slug": "walk_outside",
+        "labels": {"en": "Walk outside"},
+        "times_per_week": 7,
+        "starts_on": "2026-08-01",
+        "partial_label": "five minutes at the door",
+        "checkins": {"2026-08-27": "partial", "2026-08-28": "full", "bad": "full"},
+    }
+    payload = {
+        "meta": {"onboarding_completed": True},
+        "tag_groups": [],
+        "tags": [],
+        "goals": [goal],
+        "note_templates": [],
+        "entries": [],
+    }
+    imported = auth_client.post(
+        "/v1/guest/import", json={"visitor_id": visitor_id, "payload": payload}, headers=headers
+    )
+    assert imported.status_code == 200, imported.text
+
+    listed = auth_client.get("/v1/goals", params={"progress_on": "2026-08-28"}, headers=headers)
+    walk = next(item for item in listed.json()["items"] if item["slug"] == "walk_outside")
+    assert walk["partial_label"] == "five minutes at the door"
+    assert walk["week_marks"] == [
+        {"date": "2026-08-27", "level": "partial"},
+        {"date": "2026-08-28", "level": "full"},
+    ]

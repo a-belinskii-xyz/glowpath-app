@@ -52,6 +52,11 @@ class ArchiveTagGroup(_ArchiveModel):
     tags: list[ArchiveTag] = Field(default_factory=list)
 
 
+class ArchiveGoalCheckin(_ArchiveModel):
+    day: date
+    level: Literal["partial", "full"] = "full"
+
+
 class ArchiveGoal(_ArchiveModel):
     slug: Slug = Field(min_length=1, max_length=64)
     labels: Labels
@@ -59,6 +64,7 @@ class ArchiveGoal(_ArchiveModel):
     times_per_week: int = Field(default=1, ge=1, le=7)
     target_amount: int | None = Field(default=None, ge=1)
     unit: str | None = Field(default=None, max_length=32)
+    partial_label: str | None = Field(default=None, max_length=80)
     starts_on: date | None = None
     ends_on: date | None = None
     color: str = Field(default=DEFAULT_GOAL_COLOR, max_length=7)
@@ -67,6 +73,8 @@ class ArchiveGoal(_ArchiveModel):
     show_in_stats: bool = False
     icon_type: str = "emoji"
     icon: str = DEFAULT_GOAL_ICON
+    # Days marked done without an entry (GP-43); older v2 archives simply have none.
+    checkins: list[ArchiveGoalCheckin] = Field(default_factory=list)
 
 
 class ArchiveNoteTemplate(_ArchiveModel):

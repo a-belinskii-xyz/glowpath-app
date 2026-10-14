@@ -123,6 +123,7 @@ function buildGoals(locale: ApiLocale): GoalPublic[] {
     tracking_kind: 'binary',
     target_amount: null,
     unit: null,
+    partial_label: null,
     starts_on: today,
     ends_on: null,
     sort_order: index,
@@ -133,6 +134,7 @@ function buildGoals(locale: ApiLocale): GoalPublic[] {
     icon: goal.icon,
     completed_this_week: 0,
     day_amount: 0,
+    week_marks: [],
   }))
 }
 

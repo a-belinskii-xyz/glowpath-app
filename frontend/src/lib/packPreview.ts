@@ -112,6 +112,7 @@ export function buildPreviewData(options: {
     tracking_kind: 'binary',
     target_amount: null,
     unit: null,
+    partial_label: null,
     starts_on: `${year}-01-01`,
     ends_on: null,
     sort_order: index,
@@ -119,6 +120,7 @@ export function buildPreviewData(options: {
     show_in_stats: true,
     completed_this_week: 0,
     day_amount: 0,
+    week_marks: [],
     ...style,
   })
 

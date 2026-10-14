@@ -5,7 +5,15 @@ import {
   defaultMoodScoreStyle,
   resolveMoodPreferences,
 } from '../lib/moodScale'
-import type { GoalCalendarResponse, GoalListResponse, GoalPatch, GoalPublic, GoalStatsResponse, GoalWrite } from '../types/goal'
+import type {
+  GoalCalendarResponse,
+  GoalCheckinLevel,
+  GoalListResponse,
+  GoalPatch,
+  GoalPublic,
+  GoalStatsResponse,
+  GoalWrite,
+} from '../types/goal'
 import type {
   CalendarDayPublic,
   ListMoodEntriesParams,
@@ -26,7 +34,13 @@ import type {
   NoteTemplateWrite,
 } from '../types/noteTemplate'
 import type { TagGroupListResponse, TagGroupPublic, TagGroupPatch, TagGroupWrite, TagPatch, TagPublic, TagWrite } from '../types/tag'
-import { computeGuestGoalCalendar, computeGuestGoalStats, enrichGuestGoalsWithProgress } from './goalAnalytics'
+import {
+  computeGuestGoalCalendar,
+  computeGuestGoalStats,
+  enrichGuestGoalsWithProgress,
+  toPublicGoal,
+  type GuestGoal,
+} from './goalAnalytics'
 import { guestDbGet, guestDbSet } from './db'
 import { computeGuestCalendar, computeGuestStats, computeGuestStreak } from './moodAnalytics'
 import { seedBaseDefaults, seedFromSuggestions } from './provision'
@@ -154,13 +168,13 @@ export async function listGuestTagGroups() {
 }
 
 export async function listGuestGoals(params?: { progressOn?: string }): Promise<{ items: GoalPublic[]; entry_visible_goal_limit: number; stats_visible_goal_limit: number }> {
-  const items = (await guestDbGet<GoalPublic[]>(KEYS.goals)) ?? []
+  const items = (await guestDbGet<GuestGoal[]>(KEYS.goals)) ?? []
   const meta = await getGuestMeta()
   const timezone = meta?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC'
   const entries = (await guestDbGet<MoodEntryPublic[]>(KEYS.entries)) ?? []
   const enriched = params?.progressOn
     ? enrichGuestGoalsWithProgress(items, entries, params.progressOn, timezone)
-    : items
+    : items.map(toPublicGoal)
   return { items: enriched, entry_visible_goal_limit: 3, stats_visible_goal_limit: 5 }
 }
 
@@ -348,6 +362,7 @@ export async function createGuestGoal(body: GoalWrite, locale: ApiLocale = 'en')
     tracking_kind: body.tracking_kind ?? 'binary',
     target_amount: body.target_amount ?? null,
     unit: body.unit ?? null,
+    partial_label: body.partial_label?.trim() || null,
     starts_on: body.starts_on,
     ends_on: body.ends_on ?? null,
     sort_order: body.sort_order ?? goals.length,
@@ -358,6 +373,7 @@ export async function createGuestGoal(body: GoalWrite, locale: ApiLocale = 'en')
     icon: body.icon ?? '🎯',
     completed_this_week: 0,
     day_amount: 0,
+    week_marks: [],
   }
   goals.push(goal)
   await saveGuestGoals(goals)
@@ -384,6 +400,8 @@ export async function patchGuestGoal(
     tracking_kind: body.tracking_kind ?? current.tracking_kind,
     target_amount: body.target_amount === undefined ? current.target_amount : body.target_amount,
     unit: body.unit === undefined ? current.unit : body.unit,
+    partial_label:
+      body.partial_label === undefined ? current.partial_label : body.partial_label?.trim() || null,
     starts_on: body.starts_on ?? current.starts_on,
     ends_on: body.ends_on === undefined ? current.ends_on : body.ends_on,
     sort_order: body.sort_order ?? current.sort_order,
@@ -396,6 +414,40 @@ export async function patchGuestGoal(
   goals[index] = next
   await saveGuestGoals(goals)
   return next
+}
+
+async function updateGuestGoalCheckins(
+  goalId: string,
+  day: string,
+  update: (checkins: Record<string, GoalCheckinLevel>) => void,
+): Promise<GoalPublic> {
+  const goals = (await guestDbGet<GuestGoal[]>(KEYS.goals)) ?? []
+  const index = goals.findIndex((goal) => goal.id === goalId)
+  if (index < 0) {
+    throw new Error('Goal not found')
+  }
+  const checkins = { ...(goals[index].checkins ?? {}) }
+  update(checkins)
+  goals[index] = { ...goals[index], checkins }
+  await saveGuestGoals(goals)
+  const { items } = await listGuestGoals({ progressOn: day })
+  return items.find((goal) => goal.id === goalId) ?? goals[index]
+}
+
+export function setGuestGoalCheckin(
+  goalId: string,
+  day: string,
+  level: GoalCheckinLevel,
+): Promise<GoalPublic> {
+  return updateGuestGoalCheckins(goalId, day, (checkins) => {
+    checkins[day] = level
+  })
+}
+
+export function deleteGuestGoalCheckin(goalId: string, day: string): Promise<GoalPublic> {
+  return updateGuestGoalCheckins(goalId, day, (checkins) => {
+    delete checkins[day]
+  })
 }
 
 export async function deleteGuestGoal(goalId: string): Promise<void> {
@@ -820,7 +872,7 @@ export async function getGuestMoodEntryStats(
 export async function buildGuestImportPayload(): Promise<Record<string, unknown>> {
   const meta = await getGuestMeta()
   const tagGroups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
-  const goals = (await guestDbGet<GoalPublic[]>(KEYS.goals)) ?? []
+  const goals = (await guestDbGet<GuestGoal[]>(KEYS.goals)) ?? []
   const noteTemplates = (await guestDbGet<unknown[]>(KEYS.noteTemplates)) ?? []
   const moodPreferences = await guestDbGet<MoodPreferencesPublic>(KEYS.moodPreferences)
   const entries = (await guestDbGet<MoodEntryPublic[]>(KEYS.entries)) ?? []
@@ -857,6 +909,7 @@ export async function buildGuestImportPayload(): Promise<Record<string, unknown>
       tracking_kind: goal.tracking_kind,
       target_amount: goal.target_amount,
       unit: goal.unit,
+      partial_label: goal.partial_label ?? null,
       starts_on: goal.starts_on,
       ends_on: goal.ends_on,
       sort_order: goal.sort_order,
@@ -865,6 +918,7 @@ export async function buildGuestImportPayload(): Promise<Record<string, unknown>
       color: goal.color,
       icon_type: goal.icon_type,
       icon: goal.icon,
+      checkins: goal.checkins ?? {},
     })),
     note_templates: noteTemplates,
     mood_preferences: moodPreferences,

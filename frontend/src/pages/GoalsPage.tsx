@@ -57,6 +57,7 @@ export function GoalsPage() {
   const [trackingKind, setTrackingKind] = useState<GoalTrackingKind>('binary')
   const [targetAmount, setTargetAmount] = useState(100)
   const [unit, setUnit] = useState('')
+  const [partialLabel, setPartialLabel] = useState('')
   const [startsOn, setStartsOn] = useState(todayKey(timeZone))
   const [endsOn, setEndsOn] = useState('')
   const [draftColor, setDraftColor] = useState(DEFAULT_GOAL_STYLE.color)
@@ -111,6 +112,7 @@ export function GoalsPage() {
       setTrackingKind('binary')
       setTargetAmount(100)
       setUnit('')
+      setPartialLabel('')
       setStartsOn(todayKey(timeZone))
       setEndsOn('')
       setDraftColor(DEFAULT_GOAL_STYLE.color)
@@ -123,6 +125,7 @@ export function GoalsPage() {
       setTrackingKind(mode.goal.tracking_kind)
       setTargetAmount(mode.goal.target_amount ?? 100)
       setUnit(mode.goal.unit ?? '')
+      setPartialLabel(mode.goal.partial_label ?? '')
       setStartsOn(mode.goal.starts_on)
       setEndsOn(mode.goal.ends_on ?? '')
       setDraftColor(mode.goal.color)
@@ -205,6 +208,7 @@ export function GoalsPage() {
           labels,
           times_per_week: timesPerWeek,
           ...trackingFields,
+          partial_label: partialLabel.trim() || null,
           starts_on: startsOn,
           ends_on: endsOn || null,
           show_on_entry: !atVisibleLimit,
@@ -223,6 +227,7 @@ export function GoalsPage() {
           labels,
           times_per_week: timesPerWeek,
           ...trackingFields,
+          partial_label: partialLabel.trim() || null,
           starts_on: startsOn,
           ends_on: endsOn || null,
           color: draftColor,
@@ -483,6 +488,15 @@ export function GoalsPage() {
             />
             <span className="form-hint">{t('goalsPage.timesPerWeekHint')}</span>
           </label>
+          <FormField
+            id="goal-partial-label"
+            label={t('goalsPage.partialLabel')}
+            value={partialLabel}
+            onChange={(event) => setPartialLabel(event.target.value)}
+            maxLength={80}
+            placeholder={t('goalsPage.partialLabelPlaceholder')}
+            hint={t('goalsPage.partialLabelHint')}
+          />
           <div className="form-field-row">
             <label className="form-field">
               <span className="form-label">{t('goalsPage.startsOn')}</span>

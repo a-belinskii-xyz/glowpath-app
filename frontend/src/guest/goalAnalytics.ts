@@ -1,11 +1,23 @@
 import { dayKey } from '../lib/datetime'
 import type {
   GoalCalendarDayPublic,
+  GoalCheckinLevel,
+  GoalDayMark,
   GoalPeriodStatPublic,
   GoalPublic,
   GoalStatsResponse,
 } from '../types/goal'
 import type { MoodEntryPublic } from '../types/mood'
+
+/** A goal as the guest diary stores it: days marked without an entry ride along. */
+export type GuestGoal = GoalPublic & { checkins?: Record<string, GoalCheckinLevel> }
+
+/** Drop storage-only fields and fill ones older guest diaries never saved. */
+export function toPublicGoal(goal: GuestGoal): GoalPublic {
+  const rest: GuestGoal = { ...goal }
+  delete rest.checkins
+  return { ...rest, partial_label: rest.partial_label ?? null, week_marks: rest.week_marks ?? [] }
+}
 
 function periodDays(periodStart: string, periodEndExclusive: string): number {
   const [sy, sm, sd] = periodStart.split('-').map(Number)
@@ -36,11 +48,12 @@ type GoalPeriodProgress = {
   completedDays: number
   amountInPeriod: number
   dayAmount: number
+  levels: Map<string, GoalCheckinLevel>
 }
 
 function computeGoalPeriodProgress(
   entries: MoodEntryPublic[],
-  goals: GoalPublic[],
+  goals: GuestGoal[],
   periodStart: string,
   periodEnd: string,
   timezone: string,
@@ -72,31 +85,40 @@ function computeGoalPeriodProgress(
   const result = new Map<string, GoalPeriodProgress>()
   for (const goal of goals) {
     const amounts = daily.get(goal.id) ?? new Map<string, number>()
-    let completedDays = 0
+    const levels = new Map<string, GoalCheckinLevel>()
     let amountInPeriod = 0
     if (goal.tracking_kind === 'quantity') {
       const threshold = goal.target_amount ?? 0
-      for (const value of amounts.values()) {
+      for (const [day, value] of amounts) {
         amountInPeriod += value
         if (value >= threshold) {
-          completedDays += 1
+          levels.set(day, 'full')
         }
       }
     } else {
-      completedDays = amounts.size
-      amountInPeriod = completedDays
+      for (const day of amounts.keys()) {
+        levels.set(day, 'full')
+      }
+      amountInPeriod = amounts.size
+    }
+    // Days marked without an entry count too; an entry that met the goal wins.
+    for (const [day, level] of Object.entries(goal.checkins ?? {})) {
+      if (day >= periodStart && day < periodEnd && !levels.has(day)) {
+        levels.set(day, level)
+      }
     }
     result.set(goal.id, {
-      completedDays,
+      completedDays: levels.size,
       amountInPeriod,
       dayAmount: progressDay ? (amounts.get(progressDay) ?? 0) : 0,
+      levels,
     })
   }
   return result
 }
 
 export function enrichGuestGoalsWithProgress(
-  goals: GoalPublic[],
+  goals: GuestGoal[],
   entries: MoodEntryPublic[],
   progressOn: string,
   timezone: string,
@@ -125,17 +147,21 @@ export function enrichGuestGoalsWithProgress(
 
   return goals.map((goal) => {
     const stats = progress.get(goal.id)
+    const weekMarks: GoalDayMark[] = [...(stats?.levels ?? new Map())]
+      .map(([date, level]) => ({ date, level }))
+      .sort((left, right) => left.date.localeCompare(right.date))
     return {
-      ...goal,
+      ...toPublicGoal(goal),
       completed_this_week: stats?.completedDays ?? 0,
       day_amount: stats?.dayAmount ?? 0,
+      week_marks: weekMarks,
     }
   })
 }
 
 export function computeGuestGoalCalendar(
   entries: MoodEntryPublic[],
-  goals: GoalPublic[],
+  goals: GuestGoal[],
   params: { recorded_from: string; recorded_to: string },
   timezone: string,
   cap: number,
@@ -155,6 +181,22 @@ export function computeGuestGoalCalendar(
       }
       const bucket = byDay.get(date) ?? []
       bucket.push({ goalId: goal.id, recordedAt: entry.recorded_at })
+      byDay.set(date, bucket)
+    }
+  }
+  const firstDay = dayKey(params.recorded_from, timezone)
+  const endDay = dayKey(params.recorded_to, timezone)
+  for (const goal of goals) {
+    if (!statsGoalIds.has(goal.id)) {
+      continue
+    }
+    for (const date of Object.keys(goal.checkins ?? {})) {
+      if (date < firstDay || date >= endDay) {
+        continue
+      }
+      const bucket = byDay.get(date) ?? []
+      // Check-ins have no time of day; an empty timestamp sorts them after entries.
+      bucket.push({ goalId: goal.id, recordedAt: '' })
       byDay.set(date, bucket)
     }
   }
@@ -187,7 +229,7 @@ export function computeGuestGoalCalendar(
 
 export function computeGuestGoalStats(
   entries: MoodEntryPublic[],
-  goals: GoalPublic[],
+  goals: GuestGoal[],
   params: { recorded_from: string; recorded_to: string },
   timezone: string,
 ): GoalStatsResponse {
@@ -207,7 +249,7 @@ export function computeGuestGoalStats(
   const items: GoalPeriodStatPublic[] = overlapping.map((goal) => {
     const stats = progress.get(goal.id)
     return {
-      ...goal,
+      ...toPublicGoal(goal),
       completed_in_period: stats?.completedDays ?? 0,
       period_target: periodTarget(goal.times_per_week, periodDayCount),
       amount_in_period: stats?.amountInPeriod ?? 0,

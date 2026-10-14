@@ -26,6 +26,11 @@ function isProfileHubSection(pathname: string) {
   return PROFILE_HUB_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
+/** "Me" holds the week's goals, so the goal list lights the same tab. */
+function isMySection(pathname: string) {
+  return pathname.startsWith('/me') || pathname.startsWith('/goals')
+}
+
 function isFocusedEntryFlow(pathname: string) {
   return pathname.startsWith('/entries/')
 }
@@ -34,6 +39,7 @@ function BottomNav() {
   const { t } = useLocale()
   const location = useLocation()
   const profileActive = isProfileHubSection(location.pathname)
+  const myActive = isMySection(location.pathname)
 
   return (
     <nav className="app-bottom-nav" aria-label={t('nav.menu')}>
@@ -45,9 +51,9 @@ function BottomNav() {
         <NavGalleryIcon />
         <span>{t('nav.gallery')}</span>
       </NavLink>
-      <NavLink to="/goals" className={bottomNavClassName}>
+      <NavLink to="/me" className={() => `app-bottom-nav-link${myActive ? ' is-active' : ''}`}>
         <NavGoalsIcon />
-        <span>{t('nav.goals')}</span>
+        <span>{t('nav.my')}</span>
       </NavLink>
       <NavLink
         to="/profile"
@@ -163,6 +169,9 @@ function ShellChrome({
           </NavLink>
           <NavLink to="/gallery" className={navClassName}>
             {t('nav.gallery')}
+          </NavLink>
+          <NavLink to="/me" className={navClassName}>
+            {t('nav.my')}
           </NavLink>
           <NavLink to="/goals" className={navClassName}>
             {t('nav.goals')}
