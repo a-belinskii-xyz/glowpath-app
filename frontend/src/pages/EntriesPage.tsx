@@ -84,7 +84,8 @@ export function EntriesPage() {
   const { user } = useAuth()
   const diaryAccess = canUseDiaryFeatures(user)
   const { locale, t } = useLocale()
-  const { scores, showStreak } = useMoodPreferences()
+  const { scores, showStreak, calendarFromStart, calendarStartOn, firstEntryOn } =
+    useMoodPreferences()
   const colorScheme = useColorScheme()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1059,6 +1060,7 @@ export function EntriesPage() {
               goalDays={goalCalendarDays}
               goalsById={goalsById}
               onDayWithEntries={handleDayWithEntries}
+              startOn={calendarFromStart ? (calendarStartOn ?? firstEntryOn) : null}
               onSelectWeekDay={
                 calendarMode === 'goals' && goalStatsPeriod === 'week'
                   ? handleSelectWeekDay

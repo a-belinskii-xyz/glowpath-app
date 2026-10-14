@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.emoji import is_single_emoji
@@ -20,6 +22,8 @@ from app.core.mood_scale import (
     is_valid_hex_color,
     mood_score_label,
 )
+from app.models.mood_entry import MoodEntry
+from app.models.user import User
 from app.models.user_mood_icon import UserMoodIcon
 from app.models.user_mood_preferences import UserMoodPreferences
 from app.services.user_provisioning import provision_mood_preferences
@@ -56,6 +60,9 @@ def update_preferences(
     score_updates: dict[str, dict[str, Any]] | None = None,
     use_historical_colors: bool | None = None,
     show_streak: bool | None = None,
+    calendar_from_start: bool | None = None,
+    calendar_start_on: date | None = None,
+    update_calendar_start_on: bool = False,
     composer_blocks: list[dict[str, Any]] | None = None,
     update_composer_blocks: bool = False,
 ) -> UserMoodPreferences:
@@ -67,6 +74,15 @@ def update_preferences(
         prefs.use_historical_colors = use_historical_colors
     if show_streak is not None:
         prefs.show_streak = show_streak
+    if calendar_from_start is not None:
+        prefs.calendar_from_start = calendar_from_start
+    if update_calendar_start_on:
+        if calendar_start_on is not None and calendar_start_on > _user_today(db, user_id):
+            raise MoodPreferencesError(
+                "Calendar start cannot be in the future",
+                code=ErrorCode.CALENDAR_START_IN_FUTURE,
+            )
+        prefs.calendar_start_on = calendar_start_on
     if update_composer_blocks:
         prefs.composer_blocks = sanitize_composer_blocks(composer_blocks)
     db.commit()
@@ -84,8 +100,32 @@ def serialize_preferences(
         "scores": _resolved_score_styles(db, prefs.user_id, prefs.score_styles, locale=locale),
         "use_historical_colors": bool(prefs.use_historical_colors),
         "show_streak": bool(prefs.show_streak),
+        "calendar_from_start": bool(prefs.calendar_from_start),
+        "calendar_start_on": prefs.calendar_start_on,
+        "first_entry_on": _first_entry_on(db, prefs.user_id),
         "composer_blocks": sanitize_composer_blocks(prefs.composer_blocks),
     }
+
+
+def _user_timezone(db: Session, user_id: uuid.UUID) -> ZoneInfo:
+    timezone_name = db.scalar(select(User.timezone).where(User.id == user_id))
+    try:
+        return ZoneInfo(timezone_name or "UTC")
+    except (KeyError, ValueError):
+        return ZoneInfo("UTC")
+
+
+def _user_today(db: Session, user_id: uuid.UUID) -> date:
+    return datetime.now(_user_timezone(db, user_id)).date()
+
+
+def _first_entry_on(db: Session, user_id: uuid.UUID) -> date | None:
+    first: datetime | None = db.scalar(
+        select(func.min(MoodEntry.recorded_at)).where(MoodEntry.user_id == user_id)
+    )
+    if first is None:
+        return None
+    return first.astimezone(_user_timezone(db, user_id)).date()
 
 
 def sanitize_composer_blocks(raw: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:

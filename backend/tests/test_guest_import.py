@@ -249,6 +249,7 @@ def test_guest_import_carries_goal_checkins(
         "tags": [],
         "goals": [goal],
         "note_templates": [],
+        "mood_preferences": {"calendar_from_start": True, "calendar_start_on": "2026-08-12"},
         "entries": [],
     }
     imported = auth_client.post(
@@ -263,3 +264,7 @@ def test_guest_import_carries_goal_checkins(
         {"date": "2026-08-27", "level": "partial"},
         {"date": "2026-08-28", "level": "full"},
     ]
+    # GP-45: the calendar start setting comes along too.
+    prefs = auth_client.get("/v1/mood-preferences", headers=headers).json()
+    assert prefs["calendar_from_start"] is True
+    assert prefs["calendar_start_on"] == "2026-08-12"

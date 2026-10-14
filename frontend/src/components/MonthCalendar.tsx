@@ -1,9 +1,10 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { useMediaQuery } from '../hooks/useMediaQuery'
+import { intlLocale } from '../i18n/t'
 import { moodGlowFilter } from '../design'
 import { buildMonthCalendarCells, isFutureDate, todayKey, type CalendarCell } from '../lib/datetime'
 import { entryMoodStyle, getMoodScoreStyle } from '../lib/moodScale'
@@ -31,6 +32,8 @@ type MonthCalendarProps = {
   onSelectWeekDay?: (date: string) => void
   /** Static cells for mock data (pack preview): no links, past and future look alike. */
   readOnly?: boolean
+  /** GP-45: weeks before this day fold into one quiet row. */
+  startOn?: string | null
 }
 
 function goalStyleFrom(goal: GoalPublic | undefined): GoalStyle {
@@ -50,6 +53,24 @@ function chunkWeeks(cells: CalendarCell[]): CalendarCell[][] {
     weeks.push(cells.slice(i, i + 7))
   }
   return weeks
+}
+
+/** Leading weeks that end before the start, so the month opens on the user's own first day. */
+function countWeeksBeforeStart(weeks: CalendarCell[][], startOn: string | null | undefined): number {
+  if (!startOn) return 0
+  let count = 0
+  for (const week of weeks) {
+    if (week[week.length - 1].date >= startOn) break
+    count += 1
+  }
+  return count
+}
+
+function formatDayMonth(day: string, dateLocale: string, options: Intl.DateTimeFormatOptions) {
+  const [year, month, date] = day.split('-').map(Number)
+  return new Intl.DateTimeFormat(dateLocale, { ...options, timeZone: 'UTC' }).format(
+    new Date(Date.UTC(year, month - 1, date)),
+  )
 }
 
 function DayMarks({ children, overflow }: { children: ReactNode; overflow: number }) {
@@ -72,12 +93,33 @@ export function MonthCalendar({
   onDayWithEntries,
   onSelectWeekDay,
   readOnly = false,
+  startOn = null,
 }: MonthCalendarProps) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const { scores: scoreStyles } = useMoodPreferences()
   const weekdays = t('calendar.weekdays').split('|')
   const cells = useMemo(() => buildMonthCalendarCells(year, month), [year, month])
   const weeks = useMemo(() => chunkWeeks(cells), [cells])
+  const foldStart = readOnly ? null : startOn
+  const foldedWeekCount = useMemo(() => countWeeksBeforeStart(weeks, foldStart), [weeks, foldStart])
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null)
+  const monthId = `${year}-${month}`
+  const isExpanded = expandedMonth === monthId
+  const foldLabel = useMemo(() => {
+    if (foldedWeekCount === 0) return null
+    const inMonth = weeks
+      .slice(0, foldedWeekCount)
+      .flat()
+      .filter((cell) => cell.inMonth)
+    if (inMonth.length === 0) return null
+    const dateLocale = intlLocale(locale)
+    const first = inMonth[0]
+    const last = inMonth[inMonth.length - 1]
+    const end = formatDayMonth(last.date, dateLocale, { day: 'numeric', month: 'long' })
+    const range = first.date === last.date ? end : `${first.day}–${end}`
+    return t('calendar.beforeStart', { range })
+  }, [foldedWeekCount, weeks, locale, t])
+  const visibleWeeks = foldLabel && !isExpanded ? weeks.slice(foldedWeekCount) : weeks
   const moodDaysByDate = useMemo(() => {
     const map = new Map<string, CalendarDayPublic>()
     for (const day of moodDays) {
@@ -107,8 +149,21 @@ export function MonthCalendar({
         ))}
       </div>
       <div className="month-calendar-grid" role="rowgroup">
-        {weeks.map((week, weekIndex) => (
-          <div key={`week-${weekIndex}`} className="month-calendar-week" role="row">
+        {foldLabel ? (
+          <div className="month-calendar-fold-row" role="row">
+            <button
+              type="button"
+              className="month-calendar-fold"
+              aria-expanded={isExpanded}
+              title={isExpanded ? t('calendar.beforeStartHide') : t('calendar.beforeStartShow')}
+              onClick={() => setExpandedMonth(isExpanded ? null : monthId)}
+            >
+              {foldLabel}
+            </button>
+          </div>
+        ) : null}
+        {visibleWeeks.map((week) => (
+          <div key={`week-${week[0].key}`} className="month-calendar-week" role="row">
             {week.map((cell) => {
               const moodDay = cell.date ? moodDaysByDate.get(cell.date) : undefined
               const goalDay = cell.date ? goalDaysByDate.get(cell.date) : undefined
@@ -117,6 +172,17 @@ export function MonthCalendar({
               const entryCount =
                 mode === 'goals' ? (goalDay?.entry_count ?? 0) : (moodDay?.entry_count ?? 0)
               const markCount = mode === 'goals' ? dayGoals.length : dayScores.length
+              // Days of the start week that come before the start stay blank.
+              if (foldStart && !isExpanded && cell.date < foldStart) {
+                return (
+                  <div
+                    key={cell.key}
+                    className="month-calendar-cell month-calendar-cell-before-start"
+                    role="gridcell"
+                    aria-hidden="true"
+                  />
+                )
+              }
               const isToday = !readOnly && cell.date === today
               const isFuture = !readOnly && cell.date ? isFutureDate(cell.date, timeZone) : false
               const canInteract = Boolean(!readOnly && cell.inMonth && cell.date && !isFuture)
