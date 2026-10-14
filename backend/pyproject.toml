@@ -1,7 +1,7 @@
 [project]
-name = "mood-tracker"
+name = "glowpath-api"
 version = "0.1.0"
-description = "Multi-user REST API for daily mood logging"
+description = "GlowPath API: mood diary backend (FastAPI)"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14",
