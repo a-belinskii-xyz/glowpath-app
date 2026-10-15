@@ -10,6 +10,7 @@ import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { GoalIcon } from '../components/GoalIcon'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { PageErrorAlert } from '../components/PageErrorAlert'
+import { QuickTagPicker } from '../components/QuickTagPicker'
 import { StableButtonLabel } from '../components/StableButtonLabel'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
@@ -641,6 +642,7 @@ function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps)
   const options = getMoodScoreOptions(locale, scores)
   const [text, setText] = useState('')
   const [score, setScore] = useState<number | null>(null)
+  const [tagIds, setTagIds] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -648,6 +650,7 @@ function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps)
     if (open) {
       setText('')
       setScore(null)
+      setTagIds([])
       setError(null)
     }
   }, [open])
@@ -664,7 +667,7 @@ function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps)
         score,
         recorded_at: instantToIsoInTimezone(new Date(), timeZone),
         note: text.trim(),
-        tag_ids: [],
+        tag_ids: tagIds,
         goal_ids: [],
         is_win: true,
       })
@@ -726,6 +729,18 @@ function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps)
             ))}
           </div>
         </div>
+        {open ? (
+          <QuickTagPicker
+            selectedIds={tagIds}
+            onToggle={(tagId) =>
+              setTagIds((current) =>
+                current.includes(tagId)
+                  ? current.filter((id) => id !== tagId)
+                  : [...current, tagId],
+              )
+            }
+          />
+        ) : null}
         <p className="my-level-hint">{t('myPage.winHint')}</p>
       </form>
     </EditorDrawer>

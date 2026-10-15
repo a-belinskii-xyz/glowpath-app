@@ -12142,6 +12142,15 @@ html[data-color-scheme='dark'] .my-primary {
   gap: 1rem;
 }
 
+.quick-tag-picker {
+  gap: 0.5rem;
+}
+
+.quick-tag-picker-empty {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
 .my-win-input {
   font: inherit;
   min-height: 6rem;

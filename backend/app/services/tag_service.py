@@ -20,7 +20,6 @@ from app.core.default_tag_groups import (
 from app.core.emoji import is_single_emoji
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
-from app.core.feature_flags import FeatureFlag, is_feature_enabled_for_user
 from app.core.i18n import DEFAULT_LOCALE, resolve_label
 from app.core.mood_builtin_icons import is_valid_builtin_icon_slug
 from app.core.mood_scale import MoodScoreIconType, is_valid_hex_color
@@ -33,6 +32,8 @@ from app.models.user_tag_icon import UserTagIcon
 
 _SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
 _MAX_EMOJI_LENGTH = 8
+FREQUENT_TAGS_LIMIT = 8
+FREQUENT_TAGS_DAYS = 30
 
 
 class TagError(AppError):
@@ -352,8 +353,8 @@ def list_frequent_tags(
     days: int | None = None,
 ) -> list[Tag]:
     """Tags the user selected most often in the recent lookback window."""
-    window_days = days if days is not None else settings.feature_weekly_frequent_tags_days
-    result_limit = limit if limit is not None else settings.feature_weekly_frequent_tags_limit
+    window_days = days if days is not None else FREQUENT_TAGS_DAYS
+    result_limit = limit if limit is not None else FREQUENT_TAGS_LIMIT
     since = _frequent_tags_since(user.timezone, days=window_days)
     usage_count = func.count().label("usage_count")
     last_used = func.max(MoodEntry.recorded_at).label("last_used")
@@ -380,8 +381,6 @@ def list_frequent_tags(
 
 
 def serialize_frequent_tags(db: Session, *, user: User, locale: str) -> list[dict[str, Any]]:
-    if not is_feature_enabled_for_user(FeatureFlag.WEEKLY_FREQUENT_TAGS, user):
-        return []
     return [serialize_tag(tag, locale=locale) for tag in list_frequent_tags(db, user=user)]
 
 

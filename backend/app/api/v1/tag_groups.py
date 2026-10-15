@@ -10,7 +10,6 @@ from app.api.deps import get_current_verified_user, get_locale, get_storage_serv
 from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error
-from app.core.feature_flags import FeatureFlag, is_feature_enabled_for_user
 from app.db.session import get_db
 from app.models.tag import Tag
 from app.models.tag_group import TagGroup
@@ -91,12 +90,10 @@ def _to_list_response(
     items = [
         TagGroupPublic.model_validate(item) for item in serialize_tag_groups(groups, locale=locale)
     ]
-    enabled = is_feature_enabled_for_user(FeatureFlag.WEEKLY_FREQUENT_TAGS, user)
-    frequent = serialize_frequent_tags(db, user=user, locale=locale) if enabled else []
+    frequent = serialize_frequent_tags(db, user=user, locale=locale)
     return TagGroupListResponse(
         items=items,
         entry_visible_tag_group_limit=settings.entry_visible_tag_group_limit,
-        frequent_tags_enabled=enabled,
         frequent_tags=[TagPublic.model_validate(item) for item in frequent],
     )
 

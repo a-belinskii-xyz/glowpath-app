@@ -164,7 +164,6 @@ export async function listGuestTagGroups() {
   return {
     items,
     entry_visible_tag_group_limit: 4,
-    frequent_tags_enabled: false,
     frequent_tags: [] as TagPublic[],
   }
 }

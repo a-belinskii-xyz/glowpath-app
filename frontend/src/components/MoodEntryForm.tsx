@@ -201,9 +201,7 @@ export function MoodEntryForm({
           loads.push(
             listTagGroups().then((tagsResponse) => {
               setTagGroups(tagsResponse.items)
-              setFrequentTags(
-                tagsResponse.frequent_tags_enabled ? (tagsResponse.frequent_tags ?? []) : [],
-              )
+              setFrequentTags(tagsResponse.frequent_tags ?? [])
             }),
           )
         } else {
@@ -592,7 +590,7 @@ export function MoodEntryForm({
           <span className="entry-context-section-emoji" aria-hidden="true">
             ⏱
           </span>
-          {t('entries.frequentTagsThisWeek')}
+          {t('entries.frequentTags')}
         </p>
         <div className="tag-chips">{visibleFrequentTags.map(renderTagChip)}</div>
       </div>

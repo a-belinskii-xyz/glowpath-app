@@ -37,7 +37,6 @@ export type TagGroupPublic = {
 export type TagGroupListResponse = {
   items: TagGroupPublic[]
   entry_visible_tag_group_limit: number
-  frequent_tags_enabled: boolean
   frequent_tags: TagPublic[]
 }
 
