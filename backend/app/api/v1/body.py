@@ -25,6 +25,7 @@ from app.services.body_service import (
     add_food,
     delete_food,
     delete_weight,
+    food_goal_ids,
     get_settings,
     list_food,
     list_weights,
@@ -36,12 +37,12 @@ from app.services.body_service import (
 router = APIRouter(tags=["body"])
 
 
-def _settings_public(settings: BodySettings) -> BodySettingsPublic:
+def _settings_public(db: Session, settings: BodySettings) -> BodySettingsPublic:
     return BodySettingsPublic(
         show_weight=settings.show_weight,
         show_food=settings.show_food,
         hide_weight=settings.hide_weight,
-        food_goal_id=settings.food_goal_id,
+        food_goal_ids=food_goal_ids(db, user_id=settings.user_id),
     )
 
 
@@ -58,7 +59,7 @@ def read_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
 ) -> BodySettingsPublic:
-    return _settings_public(get_settings(db, user_id=current_user.id))
+    return _settings_public(db, get_settings(db, user_id=current_user.id))
 
 
 @router.patch("/settings", response_model=BodySettingsPublic)
@@ -74,12 +75,11 @@ def update_settings(
             show_weight=body.show_weight,
             show_food=body.show_food,
             hide_weight=body.hide_weight,
-            food_goal_id=body.food_goal_id,
-            food_goal_id_set="food_goal_id" in body.model_fields_set,
+            goal_ids=body.food_goal_ids,
         )
     except BodyError as exc:
         raise_http_error(exc)
-    return _settings_public(settings)
+    return _settings_public(db, settings)
 
 
 @router.get("/weight", response_model=WeightListResponse)

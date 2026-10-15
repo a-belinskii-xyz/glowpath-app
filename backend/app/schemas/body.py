@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 MIN_WEIGHT_KG = Decimal("20")
 MAX_WEIGHT_KG = Decimal("400")
 MAX_FOOD_TEXT_LENGTH = 500
+MAX_FOOD_GOALS = 3
 
 Meal = Literal["morning", "day", "evening", "snack"]
 WeightKg = Annotated[Decimal, Field(ge=MIN_WEIGHT_KG, le=MAX_WEIGHT_KG, decimal_places=1)]
@@ -18,14 +19,15 @@ class BodySettingsPublic(BaseModel):
     show_weight: bool
     show_food: bool
     hide_weight: bool
-    food_goal_id: uuid.UUID | None = None
+    # Goals the food drawer offers to mark, in goal order.
+    food_goal_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class BodySettingsPatch(BaseModel):
     show_weight: bool | None = None
     show_food: bool | None = None
     hide_weight: bool | None = None
-    food_goal_id: uuid.UUID | None = None
+    food_goal_ids: list[uuid.UUID] | None = Field(default=None, max_length=MAX_FOOD_GOALS)
 
 
 class WeightPublic(BaseModel):

@@ -84,9 +84,20 @@ class BodySettings(TimestampMixin, Base):
     show_food: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     # Blur the weight number on «Моё» until tapped.
     hide_weight: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    # A goal the food drawer offers to mark, e.g. "Eat properly".
-    food_goal_id: Mapped[uuid.UUID | None] = mapped_column(
+
+
+class BodyFoodGoal(Base):
+    """A goal the food drawer offers to mark, e.g. "Eat properly"; up to three per person."""
+
+    __tablename__ = table_name("body_food_goals")
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey(fk_column("goals"), ondelete="SET NULL"),
-        nullable=True,
+        ForeignKey(fk_column("users"), ondelete="CASCADE"),
+        primary_key=True,
+    )
+    goal_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("goals"), ondelete="CASCADE"),
+        primary_key=True,
     )

@@ -6,7 +6,7 @@ const DEFAULT_SETTINGS: BodySettings = {
   show_weight: false,
   show_food: false,
   hide_weight: false,
-  food_goal_id: null,
+  food_goal_ids: [],
 }
 
 /** Weight and food live on the server only; the guest diary never shows them. */

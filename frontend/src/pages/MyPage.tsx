@@ -394,6 +394,7 @@ export function MyPage() {
         <BodyCard
           settings={body}
           today={today}
+          timeZone={timeZone}
           weekDays={weekDays}
           isCurrentWeek={isCurrentWeek}
           goals={goals}

@@ -1,4 +1,4 @@
-"""weight measurements, food logs and body settings
+"""weight measurements, food logs, body settings and food goals
 
 Revision ID: v6w7x8y9z0a1
 Revises: u5v6w7x8y9z0
@@ -20,10 +20,16 @@ depends_on: str | Sequence[str] | None = None
 def _timestamps() -> list[sa.Column]:
     return [
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
     ]
 
@@ -83,7 +89,6 @@ def upgrade() -> None:
         sa.Column("show_weight", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("show_food", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("hide_weight", sa.Boolean(), server_default=sa.text("false"), nullable=False),
-        sa.Column("food_goal_id", sa.UUID(), nullable=True),
         *_timestamps(),
         sa.ForeignKeyConstraint(
             ["user_id"],
@@ -91,17 +96,30 @@ def upgrade() -> None:
             name=op.f("fk__mt_body_settings__user_id__mt_users"),
             ondelete="CASCADE",
         ),
-        sa.ForeignKeyConstraint(
-            ["food_goal_id"],
-            ["mt_goals.id"],
-            name=op.f("fk__mt_body_settings__food_goal_id__mt_goals"),
-            ondelete="SET NULL",
-        ),
         sa.PrimaryKeyConstraint("user_id", name=op.f("pk__mt_body_settings")),
+    )
+    op.create_table(
+        "mt_body_food_goals",
+        sa.Column("user_id", sa.UUID(), nullable=False),
+        sa.Column("goal_id", sa.UUID(), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["mt_users.id"],
+            name=op.f("fk__mt_body_food_goals__user_id__mt_users"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["goal_id"],
+            ["mt_goals.id"],
+            name=op.f("fk__mt_body_food_goals__goal_id__mt_goals"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("user_id", "goal_id", name=op.f("pk__mt_body_food_goals")),
     )
 
 
 def downgrade() -> None:
+    op.drop_table("mt_body_food_goals")
     op.drop_table("mt_body_settings")
     op.drop_index(op.f("ix__mt_food_logs__user_id"), table_name="mt_food_logs")
     op.drop_table("mt_food_logs")

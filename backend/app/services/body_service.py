@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
-from app.models.body import BodySettings, FoodLog, Measurement
+from app.models.body import BodyFoodGoal, BodySettings, FoodLog, Measurement
 from app.models.goal import Goal
 from app.models.user import User
 from app.services.goal_service import user_today
@@ -32,6 +32,17 @@ def get_settings(db: Session, *, user_id: uuid.UUID) -> BodySettings:
     return settings
 
 
+def food_goal_ids(db: Session, *, user_id: uuid.UUID) -> list[uuid.UUID]:
+    return list(
+        db.scalars(
+            select(BodyFoodGoal.goal_id)
+            .join(Goal, Goal.id == BodyFoodGoal.goal_id)
+            .where(BodyFoodGoal.user_id == user_id)
+            .order_by(Goal.sort_order, Goal.created_at)
+        )
+    )
+
+
 def patch_settings(
     db: Session,
     *,
@@ -39,8 +50,7 @@ def patch_settings(
     show_weight: bool | None,
     show_food: bool | None,
     hide_weight: bool | None,
-    food_goal_id: uuid.UUID | None,
-    food_goal_id_set: bool,
+    goal_ids: list[uuid.UUID] | None,
 ) -> BodySettings:
     settings = db.get(BodySettings, user_id)
     if settings is None:
@@ -54,14 +64,13 @@ def patch_settings(
         settings.show_food = show_food
     if hide_weight is not None:
         settings.hide_weight = hide_weight
-    if food_goal_id_set:
-        if food_goal_id is not None:
-            owned = db.scalar(
-                select(Goal.id).where(Goal.id == food_goal_id, Goal.user_id == user_id)
-            )
-            if owned is None:
-                raise BodyError("Goal not found", code=ErrorCode.GOAL_NOT_FOUND, status_code=404)
-        settings.food_goal_id = food_goal_id
+    if goal_ids is not None:
+        wanted = list(dict.fromkeys(goal_ids))
+        owned = set(db.scalars(select(Goal.id).where(Goal.id.in_(wanted), Goal.user_id == user_id)))
+        if len(owned) != len(wanted):
+            raise BodyError("Goal not found", code=ErrorCode.GOAL_NOT_FOUND, status_code=404)
+        db.execute(delete(BodyFoodGoal).where(BodyFoodGoal.user_id == user_id))
+        db.add_all(BodyFoodGoal(user_id=user_id, goal_id=goal_id) for goal_id in wanted)
     db.commit()
     db.refresh(settings)
     return settings

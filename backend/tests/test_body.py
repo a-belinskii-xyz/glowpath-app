@@ -25,7 +25,7 @@ def _today(db: Session, email: str) -> date:
     return datetime.now(ZoneInfo(user.timezone)).date()
 
 
-def test_settings_start_off_and_can_link_only_own_goal(
+def test_settings_start_off_and_link_up_to_three_own_goals(
     auth_client: TestClient, mailer: FakeEmailService
 ) -> None:
     token = register_verify_and_login(auth_client, mailer, "body-settings@example.com")
@@ -37,39 +37,51 @@ def test_settings_start_off_and_can_link_only_own_goal(
         "show_weight": False,
         "show_food": False,
         "hide_weight": False,
-        "food_goal_id": None,
+        "food_goal_ids": [],
     }
 
-    goal = auth_client.post(
-        "/v1/goals",
-        json={"labels": {"en": "Eat properly"}, "times_per_week": 7, "starts_on": "2026-01-01"},
-        headers=_auth(token),
-    ).json()
+    goals = [
+        auth_client.post(
+            "/v1/goals",
+            json={
+                "labels": {"en": f"Goal {index}"},
+                "times_per_week": 7,
+                "starts_on": "2026-01-01",
+            },
+            headers=_auth(token),
+        ).json()["id"]
+        for index in range(4)
+    ]
     updated = auth_client.patch(
         "/v1/body/settings",
-        json={"show_weight": True, "food_goal_id": goal["id"]},
+        json={"show_weight": True, "food_goal_ids": goals[:3]},
         headers=_auth(token),
     )
     assert updated.status_code == 200, updated.text
     assert updated.json()["show_weight"] is True
     assert updated.json()["show_food"] is False
-    assert updated.json()["food_goal_id"] == goal["id"]
+    assert updated.json()["food_goal_ids"] == goals[:3]
 
+    too_many = auth_client.patch(
+        "/v1/body/settings", json={"food_goal_ids": goals}, headers=_auth(token)
+    )
+    assert too_many.status_code == 422
     foreign = auth_client.patch(
-        "/v1/body/settings", json={"food_goal_id": goal["id"]}, headers=_auth(other)
+        "/v1/body/settings", json={"food_goal_ids": [goals[0]]}, headers=_auth(other)
     )
     assert foreign.status_code == 404
 
-    cleared = auth_client.patch(
-        "/v1/body/settings", json={"food_goal_id": None}, headers=_auth(token)
-    )
-    assert cleared.json()["food_goal_id"] is None
-    assert cleared.json()["show_weight"] is True
+    # Other fields leave the goals alone; deleting a linked goal just unlinks it.
+    kept = auth_client.patch("/v1/body/settings", json={"show_food": True}, headers=_auth(token))
+    assert kept.json()["food_goal_ids"] == goals[:3]
+    assert auth_client.delete(f"/v1/goals/{goals[1]}", headers=_auth(token)).status_code == 204
+    after = auth_client.get("/v1/body/settings", headers=_auth(token)).json()
+    assert after["food_goal_ids"] == [goals[0], goals[2]]
 
-    # Deleting the linked goal just unlinks it.
-    auth_client.patch("/v1/body/settings", json={"food_goal_id": goal["id"]}, headers=_auth(token))
-    assert auth_client.delete(f"/v1/goals/{goal['id']}", headers=_auth(token)).status_code == 204
-    assert auth_client.get("/v1/body/settings", headers=_auth(token)).json()["food_goal_id"] is None
+    cleared = auth_client.patch(
+        "/v1/body/settings", json={"food_goal_ids": []}, headers=_auth(token)
+    )
+    assert cleared.json()["food_goal_ids"] == []
 
 
 def test_weight_is_one_per_day_and_rejects_future_days(

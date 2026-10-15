@@ -5,8 +5,8 @@ export type BodySettings = {
   show_food: boolean
   /** Blur the weight number on «Моё» until tapped. */
   hide_weight: boolean
-  /** A goal the food drawer offers to mark, e.g. "Eat properly". */
-  food_goal_id: string | null
+  /** Up to three goals the food drawer offers to mark, e.g. "Eat properly". */
+  food_goal_ids: string[]
 }
 
 export type WeightPoint = {
