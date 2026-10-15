@@ -433,6 +433,9 @@ def quick_create_tag(
     Returns the tag and whether it was created.
     """
     name = _WHITESPACE_RE.sub(" ", label).strip()
+    if name.islower():
+        # «град» typed in a hurry reads like the built-in tags: «Град».
+        name = name[0].upper() + name[1:]
     labels = {locale: name}
     existing = find_tag_by_label(db, user_id=user_id, labels=labels)
     if existing is not None:

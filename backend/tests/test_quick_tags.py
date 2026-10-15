@@ -41,8 +41,10 @@ def test_quick_tag_created_in_new_tags_group(
     assert system[0]["show_on_entry"] is True
     assert [tag["id"] for tag in system[0]["tags"]] == [body["tag"]["id"]]
 
-    second = _quick(auth_client, token, "Туман")
+    second = _quick(auth_client, token, "туман")
     assert second.status_code == 201
+    assert second.json()["tag"]["label"] == "Туман"
+    assert _quick(auth_client, token, "iPhone").json()["tag"]["label"] == "iPhone"
     groups = auth_client.get("/v1/tag-groups", headers=_headers(token)).json()["items"]
     assert sum(1 for group in groups if group["is_system"]) == 1
 

@@ -341,7 +341,9 @@ export async function quickCreateGuestTag(
   label: string,
   locale: ApiLocale = 'en',
 ): Promise<QuickTagResponse> {
-  const name = label.replace(/\s+/g, ' ').trim()
+  const trimmed = label.replace(/\s+/g, ' ').trim()
+  const name =
+    trimmed === trimmed.toLowerCase() ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : trimmed
   const key = tagLabelKey(name)
   const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
   for (const group of groups) {
