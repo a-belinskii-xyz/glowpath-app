@@ -102,6 +102,7 @@ def upgrade() -> None:
         "mt_body_food_goals",
         sa.Column("user_id", sa.UUID(), nullable=False),
         sa.Column("goal_id", sa.UUID(), nullable=False),
+        sa.Column("position", sa.Integer(), server_default="0", nullable=False),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["mt_users.id"],

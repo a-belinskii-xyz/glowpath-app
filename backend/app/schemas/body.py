@@ -19,7 +19,7 @@ class BodySettingsPublic(BaseModel):
     show_weight: bool
     show_food: bool
     hide_weight: bool
-    # Goals the food drawer offers to mark, in goal order.
+    # Goals the food drawer offers to mark, in the order of the settings slots.
     food_goal_ids: list[uuid.UUID] = Field(default_factory=list)
 
 

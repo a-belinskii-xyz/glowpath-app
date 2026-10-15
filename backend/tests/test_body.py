@@ -61,6 +61,11 @@ def test_settings_start_off_and_link_up_to_three_own_goals(
     assert updated.json()["show_weight"] is True
     assert updated.json()["show_food"] is False
     assert updated.json()["food_goal_ids"] == goals[:3]
+    reordered = auth_client.patch(
+        "/v1/body/settings", json={"food_goal_ids": [goals[2], goals[0]]}, headers=_auth(token)
+    )
+    assert reordered.json()["food_goal_ids"] == [goals[2], goals[0]]
+    auth_client.patch("/v1/body/settings", json={"food_goal_ids": goals[:3]}, headers=_auth(token))
 
     too_many = auth_client.patch(
         "/v1/body/settings", json={"food_goal_ids": goals}, headers=_auth(token)

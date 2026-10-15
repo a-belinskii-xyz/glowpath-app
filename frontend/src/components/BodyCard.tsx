@@ -704,30 +704,39 @@ export function BodySettingsDrawer({ open, settings, goals, onClose, onSettingsC
           </span>
         </label>
         {settings.show_food && binaryGoals.length > 0 ? (
-          <fieldset className="body-goals">
-            <legend className="form-label">{t('body.foodGoals', { max: MAX_FOOD_GOALS })}</legend>
-            {binaryGoals.map((goal) => {
-              const checked = settings.food_goal_ids.includes(goal.id)
-              const full = !checked && settings.food_goal_ids.length >= MAX_FOOD_GOALS
+          <div className="body-goals">
+            <span className="form-label">{t('body.foodGoals')}</span>
+            {Array.from({ length: MAX_FOOD_GOALS }, (_, slot) => {
+              const current = settings.food_goal_ids[slot] ?? ''
+              // A slot opens only after the one before it is filled.
+              if (slot > settings.food_goal_ids.length) return null
+              const taken = settings.food_goal_ids.filter((id) => id !== current)
               return (
-                <label key={goal.id} className={`body-check${full ? ' is-disabled' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={isSaving || full}
-                    onChange={(event) =>
-                      void save({
-                        food_goal_ids: event.target.checked
-                          ? [...settings.food_goal_ids, goal.id]
-                          : settings.food_goal_ids.filter((id) => id !== goal.id),
-                      })
-                    }
-                  />
-                  <span>{goal.label}</span>
-                </label>
+                <select
+                  key={slot}
+                  className="form-input"
+                  value={current}
+                  disabled={isSaving}
+                  aria-label={t('body.foodGoalSlot', { number: slot + 1 })}
+                  onChange={(event) => {
+                    const next = [...settings.food_goal_ids]
+                    if (event.target.value) next[slot] = event.target.value
+                    else next.splice(slot, 1)
+                    void save({ food_goal_ids: next })
+                  }}
+                >
+                  <option value="">{t('body.foodGoalNone')}</option>
+                  {binaryGoals
+                    .filter((goal) => !taken.includes(goal.id))
+                    .map((goal) => (
+                      <option key={goal.id} value={goal.id}>
+                        {goal.label}
+                      </option>
+                    ))}
+                </select>
               )
             })}
-          </fieldset>
+          </div>
         ) : null}
       </div>
     </EditorDrawer>

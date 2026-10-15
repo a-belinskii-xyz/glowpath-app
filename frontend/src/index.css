@@ -12509,14 +12509,6 @@ html[data-color-scheme='dark'] .my-primary {
 .body-goals {
   display: grid;
   gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.body-check.is-disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .body-copy-dates {

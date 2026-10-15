@@ -36,9 +36,8 @@ def food_goal_ids(db: Session, *, user_id: uuid.UUID) -> list[uuid.UUID]:
     return list(
         db.scalars(
             select(BodyFoodGoal.goal_id)
-            .join(Goal, Goal.id == BodyFoodGoal.goal_id)
             .where(BodyFoodGoal.user_id == user_id)
-            .order_by(Goal.sort_order, Goal.created_at)
+            .order_by(BodyFoodGoal.position)
         )
     )
 
@@ -70,7 +69,10 @@ def patch_settings(
         if len(owned) != len(wanted):
             raise BodyError("Goal not found", code=ErrorCode.GOAL_NOT_FOUND, status_code=404)
         db.execute(delete(BodyFoodGoal).where(BodyFoodGoal.user_id == user_id))
-        db.add_all(BodyFoodGoal(user_id=user_id, goal_id=goal_id) for goal_id in wanted)
+        db.add_all(
+            BodyFoodGoal(user_id=user_id, goal_id=goal_id, position=index)
+            for index, goal_id in enumerate(wanted)
+        )
     db.commit()
     db.refresh(settings)
     return settings

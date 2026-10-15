@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     ForeignKey,
+    Integer,
     Numeric,
     String,
     UniqueConstraint,
@@ -101,3 +102,5 @@ class BodyFoodGoal(Base):
         ForeignKey(fk_column("goals"), ondelete="CASCADE"),
         primary_key=True,
     )
+    # Which of the three slots in settings holds this goal.
+    position: Mapped[int] = mapped_column(Integer, server_default="0")
