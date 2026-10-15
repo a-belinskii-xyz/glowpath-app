@@ -523,6 +523,7 @@ def put_goal_checkin(
             day=day,
             level=body.level,
             amount=body.amount,
+            add=body.add,
         )
     except GoalError as exc:
         _handle_error(exc)

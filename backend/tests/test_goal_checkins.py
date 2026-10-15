@@ -361,3 +361,49 @@ def test_quantity_check_in_counts_from_the_minimum(
         f"/v1/goals/{goal['id']}", json={"target_amount": 50}, headers=_auth(token)
     )
     assert lowered.json()["min_amount"] == 50
+
+
+def test_quantity_steps_add_up_and_keep_entry_amounts(
+    auth_client: TestClient, mailer: FakeEmailService, db: Session
+) -> None:
+    """GP-50: another step adds to the day; a total keeps what entries already logged."""
+    email = "checkin-steps@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    today = _today(db, email)
+    goal = _create_goal(
+        auth_client, token, tracking_kind="quantity", target_amount=100, unit="pages"
+    )
+    user = db.scalar(select(User).where(User.email == email))
+    assert user is not None
+    offset = datetime.now(ZoneInfo(user.timezone)).strftime("%z")
+    offset = f"{offset[:3]}:{offset[3:]}"
+
+    def put(body: dict[str, Any]) -> dict[str, Any]:
+        response = auth_client.put(
+            f"/v1/goals/{goal['id']}/checkins/{today.isoformat()}", json=body, headers=_auth(token)
+        )
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    assert put({"amount": 40})["day_amount"] == 40
+    stepped = put({"amount": 25, "add": True})
+    assert stepped["week_marks"] == [{"date": today.isoformat(), "level": "started", "amount": 65}]
+    over = put({"amount": 85, "add": True})
+    assert over["week_marks"] == [{"date": today.isoformat(), "level": "full", "amount": 150}]
+
+    # An entry logs 30 pages; setting the total to 120 keeps them and stores the other 90.
+    entry = auth_client.post(
+        "/v1/mood-entries",
+        json={
+            "score": 4,
+            "recorded_at": f"{today.isoformat()}T12:00:00{offset}",
+            "tag_ids": [],
+            "goal_ids": [goal["id"]],
+            "goal_progress": [{"goal_id": goal["id"], "amount": 30}],
+        },
+        headers=_auth(token),
+    )
+    assert entry.status_code == 201, entry.text
+    assert put({"amount": 120})["day_amount"] == 120
+    # A total the entries already cover leaves no check-in behind.
+    assert put({"amount": 20})["day_amount"] == 30

@@ -11898,6 +11898,25 @@ button.my-day:hover {
   color: var(--chrome-text-primary);
 }
 
+/* Past the target (GP-50): a darker arc on the full dot for the share above plan. */
+.my-day.is-amount.is-over {
+  background: conic-gradient(
+    color-mix(in oklab, var(--goal-color) 55%, #000) var(--over),
+    var(--goal-color) var(--over)
+  );
+  color: #fff;
+}
+
+.my-amount-done {
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+}
+
+.my-amount-mode {
+  justify-self: start;
+  margin-top: 0.5rem;
+}
+
 .my-day.is-started {
   background: conic-gradient(
     color-mix(in oklab, var(--goal-color) 45%, transparent) var(--fill),

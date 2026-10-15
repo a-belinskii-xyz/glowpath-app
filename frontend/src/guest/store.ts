@@ -448,15 +448,31 @@ async function updateGuestGoalCheckins(
   return items.find((goal) => goal.id === goalId) ?? goals[index]
 }
 
-export function setGuestGoalCheckin(
+// Same cap as the server (app/core/goal_tracking.py).
+const MAX_GOAL_AMOUNT = 1_000_000
+
+export async function setGuestGoalCheckin(
   goalId: string,
   day: string,
   body: GoalCheckinWrite,
 ): Promise<GoalPublic> {
+  // Mirrors the server: entry amounts stay, the check-in holds the rest of the day's total.
+  const { items } = await listGuestGoals({ progressOn: day })
+  const dayTotal =
+    items.find((goal) => goal.id === goalId)?.week_marks.find((mark) => mark.date === day)?.amount ?? 0
   return updateGuestGoalCheckins(goalId, day, (checkins, amounts, goal) => {
     if ('amount' in body) {
-      amounts[day] = body.amount
-      checkins[day] = goal.target_amount != null && body.amount >= goal.target_amount ? 'full' : 'partial'
+      const logged = amounts[day] ?? 0
+      const fromEntries = dayTotal - logged
+      const total = body.add ? Math.min(dayTotal + body.amount, MAX_GOAL_AMOUNT) : body.amount
+      const amount = total - fromEntries
+      if (amount < 1) {
+        delete checkins[day]
+        delete amounts[day]
+        return
+      }
+      amounts[day] = amount
+      checkins[day] = goal.target_amount != null && total >= goal.target_amount ? 'full' : 'partial'
     } else {
       checkins[day] = body.level
       delete amounts[day]

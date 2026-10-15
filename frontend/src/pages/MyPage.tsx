@@ -63,6 +63,13 @@ function fillPercent(goal: GoalPublic, mark: GoalDayMark | null): number {
   return Math.min(100, Math.round((mark.amount / goal.target_amount) * 100))
 }
 
+/** How far a quantity day went past its target, 0–100 (200% of the target and more is 100). */
+function overPercent(goal: GoalPublic, mark: GoalDayMark | null): number {
+  if (!mark || goal.tracking_kind !== 'quantity' || !goal.target_amount || mark.amount == null) return 0
+  const over = mark.amount - goal.target_amount
+  return over > 0 ? Math.min(100, Math.round((over / goal.target_amount) * 100)) : 0
+}
+
 /** The week's plan for a goal: its days per week, but never more than the days it is active. */
 function weekPlan(goal: GoalPublic, weekDays: string[]): number {
   const activeDays = weekDays.filter((day) => isActiveOn(goal, day)).length
@@ -97,6 +104,8 @@ export function MyPage() {
   const [markTarget, setMarkTarget] = useState<MarkTarget | null>(null)
   const [markLevel, setMarkLevel] = useState<GoalCheckinLevel>('partial')
   const [markAmount, setMarkAmount] = useState('')
+  // A quantity day that already has some progress takes another step by default (GP-50).
+  const [markMode, setMarkMode] = useState<'add' | 'set'>('set')
   const [markError, setMarkError] = useState<string | null>(null)
   const [isMarking, setIsMarking] = useState(false)
   const [winOpen, setWinOpen] = useState(false)
@@ -193,7 +202,9 @@ export function MyPage() {
     const mark = markOn(goal, day)
     setMarkTarget({ goal, day })
     setMarkLevel(mark?.level === 'full' ? 'full' : 'partial')
-    setMarkAmount(mark?.amount != null ? String(mark.amount) : '')
+    const hasAmount = goal.tracking_kind === 'quantity' && (mark?.amount ?? 0) > 0
+    setMarkMode(hasAmount ? 'add' : 'set')
+    setMarkAmount('')
     setMarkError(null)
   }
 
@@ -201,6 +212,8 @@ export function MyPage() {
   const isQuantity = markGoal?.tracking_kind === 'quantity'
   const amountValue = Number.parseInt(markAmount, 10)
   const amountValid = Number.isInteger(amountValue) && amountValue >= 1
+  const markDone = markTarget ? (markOn(markTarget.goal, markTarget.day)?.amount ?? 0) : 0
+  const isAdding = isQuantity && markMode === 'add'
 
   const saveMark = async (clear: boolean) => {
     if (!markTarget) return
@@ -213,7 +226,9 @@ export function MyPage() {
         : await setGoalCheckin(
             goal.id,
             day,
-            goal.tracking_kind === 'quantity' ? { amount: amountValue } : { level: markLevel },
+            goal.tracking_kind === 'quantity'
+              ? { amount: amountValue, add: markMode === 'add' }
+              : { level: markLevel },
           )
       // A mark on another week answers with that week; keep the one on screen.
       if (week.period_start <= day && day < week.period_end) replaceGoal(updated)
@@ -341,11 +356,15 @@ export function MyPage() {
                           'my-day',
                           mark ? `is-${mark.level}` : '',
                           goal.tracking_kind === 'quantity' && mark ? 'is-amount' : '',
+                          overPercent(goal, mark) > 0 ? 'is-over' : '',
                           day === today ? 'is-today' : '',
                         ]
                           .filter(Boolean)
                           .join(' ')
-                        const style = { ['--fill' as string]: `${fillPercent(goal, mark)}%` }
+                        const style = {
+                          ['--fill' as string]: `${fillPercent(goal, mark)}%`,
+                          ['--over' as string]: `${overPercent(goal, mark)}%`,
+                        }
                         if (!canMark(goal, day)) {
                           return (
                             <span key={day} className={className} style={style}>
@@ -476,8 +495,8 @@ export function MyPage() {
               onClick={() => void saveMark(false)}
             >
               <StableButtonLabel
-                active={isMarking ? t('common.saving') : t('myPage.mark')}
-                labels={[t('myPage.mark'), t('common.saving')]}
+                active={isMarking ? t('common.saving') : isAdding ? t('myPage.addStep') : t('myPage.mark')}
+                labels={[t('myPage.mark'), t('myPage.addStep'), t('common.saving')]}
               />
             </button>
             {markTarget && markOn(markTarget.goal, markTarget.day) ? (
@@ -496,8 +515,17 @@ export function MyPage() {
         <PageErrorAlert error={markError} />
         {markGoal && isQuantity ? (
           <div className="my-amount">
+            {isAdding ? (
+              <p className="my-amount-done">
+                {t('myPage.amountDone', {
+                  done: markDone,
+                  target: markGoal.target_amount ?? 0,
+                  unit: markGoal.unit ?? '',
+                })}
+              </p>
+            ) : null}
             <label className="form-label" htmlFor="my-amount-input">
-              {t('myPage.amountLabel')}
+              {isAdding ? t('myPage.amountAddLabel') : t('myPage.amountLabel')}
             </label>
             <div className="my-amount-row">
               <input
@@ -511,14 +539,38 @@ export function MyPage() {
                 onChange={(event) => setMarkAmount(event.target.value.replace(/[^0-9]/g, ''))}
               />
               <span className="muted">
-                {t('myPage.amountOf', { target: markGoal.target_amount ?? 0, unit: markGoal.unit ?? '' })}
+                {isAdding
+                  ? markGoal.unit ?? ''
+                  : t('myPage.amountOf', { target: markGoal.target_amount ?? 0, unit: markGoal.unit ?? '' })}
               </span>
             </div>
+            {isAdding && amountValid ? (
+              <span className="my-level-hint">
+                {t('myPage.amountWillBe', {
+                  total: markDone + amountValue,
+                  target: markGoal.target_amount ?? 0,
+                  unit: markGoal.unit ?? '',
+                })}
+              </span>
+            ) : null}
             <span className="my-level-hint">
               {markGoal.min_amount
                 ? t('myPage.amountCountsFrom', { min: markGoal.min_amount, unit: markGoal.unit ?? '' })
                 : t('myPage.amountCountsFull')}
             </span>
+            {markDone > 0 ? (
+              <button
+                type="button"
+                className="link-button my-amount-mode"
+                onClick={() => {
+                  const next = markMode === 'add' ? 'set' : 'add'
+                  setMarkMode(next)
+                  setMarkAmount(next === 'set' ? String(markDone) : '')
+                }}
+              >
+                {markMode === 'add' ? t('myPage.amountFixTotal') : t('myPage.amountAddInstead')}
+              </button>
+            ) : null}
           </div>
         ) : (
           <div

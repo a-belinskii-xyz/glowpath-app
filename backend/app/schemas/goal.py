@@ -207,6 +207,8 @@ class GoalCheckinRequest(BaseModel):
     # Binary goals send a level; quantity goals send the amount done that day.
     level: GoalCheckinLevel | None = None
     amount: int | None = Field(default=None, ge=1, le=MAX_GOAL_AMOUNT)
+    # Quantity goals: add ``amount`` to the day instead of setting its total (GP-50).
+    add: bool = False
 
 
 class GoalReorderRequest(BaseModel):
