@@ -9,7 +9,7 @@ import { intlLocale } from '../i18n/t'
 import { dayNumber, formatDay } from '../lib/bodyFormat'
 import { shiftDateKey } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
-import { type Night, averageNights, formatDuration, nightClock, toNight } from '../lib/sleep'
+import { type Night, averageNights, formatDuration, nightClock, normalizeClock, toNight, typeClock } from '../lib/sleep'
 import type { SleepLog, SleepQuality } from '../types/body'
 
 const QUALITIES: SleepQuality[] = ['hard', 'ok', 'good']
@@ -188,6 +188,42 @@ type SleepDrawerProps = {
 
 const DEFAULT_TIMES = { bed: '23:00', wake: '07:00', up: '' }
 
+type ClockFieldProps = {
+  label: string
+  value: string
+  required?: boolean
+  onChange: (value: string) => void
+}
+
+/**
+ * A plain text field with a digit keypad instead of type="time": the native time picker does not
+ * open in some Telegram webviews, which left the sleep times impossible to change.
+ */
+function ClockField({ label, value, required = false, onChange }: ClockFieldProps) {
+  const invalid = value !== '' && normalizeClock(value) === null
+  return (
+    <label>
+      <span className="body-label">{label}</span>
+      <input
+        className={`form-input${invalid ? ' is-invalid' : ''}`}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder={required ? '23:00' : '—'}
+        value={value}
+        aria-invalid={invalid || undefined}
+        // Typing replaces the old time instead of appending to it.
+        onFocus={(event) => event.currentTarget.select()}
+        onChange={(event) => onChange(typeClock(event.target.value))}
+        onBlur={() => {
+          const clock = normalizeClock(value)
+          if (clock) onChange(clock)
+        }}
+      />
+    </label>
+  )
+}
+
 export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDrawerProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
@@ -224,11 +260,15 @@ export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDraw
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, day])
 
+  const bedClock = normalizeClock(bed)
+  const wakeClock = normalizeClock(wake)
+  const upClock = up === '' ? null : normalizeClock(up)
+  const upValid = up === '' || upClock !== null
   const draft =
-    bed && wake
-      ? toNight({ day, bed_time: bed, wake_time: wake, up_time: up || null, quality: null, note: null })
+    bedClock && wakeClock
+      ? toNight({ day, bed_time: bedClock, wake_time: wakeClock, up_time: upClock, quality: null, note: null })
       : null
-  const canSave = draft !== null && !isSaving
+  const canSave = draft !== null && upValid && !isSaving
   const rangeStart = shiftDateKey(today, -RANGES[range] + 1)
   const chartNights = logs.filter((log) => log.day >= rangeStart).map(toNight)
 
@@ -251,9 +291,9 @@ export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDraw
     if (!canSave) return
     void run(() =>
       setSleep(day, {
-        bed_time: bed,
-        wake_time: wake,
-        up_time: up || null,
+        bed_time: bedClock ?? bed,
+        wake_time: wakeClock ?? wake,
+        up_time: upClock,
         quality,
         note: note.trim() || null,
       }),
@@ -292,18 +332,9 @@ export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDraw
       <form id="body-sleep-form" className="form" onSubmit={handleSubmit}>
         <PageErrorAlert error={error} />
         <div className="body-sleep-inputs">
-          <label>
-            <span className="body-label">{t('body.sleepBed')}</span>
-            <input className="form-input" type="time" required value={bed} onChange={(event) => setBed(event.target.value)} />
-          </label>
-          <label>
-            <span className="body-label">{t('body.sleepWake')}</span>
-            <input className="form-input" type="time" required value={wake} onChange={(event) => setWake(event.target.value)} />
-          </label>
-          <label>
-            <span className="body-label">{t('body.sleepUp')}</span>
-            <input className="form-input" type="time" value={up} onChange={(event) => setUp(event.target.value)} />
-          </label>
+          <ClockField label={t('body.sleepBed')} value={bed} required onChange={setBed} />
+          <ClockField label={t('body.sleepWake')} value={wake} required onChange={setWake} />
+          <ClockField label={t('body.sleepUp')} value={up} onChange={setUp} />
         </div>
         <div className="body-sleep-meta">
           <span className="body-label">

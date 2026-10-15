@@ -80,3 +80,26 @@ export function formatDuration(t: Translate, minutes: number): string {
   const rest = total % 60
   return hours > 0 ? t('body.sleepHours', { h: hours, m: rest }) : t('body.sleepMinutes', { m: rest })
 }
+
+/**
+ * Typing in a clock field: digits only (phone keypads have no colon), the colon is added for you.
+ * "2340" → "23:40", "730" → "7:30", "7" → "7".
+ */
+export function typeClock(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4)
+  if (digits.length < 3) return digits
+  // "730" means 7:30, "123" means 12:3 on the way to 12:30.
+  const short = digits.length === 3 && (Number(digits[0]) > 2 || Number(digits.slice(0, 2)) > 23)
+  const hours = short ? digits.slice(0, 1) : digits.slice(0, 2)
+  return `${hours}:${digits.slice(hours.length, hours.length + 2)}`
+}
+
+/** A typed clock as "HH:MM", or null when it is not a time yet. "7" → "07:00", "7:30" → "07:30". */
+export function normalizeClock(value: string): string | null {
+  const match = /^(\d{1,2})(?::(\d{2}))?$/.exec(value.trim())
+  if (!match) return null
+  const hours = Number(match[1])
+  const minutes = Number(match[2] ?? '0')
+  if (hours > 23 || minutes > 59) return null
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
