@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.i18n import resolve_label
+from app.models.body import FoodLog, Measurement
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MoodEntryAttachment
@@ -35,12 +36,14 @@ from app.services.diary_archive.schema import (
     ArchiveEntry,
     ArchiveEntryGoal,
     ArchiveEntryTag,
+    ArchiveFoodLog,
     ArchiveGoal,
     ArchiveGoalCheckin,
     ArchiveNoteTemplate,
     ArchiveReminder,
     ArchiveTag,
     ArchiveTagGroup,
+    ArchiveWeight,
     DiaryArchive,
 )
 from app.services.storage import ObjectStorage, StorageError
@@ -198,6 +201,22 @@ def _reminders_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveReminder]
     ]
 
 
+def _weights_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveWeight]:
+    rows = db.scalars(
+        select(Measurement)
+        .where(Measurement.user_id == user_id, Measurement.kind == "weight")
+        .order_by(Measurement.day)
+    )
+    return [ArchiveWeight(day=row.day, value_kg=float(row.value)) for row in rows]
+
+
+def _food_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveFoodLog]:
+    rows = db.scalars(
+        select(FoodLog).where(FoodLog.user_id == user_id).order_by(FoodLog.day, FoodLog.created_at)
+    )
+    return [ArchiveFoodLog(day=row.day, meal=row.meal, text=row.text) for row in rows]
+
+
 def _entry_payload(
     entry: MoodEntry,
     files: dict[uuid.UUID, str | None],
@@ -314,6 +333,8 @@ def build_account_export_parts(
         goals=_goals_payload(db, user.id),
         note_templates=_note_templates_payload(db, user.id),
         reminders=_reminders_payload(db, user.id),
+        weights=_weights_payload(db, user.id),
+        food=_food_payload(db, user.id),
     )
     entries_csv = _entries_csv(entries, zone=_user_zone(user), locale=locale)
 

@@ -14,12 +14,17 @@ import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import IO, Any
+
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
 from app.core.attachment_kind import AttachmentKind
 from app.core.default_tag_groups import DEFAULT_TAG_COLOR, DEFAULT_TAG_ICON
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
+from app.models.body import FoodLog, Measurement
 from app.models.diary_restore import DiaryRestore, DiaryRestoreStatus
 from app.models.goal import DEFAULT_GOAL_COLOR, DEFAULT_GOAL_ICON, Goal
 from app.models.goal_checkin import GoalCheckin
@@ -51,8 +56,6 @@ from app.services.mood_entry_service import (
     _score_color_for_user,
 )
 from app.services.storage import ObjectStorage, StorageError
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
 
 RESTORE_SOURCE = "restore"
 TEMP_PREFIX = "restores"
@@ -492,6 +495,41 @@ def _restore_goal_checkins(
             )
 
 
+def _restore_body(db: Session, archive: DiaryArchive, *, user_id: uuid.UUID) -> None:
+    """Add weights for days without one and food notes not already there (GP-47)."""
+    weighed = set(
+        db.scalars(
+            select(Measurement.day).where(
+                Measurement.user_id == user_id, Measurement.kind == "weight"
+            )
+        )
+    )
+    for weight in archive.weights:
+        if weight.day in weighed:
+            continue
+        weighed.add(weight.day)
+        db.add(
+            Measurement(
+                user_id=user_id,
+                kind="weight",
+                day=weight.day,
+                value=Decimal(str(round(weight.value_kg, 1))),
+            )
+        )
+    eaten = {
+        (day, meal, text)
+        for day, meal, text in db.execute(
+            select(FoodLog.day, FoodLog.meal, FoodLog.text).where(FoodLog.user_id == user_id)
+        ).all()
+    }
+    for food in archive.food:
+        key = (food.day, food.meal, food.text)
+        if key in eaten:
+            continue
+        eaten.add(key)
+        db.add(FoodLog(user_id=user_id, day=food.day, meal=food.meal, text=food.text))
+
+
 def _restore_setup(
     db: Session, archive: DiaryArchive, diary: _Diary, restore: DiaryRestore, counts: _Counts
 ) -> None:
@@ -532,6 +570,7 @@ def _restore_setup(
         diary.goals[goal.slug] = goal
         counts.goals_new += 1
     _restore_goal_checkins(db, archive, diary, user_id=user_id)
+    _restore_body(db, archive, user_id=user_id)
 
     for template_data in archive.note_templates:
         if template_data.slug in diary.templates:

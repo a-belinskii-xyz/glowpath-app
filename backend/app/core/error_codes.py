@@ -73,6 +73,9 @@ class ErrorCode(StrEnum):
     INVALID_GOAL_MIN_AMOUNT = "invalid_goal_min_amount"
     GOAL_CHECKIN_AMOUNT_REQUIRED = "goal_checkin_amount_required"
     GOAL_CHECKIN_LEVEL_REQUIRED = "goal_checkin_level_required"
+    BODY_DAY_IN_FUTURE = "body_day_in_future"
+    INVALID_BODY_RANGE = "invalid_body_range"
+    FOOD_LOG_NOT_FOUND = "food_log_not_found"
     PERIOD_END_BEFORE_START = "period_end_before_start"
     ENDS_ON_BEFORE_STARTS_ON = "ends_on_before_starts_on"
 

@@ -11,10 +11,11 @@ import uuid
 from datetime import date, datetime
 from typing import Literal
 
+from pydantic import BaseModel, ConfigDict, Field
+
 from app.core.default_tag_groups import DEFAULT_TAG_COLOR, DEFAULT_TAG_ICON
 from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE
 from app.models.goal import DEFAULT_GOAL_COLOR, DEFAULT_GOAL_ICON
-from pydantic import BaseModel, ConfigDict, Field
 
 CURRENT_VERSION = 2
 
@@ -138,6 +139,17 @@ class ArchiveEntry(_ArchiveModel):
     attachments: list[ArchiveAttachment] = Field(default_factory=list)
 
 
+class ArchiveWeight(_ArchiveModel):
+    day: date
+    value_kg: float = Field(ge=20, le=400)
+
+
+class ArchiveFoodLog(_ArchiveModel):
+    day: date
+    meal: Literal["morning", "day", "evening", "snack"] | None = None
+    text: str = Field(min_length=1, max_length=500)
+
+
 class DiaryArchive(_ArchiveModel):
     format_version: Literal[2] = 2
     exported_at: datetime
@@ -147,3 +159,6 @@ class DiaryArchive(_ArchiveModel):
     note_templates: list[ArchiveNoteTemplate] = Field(default_factory=list)
     reminders: list[ArchiveReminder] = Field(default_factory=list)
     entries: list[ArchiveEntry] = Field(default_factory=list)
+    # Weight and food notes (GP-47); older v2 archives simply have none.
+    weights: list[ArchiveWeight] = Field(default_factory=list)
+    food: list[ArchiveFoodLog] = Field(default_factory=list)
