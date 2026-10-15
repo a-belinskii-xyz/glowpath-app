@@ -151,6 +151,8 @@ export function EntriesPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(() => searchParams.get('favorites') === '1')
+  // GP-46: «Все» from «Что получилось» opens the feed with only those entries.
+  const [winsOnly, setWinsOnly] = useState(() => searchParams.get('wins') === '1')
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -498,6 +500,7 @@ export function EntriesPage() {
           recorded_from: monthBounds.recorded_from,
           recorded_to: monthBounds.recorded_to,
           ...(favoritesOnly ? { is_favorite: true } : {}),
+          ...(winsOnly ? { is_win: true } : {}),
         })
 
         setEntries((current) =>
@@ -519,6 +522,7 @@ export function EntriesPage() {
     },
     [
       favoritesOnly,
+      winsOnly,
       locale,
       monthBounds.recorded_from,
       monthBounds.recorded_to,
@@ -551,6 +555,7 @@ export function EntriesPage() {
             recorded_from: dayBounds.recorded_from,
             recorded_to: monthBounds.recorded_to,
             ...(favoritesOnly ? { is_favorite: true } : {}),
+            ...(winsOnly ? { is_win: true } : {}),
           })
           items.push(...response.items)
           pageOffset += response.items.length
@@ -576,6 +581,7 @@ export function EntriesPage() {
     },
     [
       favoritesOnly,
+      winsOnly,
       monthBounds.recorded_to,
       t,
       timeZone,
@@ -1142,9 +1148,32 @@ export function EntriesPage() {
         />
       ) : null}
 
+      {winsOnly && !isSearchMode ? (
+        <p className="entries-filter-note">
+          {t('entries.winsOnly')}{' '}
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
+              setWinsOnly(false)
+              setSearchParams(
+                (params) => {
+                  params.delete('wins')
+                  return params
+                },
+                { replace: true },
+              )
+            }}
+          >
+            {t('entries.showAll')}
+          </button>
+        </p>
+      ) : null}
       {isLoading && entries.length === 0 ? (
         <EntriesSkeleton />
-      ) : diaryAccess && entries.length === 0 && (isSearchMode || favoritesOnly || !stats) ? (
+      ) : diaryAccess &&
+        entries.length === 0 &&
+        (isSearchMode || favoritesOnly || winsOnly || !stats) ? (
         <div className="entry-feed">
           <section className="day-section">
             <p className="muted entry-feed-empty">
@@ -1152,7 +1181,9 @@ export function EntriesPage() {
                 ? t('entries.searchNoResults')
                 : favoritesOnly
                   ? t('entries.noFavoritesThisMonth')
-                  : emptyMonthCopy}
+                  : winsOnly
+                    ? t('entries.noWinsThisMonth')
+                    : emptyMonthCopy}
             </p>
           </section>
         </div>

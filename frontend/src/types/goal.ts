@@ -5,10 +5,18 @@ export type GoalTrackingKind = 'binary' | 'quantity'
 /** How a goal was done on a day: "a little" or fully. */
 export type GoalCheckinLevel = 'partial' | 'full'
 
+/** "started": a quantity day with some progress below the amount that counts. */
+export type GoalDayLevel = GoalCheckinLevel | 'started'
+
 export type GoalDayMark = {
   date: string
-  level: GoalCheckinLevel
+  level: GoalDayLevel
+  /** Quantity goals: how much was done that day. */
+  amount: number | null
 }
+
+/** Binary goals send a level; quantity goals send the amount done that day. */
+export type GoalCheckinWrite = { level: GoalCheckinLevel } | { amount: number }
 
 export type GoalPublic = {
   id: string
@@ -21,6 +29,8 @@ export type GoalPublic = {
   unit: string | null
   /** What counts as "a little" for this goal, e.g. "at least a snack". */
   partial_label: string | null
+  /** Quantity goals: a day counts from this amount; null = only the full target. */
+  min_amount: number | null
   starts_on: string
   ends_on: string | null
   sort_order: number
@@ -48,6 +58,7 @@ export type GoalWrite = {
   target_amount?: number | null
   unit?: string | null
   partial_label?: string | null
+  min_amount?: number | null
   starts_on: string
   ends_on?: string | null
   slug?: string
@@ -67,6 +78,7 @@ export type GoalPatch = {
   target_amount?: number | null
   unit?: string | null
   partial_label?: string | null
+  min_amount?: number | null
   starts_on?: string
   ends_on?: string | null
   sort_order?: number

@@ -102,6 +102,12 @@ class MoodEntry(TimestampMixin, Base):
         nullable=False,
         server_default=text("false"),
     )
+    # Written from the «Моё» screen as "what worked out" (GP-46).
+    is_win: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
     # Attribution for analytics, ``{channel}:{kind}`` (e.g. email:daily_mood_reminder);
     # not shown in UI.
     source: Mapped[str | None] = mapped_column(String(64), nullable=True)

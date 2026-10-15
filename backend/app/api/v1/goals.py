@@ -1,6 +1,6 @@
 import uuid
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
@@ -77,7 +77,7 @@ def _to_public(
     locale: str,
     completed_this_week: int = 0,
     day_amount: int = 0,
-    week_marks: dict[date, str] | None = None,
+    week_marks: list[dict[str, Any]] | None = None,
 ) -> GoalPublic:
     return GoalPublic.model_validate(
         serialize_goal(
@@ -109,7 +109,7 @@ def _to_list_response(
                 goal_id: item.amount_on(progress_on or _user_today(user))
                 for goal_id, item in progress.items()
             },
-            week_marks_by_goal={goal_id: item.levels for goal_id, item in progress.items()},
+            week_marks_by_goal={goal_id: item.marks() for goal_id, item in progress.items()},
         )
     ]
     return GoalListResponse(
@@ -143,7 +143,7 @@ def _public_with_week_stats(
         locale=locale,
         completed_this_week=completed,
         day_amount=day_amount,
-        week_marks=item.levels if item is not None else None,
+        week_marks=item.marks() if item is not None else None,
     )
 
 
@@ -192,6 +192,7 @@ def create_goal_endpoint(
             target_amount=body.target_amount,
             unit=body.unit,
             partial_label=body.partial_label,
+            min_amount=body.min_amount,
             starts_on=body.starts_on,
             ends_on=body.ends_on,
             slug=body.slug,
@@ -472,6 +473,8 @@ def update_goal(
             unit_set="unit" in body.model_fields_set,
             partial_label=body.partial_label,
             partial_label_set="partial_label" in body.model_fields_set,
+            min_amount=body.min_amount,
+            min_amount_set="min_amount" in body.model_fields_set,
             starts_on=body.starts_on,
             ends_on=body.ends_on,
             ends_on_set="ends_on" in body.model_fields_set,
@@ -513,7 +516,14 @@ def put_goal_checkin(
 ) -> GoalPublic:
     """Mark a goal done on ``day`` without a mood entry; the response covers that day's week."""
     try:
-        goal = set_goal_checkin(db, user=current_user, goal_id=goal_id, day=day, level=body.level)
+        goal = set_goal_checkin(
+            db,
+            user=current_user,
+            goal_id=goal_id,
+            day=day,
+            level=body.level,
+            amount=body.amount,
+        )
     except GoalError as exc:
         _handle_error(exc)
         raise

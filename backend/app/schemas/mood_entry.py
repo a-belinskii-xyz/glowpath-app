@@ -44,6 +44,7 @@ class MoodEntryCreate(BaseModel):
     tag_ids: list[uuid.UUID] = Field(default_factory=list)
     goal_ids: list[uuid.UUID] = Field(default_factory=list)
     goal_progress: list[MoodEntryGoalProgress] = Field(default_factory=list)
+    is_win: bool = False
     # Analytics attribution from notification deep links; not returned in public responses.
     source: MoodEntrySource | None = None
 
@@ -118,6 +119,7 @@ class MoodEntryPublic(BaseModel):
     score_color: str
     note: str | None
     is_favorite: bool
+    is_win: bool = False
     tags: list[MoodEntryTagPublic]
     goals: list[MoodEntryGoalPublic]
     attachments: list[AttachmentPublic]

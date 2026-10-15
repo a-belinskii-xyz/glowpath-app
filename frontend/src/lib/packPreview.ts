@@ -113,6 +113,7 @@ export function buildPreviewData(options: {
     target_amount: null,
     unit: null,
     partial_label: null,
+    min_amount: null,
     starts_on: `${year}-01-01`,
     ends_on: null,
     sort_order: index,

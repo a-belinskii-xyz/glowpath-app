@@ -2,6 +2,7 @@ import { dayKey } from '../lib/datetime'
 import type {
   GoalCalendarDayPublic,
   GoalCheckinLevel,
+  GoalDayLevel,
   GoalDayMark,
   GoalPeriodStatPublic,
   GoalPublic,
@@ -10,13 +11,23 @@ import type {
 import type { MoodEntryPublic } from '../types/mood'
 
 /** A goal as the guest diary stores it: days marked without an entry ride along. */
-export type GuestGoal = GoalPublic & { checkins?: Record<string, GoalCheckinLevel> }
+export type GuestGoal = GoalPublic & {
+  checkins?: Record<string, GoalCheckinLevel>
+  /** Quantity goals: how much was done on a checked-in day (GP-46). */
+  checkin_amounts?: Record<string, number>
+}
 
 /** Drop storage-only fields and fill ones older guest diaries never saved. */
 export function toPublicGoal(goal: GuestGoal): GoalPublic {
   const rest: GuestGoal = { ...goal }
   delete rest.checkins
-  return { ...rest, partial_label: rest.partial_label ?? null, week_marks: rest.week_marks ?? [] }
+  delete rest.checkin_amounts
+  return {
+    ...rest,
+    partial_label: rest.partial_label ?? null,
+    min_amount: rest.min_amount ?? null,
+    week_marks: rest.week_marks ?? [],
+  }
 }
 
 function periodDays(periodStart: string, periodEndExclusive: string): number {
@@ -48,7 +59,8 @@ type GoalPeriodProgress = {
   completedDays: number
   amountInPeriod: number
   dayAmount: number
-  levels: Map<string, GoalCheckinLevel>
+  levels: Map<string, GoalDayLevel>
+  amounts: Map<string, number>
 }
 
 function computeGoalPeriodProgress(
@@ -84,15 +96,27 @@ function computeGoalPeriodProgress(
 
   const result = new Map<string, GoalPeriodProgress>()
   for (const goal of goals) {
-    const amounts = daily.get(goal.id) ?? new Map<string, number>()
-    const levels = new Map<string, GoalCheckinLevel>()
+    const amounts = new Map(daily.get(goal.id) ?? new Map<string, number>())
+    const levels = new Map<string, GoalDayLevel>()
     let amountInPeriod = 0
+    const checkinAmounts = goal.checkin_amounts ?? {}
     if (goal.tracking_kind === 'quantity') {
-      const threshold = goal.target_amount ?? 0
+      for (const [day, amount] of Object.entries(checkinAmounts)) {
+        if (day >= periodStart && day < periodEnd) {
+          amounts.set(day, (amounts.get(day) ?? 0) + amount)
+        }
+      }
+      // Mirrors the server: full at the target, counts from min_amount (or the target).
+      const fullAt = goal.target_amount ?? 0
+      const countsFrom = goal.min_amount ?? fullAt
       for (const [day, value] of amounts) {
         amountInPeriod += value
-        if (value >= threshold) {
+        if (value >= fullAt) {
           levels.set(day, 'full')
+        } else if (value >= countsFrom) {
+          levels.set(day, 'partial')
+        } else if (value > 0) {
+          levels.set(day, 'started')
         }
       }
     } else {
@@ -103,15 +127,18 @@ function computeGoalPeriodProgress(
     }
     // Days marked without an entry count too; an entry that met the goal wins.
     for (const [day, level] of Object.entries(goal.checkins ?? {})) {
-      if (day >= periodStart && day < periodEnd && !levels.has(day)) {
+      if (day in checkinAmounts && goal.tracking_kind === 'quantity') continue
+      const current = levels.get(day)
+      if (day >= periodStart && day < periodEnd && (!current || current === 'started')) {
         levels.set(day, level)
       }
     }
     result.set(goal.id, {
-      completedDays: levels.size,
+      completedDays: [...levels.values()].filter((level) => level !== 'started').length,
       amountInPeriod,
       dayAmount: progressDay ? (amounts.get(progressDay) ?? 0) : 0,
       levels,
+      amounts,
     })
   }
   return result
@@ -147,8 +174,13 @@ export function enrichGuestGoalsWithProgress(
 
   return goals.map((goal) => {
     const stats = progress.get(goal.id)
-    const weekMarks: GoalDayMark[] = [...(stats?.levels ?? new Map())]
-      .map(([date, level]) => ({ date, level }))
+    const quantity = goal.tracking_kind === 'quantity'
+    const weekMarks: GoalDayMark[] = [...(stats?.levels ?? new Map<string, GoalDayLevel>())]
+      .map(([date, level]) => ({
+        date,
+        level,
+        amount: quantity ? (stats?.amounts.get(date) ?? null) : null,
+      }))
       .sort((left, right) => left.date.localeCompare(right.date))
     return {
       ...toPublicGoal(goal),

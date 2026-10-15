@@ -17,6 +17,7 @@ from app.core.emoji import is_single_emoji
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.goal_tracking import (
+    GOAL_DAY_STARTED,
     MAX_GOAL_AMOUNT,
     MAX_GOAL_PARTIAL_LABEL_LENGTH,
     MAX_GOAL_UNIT_LENGTH,
@@ -80,6 +81,7 @@ def create_goal(
     target_amount: int | None = None,
     unit: str | None = None,
     partial_label: str | None = None,
+    min_amount: int | None = None,
 ) -> Goal:
     if show_on_entry:
         _ensure_visible_slot_available(db, user_id=user_id)
@@ -117,6 +119,7 @@ def create_goal(
         target_amount=resolved_target,
         unit=resolved_unit,
         partial_label=_clean_partial_label(partial_label),
+        min_amount=_validate_min_amount(kind, resolved_target, min_amount),
         starts_on=starts_on,
         ends_on=ends_on,
         sort_order=resolved_order,
@@ -161,6 +164,8 @@ def patch_goal(
     unit_set: bool = False,
     partial_label: str | None = None,
     partial_label_set: bool = False,
+    min_amount: int | None = None,
+    min_amount_set: bool = False,
 ) -> Goal:
     goal = get_goal(db, user_id=user_id, goal_id=goal_id)
     if slug is not None:
@@ -181,6 +186,16 @@ def patch_goal(
         goal.tracking_kind = kind.value
         goal.target_amount = resolved_target
         goal.unit = resolved_unit
+        if not min_amount_set and goal.min_amount is not None:
+            # Keep the threshold inside the new target, or drop it for binary goals.
+            min_amount_set = True
+            min_amount = (
+                min(goal.min_amount, resolved_target) if resolved_target is not None else None
+            )
+    if min_amount_set:
+        goal.min_amount = _validate_min_amount(
+            GoalTrackingKind(goal.tracking_kind), goal.target_amount, min_amount
+        )
     if partial_label_set:
         goal.partial_label = _clean_partial_label(partial_label)
     if starts_on is not None:
@@ -299,6 +314,8 @@ def period_completion_counts(
 class GoalPeriodProgress:
     __slots__ = ("completed_days", "daily_amounts", "tracking_kind", "target_amount", "levels")
 
+    # Days that count toward the week; "started" is a quantity day below the threshold.
+
     def __init__(
         self,
         *,
@@ -312,8 +329,19 @@ class GoalPeriodProgress:
         self.daily_amounts = daily_amounts
         self.tracking_kind = tracking_kind
         self.target_amount = target_amount
-        # Completed days and how: "full" or "partial" (a check-in marked "a little").
+        # How each day went: "full", "partial" (counts) or "started" (does not count yet).
         self.levels = levels if levels is not None else {}
+
+    def marks(self) -> list[dict[str, Any]]:
+        quantity = self.tracking_kind == GoalTrackingKind.QUANTITY
+        return [
+            {
+                "date": day,
+                "level": level,
+                "amount": self.daily_amounts.get(day) if quantity else None,
+            }
+            for day, level in sorted(self.levels.items())
+        ]
 
     @property
     def amount_in_period(self) -> int:
@@ -334,9 +362,10 @@ def period_goal_progress(
 ) -> dict[uuid.UUID, GoalPeriodProgress]:
     """Per-goal daily amounts and completed days in ``[period_start, period_end)``.
 
-    A day counts as completed when the goal's entries meet it (any link for
-    binary goals, the daily target for quantity goals) or when the goal was
-    checked in that day, at either level. Check-ins never change amounts.
+    Binary goals: a day counts when an entry links the goal or it was checked in.
+    Quantity goals: entry and check-in amounts add up; the day counts from the
+    goal's ``min_amount`` (or the full target when unset). Older check-ins without
+    an amount keep counting at their level.
     """
     if period_end <= period_start:
         raise GoalError(
@@ -362,7 +391,9 @@ def period_goal_progress(
             MoodEntry.recorded_at < range_end_utc,
         )
     )
-    checkin_stmt = select(GoalCheckin.goal_id, GoalCheckin.day, GoalCheckin.level).where(
+    checkin_stmt = select(
+        GoalCheckin.goal_id, GoalCheckin.day, GoalCheckin.level, GoalCheckin.amount
+    ).where(
         GoalCheckin.user_id == user_id,
         GoalCheckin.day >= period_start,
         GoalCheckin.day < period_end,
@@ -378,32 +409,49 @@ def period_goal_progress(
             continue
         daily[goal_id][local_day] += int(amount or 0)
     checkins: dict[uuid.UUID, dict[date, str]] = defaultdict(dict)
-    for goal_id, day, level in db.execute(checkin_stmt).all():
-        checkins[goal_id][day] = level
+    checkin_amounts: dict[uuid.UUID, dict[date, int]] = defaultdict(dict)
+    for goal_id, day, level, amount in db.execute(checkin_stmt).all():
+        if amount is not None:
+            checkin_amounts[goal_id][day] = int(amount)
+        else:
+            checkins[goal_id][day] = level
 
-    ids = goal_ids if goal_ids is not None else list({*daily, *checkins})
+    ids = goal_ids if goal_ids is not None else list({*daily, *checkins, *checkin_amounts})
     meta = {
-        goal_id: (tracking_kind, target_amount)
-        for goal_id, tracking_kind, target_amount in db.execute(
-            select(Goal.id, Goal.tracking_kind, Goal.target_amount).where(
+        goal_id: (tracking_kind, target_amount, min_amount)
+        for goal_id, tracking_kind, target_amount, min_amount in db.execute(
+            select(Goal.id, Goal.tracking_kind, Goal.target_amount, Goal.min_amount).where(
                 Goal.user_id == user_id, Goal.id.in_(ids)
             )
         ).all()
     }
     result: dict[uuid.UUID, GoalPeriodProgress] = {}
     for goal_id in ids:
-        kind, target = meta.get(goal_id, (GoalTrackingKind.BINARY.value, None))
+        kind, target, min_amount = meta.get(goal_id, (GoalTrackingKind.BINARY.value, None, None))
         quantity = kind == GoalTrackingKind.QUANTITY
         entry_days = daily.get(goal_id, {})
-        amounts = dict(entry_days) if quantity else {day: 1 for day in entry_days}
-        threshold = int(target or 0) if quantity else 1
-        levels = {
-            day: GoalCheckinLevel.FULL.value for day, value in amounts.items() if value >= threshold
-        }
+        levels: dict[date, str] = {}
+        if quantity:
+            amounts = dict(entry_days)
+            for day, amount in checkin_amounts.get(goal_id, {}).items():
+                amounts[day] = amounts.get(day, 0) + amount
+            full_at = int(target or 0)
+            counts_from = int(min_amount or full_at)
+            for day, value in amounts.items():
+                if value >= full_at:
+                    levels[day] = GoalCheckinLevel.FULL.value
+                elif value >= counts_from:
+                    levels[day] = GoalCheckinLevel.PARTIAL.value
+                elif value > 0:
+                    levels[day] = GOAL_DAY_STARTED
+        else:
+            amounts = {day: 1 for day in entry_days}
+            levels = {day: GoalCheckinLevel.FULL.value for day in amounts}
         for day, level in checkins.get(goal_id, {}).items():
-            levels.setdefault(day, level)
+            if levels.get(day) in (None, GOAL_DAY_STARTED):
+                levels[day] = level
         result[goal_id] = GoalPeriodProgress(
-            completed_days=len(levels),
+            completed_days=sum(1 for level in levels.values() if level != GOAL_DAY_STARTED),
             daily_amounts=amounts,
             tracking_kind=kind,
             target_amount=target,
@@ -430,7 +478,7 @@ def serialize_goal(
     locale: str,
     completed_this_week: int = 0,
     day_amount: int = 0,
-    week_marks: dict[date, str] | None = None,
+    week_marks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "id": goal.id,
@@ -442,6 +490,7 @@ def serialize_goal(
         "target_amount": goal.target_amount,
         "unit": goal.unit,
         "partial_label": goal.partial_label,
+        "min_amount": goal.min_amount,
         "starts_on": goal.starts_on,
         "ends_on": goal.ends_on,
         "sort_order": goal.sort_order,
@@ -452,9 +501,7 @@ def serialize_goal(
         "icon": goal.icon,
         "completed_this_week": completed_this_week,
         "day_amount": day_amount,
-        "week_marks": [
-            {"date": day, "level": level} for day, level in sorted((week_marks or {}).items())
-        ],
+        "week_marks": week_marks or [],
     }
 
 
@@ -615,19 +662,46 @@ def set_goal_checkin(
     user: User,
     goal_id: uuid.UUID,
     day: date,
-    level: str | GoalCheckinLevel,
+    level: str | GoalCheckinLevel | None = None,
+    amount: int | None = None,
 ) -> Goal:
-    """Mark a goal done on a local day, or change how it was done (GP-43)."""
+    """Mark a goal on a local day (GP-43). Quantity goals take an amount (GP-46)."""
     goal = get_goal(db, user_id=user.id, goal_id=goal_id)
-    resolved_level = GoalCheckinLevel(level)
     _ensure_checkin_day(goal, day=day, today=user_today(user.timezone))
+    if goal.tracking_kind == GoalTrackingKind.QUANTITY:
+        if amount is None or not 1 <= amount <= MAX_GOAL_AMOUNT:
+            raise GoalError(
+                "Quantity goals are marked with an amount",
+                code=ErrorCode.GOAL_CHECKIN_AMOUNT_REQUIRED,
+                status_code=422,
+            )
+        full = goal.target_amount is not None and amount >= goal.target_amount
+        resolved_level = GoalCheckinLevel.FULL if full else GoalCheckinLevel.PARTIAL
+    else:
+        if level is None:
+            raise GoalError(
+                "Choose how the goal went",
+                code=ErrorCode.GOAL_CHECKIN_LEVEL_REQUIRED,
+                status_code=422,
+            )
+        resolved_level = GoalCheckinLevel(level)
+        amount = None
     checkin = db.scalar(
         select(GoalCheckin).where(GoalCheckin.goal_id == goal.id, GoalCheckin.day == day)
     )
     if checkin is None:
-        db.add(GoalCheckin(user_id=user.id, goal_id=goal.id, day=day, level=resolved_level.value))
+        db.add(
+            GoalCheckin(
+                user_id=user.id,
+                goal_id=goal.id,
+                day=day,
+                level=resolved_level.value,
+                amount=amount,
+            )
+        )
     else:
         checkin.level = resolved_level.value
+        checkin.amount = amount
     db.commit()
     return goal
 
@@ -691,7 +765,7 @@ def serialize_goals(
     locale: str,
     completed_by_goal: dict[uuid.UUID, int] | None = None,
     day_amount_by_goal: dict[uuid.UUID, int] | None = None,
-    week_marks_by_goal: dict[uuid.UUID, dict[date, str]] | None = None,
+    week_marks_by_goal: dict[uuid.UUID, list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, Any]]:
     counts = completed_by_goal or {}
     day_amounts = day_amount_by_goal or {}
@@ -879,6 +953,20 @@ def _validate_goal_dates(*, starts_on: date, ends_on: date | None) -> None:
         raise GoalError(
             "ends_on must be on or after starts_on", code=ErrorCode.ENDS_ON_BEFORE_STARTS_ON
         )
+
+
+def _validate_min_amount(
+    kind: GoalTrackingKind, target: int | None, min_amount: int | None
+) -> int | None:
+    if min_amount is None or kind is not GoalTrackingKind.QUANTITY:
+        return None
+    if target is None or not 1 <= min_amount <= target:
+        raise GoalError(
+            "The amount that counts must be between 1 and the daily target",
+            code=ErrorCode.INVALID_GOAL_MIN_AMOUNT,
+            params={"max": str(target or 0)},
+        )
+    return min_amount
 
 
 def _validate_tracking(

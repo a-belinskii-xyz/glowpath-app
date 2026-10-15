@@ -61,6 +61,8 @@ export type MoodEntryPublic = {
   score_color: string
   note: string | null
   is_favorite: boolean
+  /** Written from «Моё» as "what worked out" (GP-46). */
+  is_win?: boolean
   tags: MoodEntryTag[]
   goals: MoodEntryGoal[]
   attachments: AttachmentPublic[]
@@ -222,6 +224,7 @@ export type MoodEntryCreate = {
   tag_ids: string[]
   goal_ids: string[]
   goal_progress?: MoodEntryGoalProgress[]
+  is_win?: boolean
   /** Analytics only — from notification deep links; not shown in UI. */
   source?: MoodEntrySource
 }
@@ -242,6 +245,7 @@ export type ListMoodEntriesParams = {
   recorded_from?: string
   recorded_to?: string
   is_favorite?: boolean
+  is_win?: boolean
 }
 
 export type SearchMoodEntriesParams = {

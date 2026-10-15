@@ -13,3 +13,7 @@ class GoalTrackingKind(StrEnum):
 class GoalCheckinLevel(StrEnum):
     PARTIAL = "partial"
     FULL = "full"
+
+
+# A quantity day with some progress that does not count yet (GP-46); never stored.
+GOAL_DAY_STARTED = "started"

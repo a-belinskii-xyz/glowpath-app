@@ -127,6 +127,7 @@ def create_entry(
             goal_ids=body.goal_ids,
             goal_progress=body.goal_progress,
             source=body.source,
+            is_win=body.is_win,
             locale=locale,
         )
     except MoodEntryError as exc:
@@ -150,6 +151,7 @@ def list_entries(
     recorded_from: Annotated[datetime | None, Query()] = None,
     recorded_to: Annotated[datetime | None, Query()] = None,
     is_favorite: Annotated[bool | None, Query()] = None,
+    is_win: Annotated[bool | None, Query()] = None,
 ) -> MoodEntryListResponse:
     entries = list_mood_entries(
         db,
@@ -159,6 +161,7 @@ def list_entries(
         recorded_from=recorded_from,
         recorded_to=recorded_to,
         is_favorite=is_favorite,
+        is_win=is_win,
     )
     view = _entry_view_kwargs(db, current_user.id)
     return MoodEntryListResponse(

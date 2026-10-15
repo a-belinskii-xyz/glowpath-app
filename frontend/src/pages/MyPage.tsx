@@ -2,7 +2,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { Link } from 'react-router-dom'
 
 import { deleteGoalCheckin, listGoals, setGoalCheckin } from '../api/goals'
-import { createMoodEntry, listMoodEntries, patchMoodEntry } from '../api/moodEntries'
+import { createMoodEntry, listMoodEntries } from '../api/moodEntries'
 import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { GoalIcon } from '../components/GoalIcon'
@@ -13,7 +13,7 @@ import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
-import { intlLocale } from '../i18n/t'
+import { intlLocale, tp } from '../i18n/t'
 import {
   dayKey,
   formatCalendarDate,
@@ -26,7 +26,7 @@ import {
 import { formatApiError } from '../lib/errors'
 import { markdownToPlainText } from '../lib/markdownPlainText'
 import { getMoodScoreOptions } from '../lib/moodScale'
-import type { GoalCheckinLevel, GoalPublic } from '../types/goal'
+import type { GoalCheckinLevel, GoalDayMark, GoalPublic } from '../types/goal'
 import type { MoodEntryPublic } from '../types/mood'
 
 const WINS_SHOWN = 3
@@ -35,8 +35,8 @@ function isActiveOn(goal: GoalPublic, day: string): boolean {
   return goal.starts_on <= day && (goal.ends_on == null || goal.ends_on >= day)
 }
 
-function levelOn(goal: GoalPublic, day: string): GoalCheckinLevel | null {
-  return goal.week_marks.find((mark) => mark.date === day)?.level ?? null
+function markOn(goal: GoalPublic, day: string): GoalDayMark | null {
+  return goal.week_marks.find((mark) => mark.date === day) ?? null
 }
 
 function formatDay(day: string, dateLocale: string, options: Intl.DateTimeFormatOptions): string {
@@ -50,9 +50,26 @@ function weekdayShort(day: string, dateLocale: string): string {
   return formatDay(day, dateLocale, { weekday: 'short' })
 }
 
+/** How much of a quantity day is done, 0–100, for the dot fill. */
+function fillPercent(goal: GoalPublic, mark: GoalDayMark | null): number {
+  if (!mark) return 0
+  if (goal.tracking_kind !== 'quantity' || !goal.target_amount || mark.amount == null) {
+    return mark.level === 'full' ? 100 : 50
+  }
+  return Math.min(100, Math.round((mark.amount / goal.target_amount) * 100))
+}
+
+/** The week's plan for a goal: its days per week, but never more than the days it is active. */
+function weekPlan(goal: GoalPublic, weekDays: string[]): number {
+  const activeDays = weekDays.filter((day) => isActiveOn(goal, day)).length
+  return Math.min(goal.times_per_week, activeDays)
+}
+
+type MarkTarget = { goal: GoalPublic; day: string }
+
 /**
- * A calm home for goals and small wins (GP-44): the week's goals with a one-tap
- * mark, and the entries starred as "what worked out".
+ * A calm home for goals and small wins (GP-44, GP-46): the week's goals with marks per
+ * day, a gentle weekly plan, and the entries written as "what worked out".
  */
 export function MyPage() {
   const { user } = useAuth()
@@ -61,7 +78,9 @@ export function MyPage() {
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
   const today = todayKey(timeZone)
-  const week = getIsoWeekBounds(today, timeZone)
+  const [weekRef, setWeekRef] = useState(today)
+  const week = getIsoWeekBounds(weekRef, timeZone)
+  const isCurrentWeek = week.period_start <= today && today < week.period_end
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => shiftDateKey(week.period_start, index)),
     [week.period_start],
@@ -71,29 +90,38 @@ export function MyPage() {
   const [wins, setWins] = useState<MoodEntryPublic[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [markGoal, setMarkGoal] = useState<GoalPublic | null>(null)
+  const [markTarget, setMarkTarget] = useState<MarkTarget | null>(null)
   const [markLevel, setMarkLevel] = useState<GoalCheckinLevel>('partial')
+  const [markAmount, setMarkAmount] = useState('')
   const [markError, setMarkError] = useState<string | null>(null)
   const [isMarking, setIsMarking] = useState(false)
   const [winOpen, setWinOpen] = useState(false)
 
+  // The current week shows the latest wins; a past week shows only its own.
+  const winsFrom = isCurrentWeek ? undefined : week.recorded_from
+  const winsTo = isCurrentWeek ? undefined : week.recorded_to
   const loadWins = useCallback(async () => {
-    const response = await listMoodEntries({ is_favorite: true, limit: WINS_SHOWN })
+    const response = await listMoodEntries({
+      is_win: true,
+      limit: WINS_SHOWN,
+      recorded_from: winsFrom,
+      recorded_to: winsTo,
+    })
     setWins(response.items)
-  }, [])
+  }, [winsFrom, winsTo])
+
+  useEffect(() => {
+    void loadWins().catch(() => setWins([]))
+  }, [loadWins])
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       setIsLoading(true)
       try {
-        const [goalList, favorites] = await Promise.all([
-          listGoals({ progressOn: today }),
-          listMoodEntries({ is_favorite: true, limit: WINS_SHOWN }),
-        ])
+        const goalList = await listGoals({ progressOn: weekRef })
         if (cancelled) return
         setGoals(goalList.items)
-        setWins(favorites.items)
         setError(null)
       } catch (err) {
         if (!cancelled) setError(formatApiError(err, t, 'errors.failedLoadGoals'))
@@ -105,32 +133,77 @@ export function MyPage() {
     return () => {
       cancelled = true
     }
-  }, [today, locale, t])
+  }, [weekRef, locale, t])
 
-  const activeGoals = goals.filter((goal) => isActiveOn(goal, today))
-  usePageAmbientGlow(activeGoals.map((goal) => goal.color))
+  const weekGoals = goals.filter((goal) => weekDays.some((day) => isActiveOn(goal, day)))
+  usePageAmbientGlow(weekGoals.map((goal) => goal.color))
+
+  const plan = weekGoals.reduce(
+    (total, goal) => {
+      const goalPlan = weekPlan(goal, weekDays)
+      return {
+        planned: total.planned + goalPlan,
+        done: total.done + Math.min(goal.completed_this_week, goalPlan),
+      }
+    },
+    { planned: 0, done: 0 },
+  )
+  const daysLeft = isCurrentWeek ? weekDays.filter((day) => day >= today).length : 0
+  const planLine = (() => {
+    if (plan.planned === 0) return null
+    if (plan.done >= plan.planned) return t('myPage.planDone')
+    if (!isCurrentWeek) {
+      return t('myPage.planPast', { done: plan.done, planned: plan.planned })
+    }
+    return t('myPage.planLeft', {
+      days: tp(locale, daysLeft, {
+        one: 'myPage.daysOne',
+        few: 'myPage.daysFew',
+        many: 'myPage.daysMany',
+      }),
+      marks: tp(locale, plan.planned - plan.done, {
+        one: 'myPage.marksOne',
+        few: 'myPage.marksFew',
+        many: 'myPage.marksMany',
+      }),
+    })
+  })()
 
   const replaceGoal = (updated: GoalPublic) => {
     setGoals((current) => current.map((goal) => (goal.id === updated.id ? updated : goal)))
   }
 
-  const openMark = (goal: GoalPublic) => {
-    setMarkGoal(goal)
-    setMarkLevel(levelOn(goal, today) ?? 'partial')
+  const canMark = (goal: GoalPublic, day: string) => day <= today && isActiveOn(goal, day)
+
+  const openMark = (goal: GoalPublic, day: string) => {
+    const mark = markOn(goal, day)
+    setMarkTarget({ goal, day })
+    setMarkLevel(mark?.level === 'full' ? 'full' : 'partial')
+    setMarkAmount(mark?.amount != null ? String(mark.amount) : '')
     setMarkError(null)
   }
 
-  const saveMark = async (level: GoalCheckinLevel | null) => {
-    if (!markGoal) return
+  const markGoal = markTarget?.goal ?? null
+  const isQuantity = markGoal?.tracking_kind === 'quantity'
+  const amountValue = Number.parseInt(markAmount, 10)
+  const amountValid = Number.isInteger(amountValue) && amountValue >= 1
+
+  const saveMark = async (clear: boolean) => {
+    if (!markTarget) return
+    const { goal, day } = markTarget
     setIsMarking(true)
     setMarkError(null)
     try {
-      const updated =
-        level === null
-          ? await deleteGoalCheckin(markGoal.id, today)
-          : await setGoalCheckin(markGoal.id, today, level)
-      replaceGoal(updated)
-      setMarkGoal(null)
+      const updated = clear
+        ? await deleteGoalCheckin(goal.id, day)
+        : await setGoalCheckin(
+            goal.id,
+            day,
+            goal.tracking_kind === 'quantity' ? { amount: amountValue } : { level: markLevel },
+          )
+      // A mark on another week answers with that week; keep the one on screen.
+      if (week.period_start <= day && day < week.period_end) replaceGoal(updated)
+      setMarkTarget(null)
     } catch (err) {
       setMarkError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
@@ -149,6 +222,21 @@ export function MyPage() {
     })
   }
 
+  const goalHint = (goal: GoalPublic) => {
+    const goalPlan = weekPlan(goal, weekDays)
+    const parts = [t('myPage.goalPlan', { done: goal.completed_this_week, planned: goalPlan })]
+    if (goal.tracking_kind === 'quantity' && goal.target_amount) {
+      parts.push(
+        goal.min_amount
+          ? t('myPage.countsFrom', { min: goal.min_amount, target: goal.target_amount, unit: goal.unit ?? '' })
+          : t('myPage.dailyTarget', { target: goal.target_amount, unit: goal.unit ?? '' }),
+      )
+    } else if (goal.partial_label) {
+      parts.push(t('myPage.partialHint', { label: goal.partial_label }))
+    }
+    return parts.join(' · ')
+  }
+
   return (
     <section className="page page-my">
       <EmailVerificationBanner />
@@ -156,33 +244,60 @@ export function MyPage() {
       <header className="page-header my-header">
         <div>
           <h1>{t('myPage.title')}</h1>
-          <p className="my-week muted">
-            {formatWeekHeading(week.period_start, week.period_end, dateLocale)}
-          </p>
+          <div className="my-week-nav">
+            <button
+              type="button"
+              className="my-week-arrow"
+              aria-label={t('myPage.prevWeek')}
+              onClick={() => setWeekRef(shiftDateKey(week.period_start, -7))}
+            >
+              ‹
+            </button>
+            <span className="my-week muted">
+              {formatWeekHeading(week.period_start, week.period_end, dateLocale)}
+            </span>
+            <button
+              type="button"
+              className="my-week-arrow"
+              aria-label={t('myPage.nextWeek')}
+              disabled={isCurrentWeek}
+              onClick={() => setWeekRef(shiftDateKey(week.period_start, 7))}
+            >
+              ›
+            </button>
+            {!isCurrentWeek ? (
+              <button type="button" className="link-button" onClick={() => setWeekRef(today)}>
+                {t('myPage.thisWeek')}
+              </button>
+            ) : null}
+          </div>
         </div>
       </header>
 
-      <p className="my-hello">{t('myPage.hello')}</p>
+      {isCurrentWeek ? <p className="my-hello">{t('myPage.hello')}</p> : null}
       <PageErrorAlert error={error} />
 
       <section className="card my-card" aria-labelledby="my-goals-title">
         <div className="my-card-head">
-          <h2 id="my-goals-title">{t('myPage.goalsTitle')}</h2>
+          <h2 id="my-goals-title">
+            {isCurrentWeek ? t('myPage.goalsTitle') : t('myPage.goalsTitlePast')}
+          </h2>
           <Link to="/goals" className="my-card-link">
             {t('myPage.allGoals')}
           </Link>
         </div>
+        {!isLoading && planLine ? <p className="my-plan">{planLine}</p> : null}
         {isLoading ? (
           <p className="muted">{t('common.loading')}</p>
-        ) : activeGoals.length === 0 ? (
+        ) : weekGoals.length === 0 ? (
           <p className="my-empty">
             {t('myPage.goalsEmpty')}{' '}
             <Link to="/goals">{t('myPage.addGoal')}</Link>
           </p>
         ) : (
           <ul className="my-goal-list">
-            {activeGoals.map((goal) => {
-              const todayLevel = levelOn(goal, today)
+            {weekGoals.map((goal) => {
+              const todayMark = isCurrentWeek ? markOn(goal, today) : null
               return (
                 <li key={goal.id} className="my-goal">
                   <span
@@ -195,47 +310,65 @@ export function MyPage() {
                   </span>
                   <div className="my-goal-body">
                     <span className="my-goal-name">{goal.label}</span>
-                    {goal.partial_label ? (
-                      <span className="my-goal-hint">
-                        {t('myPage.partialHint', { label: goal.partial_label })}
-                      </span>
-                    ) : goal.times_per_week < 7 ? (
-                      <span className="my-goal-hint">
-                        {t('myPage.timesPerWeek', { count: goal.times_per_week })}
-                      </span>
-                    ) : null}
+                    <span className="my-goal-hint">{goalHint(goal)}</span>
                     <span className="my-goal-days" style={{ ['--goal-color' as string]: goal.color }}>
                       {weekDays.map((day) => {
-                        const level = levelOn(goal, day)
+                        const label = weekdayShort(day, dateLocale)
                         // Days outside the goal's dates are not "missed"; they stay quietly grey.
                         if (!isActiveOn(goal, day)) {
                           return (
                             <span key={day} className="my-day is-before" aria-hidden>
-                              {weekdayShort(day, dateLocale)}
+                              {label}
+                            </span>
+                          )
+                        }
+                        const mark = markOn(goal, day)
+                        const className = [
+                          'my-day',
+                          mark ? `is-${mark.level}` : '',
+                          goal.tracking_kind === 'quantity' && mark ? 'is-amount' : '',
+                          day === today ? 'is-today' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')
+                        const style = { ['--fill' as string]: `${fillPercent(goal, mark)}%` }
+                        if (!canMark(goal, day)) {
+                          return (
+                            <span key={day} className={className} style={style}>
+                              {label}
                             </span>
                           )
                         }
                         return (
-                          <span
+                          <button
                             key={day}
-                            className={`my-day${level ? ` is-${level}` : ''}${day === today ? ' is-today' : ''}`}
+                            type="button"
+                            className={className}
+                            style={style}
                             title={formatCalendarDate(day, dateLocale)}
+                            aria-label={t('myPage.markDayAria', {
+                              label: goal.label,
+                              date: formatDay(day, dateLocale, { weekday: 'long', day: 'numeric', month: 'long' }),
+                            })}
+                            onClick={() => openMark(goal, day)}
                           >
-                            {weekdayShort(day, dateLocale)}
-                          </span>
+                            {label}
+                          </button>
                         )
                       })}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className={`my-goal-mark${todayLevel ? ` is-${todayLevel}` : ''}`}
-                    style={{ ['--goal-color' as string]: goal.color }}
-                    aria-label={t('myPage.markAria', { label: goal.label })}
-                    onClick={() => openMark(goal)}
-                  >
-                    ✓
-                  </button>
+                  {isCurrentWeek && canMark(goal, today) ? (
+                    <button
+                      type="button"
+                      className={`my-goal-mark${todayMark ? ` is-${todayMark.level}` : ''}`}
+                      style={{ ['--goal-color' as string]: goal.color }}
+                      aria-label={t('myPage.markAria', { label: goal.label })}
+                      onClick={() => openMark(goal, today)}
+                    >
+                      ✓
+                    </button>
+                  ) : null}
                 </li>
               )
             })}
@@ -247,13 +380,15 @@ export function MyPage() {
         <div className="my-card-head">
           <h2 id="my-wins-title">{t('myPage.winsTitle')}</h2>
           {wins.length > 0 ? (
-            <Link to="/?favorites=1" className="my-card-link">
+            <Link to="/?wins=1" className="my-card-link">
               {t('myPage.allWins')}
             </Link>
           ) : null}
         </div>
-        {isLoading ? null : wins.length === 0 ? (
-          <p className="my-empty">{t('myPage.winsEmpty')}</p>
+        {wins.length === 0 ? (
+          <p className="my-empty">
+            {isCurrentWeek ? t('myPage.winsEmpty') : t('myPage.winsEmptyPast')}
+          </p>
         ) : (
           <ul className="my-win-list">
             {wins.map((entry) => (
@@ -287,32 +422,36 @@ export function MyPage() {
       </button>
 
       <EditorDrawer
-        open={markGoal !== null}
+        open={markTarget !== null}
         title={markGoal?.label ?? ''}
-        description={formatDay(today, dateLocale, { weekday: 'long', day: 'numeric', month: 'long' })}
+        description={
+          markTarget
+            ? formatDay(markTarget.day, dateLocale, { weekday: 'long', day: 'numeric', month: 'long' })
+            : undefined
+        }
         accentColors={markGoal ? [markGoal.color] : []}
         onClose={() => {
-          if (!isMarking) setMarkGoal(null)
+          if (!isMarking) setMarkTarget(null)
         }}
         footer={
           <div className="button-row">
             <button
               type="button"
               className="button my-primary"
-              disabled={isMarking}
-              onClick={() => void saveMark(markLevel)}
+              disabled={isMarking || (isQuantity && !amountValid)}
+              onClick={() => void saveMark(false)}
             >
               <StableButtonLabel
                 active={isMarking ? t('common.saving') : t('myPage.mark')}
                 labels={[t('myPage.mark'), t('common.saving')]}
               />
             </button>
-            {markGoal && levelOn(markGoal, today) ? (
+            {markTarget && markOn(markTarget.goal, markTarget.day) ? (
               <button
                 type="button"
                 className="button button-secondary"
                 disabled={isMarking}
-                onClick={() => void saveMark(null)}
+                onClick={() => void saveMark(true)}
               >
                 {t('myPage.unmark')}
               </button>
@@ -321,29 +460,61 @@ export function MyPage() {
         }
       >
         <PageErrorAlert error={markError} />
-        <div className="my-levels" role="radiogroup" aria-label={t('myPage.markAria', { label: markGoal?.label ?? '' })}>
-          {(['partial', 'full'] as const).map((level) => (
-            <button
-              key={level}
-              type="button"
-              role="radio"
-              aria-checked={markLevel === level}
-              className={`my-level${markLevel === level ? ' is-selected' : ''}`}
-              style={{ ['--goal-color' as string]: markGoal?.color }}
-              onClick={() => setMarkLevel(level)}
-            >
-              <span className={`my-day my-level-dot is-${level}`} aria-hidden />
-              <span>
-                <strong>{t(level === 'partial' ? 'myPage.levelPartial' : 'myPage.levelFull')}</strong>
-                <span className="my-level-hint">
-                  {level === 'partial'
-                    ? markGoal?.partial_label || t('myPage.levelPartialHint')
-                    : t('myPage.levelFullHint')}
-                </span>
+        {markGoal && isQuantity ? (
+          <div className="my-amount">
+            <label className="form-label" htmlFor="my-amount-input">
+              {t('myPage.amountLabel')}
+            </label>
+            <div className="my-amount-row">
+              <input
+                id="my-amount-input"
+                className="form-input"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={markAmount}
+                onChange={(event) => setMarkAmount(event.target.value.replace(/[^0-9]/g, ''))}
+              />
+              <span className="muted">
+                {t('myPage.amountOf', { target: markGoal.target_amount ?? 0, unit: markGoal.unit ?? '' })}
               </span>
-            </button>
-          ))}
-        </div>
+            </div>
+            <span className="my-level-hint">
+              {markGoal.min_amount
+                ? t('myPage.amountCountsFrom', { min: markGoal.min_amount, unit: markGoal.unit ?? '' })
+                : t('myPage.amountCountsFull')}
+            </span>
+          </div>
+        ) : (
+          <div
+            className="my-levels"
+            role="radiogroup"
+            aria-label={t('myPage.markAria', { label: markGoal?.label ?? '' })}
+          >
+            {(['partial', 'full'] as const).map((level) => (
+              <button
+                key={level}
+                type="button"
+                role="radio"
+                aria-checked={markLevel === level}
+                className={`my-level${markLevel === level ? ' is-selected' : ''}`}
+                style={{ ['--goal-color' as string]: markGoal?.color }}
+                onClick={() => setMarkLevel(level)}
+              >
+                <span className={`my-day my-level-dot is-${level}`} aria-hidden />
+                <span>
+                  <strong>{t(level === 'partial' ? 'myPage.levelPartial' : 'myPage.levelFull')}</strong>
+                  <span className="my-level-hint">
+                    {level === 'partial'
+                      ? markGoal?.partial_label || t('myPage.levelPartialHint')
+                      : t('myPage.levelFullHint')}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         <p className="my-gentle muted">{t('myPage.noPenalty')}</p>
       </EditorDrawer>
 
@@ -374,7 +545,6 @@ function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps)
   const options = getMoodScoreOptions(locale, scores)
   const [text, setText] = useState('')
   const [score, setScore] = useState<number | null>(null)
-  const [starred, setStarred] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -382,7 +552,6 @@ function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps)
     if (open) {
       setText('')
       setScore(null)
-      setStarred(true)
       setError(null)
     }
   }, [open])
@@ -395,16 +564,14 @@ function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps)
     setIsSaving(true)
     setError(null)
     try {
-      const created = await createMoodEntry({
+      await createMoodEntry({
         score,
         recorded_at: instantToIsoInTimezone(new Date(), timeZone),
         note: text.trim(),
         tag_ids: [],
         goal_ids: [],
+        is_win: true,
       })
-      if (starred) {
-        await patchMoodEntry(created.id, { is_favorite: true })
-      }
       await onSaved()
     } catch (err) {
       setError(formatApiError(err, t, 'errors.failedSave'))
@@ -463,17 +630,7 @@ function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps)
             ))}
           </div>
         </div>
-        <label className="my-star-toggle">
-          <span>
-            <strong>{t('myPage.starLabel')}</strong>
-            <span className="my-level-hint">{t('myPage.starHint')}</span>
-          </span>
-          <input
-            type="checkbox"
-            checked={starred}
-            onChange={(event) => setStarred(event.target.checked)}
-          />
-        </label>
+        <p className="my-level-hint">{t('myPage.winHint')}</p>
       </form>
     </EditorDrawer>
   )

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
-from app.core.goal_tracking import MAX_GOAL_PARTIAL_LABEL_LENGTH, GoalCheckinLevel
+from app.core.goal_tracking import MAX_GOAL_AMOUNT, MAX_GOAL_PARTIAL_LABEL_LENGTH, GoalCheckinLevel
 from app.core.mood_scale import MoodScore, default_mood_score_style
 from app.models.goal import Goal
 from app.models.goal_checkin import GoalCheckin
@@ -145,6 +145,7 @@ def import_guest_diary(
             target_amount=goal_data.get("target_amount"),
             unit=goal_data.get("unit"),
             partial_label=_partial_label(goal_data.get("partial_label")),
+            min_amount=_min_amount(goal_data),
             starts_on=starts_on,
             ends_on=ends_on,
             sort_order=int(goal_data.get("sort_order", 0)),
@@ -235,6 +236,7 @@ def import_guest_diary(
             recorded_at=recorded_at_utc,
             note=entry_data.get("note"),
             is_favorite=bool(entry_data.get("is_favorite", False)),
+            is_win=bool(entry_data.get("is_win", False)),
             score_color=_score_color_for_user(db, user_id=user.id, score=score),
         )
         db.add(entry)
@@ -328,6 +330,9 @@ def _import_goal_checkins(
         checkins = goal_data.get("checkins")
         if goal_id is None or not isinstance(checkins, dict):
             continue
+        raw_amounts = goal_data.get("checkin_amounts")
+        amounts = raw_amounts if isinstance(raw_amounts, dict) else {}
+        quantity = goal_data.get("tracking_kind") == "quantity"
         for day_raw, level in checkins.items():
             try:
                 day = date.fromisoformat(str(day_raw))
@@ -335,8 +340,29 @@ def _import_goal_checkins(
                 continue
             if level not in levels or (goal_id, day) in taken:
                 continue
+            amount = amounts.get(day_raw)
             taken.add((goal_id, day))
-            db.add(GoalCheckin(user_id=user.id, goal_id=goal_id, day=day, level=level))
+            db.add(
+                GoalCheckin(
+                    user_id=user.id,
+                    goal_id=goal_id,
+                    day=day,
+                    level=level,
+                    amount=int(amount)
+                    if quantity and isinstance(amount, int) and 1 <= amount <= MAX_GOAL_AMOUNT
+                    else None,
+                )
+            )
+
+
+def _min_amount(goal_data: dict[str, Any]) -> int | None:
+    value = goal_data.get("min_amount")
+    target = goal_data.get("target_amount")
+    if goal_data.get("tracking_kind") != "quantity" or not isinstance(value, int):
+        return None
+    if not isinstance(target, int) or not 1 <= value <= target:
+        return None
+    return value
 
 
 def _calendar_start(value: object, timezone_name: str) -> date | None:

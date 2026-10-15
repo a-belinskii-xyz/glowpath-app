@@ -73,6 +73,8 @@ class Goal(TimestampMixin, Base):
     unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # What "a little" means for this goal, e.g. "at least a snack" (GP-43).
     partial_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Quantity goals: a day counts from this amount; null = only the full target counts.
+    min_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
     starts_on: Mapped[date] = mapped_column(Date)
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")

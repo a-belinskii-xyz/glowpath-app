@@ -58,6 +58,17 @@ export function GoalsPage() {
   const [targetAmount, setTargetAmount] = useState(100)
   const [unit, setUnit] = useState('')
   const [partialLabel, setPartialLabel] = useState('')
+  // GP-46: quantity days count from a minimum, typed as a number or a share of the target.
+  const [minMode, setMinMode] = useState<'amount' | 'percent'>('amount')
+  const [minValue, setMinValue] = useState('')
+  const minAmount = (() => {
+    const value = Number.parseInt(minValue, 10)
+    if (!Number.isInteger(value) || value < 1 || !Number.isInteger(targetAmount) || targetAmount < 1) {
+      return null
+    }
+    const amount = minMode === 'percent' ? Math.ceil((targetAmount * Math.min(value, 100)) / 100) : value
+    return Math.max(1, Math.min(amount, targetAmount))
+  })()
   const [startsOn, setStartsOn] = useState(todayKey(timeZone))
   const [endsOn, setEndsOn] = useState('')
   const [draftColor, setDraftColor] = useState(DEFAULT_GOAL_STYLE.color)
@@ -113,6 +124,8 @@ export function GoalsPage() {
       setTargetAmount(100)
       setUnit('')
       setPartialLabel('')
+      setMinMode('amount')
+      setMinValue('')
       setStartsOn(todayKey(timeZone))
       setEndsOn('')
       setDraftColor(DEFAULT_GOAL_STYLE.color)
@@ -126,6 +139,8 @@ export function GoalsPage() {
       setTargetAmount(mode.goal.target_amount ?? 100)
       setUnit(mode.goal.unit ?? '')
       setPartialLabel(mode.goal.partial_label ?? '')
+      setMinMode('amount')
+      setMinValue(mode.goal.min_amount != null ? String(mode.goal.min_amount) : '')
       setStartsOn(mode.goal.starts_on)
       setEndsOn(mode.goal.ends_on ?? '')
       setDraftColor(mode.goal.color)
@@ -193,11 +208,13 @@ export function GoalsPage() {
             tracking_kind: 'quantity' as const,
             target_amount: targetAmount,
             unit: unit.trim() || null,
+            min_amount: minAmount,
           }
         : {
             tracking_kind: 'binary' as const,
             target_amount: null,
             unit: null,
+            min_amount: null,
           }
 
     setIsSaving(true)
@@ -475,6 +492,48 @@ export function GoalsPage() {
               />
             </div>
           ) : null}
+          {trackingKind === 'quantity' ? (
+            <div className="form-field">
+              <label className="form-label" htmlFor="goal-min-amount">
+                {t('goalsPage.minAmount')}
+              </label>
+              <div className="goal-min-row">
+                <input
+                  id="goal-min-amount"
+                  className="form-input"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={minMode === 'percent' ? 100 : targetAmount}
+                  value={minValue}
+                  placeholder={String(targetAmount)}
+                  onChange={(event) => setMinValue(event.target.value.replace(/[^0-9]/g, ''))}
+                />
+                <div className="segmented-control" role="group" aria-label={t('goalsPage.minAmountMode')}>
+                  {(['amount', 'percent'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`segmented-control-option${minMode === option ? ' is-active' : ''}`}
+                      aria-pressed={minMode === option}
+                      onClick={() => setMinMode(option)}
+                    >
+                      {option === 'amount' ? unit.trim() || t('goalsPage.minAmountUnits') : '%'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <span className="form-hint">
+                {minAmount != null
+                  ? t('goalsPage.minAmountResult', {
+                      min: minAmount,
+                      target: targetAmount,
+                      unit: unit.trim(),
+                    })
+                  : t('goalsPage.minAmountHint')}
+              </span>
+            </div>
+          ) : null}
           <label className="form-field">
             <span className="form-label">{t('goalsPage.timesPerWeek')}</span>
             <input
@@ -488,6 +547,7 @@ export function GoalsPage() {
             />
             <span className="form-hint">{t('goalsPage.timesPerWeekHint')}</span>
           </label>
+          {trackingKind === 'binary' ? (
           <FormField
             id="goal-partial-label"
             label={t('goalsPage.partialLabel')}
@@ -497,6 +557,7 @@ export function GoalsPage() {
             placeholder={t('goalsPage.partialLabelPlaceholder')}
             hint={t('goalsPage.partialLabelHint')}
           />
+          ) : null}
           <div className="form-field-row">
             <label className="form-field">
               <span className="form-label">{t('goalsPage.startsOn')}</span>

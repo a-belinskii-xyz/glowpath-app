@@ -11876,6 +11876,88 @@ html.is-telegram .recap-backdrop {
   opacity: 0.45;
 }
 
+button.my-day {
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.my-day:hover {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--goal-color) 35%, transparent);
+}
+
+/* Quantity days fill by the share done (GP-46); a day below the threshold stays pale. */
+.my-day.is-amount {
+  background: conic-gradient(
+    var(--goal-color) var(--fill),
+    var(--chrome-surface-inset) var(--fill)
+  );
+  color: var(--chrome-text-primary);
+}
+
+.my-day.is-started {
+  background: conic-gradient(
+    color-mix(in oklab, var(--goal-color) 45%, transparent) var(--fill),
+    var(--chrome-surface-inset) var(--fill)
+  );
+  color: var(--chrome-text-primary);
+}
+
+.my-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+
+.my-week-nav .my-week {
+  margin: 0;
+}
+
+.my-week-arrow {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid var(--chrome-border-default);
+  border-radius: 50%;
+  background: var(--chrome-surface-raised, transparent);
+  color: var(--chrome-text-secondary);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.my-week-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.my-plan {
+  margin: -0.2rem 0 0.6rem;
+  color: var(--chrome-text-secondary);
+  font-size: 0.85rem;
+}
+
+.my-amount {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.my-amount-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.my-amount-row .form-input {
+  width: 7rem;
+}
+
 .my-goal-mark {
   flex: none;
   display: grid;
@@ -12076,28 +12158,6 @@ html[data-color-scheme='dark'] .my-primary {
   height: 1.7rem;
 }
 
-.my-star-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 0.9rem;
-  border-radius: var(--chrome-radius-control);
-  background: var(--chrome-surface-inset);
-  cursor: pointer;
-}
-
-.my-star-toggle > span {
-  display: grid;
-  gap: 0.15rem;
-}
-
-.my-star-toggle input {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex: none;
-}
-
 /* GP-45: calendar from the user's own start */
 .month-calendar-fold-row {
   display: flex;
@@ -12178,4 +12238,21 @@ html[data-color-scheme='dark'] .my-primary {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+}
+
+/* GP-46: feed opened from «Что получилось» */
+.entries-filter-note {
+  margin: 0 0 0.75rem;
+  color: var(--chrome-text-secondary);
+  font-size: 0.9rem;
+}
+
+.goal-min-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.goal-min-row .form-input {
+  width: 7rem;
 }

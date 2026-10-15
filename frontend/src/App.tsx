@@ -12,6 +12,7 @@ import { AuthProvider } from './context/AuthContext'
 import { GuestExperimentProvider } from './context/GuestExperimentContext'
 import { LocaleProvider } from './context/LocaleContext'
 import { MoodPreferencesProvider } from './context/MoodPreferencesContext'
+import { useKeepServerAwake } from './hooks/useKeepServerAwake'
 import { CreateEntryPage } from './pages/CreateEntryPage'
 import { EditEntryPage } from './pages/EditEntryPage'
 import { EntryDetailPage } from './pages/EntryDetailPage'
@@ -49,6 +50,8 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { TelegramNavigation } from './platform/TelegramNavigation'
 
 function App() {
+  useKeepServerAwake()
+
   return (
     <LocaleProvider>
       <AuthProvider>

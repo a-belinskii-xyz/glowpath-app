@@ -7,7 +7,7 @@ import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/
 import type { TokenResponse } from '../types/auth'
 import type {
   GoalCalendarResponse,
-  GoalCheckinLevel,
+  GoalCheckinWrite,
   GoalIconListResponse,
   GoalIconPublic,
   GoalListResponse,
@@ -104,16 +104,16 @@ export function deleteGoal(goalId: string): Promise<void> {
 export function setGoalCheckin(
   goalId: string,
   day: string,
-  level: GoalCheckinLevel,
+  body: GoalCheckinWrite,
 ): Promise<GoalPublic> {
   if (isGuestDiaryMode()) {
-    return guestStore.setGuestGoalCheckin(goalId, day, level)
+    return guestStore.setGuestGoalCheckin(goalId, day, body)
   }
   return apiRequest<GoalPublic>(`/v1/goals/${goalId}/checkins/${day}`, {
     method: 'PUT',
     auth: true,
     headers: apiLocaleHeaders(),
-    body: { level },
+    body,
   })
 }
 
