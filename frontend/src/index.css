@@ -12256,3 +12256,288 @@ html[data-color-scheme='dark'] .my-primary {
 .goal-min-row .form-input {
   width: 7rem;
 }
+
+/* GP-47: weight and food on «Моё». One neutral colour, nothing that reads as good or bad. */
+.body-card {
+  --body-line: color-mix(in oklab, var(--chrome-action-quiet) 75%, #7c86b8);
+}
+
+.body-weight {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.body-weight-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.body-weight-summary > div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.body-label {
+  color: var(--chrome-text-secondary);
+  font-size: 0.82rem;
+}
+
+.body-weight-value {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--chrome-text-primary);
+  font: inherit;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+}
+
+.body-weight-value small {
+  color: var(--chrome-text-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.body-weight-value.is-hidden {
+  filter: blur(9px);
+}
+
+.body-spark {
+  flex: none;
+  width: 7.5rem;
+}
+
+.body-chart-line {
+  fill: none;
+  stroke: var(--body-line, #7c86b8);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.body-chart-dot {
+  fill: color-mix(in oklab, var(--chrome-text-secondary) 35%, transparent);
+}
+
+.body-wide {
+  width: 100%;
+}
+
+.body-food {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--chrome-border-subtle);
+}
+
+.body-weight + .body-food {
+  margin-top: 1rem;
+}
+
+.body-card .my-card-head + .body-food,
+.body-card .alert + .body-food {
+  margin-top: 0.4rem;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.body-food-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.body-food-head strong::first-letter {
+  text-transform: uppercase;
+}
+
+.body-days .my-day.is-selected {
+  background: var(--chrome-action-quiet);
+  color: var(--chrome-text-inverse);
+}
+
+.body-days .my-day.has-food:not(.is-selected) {
+  background: color-mix(in oklab, var(--chrome-action-quiet) 22%, var(--chrome-surface));
+  color: var(--chrome-text-primary);
+}
+
+.body-food-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.body-food-row {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0;
+  border: 0;
+  border-top: 1px solid var(--chrome-border-subtle);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.body-food-list li:first-child .body-food-row {
+  border-top: 0;
+}
+
+.body-food-meal {
+  flex: none;
+  width: 4.2rem;
+  color: var(--chrome-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.body-food-text {
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.body-food-add {
+  justify-self: start;
+  font-weight: 600;
+}
+
+.body-offer {
+  display: block;
+  margin: 0 auto 1rem;
+  color: var(--chrome-text-secondary);
+}
+
+.body-weight-row .form-input:first-child {
+  width: 6.5rem;
+}
+
+.body-weight-row .body-date {
+  width: 10.5rem;
+  margin-left: auto;
+}
+
+.body-chart {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.body-range {
+  display: flex;
+  padding: 0.2rem;
+  border-radius: 0.8rem;
+  background: var(--chrome-surface-inset);
+}
+
+.body-range button {
+  flex: 1;
+  padding: 0.4rem 0;
+  border: 0;
+  border-radius: 0.6rem;
+  background: none;
+  color: var(--chrome-text-secondary);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.body-range button.is-selected {
+  background: var(--chrome-surface);
+  color: var(--chrome-text-primary);
+  font-weight: 600;
+}
+
+.body-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
+.body-check input {
+  margin-top: 0.2rem;
+}
+
+.body-check > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.body-meals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.body-meal {
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--chrome-border-default);
+  border-radius: var(--chrome-radius-pill);
+  background: var(--chrome-surface);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.body-meal.is-selected {
+  border-color: var(--chrome-action-quiet);
+  background: color-mix(in oklab, var(--chrome-action-quiet) 16%, var(--chrome-surface));
+  font-weight: 600;
+}
+
+.body-food-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.body-food-copy {
+  color: var(--chrome-text-secondary);
+}
+
+.body-goals {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.body-copy-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.body-copy-dates .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.body-copy-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.body-copy-preview {
+  max-height: 16rem;
+  margin: 0;
+  overflow: auto;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.8rem;
+  background: var(--chrome-surface-inset);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

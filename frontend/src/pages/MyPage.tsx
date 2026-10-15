@@ -1,8 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { getBodySettings } from '../api/body'
 import { deleteGoalCheckin, listGoals, setGoalCheckin } from '../api/goals'
 import { createMoodEntry, listMoodEntries } from '../api/moodEntries'
+import { BodyCard, BodySettingsDrawer } from '../components/BodyCard'
 import { EditorDrawer } from '../components/EditorDrawer'
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { GoalIcon } from '../components/GoalIcon'
@@ -24,8 +26,10 @@ import {
   todayKey,
 } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
+import { isGuestDiaryMode } from '../lib/guestMode'
 import { markdownToPlainText } from '../lib/markdownPlainText'
 import { getMoodScoreOptions } from '../lib/moodScale'
+import type { BodySettings } from '../types/body'
 import type { GoalCheckinLevel, GoalDayMark, GoalPublic } from '../types/goal'
 import type { MoodEntryPublic } from '../types/mood'
 
@@ -96,6 +100,16 @@ export function MyPage() {
   const [markError, setMarkError] = useState<string | null>(null)
   const [isMarking, setIsMarking] = useState(false)
   const [winOpen, setWinOpen] = useState(false)
+  const [body, setBody] = useState<BodySettings | null>(null)
+  const [bodySettingsOpen, setBodySettingsOpen] = useState(false)
+  const isGuest = isGuestDiaryMode()
+
+  useEffect(() => {
+    if (isGuest) return
+    void getBodySettings()
+      .then(setBody)
+      .catch(() => setBody(null))
+  }, [isGuest])
 
   // The current week shows the latest wins; a past week shows only its own.
   const winsFrom = isCurrentWeek ? undefined : week.recorded_from
@@ -376,6 +390,20 @@ export function MyPage() {
         )}
       </section>
 
+      {body && (body.show_weight || body.show_food) ? (
+        <BodyCard
+          settings={body}
+          today={today}
+          timeZone={timeZone}
+          weekDays={weekDays}
+          isCurrentWeek={isCurrentWeek}
+          goals={goals}
+          onSettingsChange={setBody}
+          onGoalChange={replaceGoal}
+          onOpenSettings={() => setBodySettingsOpen(true)}
+        />
+      ) : null}
+
       <section className="card my-card" aria-labelledby="my-wins-title">
         <div className="my-card-head">
           <h2 id="my-wins-title">{t('myPage.winsTitle')}</h2>
@@ -416,6 +444,12 @@ export function MyPage() {
           </ul>
         )}
       </section>
+
+      {body && !body.show_weight && !body.show_food ? (
+        <button type="button" className="link-button body-offer" onClick={() => setBodySettingsOpen(true)}>
+          {t('body.offer')}
+        </button>
+      ) : null}
 
       <button type="button" className="my-write" onClick={() => setWinOpen(true)}>
         {t('myPage.write')}
@@ -517,6 +551,16 @@ export function MyPage() {
         )}
         <p className="my-gentle muted">{t('myPage.noPenalty')}</p>
       </EditorDrawer>
+
+      {body ? (
+        <BodySettingsDrawer
+          open={bodySettingsOpen}
+          settings={body}
+          goals={goals}
+          onClose={() => setBodySettingsOpen(false)}
+          onSettingsChange={setBody}
+        />
+      ) : null}
 
       <WinDrawer
         open={winOpen}
