@@ -718,6 +718,7 @@ def _restore_entries(
                     goal_id=goal.id,
                     color=_color(goal_ref.color, goal.color),
                     amount=goal_ref.amount,
+                    is_partial=goal_ref.partial and goal.tracking_kind != "quantity",
                 )
             )
         _restore_attachments(

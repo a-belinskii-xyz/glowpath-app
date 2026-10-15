@@ -44,6 +44,8 @@ class MoodEntryCreate(BaseModel):
     tag_ids: list[uuid.UUID] = Field(default_factory=list)
     goal_ids: list[uuid.UUID] = Field(default_factory=list)
     goal_progress: list[MoodEntryGoalProgress] = Field(default_factory=list)
+    # Binary goals done only «немного» in this entry (GP-51); others count in full.
+    partial_goal_ids: list[uuid.UUID] = Field(default_factory=list)
     is_win: bool = False
     # Analytics attribution from notification deep links; not returned in public responses.
     source: MoodEntrySource | None = None
@@ -56,6 +58,7 @@ class MoodEntryPatch(BaseModel):
     tag_ids: list[uuid.UUID] | None = None
     goal_ids: list[uuid.UUID] | None = None
     goal_progress: list[MoodEntryGoalProgress] | None = None
+    partial_goal_ids: list[uuid.UUID] | None = None
     is_favorite: bool | None = None
 
 
@@ -80,6 +83,7 @@ class MoodEntryGoalPublic(BaseModel):
     target_amount: int | None = None
     unit: str | None = None
     amount: int | None = None
+    partial: bool = False
 
 
 class AttachmentPublic(BaseModel):

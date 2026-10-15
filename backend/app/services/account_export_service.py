@@ -259,7 +259,11 @@ def _entry_payload(
         ],
         goals=[
             ArchiveEntryGoal(
-                slug=link.goal.slug, labels=link.goal.labels, amount=link.amount, color=link.color
+                slug=link.goal.slug,
+                labels=link.goal.labels,
+                amount=link.amount,
+                color=link.color,
+                partial=link.is_partial,
             )
             for link in entry.goal_links
         ],

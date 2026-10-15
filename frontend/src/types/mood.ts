@@ -23,6 +23,8 @@ export type MoodEntryGoal = {
   target_amount?: number | null
   unit?: string | null
   amount?: number | null
+  /** Binary goals done only «немного» in this entry (GP-51). */
+  partial?: boolean
 }
 
 export type AttachmentKind = 'photo' | 'audio'
@@ -224,6 +226,7 @@ export type MoodEntryCreate = {
   tag_ids: string[]
   goal_ids: string[]
   goal_progress?: MoodEntryGoalProgress[]
+  partial_goal_ids?: string[]
   is_win?: boolean
   /** Analytics only — from notification deep links; not shown in UI. */
   source?: MoodEntrySource
@@ -236,6 +239,7 @@ export type MoodEntryPatch = {
   tag_ids?: string[]
   goal_ids?: string[]
   goal_progress?: MoodEntryGoalProgress[]
+  partial_goal_ids?: string[]
   is_favorite?: boolean
 }
 

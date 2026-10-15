@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, ForeignKey, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,8 @@ class MoodEntryGoal(Base):
     )
     color: Mapped[str] = mapped_column(String(7))
     amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Binary goals: the entry did «немного» of the goal, not all of it (GP-51).
+    is_partial: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
     mood_entry: Mapped["MoodEntry"] = relationship(back_populates="goal_links")
     goal: Mapped["Goal"] = relationship(back_populates="entry_links")

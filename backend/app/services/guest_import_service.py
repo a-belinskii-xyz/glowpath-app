@@ -264,6 +264,7 @@ def import_guest_diary(
             for item in entry_data.get("goal_progress", [])
             if isinstance(item, dict) and "goal_id" in item and "amount" in item
         }
+        partial_local_ids = {str(item) for item in entry_data.get("partial_goal_ids", [])}
         if goal_ids:
             goals = list(
                 db.scalars(select(Goal).where(Goal.user_id == user.id, Goal.id.in_(goal_ids))).all()
@@ -282,6 +283,11 @@ def import_guest_diary(
                         goal_id=goal.id,
                         color=goal.color,
                         amount=local_match,
+                        is_partial=goal.tracking_kind != "quantity"
+                        and any(
+                            mapped == goal.id and local_id in partial_local_ids
+                            for local_id, mapped in local_goal_id_map.items()
+                        ),
                     )
                 )
 

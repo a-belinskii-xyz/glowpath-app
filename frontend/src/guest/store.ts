@@ -712,6 +712,7 @@ function buildEntryPublic(
             target_amount: full.target_amount,
             unit: full.unit,
             amount: goal.amount ?? null,
+            partial: full.tracking_kind !== 'quantity' && Boolean(goal.partial),
           }
         : goal
     }),
@@ -815,6 +816,7 @@ export async function createGuestMoodEntry(body: MoodEntryCreate, locale: ApiLoc
           target_amount: goal.target_amount,
           unit: goal.unit,
           amount: progress?.amount ?? null,
+          partial: goal.tracking_kind !== 'quantity' && Boolean(body.partial_goal_ids?.includes(id)),
         }
       })
       .filter(Boolean) as MoodEntryPublic['goals'],
@@ -845,7 +847,8 @@ export async function patchGuestMoodEntry(
     body.note !== undefined ||
     body.tag_ids !== undefined ||
     body.goal_ids !== undefined ||
-    body.goal_progress !== undefined
+    body.goal_progress !== undefined ||
+    body.partial_goal_ids !== undefined
   const style = defaultMoodScoreStyle(body.score ?? current.score, locale)
   const tagsById = new Map<string, TagPublic>()
   for (const group of tagGroups) {
@@ -886,6 +889,11 @@ export async function patchGuestMoodEntry(
                 target_amount: goal.target_amount,
                 unit: goal.unit,
                 amount: progress?.amount ?? null,
+                partial:
+                  goal.tracking_kind !== 'quantity' &&
+                  (body.partial_goal_ids === undefined
+                    ? Boolean(current.goals.find((item) => item.id === id)?.partial)
+                    : body.partial_goal_ids.includes(id)),
               }
             })
             .filter(Boolean) as MoodEntryPublic['goals']),
@@ -996,6 +1004,7 @@ export async function buildGuestImportPayload(): Promise<Record<string, unknown>
       goal_progress: entry.goals
         .filter((goal) => goal.amount != null)
         .map((goal) => ({ goal_id: goal.id, amount: goal.amount as number })),
+      partial_goal_ids: entry.goals.filter((goal) => goal.partial).map((goal) => goal.id),
     })),
   }
 }
