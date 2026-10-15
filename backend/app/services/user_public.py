@@ -18,6 +18,7 @@ def to_user_public(user: User) -> UserPublic:
         has_password=user.password_hash is not None,
         is_staff=bool(user.is_staff),
         theme_preference=user.theme_preference,
+        time_format=user.time_format,
         locale=user.locale,
         telegram_linked=user.telegram_linked,
         can_unlink_telegram=user.telegram_linked and not telegram_is_only_auth_method(user),

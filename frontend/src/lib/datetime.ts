@@ -1,3 +1,5 @@
+import { formatClockMinutes } from './timeFormat'
+
 function parseGmtOffset(value: string): string {
   const match = value.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/)
   if (!match) {
@@ -318,13 +320,10 @@ export function formatWeekday(iso: string, timeZone: string, locale = 'en-GB'): 
   }).format(instant)
 }
 
-export function formatTime(iso: string, timeZone: string, locale = 'en-GB'): string {
-  const instant = new Date(iso)
-  return new Intl.DateTimeFormat(locale, {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(instant)
+/** The clock time of ``iso`` in ``timeZone``, in the user's 24-hour or AM/PM format. */
+export function formatTime(iso: string, timeZone: string): string {
+  const parts = formatLocalParts(new Date(iso), timeZone)
+  return formatClockMinutes(parts.hour * 60 + parts.minute)
 }
 
 export function dayKey(iso: string, timeZone: string): string {

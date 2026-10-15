@@ -119,3 +119,27 @@ def test_patch_me_rejects_unsupported_locale(
         headers=_auth_headers(token),
     )
     assert response.status_code == 422
+
+
+def test_time_format_defaults_to_auto_and_can_be_changed(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "time-format@example.com")
+    me = auth_client.get("/v1/auth/me", headers=_auth_headers(token))
+    assert me.json()["time_format"] == "auto"
+
+    response = auth_client.patch(
+        "/v1/auth/me", json={"time_format": "12h"}, headers=_auth_headers(token)
+    )
+    assert response.status_code == 200
+    assert response.json()["time_format"] == "12h"
+    kept = auth_client.patch(
+        "/v1/auth/me", json={"theme_preference": "dark"}, headers=_auth_headers(token)
+    )
+    assert kept.json()["time_format"] == "12h"
+
+    invalid = auth_client.patch(
+        "/v1/auth/me", json={"time_format": "ampm"}, headers=_auth_headers(token)
+    )
+    assert invalid.status_code == 422

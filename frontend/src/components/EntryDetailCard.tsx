@@ -58,7 +58,7 @@ export function EntryDetailCard({ entry, timeZone, children }: EntryDetailCardPr
             <span className="muted entry-detail-recorded">
               {' '}
               — {formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ·{' '}
-              {formatTime(entry.recorded_at, timeZone, dateLocale)}
+              {formatTime(entry.recorded_at, timeZone)}
             </span>
           </p>
         </div>
@@ -134,13 +134,13 @@ export function EntryDetailCard({ entry, timeZone, children }: EntryDetailCardPr
             <p className="muted entry-detail-meta">
               {showCreated
                 ? t('entries.createdAt', {
-                    date: `${formatDayHeading(entry.created_at, timeZone, dateLocale)} ${formatTime(entry.created_at, timeZone, dateLocale)}`,
+                    date: `${formatDayHeading(entry.created_at, timeZone, dateLocale)} ${formatTime(entry.created_at, timeZone)}`,
                   })
                 : null}
               {showCreated && showUpdated ? ' · ' : null}
               {showUpdated
                 ? t('entries.updatedAt', {
-                    date: `${formatDayHeading(entry.updated_at, timeZone, dateLocale)} ${formatTime(entry.updated_at, timeZone, dateLocale)}`,
+                    date: `${formatDayHeading(entry.updated_at, timeZone, dateLocale)} ${formatTime(entry.updated_at, timeZone)}`,
                   })
                 : null}
             </p>

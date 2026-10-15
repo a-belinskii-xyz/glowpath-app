@@ -444,6 +444,7 @@ def update_user_settings(
     user_id: uuid.UUID,
     timezone: str | None = None,
     theme_preference: str | None = None,
+    time_format: str | None = None,
     locale: str | None = None,
 ) -> User:
     timezone_name: str | None = None
@@ -461,6 +462,8 @@ def update_user_settings(
         user.timezone = timezone_name
     if theme_preference is not None:
         user.theme_preference = theme_preference
+    if time_format is not None:
+        user.time_format = time_format
     if locale is not None:
         user.locale = locale
     db.commit()

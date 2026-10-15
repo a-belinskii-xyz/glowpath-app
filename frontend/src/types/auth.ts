@@ -1,5 +1,6 @@
 import type { ThemePreference } from '../design/themePreference'
 import type { ApiLocale } from '../lib/locale'
+import type { TimeFormat } from '../lib/timeFormat'
 
 export type UserPublic = {
   id: string
@@ -12,6 +13,8 @@ export type UserPublic = {
   has_password: boolean
   is_staff?: boolean
   theme_preference: ThemePreference
+  /** Clock shown and typed everywhere: device default, 24-hour or AM/PM. */
+  time_format: TimeFormat
   /** Interface language saved on the account; null until the app has sent it. */
   locale: ApiLocale | null
   telegram_linked: boolean

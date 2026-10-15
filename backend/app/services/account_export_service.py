@@ -285,7 +285,11 @@ def _entry_payload(
     )
 
 
-def _entries_csv(entries: list[MoodEntry], *, zone: ZoneInfo, locale: str) -> str:
+def _entries_csv(
+    entries: list[MoodEntry], *, zone: ZoneInfo, locale: str, time_format: str = "auto"
+) -> str:
+    # The server cannot see the device's clock, so "auto" stays 24-hour here.
+    clock = "%I:%M %p" if time_format == "12h" else "%H:%M"
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(CSV_COLUMNS)
@@ -298,7 +302,7 @@ def _entries_csv(entries: list[MoodEntry], *, zone: ZoneInfo, locale: str) -> st
         writer.writerow(
             (
                 local.date().isoformat(),
-                local.strftime("%H:%M"),
+                local.strftime(clock),
                 entry.score,
                 entry.note or "",
                 "; ".join(resolve_label(link.tag.labels, locale) for link in entry.tag_links),
@@ -347,6 +351,7 @@ def build_account_export_parts(
             timezone=user.timezone,
             created_at=user.created_at,
             theme_preference=user.theme_preference,
+            time_format=user.time_format,
             telegram_linked=user.telegram_linked,
         ),
         tag_groups=_tag_groups_payload(db, user.id),
@@ -357,7 +362,9 @@ def build_account_export_parts(
         food=_food_payload(db, user.id),
         sleep=_sleep_payload(db, user.id),
     )
-    entries_csv = _entries_csv(entries, zone=_user_zone(user), locale=locale)
+    entries_csv = _entries_csv(
+        entries, zone=_user_zone(user), locale=locale, time_format=user.time_format
+    )
 
     def render_json(files: dict[uuid.UUID, str | None], parts: dict[uuid.UUID, int]) -> str:
         archive = base.model_copy(

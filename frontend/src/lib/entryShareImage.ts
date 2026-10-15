@@ -343,7 +343,7 @@ function drawHeroIcon(
 function formatDateLine(iso: string, timeZone: string, locale: string): string {
   const weekday = formatWeekday(iso, timeZone, locale)
   const capitalized = weekday.charAt(0).toLocaleUpperCase(locale) + weekday.slice(1)
-  return `${capitalized} · ${formatDayHeading(iso, timeZone, locale)} · ${formatTime(iso, timeZone, locale)}`
+  return `${capitalized} · ${formatDayHeading(iso, timeZone, locale)} · ${formatTime(iso, timeZone)}`
 }
 
 // —— Note ——

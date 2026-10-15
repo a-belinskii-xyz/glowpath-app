@@ -53,6 +53,7 @@ class User(TimestampMixin, Base):
             "theme_preference IN ('system', 'light', 'dark')",
             name="theme_preference_valid",
         ),
+        CheckConstraint("time_format IN ('auto', '24h', '12h')", name="time_format_valid"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -68,6 +69,8 @@ class User(TimestampMixin, Base):
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_staff: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     theme_preference: Mapped[str] = mapped_column(String(16), server_default="system")
+    # "auto" follows the device; "24h" / "12h" force a clock everywhere the user sees a time.
+    time_format: Mapped[str] = mapped_column(String(8), server_default="auto")
     # Interface language picked on the site or in the Mini App; null until the app sends it.
     locale: Mapped[str | None] = mapped_column(String(16))
     # Where the account came from (link label like "tiktok", or "direct"); null before GP-21.
