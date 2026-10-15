@@ -100,6 +100,9 @@ export function MyPage() {
 
   const [goals, setGoals] = useState<GoalPublic[]>([])
   const [wins, setWins] = useState<MoodEntryPublic[]>([])
+  // A win shows up at once while it saves; a failed save reopens the drawer with the text.
+  const [pendingWin, setPendingWin] = useState<WinDraft | null>(null)
+  const [winRestore, setWinRestore] = useState<{ draft: WinDraft; error: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [markTarget, setMarkTarget] = useState<MarkTarget | null>(null)
@@ -433,12 +436,32 @@ export function MyPage() {
             </Link>
           ) : null}
         </div>
-        {wins.length === 0 ? (
+        {wins.length === 0 && !pendingWin ? (
           <p className="my-empty">
             {isCurrentWeek ? t('myPage.winsEmpty') : t('myPage.winsEmptyPast')}
           </p>
         ) : (
           <ul className="my-win-list">
+            {pendingWin ? (
+              <li>
+                <span className="my-win is-pending" aria-busy="true">
+                  <span className="my-win-star" aria-hidden>
+                    ★
+                  </span>
+                  <span className="my-win-body">
+                    <span className="my-win-text">{pendingWin.note}</span>
+                    <span className="my-win-date">
+                      <span
+                        className="my-win-mood"
+                        style={{ backgroundColor: pendingWin.color }}
+                        aria-hidden
+                      />
+                      {t('common.saving')}
+                    </span>
+                  </span>
+                </span>
+              </li>
+            ) : null}
             {wins.map((entry) => (
               <li key={entry.id}>
                 <Link to={`/entries/${entry.id}`} className="my-win">
@@ -617,11 +640,32 @@ export function MyPage() {
 
       <WinDrawer
         open={winOpen}
-        timeZone={timeZone}
-        onClose={() => setWinOpen(false)}
-        onSaved={async () => {
+        restore={winRestore}
+        onClose={() => {
           setWinOpen(false)
-          await loadWins()
+          setWinRestore(null)
+        }}
+        onSave={(draft) => {
+          // Close right away: on a sleepy server the save can take a few seconds.
+          setWinOpen(false)
+          setWinRestore(null)
+          setPendingWin(draft)
+          createMoodEntry({
+            score: draft.score,
+            recorded_at: instantToIsoInTimezone(new Date(), timeZone),
+            note: draft.note,
+            tag_ids: draft.tagIds,
+            goal_ids: [],
+            is_win: true,
+          })
+            .then((entry) => {
+              if (isCurrentWeek) setWins((current) => [entry, ...current].slice(0, WINS_SHOWN))
+            })
+            .catch((err: unknown) => {
+              setWinRestore({ draft, error: formatApiError(err, t, 'errors.failedSave') })
+              setWinOpen(true)
+            })
+            .finally(() => setPendingWin(null))
         }}
         scores={scores}
       />
@@ -629,75 +673,56 @@ export function MyPage() {
   )
 }
 
+type WinDraft = { note: string; score: number; color: string; tagIds: string[] }
+
 type WinDrawerProps = {
   open: boolean
-  timeZone: string
   scores: ReturnType<typeof useMoodPreferences>['scores']
+  restore: { draft: WinDraft; error: string } | null
   onClose: () => void
-  onSaved: () => Promise<void>
+  onSave: (draft: WinDraft) => void
 }
 
-function WinDrawer({ open, timeZone, scores, onClose, onSaved }: WinDrawerProps) {
+function WinDrawer({ open, scores, restore, onClose, onSave }: WinDrawerProps) {
   const { locale, t } = useLocale()
   const options = getMoodScoreOptions(locale, scores)
   const [text, setText] = useState('')
   const [score, setScore] = useState<number | null>(null)
   const [tagIds, setTagIds] = useState<string[]>([])
-  const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
-      setText('')
-      setScore(null)
-      setTagIds([])
-      setError(null)
+      setText(restore?.draft.note ?? '')
+      setScore(restore?.draft.score ?? null)
+      setTagIds(restore?.draft.tagIds ?? [])
+      setError(restore?.error ?? null)
     }
-  }, [open])
+  }, [open, restore])
 
-  const canSave = text.trim().length > 0 && score !== null && !isSaving
+  const canSave = text.trim().length > 0 && score !== null
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     if (!canSave || score === null) return
-    setIsSaving(true)
-    setError(null)
-    try {
-      await createMoodEntry({
-        score,
-        recorded_at: instantToIsoInTimezone(new Date(), timeZone),
-        note: text.trim(),
-        tag_ids: tagIds,
-        goal_ids: [],
-        is_win: true,
-      })
-      await onSaved()
-    } catch (err) {
-      setError(formatApiError(err, t, 'errors.failedSave'))
-    } finally {
-      setIsSaving(false)
-    }
+    const color = options.find((option) => option.score === score)?.color ?? ''
+    onSave({ note: text.trim(), score, color, tagIds })
   }
 
   return (
     <EditorDrawer
       open={open}
       title={t('myPage.winTitle')}
-      onClose={() => {
-        if (!isSaving) onClose()
-      }}
+      onClose={onClose}
       footer={
         <div className="button-row">
           <button type="submit" form="my-win-form" className="button my-primary" disabled={!canSave}>
-            <StableButtonLabel
-              active={isSaving ? t('common.saving') : t('common.save')}
-              labels={[t('common.save'), t('common.saving')]}
-            />
+            {t('common.save')}
           </button>
         </div>
       }
     >
-      <form id="my-win-form" className="form my-win-form" onSubmit={(event) => void handleSubmit(event)}>
+      <form id="my-win-form" className="form my-win-form" onSubmit={handleSubmit}>
         <PageErrorAlert error={error} />
         <textarea
           className="form-input my-win-input"

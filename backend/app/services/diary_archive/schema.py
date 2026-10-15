@@ -110,6 +110,7 @@ class ArchiveEntryGoal(_ArchiveModel):
     labels: Labels = Field(default_factory=dict)
     amount: int | None = Field(default=None, ge=1)
     color: str | None = Field(default=None, max_length=7)
+    partial: bool = False
 
 
 class ArchiveAttachment(_ArchiveModel):

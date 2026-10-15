@@ -407,3 +407,61 @@ def test_quantity_steps_add_up_and_keep_entry_amounts(
     assert put({"amount": 120})["day_amount"] == 120
     # A total the entries already cover leaves no check-in behind.
     assert put({"amount": 20})["day_amount"] == 30
+
+
+def test_entry_can_do_a_binary_goal_partly(
+    auth_client: TestClient, mailer: FakeEmailService, db: Session
+) -> None:
+    """GP-51: an entry can mark a binary goal «немного»; a full check-in or entry upgrades it."""
+    email = "entry-partial@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    today = _today(db, email)
+    goal = _create_goal(auth_client, token)
+    user = db.scalar(select(User).where(User.email == email))
+    assert user is not None
+    offset = datetime.now(ZoneInfo(user.timezone)).strftime("%z")
+    offset = f"{offset[:3]}:{offset[3:]}"
+
+    created = auth_client.post(
+        "/v1/mood-entries",
+        json={
+            "score": 4,
+            "recorded_at": f"{today.isoformat()}T12:00:00{offset}",
+            "tag_ids": [],
+            "goal_ids": [goal["id"]],
+            "partial_goal_ids": [goal["id"]],
+        },
+        headers=_auth(token),
+    )
+    assert created.status_code == 201, created.text
+    entry = created.json()
+    assert entry["goals"][0]["partial"] is True
+    listed = _listed(auth_client, token, goal["id"], today)
+    assert listed["week_marks"] == [{"date": today.isoformat(), "level": "partial", "amount": None}]
+    assert listed["completed_this_week"] == 1
+
+    # Editing other fields keeps «немного»; clearing it makes the day full.
+    kept = auth_client.patch(
+        f"/v1/mood-entries/{entry['id']}",
+        json={"goal_ids": [goal["id"]], "note": "ещё"},
+        headers=_auth(token),
+    )
+    assert kept.json()["goals"][0]["partial"] is True
+    full = auth_client.patch(
+        f"/v1/mood-entries/{entry['id']}",
+        json={"goal_ids": [goal["id"]], "partial_goal_ids": []},
+        headers=_auth(token),
+    )
+    assert full.json()["goals"][0]["partial"] is False
+    listed = _listed(auth_client, token, goal["id"], today)
+    assert listed["week_marks"][0]["level"] == "full"
+
+    # A full check-in on a partly done day lifts it.
+    auth_client.patch(
+        f"/v1/mood-entries/{entry['id']}",
+        json={"goal_ids": [goal["id"]], "partial_goal_ids": [goal["id"]]},
+        headers=_auth(token),
+    )
+    assert _check_in(auth_client, token, goal["id"], today, level="full").status_code == 200
+    listed = _listed(auth_client, token, goal["id"], today)
+    assert listed["week_marks"][0]["level"] == "full"

@@ -63,7 +63,7 @@ MAX_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_AUDIO_BYTES = 10 * 1024 * 1024
 # Favorite is metadata, not an edit; these fields still bump updated_at.
 _CONTENT_PATCH_FIELDS = frozenset(
-    {"score", "recorded_at", "note", "tag_ids", "goal_ids", "goal_progress"}
+    {"score", "recorded_at", "note", "tag_ids", "goal_ids", "goal_progress", "partial_goal_ids"}
 )
 
 ALLOWED_PHOTO_MIME_TYPES = frozenset(
@@ -216,8 +216,11 @@ def _replace_entry_goals(
     entry: MoodEntry,
     goals: list[Goal],
     amounts: dict[uuid.UUID, int | None],
+    partial_ids: set[uuid.UUID] | None = None,
 ) -> None:
     existing_colors = {link.goal_id: link.color for link in entry.goal_links}
+    if partial_ids is None:
+        partial_ids = {link.goal_id for link in entry.goal_links if link.is_partial}
     entry.goal_links.clear()
     db.flush()
     for goal in goals:
@@ -226,6 +229,7 @@ def _replace_entry_goals(
                 goal_id=goal.id,
                 color=existing_colors.get(goal.id, goal.color),
                 amount=amounts.get(goal.id),
+                is_partial=goal.tracking_kind == GoalTrackingKind.BINARY and goal.id in partial_ids,
             )
         )
 
@@ -327,6 +331,7 @@ def create_mood_entry(
     goal_progress: list[Any] | None = None,
     fill_quantity_from_target: bool = False,
     is_win: bool = False,
+    partial_goal_ids: list[uuid.UUID] | None = None,
     locale: str = "en",
 ) -> tuple[MoodEntry, list[dict[str, Any]]]:
     recorded_at_utc = _to_utc(recorded_at)
@@ -361,7 +366,7 @@ def create_mood_entry(
     db.add(entry)
     db.flush()
     _replace_entry_tags(db, entry, tags)
-    _replace_entry_goals(db, entry, goals, amounts)
+    _replace_entry_goals(db, entry, goals, amounts, set(partial_goal_ids or []))
     upsert_entry_embedding(db, entry)
     unlocked_payload = _evaluate_achievements_payload(
         db,
@@ -1058,7 +1063,8 @@ def patch_mood_entry(
             goals,
             _progress_amounts(goal_ids=goal_ids, goal_progress=fields.get("goal_progress")),
         )
-        _replace_entry_goals(db, entry, goals, amounts)
+        partial = fields.get("partial_goal_ids")
+        _replace_entry_goals(db, entry, goals, amounts, None if partial is None else set(partial))
     if "is_favorite" in fields and fields["is_favorite"] is not None:
         next_favorite = bool(fields["is_favorite"])
         favorite_changed = entry.is_favorite != next_favorite
@@ -1322,6 +1328,7 @@ def serialize_mood_entry(
             "target_amount": link.goal.target_amount,
             "unit": link.goal.unit,
             "amount": link.amount,
+            "partial": link.is_partial,
         }
         for link in sorted(entry.goal_links, key=lambda item: item.goal.sort_order)
         if link.goal is not None

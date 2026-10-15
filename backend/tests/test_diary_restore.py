@@ -154,6 +154,7 @@ def test_export_is_format_v2_with_tag_groups(
         "labels": {"en": "Water"},
         "amount": 5,
         "color": "#60a5fa",
+        "partial": False,
     }
 
 

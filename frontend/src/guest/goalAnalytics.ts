@@ -73,6 +73,8 @@ function computeGoalPeriodProgress(
 ): Map<string, GoalPeriodProgress> {
   const goalsById = new Map(goals.map((goal) => [goal.id, goal]))
   const daily = new Map<string, Map<string, number>>()
+  // Binary goals: days where an entry did the goal in full (not only «немного»).
+  const fullEntryDays = new Map<string, Set<string>>()
 
   for (const entry of entries) {
     const localDay = dayKey(entry.recorded_at, timezone)
@@ -89,6 +91,11 @@ function computeGoalPeriodProgress(
         byDay.set(localDay, (byDay.get(localDay) ?? 0) + (goalRef.amount ?? 0))
       } else {
         byDay.set(localDay, 1)
+        if (!goalRef.partial) {
+          const days = fullEntryDays.get(goal.id) ?? new Set<string>()
+          days.add(localDay)
+          fullEntryDays.set(goal.id, days)
+        }
       }
       daily.set(goal.id, byDay)
     }
@@ -120,8 +127,9 @@ function computeGoalPeriodProgress(
         }
       }
     } else {
+      const fullDays = fullEntryDays.get(goal.id)
       for (const day of amounts.keys()) {
-        levels.set(day, 'full')
+        levels.set(day, fullDays?.has(day) ? 'full' : 'partial')
       }
       amountInPeriod = amounts.size
     }
@@ -129,7 +137,8 @@ function computeGoalPeriodProgress(
     for (const [day, level] of Object.entries(goal.checkins ?? {})) {
       if (day in checkinAmounts && goal.tracking_kind === 'quantity') continue
       const current = levels.get(day)
-      if (day >= periodStart && day < periodEnd && (!current || current === 'started')) {
+      const fills = !current || current === 'started' || (current === 'partial' && level === 'full')
+      if (day >= periodStart && day < periodEnd && fills) {
         levels.set(day, level)
       }
     }
