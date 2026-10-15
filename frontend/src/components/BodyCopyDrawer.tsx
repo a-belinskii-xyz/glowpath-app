@@ -167,7 +167,9 @@ export function BodyCopyDrawer({ open, today, timeZone, settings, onClose }: Bod
             .filter((log) => log.day === day)
             .sort((a, b) => (a.meal ? MEALS.indexOf(a.meal) : MEALS.length) - (b.meal ? MEALS.indexOf(b.meal) : MEALS.length))
           for (const log of meals) {
-            lines.push(log.meal ? `- ${t(`body.meal.${log.meal}`)}: ${log.text}` : `- ${log.text}`)
+            // List-mode notes are one item per line; keep each meal on one line.
+            const eaten = log.text.split('\n').join('; ')
+            lines.push(log.meal ? `- ${t(`body.meal.${log.meal}`)}: ${eaten}` : `- ${eaten}`)
           }
           const extra: string[] = []
           const weight = has('weight') ? inPeriod.find((point) => point.day === day) : undefined
