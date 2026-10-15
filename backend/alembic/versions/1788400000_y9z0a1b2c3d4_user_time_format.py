@@ -1,7 +1,7 @@
 """add time_format to users
 
-Revision ID: x8y9z0a1b2c3
-Revises: w7x8y9z0a1b2
+Revision ID: y9z0a1b2c3d4
+Revises: x8y9z0a1b2c3
 Create Date: 2026-10-15 19:30:00.000000
 
 """
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "x8y9z0a1b2c3"
-down_revision: str | Sequence[str] | None = "w7x8y9z0a1b2"
+revision: str = "y9z0a1b2c3d4"
+down_revision: str | Sequence[str] | None = "x8y9z0a1b2c3"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
