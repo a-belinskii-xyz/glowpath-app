@@ -1,25 +1,28 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { setGoalCheckin } from '../api/goals'
-import { listMoodEntries } from '../api/moodEntries'
 import {
   createFood,
   deleteFood,
   deleteWeight,
   listFood,
+  listSleep,
   listWeights,
   setWeight,
   updateBodySettings,
   updateFood,
 } from '../api/body'
+import { BodyCopyDrawer } from './BodyCopyDrawer'
 import { EditorDrawer } from './EditorDrawer'
 import { PageErrorAlert } from './PageErrorAlert'
+import { SleepDrawer, SleepSection } from './SleepSection'
 import { StableButtonLabel } from './StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { intlLocale } from '../i18n/t'
-import { dayKey, getDayBounds, shiftDateKey } from '../lib/datetime'
+import { bodyMassIndex, dayNumber, formatDay } from '../lib/bodyFormat'
+import { shiftDateKey } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
-import type { BodySettings, FoodLog, Meal, WeightPoint } from '../types/body'
+import type { BodySettings, FoodLog, Meal, SleepLog, WeightPoint } from '../types/body'
 import type { GoalPublic } from '../types/goal'
 
 const MEALS: Meal[] = ['morning', 'day', 'evening', 'snack']
@@ -31,18 +34,11 @@ const HISTORY_DAYS = 365
 const SPARK_DAYS = 60
 const RANGES = { month: 31, quarter: 92, year: HISTORY_DAYS } as const
 type Range = keyof typeof RANGES
-
-function dayNumber(day: string): number {
-  const [year, month, date] = day.split('-').map(Number)
-  return Date.UTC(year, month - 1, date) / 86_400_000
-}
-
-function formatDay(day: string, dateLocale: string, options: Intl.DateTimeFormatOptions): string {
-  const [year, month, date] = day.split('-').map(Number)
-  return new Intl.DateTimeFormat(dateLocale, { ...options, timeZone: 'UTC' }).format(
-    new Date(Date.UTC(year, month - 1, date)),
-  )
-}
+const MIN_HEIGHT = 100
+const MAX_HEIGHT = 250
+// The BMI scale runs over this span; marks at the usual 18.5 / 25 / 30 cut-offs, without their names.
+const BMI_SCALE = { min: 15, max: 40 }
+const BMI_MARKS = [18.5, 25, 30]
 
 /** The average of the measurements in the 7 days ending on ``day``, or null if there are none. */
 function weekAverage(points: WeightPoint[], day: string): number | null {
@@ -140,7 +136,7 @@ type BodyCardProps = {
   onOpenSettings: () => void
 }
 
-/** Weight and food on «Моё» (GP-47): no targets, no calories, nothing to fall behind on. */
+/** Weight, sleep and food on «Моё» (GP-47, GP-48): no targets, no calories, nothing to fall behind on. */
 export function BodyCard({
   settings,
   today,
@@ -166,6 +162,8 @@ export function BodyCard({
   const [foodTarget, setFoodTarget] = useState<{ day: string; log: FoodLog | null } | null>(null)
   const [foodDay, setFoodDay] = useState(asOf)
   const [copyOpen, setCopyOpen] = useState(false)
+  const [sleep, setSleepLogs] = useState<SleepLog[]>([])
+  const [sleepOpen, setSleepOpen] = useState(false)
 
   useEffect(() => setFoodDay(asOf), [asOf])
 
@@ -181,6 +179,15 @@ export function BodyCard({
     if (!settings.show_weight) return
     void loadWeights().catch((err) => setError(formatApiError(err, t, 'errors.requestFailed')))
   }, [settings.show_weight, loadWeights, t])
+
+  const loadSleep = useCallback(async () => {
+    setSleepLogs(await listSleep(shiftDateKey(today, -HISTORY_DAYS), today))
+  }, [today])
+
+  useEffect(() => {
+    if (!settings.show_sleep) return
+    void loadSleep().catch((err) => setError(formatApiError(err, t, 'errors.requestFailed')))
+  }, [settings.show_sleep, loadSleep, t])
 
   useEffect(() => {
     if (!settings.show_food) return
@@ -212,9 +219,14 @@ export function BodyCard({
     <section className="card my-card body-card" aria-labelledby="my-body-title">
       <div className="my-card-head">
         <h2 id="my-body-title">{t('body.title')}</h2>
-        <button type="button" className="link-button my-card-link" onClick={onOpenSettings}>
-          {t('body.configure')}
-        </button>
+        <div className="body-head-links">
+          <button type="button" className="link-button my-card-link" onClick={() => setCopyOpen(true)}>
+            {t('body.copyOpen')}
+          </button>
+          <button type="button" className="link-button my-card-link" onClick={onOpenSettings}>
+            {t('body.configure')}
+          </button>
+        </div>
       </div>
       <PageErrorAlert error={error} />
 
@@ -251,6 +263,16 @@ export function BodyCard({
             {t('body.recordWeight')}
           </button>
         </div>
+      ) : null}
+
+      {settings.show_sleep ? (
+        <SleepSection
+          logs={sleep}
+          asOf={asOf}
+          today={today}
+          weekDays={weekDays}
+          onRecord={() => setSleepOpen(true)}
+        />
       ) : null}
 
       {settings.show_food ? (
@@ -313,9 +335,6 @@ export function BodyCard({
             <button type="button" className="link-button body-food-add" onClick={() => setFoodTarget({ day: foodDay, log: null })}>
               ＋ {dayFood.length === 0 ? t('body.foodAddFirst') : t('body.foodAddMore')}
             </button>
-            <button type="button" className="link-button body-food-copy" onClick={() => setCopyOpen(true)}>
-              {t('body.copyOpen')}
-            </button>
           </div>
         </div>
       ) : null}
@@ -328,8 +347,19 @@ export function BodyCard({
         onClose={() => setWeightOpen(false)}
         onChanged={loadWeights}
         onSettingsChange={onSettingsChange}
+        onOpenSettings={() => {
+          setWeightOpen(false)
+          onOpenSettings()
+        }}
       />
-      <FoodCopyDrawer open={copyOpen} today={today} timeZone={timeZone} onClose={() => setCopyOpen(false)} />
+      <SleepDrawer open={sleepOpen} today={today} logs={sleep} onClose={() => setSleepOpen(false)} onChanged={loadSleep} />
+      <BodyCopyDrawer
+        open={copyOpen}
+        today={today}
+        timeZone={timeZone}
+        settings={settings}
+        onClose={() => setCopyOpen(false)}
+      />
       <FoodDrawer
         target={foodTarget}
         today={today}
@@ -353,9 +383,19 @@ type WeightDrawerProps = {
   onClose: () => void
   onChanged: () => Promise<void>
   onSettingsChange: (settings: BodySettings) => void
+  onOpenSettings: () => void
 }
 
-function WeightDrawer({ open, today, weights, settings, onClose, onChanged, onSettingsChange }: WeightDrawerProps) {
+function WeightDrawer({
+  open,
+  today,
+  weights,
+  settings,
+  onClose,
+  onChanged,
+  onSettingsChange,
+  onOpenSettings,
+}: WeightDrawerProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
   const [day, setDay] = useState(today)
@@ -363,13 +403,19 @@ function WeightDrawer({ open, today, weights, settings, onClose, onChanged, onSe
   const [range, setRange] = useState<Range>('quarter')
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [bmiRevealed, setBmiRevealed] = useState(false)
 
   const existing = weights.find((point) => point.day === day) ?? null
+  const bmiWeight = weekAverage(weights, today) ?? (weights.length > 0 ? weights[weights.length - 1].value : null)
+  const bmi = settings.height_cm !== null && bmiWeight !== null ? bodyMassIndex(bmiWeight, settings.height_cm) : null
+  const bmiAt = (value: number) =>
+    (Math.min(Math.max(value, BMI_SCALE.min), BMI_SCALE.max) - BMI_SCALE.min) / (BMI_SCALE.max - BMI_SCALE.min) * 100
 
   useEffect(() => {
     if (!open) return
     setDay(today)
     setError(null)
+    setBmiRevealed(false)
   }, [open, today])
 
   useEffect(() => {
@@ -493,6 +539,43 @@ function WeightDrawer({ open, today, weights, settings, onClose, onChanged, onSe
             <p className="my-level-hint">{t('body.chartHint')}</p>
           </div>
         ) : null}
+
+        <div className="body-bmi">
+          <span className="form-label">{t('body.bmiTitle')}</span>
+          {bmi === null ? (
+            <p className="my-level-hint">
+              {settings.height_cm === null ? (
+                <button type="button" className="link-button" onClick={onOpenSettings}>
+                  {t('body.bmiNeedsHeight')}
+                </button>
+              ) : (
+                t('body.bmiNeedsWeight')
+              )}
+            </p>
+          ) : (
+            <button
+              type="button"
+              className={`body-bmi-scale${settings.hide_weight && !bmiRevealed ? ' is-hidden' : ''}`}
+              aria-label={settings.hide_weight && !bmiRevealed ? t('body.reveal') : undefined}
+              onClick={() => setBmiRevealed((value) => !value)}
+            >
+              <span className="body-bmi-value">
+                {t('body.bmiValue', {
+                  value: new Intl.NumberFormat(dateLocale, { maximumFractionDigits: 1 }).format(bmi),
+                })}
+              </span>
+              <span className="body-bmi-track">
+                {BMI_MARKS.map((mark) => (
+                  <span key={mark} className="body-bmi-mark" style={{ left: `${bmiAt(mark)}%` }}>
+                    <span>{new Intl.NumberFormat(dateLocale).format(mark)}</span>
+                  </span>
+                ))}
+                <span className="body-bmi-dot" style={{ left: `${bmiAt(bmi)}%` }} />
+              </span>
+            </button>
+          )}
+          <p className="my-level-hint">{t('body.bmiNote')}</p>
+        </div>
 
         <label className="body-check">
           <input type="checkbox" checked={settings.hide_weight} onChange={(event) => void toggleHidden(event.target.checked)} />
@@ -658,12 +741,25 @@ type BodySettingsDrawerProps = {
   onSettingsChange: (settings: BodySettings) => void
 }
 
-/** Turn weight and food on or off for «Моё»; both start off. */
+/** Turn weight, sleep and food on or off for «Моё»; all start off. */
 export function BodySettingsDrawer({ open, settings, goals, onClose, onSettingsChange }: BodySettingsDrawerProps) {
   const { t } = useLocale()
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const binaryGoals = goals.filter((goal) => goal.tracking_kind === 'binary')
+  const [height, setHeight] = useState('')
+
+  useEffect(() => {
+    if (open) setHeight(settings.height_cm === null ? '' : String(settings.height_cm))
+  }, [open, settings.height_cm])
+
+  const parsedHeight = Number.parseFloat(height.replace(',', '.'))
+  const heightValid = height === '' || (Number.isFinite(parsedHeight) && parsedHeight >= MIN_HEIGHT && parsedHeight <= MAX_HEIGHT)
+  const saveHeight = () => {
+    if (!heightValid) return
+    const next = height === '' ? null : Math.round(parsedHeight * 10) / 10
+    if (next !== settings.height_cm) void save({ height_cm: next })
+  }
 
   const save = async (patch: Partial<BodySettings>) => {
     setIsSaving(true)
@@ -691,6 +787,40 @@ export function BodySettingsDrawer({ open, settings, goals, onClose, onSettingsC
           <span>
             <strong>{t('body.showWeight')}</strong>
             <span className="my-level-hint">{t('body.showWeightHint')}</span>
+          </span>
+        </label>
+        {settings.show_weight ? (
+          <label className="body-height">
+            <span className="form-label">{t('body.height')}</span>
+            <span className="my-amount-row">
+              <input
+                className="form-input"
+                inputMode="decimal"
+                value={height}
+                placeholder="175"
+                onChange={(event) => setHeight(event.target.value.replace(/[^0-9.,]/g, ''))}
+                onBlur={saveHeight}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') saveHeight()
+                }}
+              />
+              <span className="muted">{t('body.cm')}</span>
+            </span>
+            <span className="my-level-hint">
+              {heightValid ? t('body.heightHint') : t('body.heightRange', { min: MIN_HEIGHT, max: MAX_HEIGHT })}
+            </span>
+          </label>
+        ) : null}
+        <label className="body-check">
+          <input
+            type="checkbox"
+            checked={settings.show_sleep}
+            disabled={isSaving}
+            onChange={(event) => void save({ show_sleep: event.target.checked })}
+          />
+          <span>
+            <strong>{t('body.showSleep')}</strong>
+            <span className="my-level-hint">{t('body.showSleepHint')}</span>
           </span>
         </label>
         <label className="body-check">
@@ -740,222 +870,6 @@ export function BodySettingsDrawer({ open, settings, goals, onClose, onSettingsC
             })}
           </div>
         ) : null}
-      </div>
-    </EditorDrawer>
-  )
-}
-
-type CopyPeriod = 'today' | 'week' | 'month' | 'custom'
-const COPY_PERIODS: CopyPeriod[] = ['today', 'week', 'month', 'custom']
-const MOOD_PAGE = 100
-const MOOD_PAGES_MAX = 20
-
-async function loadMoodLabels(from: string, to: string, timeZone: string): Promise<Map<string, string[]>> {
-  const byDay = new Map<string, string[]>()
-  const recorded_from = getDayBounds(from, timeZone).recorded_from
-  const recorded_to = getDayBounds(to, timeZone).recorded_to
-  for (let page = 0; page < MOOD_PAGES_MAX; page += 1) {
-    const response = await listMoodEntries({ recorded_from, recorded_to, limit: MOOD_PAGE, offset: page * MOOD_PAGE })
-    for (const entry of response.items) {
-      const day = dayKey(entry.recorded_at, timeZone)
-      byDay.set(day, [...(byDay.get(day) ?? []), entry.score_label])
-    }
-    if (response.items.length < MOOD_PAGE) break
-  }
-  // The list is newest first; read each day from morning to evening.
-  for (const labels of byDay.values()) labels.reverse()
-  return byDay
-}
-
-type FoodCopyDrawerProps = {
-  open: boolean
-  today: string
-  timeZone: string
-  onClose: () => void
-}
-
-/** Food for a period as plain text, ready to paste into a chat with an assistant. */
-export function FoodCopyDrawer({ open, today, timeZone, onClose }: FoodCopyDrawerProps) {
-  const { locale, t } = useLocale()
-  const dateLocale = intlLocale(locale)
-  const [period, setPeriod] = useState<CopyPeriod>('week')
-  const [customFrom, setCustomFrom] = useState(shiftDateKey(today, -6))
-  const [customTo, setCustomTo] = useState(today)
-  const [withWeight, setWithWeight] = useState(true)
-  const [withMood, setWithMood] = useState(true)
-  const [text, setText] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const [from, to] = (() => {
-    if (period === 'today') return [today, today]
-    if (period === 'week') return [shiftDateKey(today, -6), today]
-    if (period === 'month') return [shiftDateKey(today, -29), today]
-    return customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom]
-  })()
-  const tooLong = dayNumber(to) - dayNumber(from) > HISTORY_DAYS
-
-  useEffect(() => {
-    if (!open || tooLong) return
-    let cancelled = false
-    const build = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const [food, weights, moods] = await Promise.all([
-          listFood(from, to),
-          withWeight ? listWeights(from, to) : Promise.resolve([]),
-          withMood ? loadMoodLabels(from, to, timeZone) : Promise.resolve(new Map<string, string[]>()),
-        ])
-        if (cancelled) return
-        const numberFormat = new Intl.NumberFormat(dateLocale, { maximumFractionDigits: 1 })
-        const rangeFormat = new Intl.DateTimeFormat(dateLocale, {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'UTC',
-        })
-        const asDate = (day: string) => new Date(dayNumber(day) * 86_400_000)
-        const startFormat = new Intl.DateTimeFormat(dateLocale, {
-          day: 'numeric',
-          month: 'long',
-          ...(from.slice(0, 4) === to.slice(0, 4) ? {} : { year: 'numeric' }),
-          timeZone: 'UTC',
-        })
-        const range =
-          from === to
-            ? rangeFormat.format(asDate(from))
-            : `${startFormat.format(asDate(from))} – ${rangeFormat.format(asDate(to))}`
-        const lines = [t('body.copyHeading', { range }), t('body.copyGaps')]
-        const days = [...new Set(food.map((log) => log.day))].sort()
-        for (const day of days) {
-          const heading = formatDay(day, dateLocale, { weekday: 'short', day: 'numeric', month: 'long' })
-          lines.push('', heading.charAt(0).toUpperCase() + heading.slice(1))
-          const meals = food
-            .filter((log) => log.day === day)
-            .sort((a, b) => (a.meal ? MEALS.indexOf(a.meal) : MEALS.length) - (b.meal ? MEALS.indexOf(b.meal) : MEALS.length))
-          for (const log of meals) {
-            lines.push(log.meal ? `- ${t(`body.meal.${log.meal}`)}: ${log.text}` : `- ${log.text}`)
-          }
-          const extra: string[] = []
-          const weight = weights.find((point) => point.day === day)
-          if (weight) extra.push(t('body.copyWeight', { value: numberFormat.format(weight.value) }))
-          const mood = moods.get(day)
-          if (mood?.length) extra.push(t('body.copyMood', { labels: mood.join(', ') }))
-          if (extra.length > 0) lines.push(extra.join(' · '))
-        }
-        setText(days.length === 0 ? '' : lines.join('\n'))
-      } catch (err) {
-        if (!cancelled) setError(formatApiError(err, t, 'errors.requestFailed'))
-      } finally {
-        if (!cancelled) setIsLoading(false)
-      }
-    }
-    void build()
-    return () => {
-      cancelled = true
-    }
-  }, [open, from, to, tooLong, withWeight, withMood, timeZone, dateLocale, t])
-
-  useEffect(() => setCopied(false), [text])
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      // Some webviews block the async clipboard; fall back to a selected textarea.
-      const area = document.createElement('textarea')
-      area.value = text
-      area.setAttribute('readonly', '')
-      area.style.position = 'fixed'
-      area.style.opacity = '0'
-      document.body.appendChild(area)
-      area.select()
-      document.execCommand('copy')
-      area.remove()
-    }
-    setCopied(true)
-  }
-
-  return (
-    <EditorDrawer
-      open={open}
-      title={t('body.copyTitle')}
-      description={t('body.copyHint')}
-      onClose={onClose}
-      footer={
-        <div className="button-row">
-          <button
-            type="button"
-            className="button my-primary"
-            disabled={!text || isLoading || tooLong}
-            onClick={() => void copy()}
-          >
-            <StableButtonLabel
-              active={copied ? t('body.copied') : t('body.copyAction')}
-              labels={[t('body.copyAction'), t('body.copied')]}
-            />
-          </button>
-        </div>
-      }
-    >
-      <div className="form">
-        <PageErrorAlert error={error} />
-        <div className="body-meals" role="radiogroup" aria-label={t('body.copyPeriod')}>
-          {COPY_PERIODS.map((item) => (
-            <button
-              key={item}
-              type="button"
-              role="radio"
-              aria-checked={period === item}
-              className={`body-meal${period === item ? ' is-selected' : ''}`}
-              onClick={() => setPeriod(item)}
-            >
-              {t(`body.copyPeriods.${item}`)}
-            </button>
-          ))}
-        </div>
-        {period === 'custom' ? (
-          <div className="body-copy-dates">
-            <input
-              className="form-input"
-              type="date"
-              max={today}
-              value={customFrom}
-              aria-label={t('body.copyFrom')}
-              onChange={(event) => event.target.value && setCustomFrom(event.target.value)}
-            />
-            <span className="muted">—</span>
-            <input
-              className="form-input"
-              type="date"
-              max={today}
-              value={customTo}
-              aria-label={t('body.copyTo')}
-              onChange={(event) => event.target.value && setCustomTo(event.target.value)}
-            />
-          </div>
-        ) : null}
-        <div className="body-copy-options">
-          <label className="body-check">
-            <input type="checkbox" checked={withWeight} onChange={(event) => setWithWeight(event.target.checked)} />
-            <span>{t('body.copyWithWeight')}</span>
-          </label>
-          <label className="body-check">
-            <input type="checkbox" checked={withMood} onChange={(event) => setWithMood(event.target.checked)} />
-            <span>{t('body.copyWithMood')}</span>
-          </label>
-        </div>
-        {tooLong ? (
-          <p className="my-empty">{t('body.copyTooLong')}</p>
-        ) : isLoading && !text ? (
-          <p className="muted">{t('common.loading')}</p>
-        ) : text ? (
-          <pre className="body-copy-preview">{text}</pre>
-        ) : (
-          <p className="my-empty">{t('body.copyEmpty')}</p>
-        )}
       </div>
     </EditorDrawer>
   )
