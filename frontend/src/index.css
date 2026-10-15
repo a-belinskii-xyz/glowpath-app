@@ -5642,6 +5642,34 @@ code {
   gap: 0.35rem;
 }
 
+.goal-chip-level {
+  display: inline-flex;
+  align-self: flex-start;
+  width: fit-content;
+  padding: 0.15rem;
+  border-radius: 999px;
+  background: var(--chrome-surface-inset);
+}
+
+.goal-chip-level-option {
+  min-height: 1.8rem;
+  padding: 0.2rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--chrome-text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.goal-chip-level-option.is-selected {
+  background: var(--chrome-surface);
+  color: var(--chrome-text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
 .goal-chip-amount-input {
   width: 5rem;
   min-height: 2rem;
@@ -9326,7 +9354,7 @@ code {
   padding: 0.7rem 0.8rem;
   border: 1px solid var(--chrome-border-default);
   border-radius: var(--chrome-radius-card, 1.15rem);
-  background: var(--chrome-surface, #fff);
+  background: var(--chrome-surface);
 }
 
 .achievements-stat-ring {
@@ -9484,7 +9512,7 @@ code {
   padding: 0.85rem 0.9rem;
   border-radius: var(--chrome-radius-card, 1.15rem);
   border: 1px solid var(--chrome-border-default);
-  background: var(--chrome-surface, #fff);
+  background: var(--chrome-surface);
   color: inherit;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -9694,7 +9722,7 @@ code {
     padding: 0.85rem 0.9rem;
     border: 1px solid var(--chrome-border-default);
     border-radius: var(--chrome-radius-card, 1.15rem);
-    background: var(--chrome-surface, #fff);
+    background: var(--chrome-surface);
   }
 }
 
@@ -12015,6 +12043,10 @@ button.my-day:hover {
 
 .my-win-list li:first-child .my-win {
   border-top: 0;
+}
+
+.my-win.is-pending {
+  opacity: 0.6;
 }
 
 .my-win-star {

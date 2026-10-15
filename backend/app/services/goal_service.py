@@ -383,7 +383,12 @@ def period_goal_progress(
     ).astimezone(UTC)
 
     stmt = (
-        select(MoodEntryGoal.goal_id, MoodEntry.recorded_at, MoodEntryGoal.amount)
+        select(
+            MoodEntryGoal.goal_id,
+            MoodEntry.recorded_at,
+            MoodEntryGoal.amount,
+            MoodEntryGoal.is_partial,
+        )
         .join(MoodEntry, MoodEntry.id == MoodEntryGoal.mood_entry_id)
         .where(
             MoodEntry.user_id == user_id,
@@ -403,11 +408,15 @@ def period_goal_progress(
         checkin_stmt = checkin_stmt.where(GoalCheckin.goal_id.in_(goal_ids))
 
     daily: dict[uuid.UUID, dict[date, int]] = defaultdict(lambda: defaultdict(int))
-    for goal_id, recorded_at, amount in db.execute(stmt).all():
+    # Binary goals: days where an entry did the goal in full (not only «немного»).
+    full_entry_days: dict[uuid.UUID, set[date]] = defaultdict(set)
+    for goal_id, recorded_at, amount, is_partial in db.execute(stmt).all():
         local_day = recorded_at.astimezone(tz).date()
         if not (period_start <= local_day < period_end):
             continue
         daily[goal_id][local_day] += int(amount or 0)
+        if not is_partial:
+            full_entry_days[goal_id].add(local_day)
     checkins: dict[uuid.UUID, dict[date, str]] = defaultdict(dict)
     checkin_amounts: dict[uuid.UUID, dict[date, int]] = defaultdict(dict)
     for goal_id, day, level, amount in db.execute(checkin_stmt).all():
@@ -446,9 +455,19 @@ def period_goal_progress(
                     levels[day] = GOAL_DAY_STARTED
         else:
             amounts = {day: 1 for day in entry_days}
-            levels = {day: GoalCheckinLevel.FULL.value for day in amounts}
+            full_days = full_entry_days.get(goal_id, set())
+            levels = {
+                day: GoalCheckinLevel.FULL.value
+                if day in full_days
+                else GoalCheckinLevel.PARTIAL.value
+                for day in amounts
+            }
         for day, level in checkins.get(goal_id, {}).items():
-            if levels.get(day) in (None, GOAL_DAY_STARTED):
+            # A check-in fills a day the entries left empty or only partly done.
+            current = levels.get(day)
+            if current in (None, GOAL_DAY_STARTED) or (
+                current == GoalCheckinLevel.PARTIAL.value and level == GoalCheckinLevel.FULL.value
+            ):
                 levels[day] = level
         result[goal_id] = GoalPeriodProgress(
             completed_days=sum(1 for level in levels.values() if level != GOAL_DAY_STARTED),

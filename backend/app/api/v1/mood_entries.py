@@ -126,6 +126,7 @@ def create_entry(
             tag_ids=body.tag_ids,
             goal_ids=body.goal_ids,
             goal_progress=body.goal_progress,
+            partial_goal_ids=body.partial_goal_ids,
             source=body.source,
             is_win=body.is_win,
             locale=locale,

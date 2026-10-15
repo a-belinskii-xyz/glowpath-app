@@ -156,6 +156,10 @@ export function MoodEntryForm({
     }
     return amounts
   })
+  // Binary goals done only «немного» in this entry (GP-51).
+  const [partialGoalIds, setPartialGoalIds] = useState<string[]>(
+    initialEntry?.goals.filter((goal) => goal.partial).map((goal) => goal.id) ?? [],
+  )
   const [tagGroups, setTagGroups] = useState<TagGroupPublic[]>([])
   const [frequentTags, setFrequentTags] = useState<TagPublic[]>([])
   const [goals, setGoals] = useState<GoalPublic[]>([])
@@ -473,6 +477,7 @@ export function MoodEntryForm({
           delete next[goal.id]
           return next
         })
+        setPartialGoalIds((ids) => ids.filter((id) => id !== goal.id))
         return current.filter((id) => id !== goal.id)
       }
       if (goal.tracking_kind === 'quantity') {
@@ -662,6 +667,32 @@ export function MoodEntryForm({
             {goal.unit ? <span className="goal-chip-amount-unit">{goal.unit}</span> : null}
           </label>
         ) : null}
+        {selected && !isQuantity ? (
+          <div className="goal-chip-level" role="radiogroup" aria-label={goal.label}>
+            {(['partial', 'full'] as const).map((level) => {
+              const checked = partialGoalIds.includes(goal.id) === (level === 'partial')
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  role="radio"
+                  aria-checked={checked}
+                  className={`goal-chip-level-option${checked ? ' is-selected' : ''}`}
+                  title={level === 'partial' ? (goal.partial_label ?? undefined) : undefined}
+                  onClick={() =>
+                    setPartialGoalIds((ids) =>
+                      level === 'partial'
+                        ? [...ids.filter((id) => id !== goal.id), goal.id]
+                        : ids.filter((id) => id !== goal.id),
+                    )
+                  }
+                >
+                  {t(level === 'partial' ? 'myPage.levelPartial' : 'myPage.levelFull')}
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -843,6 +874,9 @@ export function MoodEntryForm({
       tag_ids: showTags ? selectedTagIds : [],
       goal_ids: showGoals ? selectedActiveIds : [],
       goal_progress: showGoals ? goalProgress : [],
+      partial_goal_ids: showGoals
+        ? selectedActiveIds.filter((id) => partialGoalIds.includes(id))
+        : [],
       ...(sessionSource ? { source: sessionSource } : {}),
     }
 
