@@ -35,7 +35,7 @@ import type {
   NoteTemplateWrite,
 } from '../types/noteTemplate'
 import type { QuickTagResponse, TagGroupListResponse, TagGroupPublic, TagGroupPatch, TagGroupWrite, TagPatch, TagPublic, TagWrite } from '../types/tag'
-import { NEW_TAG_COLORS, NEW_TAGS_GROUP_SLUG, tagLabelKey } from '../lib/tagLabel'
+import { NEW_TAGS_GROUP_SLUG, randomNewTagStyle, tagLabelKey } from '../lib/tagLabel'
 import {
   computeGuestGoalCalendar,
   computeGuestGoalStats,
@@ -363,13 +363,14 @@ export async function quickCreateGuestTag(
       locale,
     )
   }
+  const style = randomNewTagStyle()
   const tag = await createGuestTag(
     group.id,
     {
       labels: { [locale]: name },
-      color: NEW_TAG_COLORS[Math.floor(Math.random() * NEW_TAG_COLORS.length)],
+      color: style.color,
       icon_type: 'emoji',
-      icon: '🏷',
+      icon: style.icon,
     },
     locale,
   )

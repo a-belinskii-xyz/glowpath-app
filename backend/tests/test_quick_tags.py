@@ -1,6 +1,6 @@
 from app.models.tag import Tag
 from app.models.user import User
-from app.services.tag_service import NEW_TAGS_GROUP_SLUG, tag_label_key
+from app.services.tag_service import NEW_TAG_STYLES, NEW_TAGS_GROUP_SLUG, tag_label_key
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -31,7 +31,7 @@ def test_quick_tag_created_in_new_tags_group(
     body = response.json()
     assert body["created"] is True
     assert body["tag"]["label"] == "Град"
-    assert body["tag"]["icon"] == "🏷"
+    assert body["tag"]["icon"] in NEW_TAG_STYLES[body["tag"]["color"]]
 
     groups = auth_client.get("/v1/tag-groups", headers=_headers(token)).json()["items"]
     system = [group for group in groups if group["is_system"]]

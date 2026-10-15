@@ -41,20 +41,20 @@ FREQUENT_TAGS_DAYS = 30
 # underscore keeps it out of reach of user-chosen slugs (API slugs start with a letter).
 NEW_TAGS_GROUP_SLUG = "_new_tags"
 NEW_TAGS_GROUP_LABELS = {"en": "New tags", "ru": "Новые теги"}
-NEW_TAG_COLORS = (
-    "#60a5fa",
-    "#2563eb",
-    "#0ea5e9",
-    "#14b8a6",
-    "#34d399",
-    "#84cc16",
-    "#eab308",
-    "#f59e0b",
-    "#f97316",
-    "#ef4444",
-    "#f472b6",
-    "#a78bfa",
-)
+# Colour → shape emoji of the same colour, so a new tag's icon matches its dot.
+NEW_TAG_STYLES: dict[str, tuple[str, ...]] = {
+    "#60a5fa": ("🔵", "🔷", "🟦"),
+    "#2563eb": ("🔵", "🔷", "🟦"),
+    "#0ea5e9": ("🔵", "🔹", "🟦"),
+    "#14b8a6": ("🟢", "🟩"),
+    "#34d399": ("🟢", "🟩"),
+    "#84cc16": ("🟢", "🟩"),
+    "#eab308": ("🟡", "🟨"),
+    "#f59e0b": ("🟠", "🔶", "🟡"),
+    "#f97316": ("🟠", "🔶", "🟧"),
+    "#ef4444": ("🔴", "🟥", "🔺"),
+    "#a78bfa": ("🟣", "🟪"),
+}
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
@@ -441,6 +441,7 @@ def quick_create_tag(
     if existing is not None:
         return existing, False
     group = _new_tags_group(db, user_id=user_id)
+    color = random.choice(list(NEW_TAG_STYLES))
     tag = Tag(
         group_id=group.id,
         user_id=user_id,
@@ -450,9 +451,9 @@ def quick_create_tag(
             db,
             select(func.max(Tag.sort_order)).where(Tag.group_id == group.id),
         ),
-        color=random.choice(NEW_TAG_COLORS),
+        color=color,
         icon_type=DEFAULT_TAG_ICON_TYPE,
-        icon=DEFAULT_TAG_ICON,
+        icon=random.choice(NEW_TAG_STYLES[color]),
     )
     db.add(tag)
     try:
