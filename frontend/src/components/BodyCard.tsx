@@ -22,6 +22,15 @@ import { intlLocale } from '../i18n/t'
 import { bodyMassIndex, dayNumber, formatDay } from '../lib/bodyFormat'
 import { shiftDateKey } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
+import {
+  type FoodInputMode,
+  type FoodItem,
+  emptyItem,
+  parseFoodItems,
+  readFoodInputMode,
+  saveFoodInputMode,
+  serializeFoodItems,
+} from '../lib/foodItems'
 import type { BodySettings, FoodLog, Meal, SleepLog, WeightPoint } from '../types/body'
 import type { GoalPublic } from '../types/goal'
 
@@ -601,6 +610,9 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
   const dateLocale = intlLocale(locale)
   const [meal, setMeal] = useState<Meal | null>(null)
   const [text, setText] = useState('')
+  const [mode, setMode] = useState<FoodInputMode>(readFoodInputMode)
+  const [items, setItems] = useState<FoodItem[]>([emptyItem()])
+  const [focusRow, setFocusRow] = useState<number | null>(null)
   const [marked, setMarked] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -609,6 +621,8 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
     if (!target) return
     setMeal(target.log ? target.log.meal : target.day === today ? mealNow() : null)
     setText(target.log?.text ?? '')
+    setItems(parseFoodItems(target.log?.text ?? ''))
+    setFocusRow(null)
     setMarked([])
     setError(null)
   }, [target, today])
@@ -625,7 +639,27 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
         )
       : []
 
-  const canSave = text.trim().length > 0 && !isSaving
+  const unit = t('body.gramsUnit')
+  const finalText = mode === 'list' ? serializeFoodItems(items, unit) : text.trim()
+  const tooLong = finalText.length > 500
+  const canSave = finalText.length > 0 && !tooLong && !isSaving
+
+  const switchMode = (next: FoodInputMode) => {
+    if (next === mode) return
+    // Carry what is typed over, so switching never loses a note.
+    if (next === 'list') setItems(parseFoodItems(text))
+    else setText(serializeFoodItems(items, unit))
+    setMode(next)
+    saveFoodInputMode(next)
+  }
+
+  const changeItem = (index: number, patch: Partial<FoodItem>) =>
+    setItems((current) => current.map((item, i) => (i === index ? { ...item, ...patch } : item)))
+
+  const addItem = () => {
+    setItems((current) => [...current, emptyItem()])
+    setFocusRow(items.length)
+  }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -634,9 +668,9 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
     setError(null)
     try {
       if (target.log) {
-        await updateFood(target.log.id, { meal, text: text.trim() })
+        await updateFood(target.log.id, { meal, text: finalText })
       } else {
-        await createFood({ day, meal, text: text.trim() })
+        await createFood({ day, meal, text: finalText })
       }
       for (const goal of offered.filter((item) => marked.includes(item.id))) {
         onGoalChange(await setGoalCheckin(goal.id, day, { level: 'full' }))
@@ -703,16 +737,84 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
             </button>
           ))}
         </div>
-        <textarea
-          className="form-input my-win-input"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder={t('body.foodPlaceholder')}
-          aria-label={t('body.foodTitle')}
-          rows={3}
-          maxLength={500}
-          autoFocus
-        />
+        <div className="body-range body-food-mode" role="radiogroup" aria-label={t('body.foodMode')}>
+          {(['text', 'list'] as FoodInputMode[]).map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="radio"
+              aria-checked={mode === item}
+              className={mode === item ? 'is-selected' : ''}
+              onClick={() => switchMode(item)}
+            >
+              {t(`body.foodModes.${item}`)}
+            </button>
+          ))}
+        </div>
+        {mode === 'text' ? (
+          <textarea
+            className="form-input my-win-input"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder={t('body.foodPlaceholder')}
+            aria-label={t('body.foodTitle')}
+            rows={3}
+            maxLength={500}
+            autoFocus
+          />
+        ) : (
+          <div className="body-food-items">
+            {items.map((item, index) => (
+              <div key={index} className="body-food-item">
+                <input
+                  className="form-input"
+                  value={item.name}
+                  placeholder={index === 0 ? t('body.foodItemPlaceholder') : ''}
+                  aria-label={t('body.foodItem', { number: index + 1 })}
+                  maxLength={200}
+                  autoFocus={focusRow === index || (focusRow === null && index === 0)}
+                  onChange={(event) => changeItem(index, { name: event.target.value })}
+                  onKeyDown={(event) => {
+                    // Enter goes on to the grams instead of saving half a list.
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      ;(event.currentTarget.nextElementSibling as HTMLInputElement | null)?.focus()
+                    }
+                  }}
+                />
+                <input
+                  className="form-input body-food-grams"
+                  inputMode="numeric"
+                  value={item.grams}
+                  placeholder={unit}
+                  aria-label={t('body.foodGrams')}
+                  onChange={(event) => changeItem(index, { grams: event.target.value.replace(/[^0-9]/g, '').slice(0, 4) })}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      addItem()
+                    }
+                  }}
+                />
+                {items.length > 1 ? (
+                  <button
+                    type="button"
+                    className="body-food-remove"
+                    aria-label={t('body.foodItemRemove')}
+                    onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            ))}
+            <button type="button" className="link-button body-food-add" onClick={addItem}>
+              ＋ {t('body.foodItemAdd')}
+            </button>
+            <span className="my-level-hint">{t('body.foodGramsHint')}</span>
+          </div>
+        )}
+        {tooLong ? <span className="my-level-hint">{t('body.foodTooLong')}</span> : null}
         {offered.map((goal) => (
           <label key={goal.id} className="body-check">
             <input

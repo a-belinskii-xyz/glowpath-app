@@ -12407,6 +12407,7 @@ html[data-color-scheme='dark'] .my-primary {
 
 .body-food-text {
   overflow-wrap: anywhere;
+  white-space: pre-line;
   line-height: 1.4;
 }
 
@@ -12750,4 +12751,52 @@ html[data-color-scheme='dark'] .my-primary {
 
 .body-height .form-input {
   max-width: 7rem;
+}
+
+.body-food-mode {
+  justify-self: start;
+}
+
+.body-food-mode button {
+  padding-inline: 1rem;
+}
+
+.body-food-items {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.body-food-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.body-food-item .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.body-food-item .body-food-grams {
+  flex: none;
+  width: 4.6rem;
+  text-align: right;
+}
+
+.body-food-remove {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--chrome-text-secondary);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.body-food-items .body-food-add {
+  justify-self: start;
 }
