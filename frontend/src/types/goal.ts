@@ -16,7 +16,8 @@ export type GoalDayMark = {
 }
 
 /** Binary goals send a level; quantity goals send the amount done that day. */
-export type GoalCheckinWrite = { level: GoalCheckinLevel } | { amount: number }
+// Quantity goals send the day's total, or with ``add`` one more step on top (GP-50).
+export type GoalCheckinWrite = { level: GoalCheckinLevel } | { amount: number; add?: boolean }
 
 export type GoalPublic = {
   id: string

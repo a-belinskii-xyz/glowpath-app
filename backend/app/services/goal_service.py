@@ -664,10 +664,19 @@ def set_goal_checkin(
     day: date,
     level: str | GoalCheckinLevel | None = None,
     amount: int | None = None,
+    add: bool = False,
 ) -> Goal:
-    """Mark a goal on a local day (GP-43). Quantity goals take an amount (GP-46)."""
+    """Mark a goal on a local day (GP-43).
+
+    Quantity goals take an amount (GP-46): the day's total, or with ``add`` one more
+    step on top of what the day already has (GP-50). Amounts linked from entries
+    stay as they are; the check-in holds the rest of the day's total.
+    """
     goal = get_goal(db, user_id=user.id, goal_id=goal_id)
     _ensure_checkin_day(goal, day=day, today=user_today(user.timezone))
+    checkin = db.scalar(
+        select(GoalCheckin).where(GoalCheckin.goal_id == goal.id, GoalCheckin.day == day)
+    )
     if goal.tracking_kind == GoalTrackingKind.QUANTITY:
         if amount is None or not 1 <= amount <= MAX_GOAL_AMOUNT:
             raise GoalError(
@@ -675,7 +684,25 @@ def set_goal_checkin(
                 code=ErrorCode.GOAL_CHECKIN_AMOUNT_REQUIRED,
                 status_code=422,
             )
-        full = goal.target_amount is not None and amount >= goal.target_amount
+        logged = checkin.amount if checkin is not None and checkin.amount is not None else 0
+        progress = period_goal_progress(
+            db,
+            user_id=user.id,
+            timezone_name=user.timezone,
+            period_start=day,
+            period_end=day + timedelta(days=1),
+            goal_ids=[goal.id],
+        ).get(goal.id)
+        from_entries = (progress.amount_on(day) if progress else 0) - logged
+        total = min(from_entries + logged + amount, MAX_GOAL_AMOUNT) if add else amount
+        amount = total - from_entries
+        if amount < 1:
+            # The entries already cover this total; nothing is left for a check-in.
+            if checkin is not None:
+                db.delete(checkin)
+                db.commit()
+            return goal
+        full = goal.target_amount is not None and total >= goal.target_amount
         resolved_level = GoalCheckinLevel.FULL if full else GoalCheckinLevel.PARTIAL
     else:
         if level is None:
@@ -686,9 +713,6 @@ def set_goal_checkin(
             )
         resolved_level = GoalCheckinLevel(level)
         amount = None
-    checkin = db.scalar(
-        select(GoalCheckin).where(GoalCheckin.goal_id == goal.id, GoalCheckin.day == day)
-    )
     if checkin is None:
         db.add(
             GoalCheckin(
