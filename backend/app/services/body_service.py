@@ -1,7 +1,7 @@
-"""Weight and food on «Моё» (GP-47): gentle records with no targets or calories."""
+"""Weight, food and sleep on «Моё» (GP-47, GP-48): gentle records with no targets."""
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from decimal import Decimal
 
 from sqlalchemy import delete, select
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
-from app.models.body import BodyFoodGoal, BodySettings, FoodLog, Measurement
+from app.models.body import BodyFoodGoal, BodySettings, FoodLog, Measurement, SleepLog
 from app.models.goal import Goal
 from app.models.user import User
 from app.services.goal_service import user_today
@@ -27,7 +27,11 @@ def get_settings(db: Session, *, user_id: uuid.UUID) -> BodySettings:
     settings = db.get(BodySettings, user_id)
     if settings is None:
         settings = BodySettings(
-            user_id=user_id, show_weight=False, show_food=False, hide_weight=False
+            user_id=user_id,
+            show_weight=False,
+            show_food=False,
+            hide_weight=False,
+            show_sleep=False,
         )
     return settings
 
@@ -50,11 +54,18 @@ def patch_settings(
     show_food: bool | None,
     hide_weight: bool | None,
     goal_ids: list[uuid.UUID] | None,
+    show_sleep: bool | None = None,
+    height_cm: Decimal | None = None,
+    height_set: bool = False,
 ) -> BodySettings:
     settings = db.get(BodySettings, user_id)
     if settings is None:
         settings = BodySettings(
-            user_id=user_id, show_weight=False, show_food=False, hide_weight=False
+            user_id=user_id,
+            show_weight=False,
+            show_food=False,
+            hide_weight=False,
+            show_sleep=False,
         )
         db.add(settings)
     if show_weight is not None:
@@ -63,6 +74,10 @@ def patch_settings(
         settings.show_food = show_food
     if hide_weight is not None:
         settings.hide_weight = hide_weight
+    if show_sleep is not None:
+        settings.show_sleep = show_sleep
+    if height_set:
+        settings.height_cm = height_cm
     if goal_ids is not None:
         wanted = list(dict.fromkeys(goal_ids))
         owned = set(db.scalars(select(Goal.id).where(Goal.id.in_(wanted), Goal.user_id == user_id)))
@@ -184,4 +199,48 @@ def patch_food(
 
 def delete_food(db: Session, *, user_id: uuid.UUID, log_id: uuid.UUID) -> None:
     db.delete(_get_food(db, user_id=user_id, log_id=log_id))
+    db.commit()
+
+
+def list_sleep(
+    db: Session, *, user_id: uuid.UUID, date_from: date, date_to: date
+) -> list[SleepLog]:
+    _ensure_range(date_from, date_to)
+    return list(
+        db.scalars(
+            select(SleepLog)
+            .where(SleepLog.user_id == user_id, SleepLog.day >= date_from, SleepLog.day <= date_to)
+            .order_by(SleepLog.day)
+        )
+    )
+
+
+def set_sleep(
+    db: Session,
+    *,
+    user: User,
+    day: date,
+    bed_time: time,
+    wake_time: time,
+    up_time: time | None,
+    quality: str | None,
+    note: str | None,
+) -> SleepLog:
+    _ensure_not_future(user, day)
+    log = db.scalar(select(SleepLog).where(SleepLog.user_id == user.id, SleepLog.day == day))
+    if log is None:
+        log = SleepLog(user_id=user.id, day=day, bed_time=bed_time, wake_time=wake_time)
+        db.add(log)
+    log.bed_time = bed_time
+    log.wake_time = wake_time
+    log.up_time = up_time
+    log.quality = quality
+    log.note = note
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+def delete_sleep(db: Session, *, user_id: uuid.UUID, day: date) -> None:
+    db.execute(delete(SleepLog).where(SleepLog.user_id == user_id, SleepLog.day == day))
     db.commit()

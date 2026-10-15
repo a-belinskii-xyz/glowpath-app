@@ -8,7 +8,7 @@ one. Older archives then keep restoring through the chain of steps.
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -150,6 +150,15 @@ class ArchiveFoodLog(_ArchiveModel):
     text: str = Field(min_length=1, max_length=500)
 
 
+class ArchiveSleep(_ArchiveModel):
+    day: date
+    bed_time: time
+    wake_time: time
+    up_time: time | None = None
+    quality: Literal["hard", "ok", "good"] | None = None
+    note: str | None = Field(default=None, max_length=500)
+
+
 class DiaryArchive(_ArchiveModel):
     format_version: Literal[2] = 2
     exported_at: datetime
@@ -162,3 +171,5 @@ class DiaryArchive(_ArchiveModel):
     # Weight and food notes (GP-47); older v2 archives simply have none.
     weights: list[ArchiveWeight] = Field(default_factory=list)
     food: list[ArchiveFoodLog] = Field(default_factory=list)
+    # Sleep log (GP-48).
+    sleep: list[ArchiveSleep] = Field(default_factory=list)

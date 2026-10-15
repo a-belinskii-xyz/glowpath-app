@@ -1,4 +1,4 @@
-"""Weight and food notes on «Моё» (GP-47)."""
+"""Weight, food and sleep on «Моё» (GP-47, GP-48)."""
 
 import io
 import json
@@ -6,7 +6,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from app.models.body import FoodLog, Measurement
+from app.models.body import FoodLog, Measurement, SleepLog
 from app.models.user import User
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -37,6 +37,8 @@ def test_settings_start_off_and_link_up_to_three_own_goals(
         "show_weight": False,
         "show_food": False,
         "hide_weight": False,
+        "show_sleep": False,
+        "height_cm": None,
         "food_goal_ids": [],
     }
 
@@ -215,11 +217,26 @@ def test_weight_and_food_survive_export_and_restore(
         json={"day": today.isoformat(), "meal": "day", "text": "Soup"},
         headers=_auth(source),
     )
+    auth_client.put(
+        f"/v1/body/sleep/{today}",
+        json={"bed_time": "23:40", "wake_time": "07:10", "quality": "ok"},
+        headers=_auth(source),
+    )
 
     exported = auth_client.get("/v1/account/export", headers=_auth(source))
     payload = json.loads(zipfile.ZipFile(io.BytesIO(exported.content)).read("diary.json"))
     assert payload["weights"] == [{"day": today.isoformat(), "value_kg": 82.4}]
     assert payload["food"] == [{"day": today.isoformat(), "meal": "day", "text": "Soup"}]
+    assert payload["sleep"] == [
+        {
+            "day": today.isoformat(),
+            "bed_time": "23:40:00",
+            "wake_time": "07:10:00",
+            "up_time": None,
+            "quality": "ok",
+            "note": None,
+        }
+    ]
 
     target_email = "body-import@example.com"
     target = register_verify_and_login(auth_client, mailer, target_email)
@@ -241,3 +258,87 @@ def test_weight_and_food_survive_export_and_restore(
     assert [(item.day, float(item.value)) for item in weights] == [(today, 82.4)]
     food = list(db.scalars(select(FoodLog).where(FoodLog.user_id == target_user.id)))
     assert [(item.day, item.meal, item.text) for item in food] == [(today, "day", "Soup")]
+    nights = list(db.scalars(select(SleepLog).where(SleepLog.user_id == target_user.id)))
+    assert [(item.day, item.bed_time.isoformat(), item.quality) for item in nights] == [
+        (today, "23:40:00", "ok")
+    ]
+
+
+def test_sleep_is_one_night_per_day_and_height_can_be_forgotten(
+    auth_client: TestClient, mailer: FakeEmailService, db: Session
+) -> None:
+    email = "body-sleep@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    today = _today(db, email)
+    yesterday = today - timedelta(days=1)
+
+    first = auth_client.put(
+        f"/v1/body/sleep/{yesterday}",
+        json={"bed_time": "00:30:45", "wake_time": "08:00", "up_time": "08:20", "note": "  "},
+        headers=_auth(token),
+    )
+    assert first.status_code == 200, first.text
+    assert first.json() == {
+        "day": yesterday.isoformat(),
+        "bed_time": "00:30:00",
+        "wake_time": "08:00:00",
+        "up_time": "08:20:00",
+        "quality": None,
+        "note": None,
+    }
+    auth_client.put(
+        f"/v1/body/sleep/{today}",
+        json={"bed_time": "23:00", "wake_time": "06:30", "quality": "good", "note": "Rain"},
+        headers=_auth(token),
+    )
+    changed = auth_client.put(
+        f"/v1/body/sleep/{today}",
+        json={"bed_time": "23:15", "wake_time": "06:45", "quality": "hard"},
+        headers=_auth(token),
+    )
+    assert changed.json()["quality"] == "hard"
+    assert changed.json()["note"] is None
+
+    listed = auth_client.get(
+        "/v1/body/sleep",
+        params={"from": (today - timedelta(days=7)).isoformat(), "to": today.isoformat()},
+        headers=_auth(token),
+    ).json()["items"]
+    assert [(item["day"], item["bed_time"]) for item in listed] == [
+        (yesterday.isoformat(), "00:30:00"),
+        (today.isoformat(), "23:15:00"),
+    ]
+
+    future = auth_client.put(
+        f"/v1/body/sleep/{today + timedelta(days=3)}",
+        json={"bed_time": "23:00", "wake_time": "07:00"},
+        headers=_auth(token),
+    )
+    assert future.status_code == 400
+    assert future.json()["detail"]["code"] == "body_day_in_future"
+    bad_quality = auth_client.put(
+        f"/v1/body/sleep/{today}",
+        json={"bed_time": "23:00", "wake_time": "07:00", "quality": "awful"},
+        headers=_auth(token),
+    )
+    assert bad_quality.status_code == 422
+
+    assert auth_client.delete(f"/v1/body/sleep/{today}", headers=_auth(token)).status_code == 204
+    user = db.scalar(select(User).where(User.email == email))
+    assert user is not None
+    days = list(db.scalars(select(SleepLog.day).where(SleepLog.user_id == user.id)))
+    assert days == [yesterday]
+
+    height = auth_client.patch(
+        "/v1/body/settings", json={"show_sleep": True, "height_cm": 178.5}, headers=_auth(token)
+    )
+    assert height.json()["show_sleep"] is True
+    assert height.json()["height_cm"] == 178.5
+    kept = auth_client.patch("/v1/body/settings", json={"show_food": True}, headers=_auth(token))
+    assert kept.json()["height_cm"] == 178.5
+    too_tall = auth_client.patch("/v1/body/settings", json={"height_cm": 300}, headers=_auth(token))
+    assert too_tall.status_code == 422
+    forgotten = auth_client.patch(
+        "/v1/body/settings", json={"height_cm": None}, headers=_auth(token)
+    )
+    assert forgotten.json()["height_cm"] is None

@@ -12329,7 +12329,8 @@ html[data-color-scheme='dark'] .my-primary {
   width: 100%;
 }
 
-.body-food {
+.body-food,
+.body-sleep {
   display: grid;
   gap: 0.5rem;
   margin-top: 0.9rem;
@@ -12337,12 +12338,15 @@ html[data-color-scheme='dark'] .my-primary {
   border-top: 1px solid var(--chrome-border-subtle);
 }
 
-.body-weight + .body-food {
+.body-weight + .body-food,
+.body-weight + .body-sleep {
   margin-top: 1rem;
 }
 
 .body-card .my-card-head + .body-food,
-.body-card .alert + .body-food {
+.body-card .alert + .body-food,
+.body-card .my-card-head + .body-sleep,
+.body-card .alert + .body-sleep {
   margin-top: 0.4rem;
   padding-top: 0;
   border-top: 0;
@@ -12502,10 +12506,6 @@ html[data-color-scheme='dark'] .my-primary {
   gap: 1rem;
 }
 
-.body-food-copy {
-  color: var(--chrome-text-secondary);
-}
-
 .body-goals {
   display: grid;
   gap: 0.5rem;
@@ -12540,4 +12540,214 @@ html[data-color-scheme='dark'] .my-primary {
   line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.body-head-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.body-head-links .my-card-link:first-child {
+  color: var(--chrome-text-secondary);
+  font-weight: 500;
+}
+
+.body-sleep-times {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.body-sleep-times > div {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.body-sleep-times strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.body-sleep-week {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0.2rem;
+}
+
+.body-sleep-row {
+  display: grid;
+  grid-template-columns: 1.8rem 1fr;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 0.9rem;
+}
+
+.body-sleep-day {
+  color: var(--chrome-text-secondary);
+  font-size: 0.75rem;
+}
+
+.body-sleep-track {
+  position: relative;
+  height: 0.7rem;
+}
+
+.body-sleep-bar,
+.body-sleep-tail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--body-line, #7c86b8);
+}
+
+.body-sleep-tail {
+  background: color-mix(in oklab, var(--body-line, #7c86b8) 35%, transparent);
+  border-radius: 0 999px 999px 0;
+}
+
+.body-sleep-axis .body-sleep-track {
+  height: 1rem;
+  border-top: 1px solid var(--chrome-border-subtle);
+}
+
+.body-sleep-axis .body-sleep-track span {
+  position: absolute;
+  top: 0.2rem;
+  transform: translateX(-50%);
+  color: var(--chrome-text-secondary);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.body-sleep-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.body-sleep-inputs label {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.body-sleep-inputs .form-input {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 0.6rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tapping the field opens the picker on phones; the icon only steals width. */
+.body-sleep-inputs .form-input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.body-sleep > p.body-label {
+  margin: 0;
+}
+
+.body-sleep-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.body-sleep-meta .body-date {
+  flex: none;
+  width: auto;
+}
+
+.body-sleep-quality .body-meal {
+  flex: 1;
+}
+
+.body-sleep-grid {
+  stroke: var(--chrome-border-subtle);
+  stroke-width: 1;
+}
+
+.body-sleep-tick {
+  fill: var(--chrome-text-secondary);
+  font-size: 10px;
+}
+
+.body-sleep-bar-svg {
+  fill: var(--body-line, #7c86b8);
+}
+
+.body-sleep-tail-svg {
+  fill: color-mix(in oklab, var(--body-line, #7c86b8) 35%, transparent);
+}
+
+.body-bmi {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.body-bmi-scale {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--chrome-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.body-bmi-scale.is-hidden {
+  filter: blur(7px);
+}
+
+.body-bmi-value {
+  font-weight: 600;
+}
+
+.body-bmi-track {
+  position: relative;
+  height: 0.45rem;
+  margin-bottom: 1.1rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--body-line, #7c86b8) 25%, transparent);
+}
+
+.body-bmi-mark {
+  position: absolute;
+  top: -0.15rem;
+  bottom: -0.15rem;
+  width: 1px;
+  background: color-mix(in oklab, var(--chrome-text-secondary) 50%, transparent);
+}
+
+.body-bmi-mark span {
+  position: absolute;
+  top: 0.85rem;
+  transform: translateX(-50%);
+  color: var(--chrome-text-secondary);
+  font-size: 0.7rem;
+}
+
+.body-bmi-dot {
+  position: absolute;
+  top: 50%;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid var(--chrome-surface, #fff);
+  border-radius: 50%;
+  background: var(--body-line, #7c86b8);
+  transform: translate(-50%, -50%);
+}
+
+.body-height {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.body-height .form-input {
+  max-width: 7rem;
 }

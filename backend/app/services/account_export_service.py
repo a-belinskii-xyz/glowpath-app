@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.i18n import resolve_label
-from app.models.body import FoodLog, Measurement
+from app.models.body import FoodLog, Measurement, SleepLog
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MoodEntryAttachment
@@ -41,6 +41,7 @@ from app.services.diary_archive.schema import (
     ArchiveGoalCheckin,
     ArchiveNoteTemplate,
     ArchiveReminder,
+    ArchiveSleep,
     ArchiveTag,
     ArchiveTagGroup,
     ArchiveWeight,
@@ -217,6 +218,21 @@ def _food_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveFoodLog]:
     return [ArchiveFoodLog(day=row.day, meal=row.meal, text=row.text) for row in rows]
 
 
+def _sleep_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveSleep]:
+    rows = db.scalars(select(SleepLog).where(SleepLog.user_id == user_id).order_by(SleepLog.day))
+    return [
+        ArchiveSleep(
+            day=row.day,
+            bed_time=row.bed_time,
+            wake_time=row.wake_time,
+            up_time=row.up_time,
+            quality=row.quality,
+            note=row.note,
+        )
+        for row in rows
+    ]
+
+
 def _entry_payload(
     entry: MoodEntry,
     files: dict[uuid.UUID, str | None],
@@ -335,6 +351,7 @@ def build_account_export_parts(
         reminders=_reminders_payload(db, user.id),
         weights=_weights_payload(db, user.id),
         food=_food_payload(db, user.id),
+        sleep=_sleep_payload(db, user.id),
     )
     entries_csv = _entries_csv(entries, zone=_user_zone(user), locale=locale)
 

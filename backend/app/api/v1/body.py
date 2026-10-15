@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_verified_user
 from app.core.errors import raise_http_error
 from app.db.session import get_db
-from app.models.body import BodySettings, FoodLog, Measurement
+from app.models.body import BodySettings, FoodLog, Measurement, SleepLog
 from app.models.user import User
 from app.schemas.body import (
     BodySettingsPatch,
@@ -16,6 +16,9 @@ from app.schemas.body import (
     FoodLogListResponse,
     FoodLogPatch,
     FoodLogPublic,
+    SleepListResponse,
+    SleepPublic,
+    SleepWrite,
     WeightListResponse,
     WeightPublic,
     WeightWrite,
@@ -24,13 +27,16 @@ from app.services.body_service import (
     BodyError,
     add_food,
     delete_food,
+    delete_sleep,
     delete_weight,
     food_goal_ids,
     get_settings,
     list_food,
+    list_sleep,
     list_weights,
     patch_food,
     patch_settings,
+    set_sleep,
     set_weight,
 )
 
@@ -42,6 +48,8 @@ def _settings_public(db: Session, settings: BodySettings) -> BodySettingsPublic:
         show_weight=settings.show_weight,
         show_food=settings.show_food,
         hide_weight=settings.hide_weight,
+        show_sleep=settings.show_sleep,
+        height_cm=float(settings.height_cm) if settings.height_cm is not None else None,
         food_goal_ids=food_goal_ids(db, user_id=settings.user_id),
     )
 
@@ -76,6 +84,9 @@ def update_settings(
             show_food=body.show_food,
             hide_weight=body.hide_weight,
             goal_ids=body.food_goal_ids,
+            show_sleep=body.show_sleep,
+            height_cm=body.height_cm,
+            height_set="height_cm" in body.model_fields_set,
         )
     except BodyError as exc:
         raise_http_error(exc)
@@ -178,4 +189,56 @@ def remove_food(
         delete_food(db, user_id=current_user.id, log_id=log_id)
     except BodyError as exc:
         raise_http_error(exc)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _sleep_public(log: SleepLog) -> SleepPublic:
+    return SleepPublic.model_validate(log, from_attributes=True)
+
+
+@router.get("/sleep", response_model=SleepListResponse)
+def read_sleep(
+    date_from: date = Query(alias="from"),
+    date_to: date = Query(alias="to"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> SleepListResponse:
+    try:
+        items = list_sleep(db, user_id=current_user.id, date_from=date_from, date_to=date_to)
+    except BodyError as exc:
+        raise_http_error(exc)
+    return SleepListResponse(items=[_sleep_public(item) for item in items])
+
+
+@router.put("/sleep/{day}", response_model=SleepPublic)
+def put_sleep(
+    day: date,
+    body: SleepWrite,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> SleepPublic:
+    """Save the night that ended on the morning of ``day``."""
+    try:
+        log = set_sleep(
+            db,
+            user=current_user,
+            day=day,
+            bed_time=body.bed_time,
+            wake_time=body.wake_time,
+            up_time=body.up_time,
+            quality=body.quality,
+            note=body.note,
+        )
+    except BodyError as exc:
+        raise_http_error(exc)
+    return _sleep_public(log)
+
+
+@router.delete("/sleep/{day}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_sleep(
+    day: date,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> Response:
+    delete_sleep(db, user_id=current_user.id, day=day)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

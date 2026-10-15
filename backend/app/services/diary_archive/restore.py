@@ -24,7 +24,7 @@ from app.core.attachment_kind import AttachmentKind
 from app.core.default_tag_groups import DEFAULT_TAG_COLOR, DEFAULT_TAG_ICON
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
-from app.models.body import FoodLog, Measurement
+from app.models.body import FoodLog, Measurement, SleepLog
 from app.models.diary_restore import DiaryRestore, DiaryRestoreStatus
 from app.models.goal import DEFAULT_GOAL_COLOR, DEFAULT_GOAL_ICON, Goal
 from app.models.goal_checkin import GoalCheckin
@@ -496,7 +496,7 @@ def _restore_goal_checkins(
 
 
 def _restore_body(db: Session, archive: DiaryArchive, *, user_id: uuid.UUID) -> None:
-    """Add weights for days without one and food notes not already there (GP-47)."""
+    """Add weights and sleep for days without one, and food notes not already there."""
     weighed = set(
         db.scalars(
             select(Measurement.day).where(
@@ -528,6 +528,22 @@ def _restore_body(db: Session, archive: DiaryArchive, *, user_id: uuid.UUID) -> 
             continue
         eaten.add(key)
         db.add(FoodLog(user_id=user_id, day=food.day, meal=food.meal, text=food.text))
+    slept = set(db.scalars(select(SleepLog.day).where(SleepLog.user_id == user_id)))
+    for night in archive.sleep:
+        if night.day in slept:
+            continue
+        slept.add(night.day)
+        db.add(
+            SleepLog(
+                user_id=user_id,
+                day=night.day,
+                bed_time=night.bed_time,
+                wake_time=night.wake_time,
+                up_time=night.up_time,
+                quality=night.quality,
+                note=night.note,
+            )
+        )
 
 
 def _restore_setup(
