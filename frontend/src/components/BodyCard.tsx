@@ -204,7 +204,9 @@ export function BodyCard({
   }
 
   const dayFood = food.filter((log) => log.day === foodDay)
-  const foodGoals = goals.filter((goal) => settings.food_goal_ids.includes(goal.id))
+  const foodGoals = settings.food_goal_ids
+    .map((id) => goals.find((goal) => goal.id === id))
+    .filter((goal): goal is GoalPublic => goal !== undefined)
 
   return (
     <section className="card my-card body-card" aria-labelledby="my-body-title">
