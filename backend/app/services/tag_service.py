@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import random
 import re
+import unicodedata
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -34,6 +36,26 @@ _SLUGIFY_RE = re.compile(r"[^a-z0-9]+")
 _MAX_EMOJI_LENGTH = 8
 FREQUENT_TAGS_LIMIT = 8
 FREQUENT_TAGS_DAYS = 30
+
+# Tags typed on the fly in an entry land in this group (GP-54). The leading
+# underscore keeps it out of reach of user-chosen slugs (API slugs start with a letter).
+NEW_TAGS_GROUP_SLUG = "_new_tags"
+NEW_TAGS_GROUP_LABELS = {"en": "New tags", "ru": "Новые теги"}
+NEW_TAG_COLORS = (
+    "#60a5fa",
+    "#2563eb",
+    "#0ea5e9",
+    "#14b8a6",
+    "#34d399",
+    "#84cc16",
+    "#eab308",
+    "#f59e0b",
+    "#f97316",
+    "#ef4444",
+    "#f472b6",
+    "#a78bfa",
+)
+_WHITESPACE_RE = re.compile(r"\s+")
 
 
 class TagError(AppError):
@@ -226,12 +248,22 @@ def patch_tag(
     color: str | None = None,
     icon_type: str | None = None,
     icon: str | None = None,
+    target_group_id: uuid.UUID | None = None,
 ) -> Tag:
     tag = get_owned_tag(db, user_id=user_id, tag_id=tag_id)
     if tag.group_id != group_id:
         raise TagError(
             "Tag not found in this group", code=ErrorCode.TAG_NOT_FOUND_IN_GROUP, status_code=404
         )
+    if target_group_id is not None and target_group_id != tag.group_id:
+        target = get_tag_group(db, user_id=user_id, group_id=target_group_id)
+        tag.group_id = target.id
+        tag.slug = _unique_tag_slug(db, group_id=target.id, base=slug or tag.slug)
+        tag.sort_order = _next_sort_order(
+            db,
+            select(func.max(Tag.sort_order)).where(Tag.group_id == target.id),
+        )
+        slug = None
     if slug is not None:
         tag.slug = slug
     if labels is not None:
@@ -325,6 +357,113 @@ def serialize_tag(tag: Tag, *, locale: str) -> dict[str, Any]:
     }
 
 
+def tag_label_key(text: str) -> str:
+    """Comparison key for tag names: «Дождь», « ДОЖДЬ » and «дождь» are one tag."""
+    normalized = unicodedata.normalize("NFKC", text).casefold().replace("ё", "е")
+    return _WHITESPACE_RE.sub(" ", normalized).strip()
+
+
+def find_tag_by_label(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    labels: dict[str, str],
+    exclude_tag_id: uuid.UUID | None = None,
+) -> Tag | None:
+    """A tag of this user whose name in any language matches any of *labels*."""
+    keys = {tag_label_key(value) for value in labels.values() if value.strip()}
+    if not keys:
+        return None
+    for tag in db.scalars(select(Tag).where(Tag.user_id == user_id)).all():
+        if tag.id == exclude_tag_id:
+            continue
+        if any(tag_label_key(value) in keys for value in tag.labels.values()):
+            return tag
+    return None
+
+
+def ensure_unique_tag_label(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    labels: dict[str, str],
+    exclude_tag_id: uuid.UUID | None = None,
+) -> None:
+    existing = find_tag_by_label(db, user_id=user_id, labels=labels, exclude_tag_id=exclude_tag_id)
+    if existing is not None:
+        label = next(iter(existing.labels.values()))
+        raise TagError(
+            "A tag with this name already exists",
+            code=ErrorCode.TAG_LABEL_EXISTS,
+            status_code=409,
+            params={"label": label},
+        )
+
+
+def _new_tags_group(db: Session, *, user_id: uuid.UUID) -> TagGroup:
+    group = db.scalar(
+        select(TagGroup).where(TagGroup.user_id == user_id, TagGroup.slug == NEW_TAGS_GROUP_SLUG)
+    )
+    if group is not None:
+        return group
+    group = TagGroup(
+        user_id=user_id,
+        slug=NEW_TAGS_GROUP_SLUG,
+        labels=dict(NEW_TAGS_GROUP_LABELS),
+        sort_order=_next_sort_order(
+            db,
+            select(func.max(TagGroup.sort_order)).where(TagGroup.user_id == user_id),
+        ),
+        show_on_entry=True,
+    )
+    db.add(group)
+    db.flush()
+    return group
+
+
+def quick_create_tag(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    label: str,
+    locale: str,
+) -> tuple[Tag, bool]:
+    """Find the user's tag named *label* or create it in «New tags».
+
+    Returns the tag and whether it was created.
+    """
+    name = _WHITESPACE_RE.sub(" ", label).strip()
+    labels = {locale: name}
+    existing = find_tag_by_label(db, user_id=user_id, labels=labels)
+    if existing is not None:
+        return existing, False
+    group = _new_tags_group(db, user_id=user_id)
+    tag = Tag(
+        group_id=group.id,
+        user_id=user_id,
+        slug=_unique_tag_slug(db, group_id=group.id, base=_slugify(labels)),
+        labels=labels,
+        sort_order=_next_sort_order(
+            db,
+            select(func.max(Tag.sort_order)).where(Tag.group_id == group.id),
+        ),
+        color=random.choice(NEW_TAG_COLORS),
+        icon_type=DEFAULT_TAG_ICON_TYPE,
+        icon=DEFAULT_TAG_ICON,
+    )
+    db.add(tag)
+    try:
+        db.commit()
+    except IntegrityError:
+        # A parallel request created the group or the same tag first.
+        db.rollback()
+        existing = find_tag_by_label(db, user_id=user_id, labels=labels)
+        if existing is None:
+            raise
+        return existing, False
+    return get_owned_tag(db, user_id=user_id, tag_id=tag.id), True
+
+
 def serialize_tag_group(group: TagGroup, *, locale: str) -> dict[str, Any]:
     tags = [
         serialize_tag(tag, locale=locale)
@@ -337,6 +476,7 @@ def serialize_tag_group(group: TagGroup, *, locale: str) -> dict[str, Any]:
         "labels": group.labels,
         "sort_order": group.sort_order,
         "show_on_entry": group.show_on_entry,
+        "is_system": group.slug == NEW_TAGS_GROUP_SLUG,
         "tags": tags,
     }
 
@@ -403,7 +543,11 @@ def _count_visible_groups(db: Session, *, user_id: uuid.UUID) -> int:
     count = db.scalar(
         select(func.count())
         .select_from(TagGroup)
-        .where(TagGroup.user_id == user_id, TagGroup.show_on_entry.is_(True))
+        .where(
+            TagGroup.user_id == user_id,
+            TagGroup.show_on_entry.is_(True),
+            TagGroup.slug != NEW_TAGS_GROUP_SLUG,
+        )
     )
     return int(count or 0)
 

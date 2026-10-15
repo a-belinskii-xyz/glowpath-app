@@ -34,7 +34,8 @@ import type {
   NoteTemplatePublic,
   NoteTemplateWrite,
 } from '../types/noteTemplate'
-import type { TagGroupListResponse, TagGroupPublic, TagGroupPatch, TagGroupWrite, TagPatch, TagPublic, TagWrite } from '../types/tag'
+import type { QuickTagResponse, TagGroupListResponse, TagGroupPublic, TagGroupPatch, TagGroupWrite, TagPatch, TagPublic, TagWrite } from '../types/tag'
+import { NEW_TAG_COLORS, NEW_TAGS_GROUP_SLUG, tagLabelKey } from '../lib/tagLabel'
 import {
   computeGuestGoalCalendar,
   computeGuestGoalStats,
@@ -304,8 +305,13 @@ export async function patchGuestTag(
     throw new Error('Tag not found')
   }
   const current = group.tags[tagIndex]
+  const targetIndex =
+    body.group_id && body.group_id !== groupId
+      ? groups.findIndex((item) => item.id === body.group_id)
+      : -1
   const next: TagPublic = {
     ...current,
+    group_id: targetIndex >= 0 ? groups[targetIndex].id : current.group_id,
     slug: body.slug ?? current.slug,
     labels: body.labels ?? current.labels,
     label: body.labels ? labelFrom(body.labels, locale) : current.label,
@@ -314,11 +320,58 @@ export async function patchGuestTag(
     icon_type: body.icon_type ?? current.icon_type,
     icon: body.icon ?? current.icon,
   }
+  if (targetIndex >= 0) {
+    const target = groups[targetIndex]
+    groups[groupIndex] = { ...group, tags: group.tags.filter((tag) => tag.id !== tagId) }
+    groups[targetIndex] = {
+      ...target,
+      tags: [...target.tags, { ...next, sort_order: target.tags.length }],
+    }
+    await saveGuestTagGroups(groups)
+    return next
+  }
   const tags = [...group.tags]
   tags[tagIndex] = next
   groups[groupIndex] = { ...group, tags }
   await saveGuestTagGroups(groups)
   return next
+}
+
+export async function quickCreateGuestTag(
+  label: string,
+  locale: ApiLocale = 'en',
+): Promise<QuickTagResponse> {
+  const name = label.replace(/\s+/g, ' ').trim()
+  const key = tagLabelKey(name)
+  const groups = (await guestDbGet<TagGroupPublic[]>(KEYS.tagGroups)) ?? []
+  for (const group of groups) {
+    const found = group.tags.find((tag) =>
+      Object.values(tag.labels).some((value) => tagLabelKey(value) === key),
+    )
+    if (found) return { tag: found, created: false }
+  }
+  let group = groups.find((item) => item.slug === NEW_TAGS_GROUP_SLUG)
+  if (!group) {
+    group = await createGuestTagGroup(
+      {
+        slug: NEW_TAGS_GROUP_SLUG,
+        labels: { en: 'New tags', ru: 'Новые теги' },
+        show_on_entry: true,
+      },
+      locale,
+    )
+  }
+  const tag = await createGuestTag(
+    group.id,
+    {
+      labels: { [locale]: name },
+      color: NEW_TAG_COLORS[Math.floor(Math.random() * NEW_TAG_COLORS.length)],
+      icon_type: 'emoji',
+      icon: '🏷',
+    },
+    locale,
+  )
+  return { tag, created: true }
 }
 
 export async function deleteGuestTag(groupId: string, tagId: string): Promise<void> {

@@ -1,10 +1,13 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 
-import { listTagGroups } from '../api/tagGroups'
+import { listTagGroups, quickCreateTag } from '../api/tagGroups'
 import { useLocale } from '../context/LocaleContext'
 import { moodChipStyle } from '../design'
 import { useColorScheme } from '../hooks/useColorScheme'
+import { formatApiError } from '../lib/errors'
+import { tagLabelKey } from '../lib/tagLabel'
 import type { TagPublic } from '../types/tag'
+import { PageErrorAlert } from './PageErrorAlert'
 import { TagIcon } from './TagIcon'
 
 const SUGGESTED_TAGS = 4
@@ -23,6 +26,8 @@ export function QuickTagPicker({ selectedIds, onToggle }: QuickTagPickerProps) {
   const [allTags, setAllTags] = useState<TagPublic[]>([])
   const [frequent, setFrequent] = useState<TagPublic[]>([])
   const [query, setQuery] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -45,13 +50,13 @@ export function QuickTagPicker({ selectedIds, onToggle }: QuickTagPickerProps) {
     const selected = selectedIds
       .map((id) => byId.get(id))
       .filter((tag): tag is TagPublic => tag != null)
-    const needle = query.trim().toLowerCase()
+    const needle = tagLabelKey(query)
     if (needle) {
       const matches = allTags
         .filter(
           (tag) =>
             !selectedIds.includes(tag.id) &&
-            (tag.label.toLowerCase().includes(needle) || tag.slug.toLowerCase().includes(needle)),
+            (tagLabelKey(tag.label).includes(needle) || tag.slug.toLowerCase().includes(needle)),
         )
         .slice(0, SEARCH_RESULTS)
       return { selected, rest: matches }
@@ -62,8 +67,28 @@ export function QuickTagPicker({ selectedIds, onToggle }: QuickTagPickerProps) {
     return { selected, rest: suggestions }
   }, [allTags, frequent, selectedIds, query])
 
-  if (allTags.length === 0) {
-    return null
+  const newName = query.replace(/\s+/g, ' ').trim()
+  const newKey = tagLabelKey(newName)
+  const canCreate =
+    newKey.length > 0 &&
+    !allTags.some((tag) =>
+      [tag.label, ...Object.values(tag.labels)].some((value) => tagLabelKey(value) === newKey),
+    )
+
+  const handleCreate = async () => {
+    if (!canCreate || isCreating) return
+    setIsCreating(true)
+    setError(null)
+    try {
+      const { tag } = await quickCreateTag(newName)
+      setAllTags((current) => (current.some((item) => item.id === tag.id) ? current : [...current, tag]))
+      if (!selectedIds.includes(tag.id)) onToggle(tag.id)
+      setQuery('')
+    } catch (err) {
+      setError(formatApiError(err, t, 'errors.failedSave'))
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   const renderChip = (tag: TagPublic) => {
@@ -103,7 +128,7 @@ export function QuickTagPicker({ selectedIds, onToggle }: QuickTagPickerProps) {
         {t('myPage.tagsLabel')}
       </label>
       {chips.length > 0 ? <div className="tag-chips">{chips.map(renderChip)}</div> : null}
-      {query.trim() && shown.rest.length === 0 ? (
+      {query.trim() && shown.rest.length === 0 && !canCreate ? (
         <p className="muted quick-tag-picker-empty">{t('myPage.tagsNoMatch')}</p>
       ) : null}
       <input
@@ -112,9 +137,27 @@ export function QuickTagPicker({ selectedIds, onToggle }: QuickTagPickerProps) {
         type="search"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            void handleCreate()
+          }
+        }}
         placeholder={t('myPage.tagsSearch')}
         autoComplete="off"
       />
+      {canCreate ? (
+        <button
+          type="button"
+          className="tag-chip tag-chip-create"
+          onClick={() => void handleCreate()}
+          disabled={isCreating}
+        >
+          <span aria-hidden="true">＋</span>
+          <span className="tag-chip-text">{t('entries.createTag', { name: newName })}</span>
+        </button>
+      ) : null}
+      <PageErrorAlert error={error} />
     </div>
   )
 }
