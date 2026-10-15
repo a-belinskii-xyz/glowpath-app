@@ -12660,9 +12660,9 @@ html[data-color-scheme='dark'] .my-primary {
   font-variant-numeric: tabular-nums;
 }
 
-/* Tapping the field opens the picker on phones; the icon only steals width. */
-.body-sleep-inputs .form-input::-webkit-calendar-picker-indicator {
-  display: none;
+.body-sleep-inputs .form-input.is-invalid {
+  border-color: color-mix(in oklab, var(--chrome-text-secondary) 60%, transparent);
+  border-style: dashed;
 }
 
 .body-sleep > p.body-label {
