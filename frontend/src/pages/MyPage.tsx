@@ -207,9 +207,13 @@ export function MyPage() {
                     <span className="my-goal-days" style={{ ['--goal-color' as string]: goal.color }}>
                       {weekDays.map((day) => {
                         const level = levelOn(goal, day)
-                        // Days before the goal began are not "missed", so they stay invisible.
+                        // Days outside the goal's dates are not "missed"; they stay quietly grey.
                         if (!isActiveOn(goal, day)) {
-                          return <span key={day} className="my-day is-before" aria-hidden />
+                          return (
+                            <span key={day} className="my-day is-before" aria-hidden>
+                              {weekdayShort(day, dateLocale)}
+                            </span>
+                          )
                         }
                         return (
                           <span

@@ -37,6 +37,12 @@ export function EditorDrawer({
   const titleId = useId()
   const descriptionId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
+  // Callers often pass an inline onClose; re-running the focus effect on every render
+  // would steal focus from a field while the user types.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
   const backdropStyle = useMemo<CSSProperties>(() => {
     const fallback = ['#94a3b8', '#cbd5e1', '#e2e8f0', '#a5b4fc']
     const palette = accentColors.filter(Boolean)
@@ -63,6 +69,9 @@ export function EditorDrawer({
     document.body.style.overflow = 'hidden'
 
     const focusFirst = () => {
+      if (panelRef.current?.contains(document.activeElement)) {
+        return
+      }
       const [first] = focusableElements(panelRef.current)
       first?.focus()
     }
@@ -78,7 +87,7 @@ export function EditorDrawer({
 
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -115,7 +124,7 @@ export function EditorDrawer({
       document.body.style.overflow = previousOverflow
       previous?.focus?.({ preventScroll: true })
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) {
     return null
