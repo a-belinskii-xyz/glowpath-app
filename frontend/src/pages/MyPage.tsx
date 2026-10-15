@@ -10,6 +10,7 @@ import { EmailVerificationBanner } from '../components/EmailVerificationBanner'
 import { GoalIcon } from '../components/GoalIcon'
 import { MoodScoreIcon } from '../components/MoodScoreIcon'
 import { PageErrorAlert } from '../components/PageErrorAlert'
+import { QuickTagPicker } from '../components/QuickTagPicker'
 import { StableButtonLabel } from '../components/StableButtonLabel'
 import { usePageAmbientGlow } from '../context/AmbientGlowContext'
 import { useAuth } from '../context/AuthContext'
@@ -653,7 +654,7 @@ export function MyPage() {
             score: draft.score,
             recorded_at: instantToIsoInTimezone(new Date(), timeZone),
             note: draft.note,
-            tag_ids: [],
+            tag_ids: draft.tagIds,
             goal_ids: [],
             is_win: true,
           })
@@ -672,7 +673,7 @@ export function MyPage() {
   )
 }
 
-type WinDraft = { note: string; score: number; color: string }
+type WinDraft = { note: string; score: number; color: string; tagIds: string[] }
 
 type WinDrawerProps = {
   open: boolean
@@ -687,12 +688,14 @@ function WinDrawer({ open, scores, restore, onClose, onSave }: WinDrawerProps) {
   const options = getMoodScoreOptions(locale, scores)
   const [text, setText] = useState('')
   const [score, setScore] = useState<number | null>(null)
+  const [tagIds, setTagIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
       setText(restore?.draft.note ?? '')
       setScore(restore?.draft.score ?? null)
+      setTagIds(restore?.draft.tagIds ?? [])
       setError(restore?.error ?? null)
     }
   }, [open, restore])
@@ -703,7 +706,7 @@ function WinDrawer({ open, scores, restore, onClose, onSave }: WinDrawerProps) {
     event.preventDefault()
     if (!canSave || score === null) return
     const color = options.find((option) => option.score === score)?.color ?? ''
-    onSave({ note: text.trim(), score, color })
+    onSave({ note: text.trim(), score, color, tagIds })
   }
 
   return (
@@ -751,6 +754,18 @@ function WinDrawer({ open, scores, restore, onClose, onSave }: WinDrawerProps) {
             ))}
           </div>
         </div>
+        {open ? (
+          <QuickTagPicker
+            selectedIds={tagIds}
+            onToggle={(tagId) =>
+              setTagIds((current) =>
+                current.includes(tagId)
+                  ? current.filter((id) => id !== tagId)
+                  : [...current, tagId],
+              )
+            }
+          />
+        ) : null}
         <p className="my-level-hint">{t('myPage.winHint')}</p>
       </form>
     </EditorDrawer>

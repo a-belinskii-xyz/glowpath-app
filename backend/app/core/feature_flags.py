@@ -30,7 +30,6 @@ class FeatureUser(Protocol):
 
 
 class FeatureFlag(StrEnum):
-    WEEKLY_FREQUENT_TAGS = "weekly_frequent_tags"
     ICON_MARKETPLACE = "icon_marketplace"
     BILLING = "billing"
     ACHIEVEMENTS = "achievements"
@@ -62,15 +61,6 @@ def parse_uuid_csv(raw: str) -> frozenset[uuid.UUID]:
 
 def targeting_for(flag: FeatureFlag) -> FeatureTargeting:
     # TODO: load FeatureTargeting from DB instead of process-lifetime settings.
-    if flag is FeatureFlag.WEEKLY_FREQUENT_TAGS:
-        return FeatureTargeting(
-            enabled=settings.feature_weekly_frequent_tags,
-            percent=settings.feature_weekly_frequent_tags_percent,
-            emails=frozenset(
-                email.lower() for email in parse_csv(settings.feature_weekly_frequent_tags_emails)
-            ),
-            user_ids=parse_uuid_csv(settings.feature_weekly_frequent_tags_user_ids),
-        )
     if flag is FeatureFlag.ICON_MARKETPLACE:
         return FeatureTargeting(
             enabled=settings.feature_icon_marketplace,
@@ -148,10 +138,6 @@ def is_feature_enabled_for_visitor(flag: FeatureFlag, visitor_id: uuid.UUID) -> 
 
 def features_for_user(user: FeatureUser) -> dict[str, bool]:
     return {
-        FeatureFlag.WEEKLY_FREQUENT_TAGS.value: is_feature_enabled_for_user(
-            FeatureFlag.WEEKLY_FREQUENT_TAGS,
-            user,
-        ),
         FeatureFlag.ICON_MARKETPLACE.value: is_feature_enabled_for_user(
             FeatureFlag.ICON_MARKETPLACE,
             user,
