@@ -11,6 +11,7 @@ import { bodyMassIndex, copyToClipboard, dayNumber, formatDay } from '../lib/bod
 import { dayKey, getDayBounds, shiftDateKey } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
 import { formatDuration, toNight } from '../lib/sleep'
+import { formatClockString } from '../lib/timeFormat'
 import type { BodySettings, Meal, WeightPoint } from '../types/body'
 
 const MEALS: Meal[] = ['morning', 'day', 'evening', 'snack']
@@ -154,9 +155,9 @@ export function BodyCopyDrawer({ open, today, timeZone, settings, onClose }: Bod
           if (night) {
             const span = toNight(night)
             const times = [
-              t('body.copySleepBed', { time: night.bed_time.slice(0, 5) }),
-              t('body.copySleepWake', { time: night.wake_time.slice(0, 5) }),
-              ...(night.up_time ? [t('body.copySleepUp', { time: night.up_time.slice(0, 5) })] : []),
+              t('body.copySleepBed', { time: formatClockString(night.bed_time) }),
+              t('body.copySleepWake', { time: formatClockString(night.wake_time) }),
+              ...(night.up_time ? [t('body.copySleepUp', { time: formatClockString(night.up_time) })] : []),
             ].join(', ')
             let line = t('body.copySleep', { times, duration: formatDuration(t, span.sleep) })
             if (night.quality) line += `, ${t(`body.copyQuality.${night.quality}`)}`

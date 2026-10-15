@@ -33,6 +33,7 @@ class ArchiveAccount(_ArchiveModel):
     timezone: str | None = None
     created_at: datetime | None = None
     theme_preference: str | None = None
+    time_format: str | None = None
     telegram_linked: bool = False
 
 

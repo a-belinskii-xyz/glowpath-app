@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react'
 
 import { deleteSleep, setSleep } from '../api/body'
+import { ClockField } from './ClockField'
 import { EditorDrawer } from './EditorDrawer'
 import { PageErrorAlert } from './PageErrorAlert'
 import { StableButtonLabel } from './StableButtonLabel'
@@ -9,12 +10,25 @@ import { intlLocale } from '../i18n/t'
 import { dayNumber, formatDay } from '../lib/bodyFormat'
 import { shiftDateKey } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
-import { type Night, averageNights, formatDuration, nightClock, normalizeClock, toNight, typeClock } from '../lib/sleep'
+import { type Night, averageNights, formatDuration, nightClock, normalizeClock, toNight } from '../lib/sleep'
 import type { SleepLog, SleepQuality } from '../types/body'
 
 const QUALITIES: SleepQuality[] = ['hard', 'ok', 'good']
 const RANGES = { month: 31, quarter: 92, year: 365 } as const
 type Range = keyof typeof RANGES
+
+/** A big clock with "AM" / "PM" set small, so it stays on one line. */
+function bigClock(clock: string) {
+  const [time, period] = clock.split(' ')
+  return period ? (
+    <>
+      {time}
+      <small>{period}</small>
+    </>
+  ) : (
+    clock
+  )
+}
 
 /** Hour ticks covering the nights, two or four hours apart. */
 function hourTicks(nights: Night[]): { start: number; end: number; ticks: number[] } {
@@ -56,16 +70,16 @@ export function SleepSection({ logs, asOf, today, weekDays, onRecord }: SleepSec
           <div className="body-sleep-times">
             <div>
               <span className="body-label">{t('body.sleepBed')}</span>
-              <strong>{nightClock(average.bed)}</strong>
+              <strong>{bigClock(nightClock(average.bed))}</strong>
             </div>
             <div>
               <span className="body-label">{t('body.sleepWake')}</span>
-              <strong>{nightClock(average.wake)}</strong>
+              <strong>{bigClock(nightClock(average.wake))}</strong>
             </div>
             {average.up !== null ? (
               <div>
                 <span className="body-label">{t('body.sleepUp')}</span>
-                <strong>{nightClock(average.up)}</strong>
+                <strong>{bigClock(nightClock(average.up))}</strong>
               </div>
             ) : null}
           </div>
@@ -114,7 +128,7 @@ export function SleepSection({ logs, asOf, today, weekDays, onRecord }: SleepSec
                   // The last label hangs left of its tick so it stays inside the card.
                   style={{ left: `${at(tick)}%`, transform: index === scale.ticks.length - 1 ? 'translateX(-100%)' : undefined }}
                 >
-                  {nightClock(tick)}
+                  {nightClock(tick, { short: true })}
                 </span>
               ))}
             </span>
@@ -148,7 +162,7 @@ function SleepChart({ nights, from, to }: { nights: Night[]; from: string; to: s
         <g key={tick}>
           <line className="body-sleep-grid" x1={left} x2={width - 4} y1={y(tick)} y2={y(tick)} />
           <text className="body-sleep-tick" x={left - 6} y={y(tick) + 4} textAnchor="end">
-            {nightClock(tick)}
+            {nightClock(tick, { short: true })}
           </text>
         </g>
       ))}
@@ -187,42 +201,6 @@ type SleepDrawerProps = {
 }
 
 const DEFAULT_TIMES = { bed: '23:00', wake: '07:00', up: '' }
-
-type ClockFieldProps = {
-  label: string
-  value: string
-  required?: boolean
-  onChange: (value: string) => void
-}
-
-/**
- * A plain text field with a digit keypad instead of type="time": the native time picker does not
- * open in some Telegram webviews, which left the sleep times impossible to change.
- */
-function ClockField({ label, value, required = false, onChange }: ClockFieldProps) {
-  const invalid = value !== '' && normalizeClock(value) === null
-  return (
-    <label>
-      <span className="body-label">{label}</span>
-      <input
-        className={`form-input${invalid ? ' is-invalid' : ''}`}
-        type="text"
-        inputMode="numeric"
-        autoComplete="off"
-        placeholder={required ? '23:00' : '—'}
-        value={value}
-        aria-invalid={invalid || undefined}
-        // Typing replaces the old time instead of appending to it.
-        onFocus={(event) => event.currentTarget.select()}
-        onChange={(event) => onChange(typeClock(event.target.value))}
-        onBlur={() => {
-          const clock = normalizeClock(value)
-          if (clock) onChange(clock)
-        }}
-      />
-    </label>
-  )
-}
 
 export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDrawerProps) {
   const { locale, t } = useLocale()
@@ -332,9 +310,18 @@ export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDraw
       <form id="body-sleep-form" className="form" onSubmit={handleSubmit}>
         <PageErrorAlert error={error} />
         <div className="body-sleep-inputs">
-          <ClockField label={t('body.sleepBed')} value={bed} required onChange={setBed} />
-          <ClockField label={t('body.sleepWake')} value={wake} required onChange={setWake} />
-          <ClockField label={t('body.sleepUp')} value={up} onChange={setUp} />
+          <div>
+            <span className="body-label">{t('body.sleepBed')}</span>
+            <ClockField ariaLabel={t('body.sleepBed')} value={bed} required onChange={setBed} />
+          </div>
+          <div>
+            <span className="body-label">{t('body.sleepWake')}</span>
+            <ClockField ariaLabel={t('body.sleepWake')} value={wake} required onChange={setWake} />
+          </div>
+          <div>
+            <span className="body-label">{t('body.sleepUp')}</span>
+            <ClockField ariaLabel={t('body.sleepUp')} value={up} placeholder="—" onChange={setUp} />
+          </div>
         </div>
         <div className="body-sleep-meta">
           <span className="body-label">

@@ -2,6 +2,7 @@ import { apiRequest, getApiBaseUrl } from './client'
 import type { ThemePreference } from '../design/themePreference'
 import type { ApiLocale } from '../lib/locale'
 import { getSignupSource } from '../lib/signupSource'
+import type { TimeFormat } from '../lib/timeFormat'
 import type {
   LoginRequest,
   MessageResponse,
@@ -62,6 +63,7 @@ export function getMe(): Promise<UserPublic> {
 export function updateMe(body: {
   timezone?: string
   theme_preference?: ThemePreference
+  time_format?: TimeFormat
   locale?: ApiLocale
 }): Promise<UserPublic> {
   return apiRequest<UserPublic>('/v1/auth/me', {

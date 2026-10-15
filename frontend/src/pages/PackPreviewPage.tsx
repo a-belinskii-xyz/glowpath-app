@@ -214,7 +214,7 @@ export function PackPreviewPage() {
                     <li key={entry.id}>
                       <EntryRow
                         entry={entry}
-                        timeLabel={formatTime(entry.recorded_at, PREVIEW_TIME_ZONE, dateLocale)}
+                        timeLabel={formatTime(entry.recorded_at, PREVIEW_TIME_ZONE)}
                         timeZone={PREVIEW_TIME_ZONE}
                         onDelete={noop}
                         onToggleFavorite={noop}

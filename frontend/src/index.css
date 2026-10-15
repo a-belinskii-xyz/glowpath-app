@@ -12582,6 +12582,12 @@ html[data-color-scheme='dark'] .my-primary {
   gap: 0.05rem;
 }
 
+.body-sleep-times strong small {
+  margin-left: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .body-sleep-times strong {
   font-size: 1.5rem;
   font-variant-numeric: tabular-nums;
@@ -12633,6 +12639,7 @@ html[data-color-scheme='dark'] .my-primary {
 
 .body-sleep-axis .body-sleep-track span {
   position: absolute;
+  white-space: nowrap;
   top: 0.2rem;
   transform: translateX(-50%);
   color: var(--chrome-text-secondary);
@@ -12646,9 +12653,13 @@ html[data-color-scheme='dark'] .my-primary {
   gap: 0.5rem;
 }
 
-.body-sleep-inputs label {
+.body-sleep-inputs > div {
   display: grid;
   gap: 0.2rem;
+}
+
+.body-sleep-inputs .clock-field {
+  display: flex;
 }
 
 .body-sleep-inputs .form-input {
@@ -12660,9 +12671,38 @@ html[data-color-scheme='dark'] .my-primary {
   font-variant-numeric: tabular-nums;
 }
 
-.body-sleep-inputs .form-input.is-invalid {
+.clock-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.clock-field input {
+  width: 100%;
+  min-width: 0;
+}
+
+.clock-field input.is-invalid {
   border-color: color-mix(in oklab, var(--chrome-text-secondary) 60%, transparent);
   border-style: dashed;
+}
+
+.clock-field:has(.clock-field-period) input {
+  padding-right: 2.7rem;
+}
+
+.clock-field-period {
+  position: absolute;
+  right: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--chrome-border-subtle);
+  border-radius: 0.5rem;
+  background: var(--chrome-surface, #fff);
+  color: var(--chrome-text-primary);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .body-sleep > p.body-label {
@@ -12818,4 +12858,17 @@ html[data-color-scheme='dark'] .my-primary {
 
 .body-food-items .body-food-add {
   justify-self: start;
+}
+
+.form-field > .clock-field {
+  display: flex;
+}
+
+/* The entry's time keeps its compact pill next to the date. */
+.entry-when-field-time .clock-field input.entry-when-input {
+  width: 6.25rem;
+}
+
+.entry-when-field-time .clock-field:has(.clock-field-period) input.entry-when-input {
+  width: 8.75rem;
 }

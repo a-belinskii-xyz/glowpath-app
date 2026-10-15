@@ -31,6 +31,7 @@ import {
   subscribeTelegramTheme,
 } from '../platform/telegram'
 import type { LoginRequest, RegisterRequest, UserPublic } from '../types/auth'
+import { setTimeFormatPreference, type TimeFormat } from '../lib/timeFormat'
 
 type AuthContextValue = {
   user: UserPublic | null
@@ -44,6 +45,7 @@ type AuthContextValue = {
   refreshUser: () => Promise<void>
   updateTimezone: (timezone: string) => Promise<void>
   updateThemePreference: (themePreference: ThemePreference) => Promise<void>
+  updateTimeFormat: (timeFormat: TimeFormat) => Promise<void>
   completeLogin: (accessToken: string, refreshToken: string, userCreated?: boolean) => Promise<void>
   retryBootstrap: () => void
   /** Guest entries waiting for the person to move them into an existing account. */
@@ -135,6 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setThemePreference(previous)
       throw err
     }
+  }, [])
+
+  const updateTimeFormat = useCallback(async (timeFormat: TimeFormat) => {
+    setUser(await authApi.updateMe({ time_format: timeFormat }))
   }, [])
 
   const retryBootstrap = useCallback(() => {
@@ -259,6 +265,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => undefined)
   }, [locale, userId, serverLocale])
 
+  // Set during render, before children format any time with it.
+  setTimeFormatPreference(user?.time_format ?? 'auto')
+
   const value = useMemo(
     () => ({
       user,
@@ -272,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshUser,
       updateTimezone,
       updateThemePreference,
+      updateTimeFormat,
       completeLogin,
       retryBootstrap,
       pendingGuestImport,
@@ -288,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshUser,
       updateTimezone,
       updateThemePreference,
+      updateTimeFormat,
       completeLogin,
       retryBootstrap,
       pendingGuestImport,

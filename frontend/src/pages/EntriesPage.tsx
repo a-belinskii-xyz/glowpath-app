@@ -1199,7 +1199,7 @@ export function EntriesPage() {
                   <li key={entry.id} id={`entry-${entry.id}`}>
                     <EntryRow
                       entry={entry}
-                      timeLabel={`${formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ${formatTime(entry.recorded_at, timeZone, dateLocale)}`}
+                      timeLabel={`${formatDayHeading(entry.recorded_at, timeZone, dateLocale)} ${formatTime(entry.recorded_at, timeZone)}`}
                       timeZone={timeZone}
                       onDelete={handleDelete}
                       onToggleFavorite={handleToggleFavorite}
@@ -1233,7 +1233,7 @@ export function EntriesPage() {
                   <li key={entry.id} id={`entry-${entry.id}`}>
                     <EntryRow
                       entry={entry}
-                      timeLabel={formatTime(entry.recorded_at, timeZone, dateLocale)}
+                      timeLabel={formatTime(entry.recorded_at, timeZone)}
                       timeZone={timeZone}
                       onDelete={handleDelete}
                       onToggleFavorite={handleToggleFavorite}

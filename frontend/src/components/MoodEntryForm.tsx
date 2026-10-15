@@ -67,6 +67,8 @@ import { hapticNotification, hapticSelection, isTelegramMiniApp } from '../platf
 import { useTelegramMainButton } from '../platform/useTelegramMainButton'
 import type { NoteTemplatePublic } from '../types/noteTemplate'
 import type { TagGroupPublic, TagPublic } from '../types/tag'
+import { ClockField } from './ClockField'
+import { normalizeClock } from '../lib/sleep'
 
 type PendingAudio = File
 
@@ -934,15 +936,14 @@ export function MoodEntryForm({
           <span className="entry-when-sep" aria-hidden="true">
             ·
           </span>
-          <label className="entry-when-field entry-when-field-time">
-            <span className="visually-hidden">{t('entries.recordedTime')}</span>
-            <input
-              className="entry-when-input"
-              type="time"
+          <div className="entry-when-field entry-when-field-time">
+            <ClockField
+              ariaLabel={t('entries.recordedTime')}
+              inputClassName="entry-when-input"
               value={recordedAtLocal.split('T')[1] ?? ''}
-              onChange={(event) => {
-                const nextTime = event.target.value
-                if (!nextTime) {
+              onChange={(nextTime) => {
+                // Keep the last full time while a new one is still being typed.
+                if (!normalizeClock(nextTime)) {
                   return
                 }
                 const datePart = recordedAtLocal.split('T')[0] ?? entryDate
@@ -953,7 +954,7 @@ export function MoodEntryForm({
               }}
               required
             />
-          </label>
+          </div>
         </div>
 
         {isPastEntryDay ? null : (

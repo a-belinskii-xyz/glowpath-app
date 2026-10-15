@@ -1,3 +1,4 @@
+import { formatClockMinutes } from './timeFormat'
 import type { SleepLog } from '../types/body'
 
 const DAY_MINUTES = 24 * 60
@@ -9,10 +10,9 @@ export function clockMinutes(value: string): number {
   return hours * 60 + minutes
 }
 
-/** Minutes → "07:05"; wraps around midnight. */
-export function formatClock(minutes: number): string {
-  const value = ((Math.round(minutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES
-  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`
+/** Minutes → "07:05" or "7:05 AM"; wraps around midnight. */
+export function formatClock(minutes: number, options: { short?: boolean } = {}): string {
+  return formatClockMinutes(minutes, options)
 }
 
 export type Night = {
@@ -42,8 +42,8 @@ export function toNight(log: SleepLog): Night {
 }
 
 /** Anchored minutes back to a clock time. */
-export function nightClock(minutes: number): string {
-  return formatClock(minutes + NOON)
+export function nightClock(minutes: number, options: { short?: boolean } = {}): string {
+  return formatClock(minutes + NOON, options)
 }
 
 function mean(values: number[]): number | null {

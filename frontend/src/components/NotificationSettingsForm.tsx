@@ -13,6 +13,8 @@ import type {
   NotificationSchedule,
   NotificationScheduleKind,
 } from '../types/notificationSettings'
+import { ClockField } from './ClockField'
+import { normalizeClock } from '../lib/sleep'
 
 const TIME_SAVE_DELAY_MS = 400
 const VISIBLE_KINDS: NotificationScheduleKind[] = ['daily_mood', 'goal_tracking']
@@ -225,19 +227,18 @@ export function NotificationSettingsForm({ timezone }: { timezone: string }) {
             {draft.paused && !locked ? (
               <p className="form-hint">{t('profile.remindersPaused')}</p>
             ) : null}
-            <label className="form-field" htmlFor={`${kind}-time`}>
+            <div className="form-field">
               <span className="form-label">{t('profile.reminderTime')}</span>
-              <input
-                id={`${kind}-time`}
-                className="form-input"
-                type="time"
+              <ClockField
+                ariaLabel={t('profile.reminderTime')}
                 value={draft.timeOfDay}
-                onChange={(event) =>
-                  updateDraft(kind, { timeOfDay: event.target.value }, { debounce: true })
-                }
+                onChange={(next) => {
+                  // Save only a full time, not "7:3" on the way to "7:30".
+                  if (normalizeClock(next)) updateDraft(kind, { timeOfDay: next }, { debounce: true })
+                }}
               />
               <span className="form-hint">{t('profile.reminderTimeHint')}</span>
-            </label>
+            </div>
             <label className="form-field" htmlFor={`${kind}-interval`}>
               <span className="form-label">{t('profile.reminderFrequency')}</span>
               <select
