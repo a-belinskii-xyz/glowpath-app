@@ -11,7 +11,7 @@ import {
   uploadMoodEntryAttachment,
 } from '../api/moodEntries'
 import { listNoteTemplates } from '../api/noteTemplates'
-import { listTagGroups } from '../api/tagGroups'
+import { listTagGroups, quickCreateTag } from '../api/tagGroups'
 import { PageErrorAlert } from './PageErrorAlert'
 import { GoalIcon } from './GoalIcon'
 import { AudioRecorder } from './AudioRecorder'
@@ -52,6 +52,7 @@ import { randomId } from '../lib/randomId'
 import { intlLocale } from '../i18n/t'
 import { getMoodScoreOptions } from '../lib/moodScale'
 import { emojiForGroupSlug } from '../lib/tagEmoji'
+import { tagLabelKey } from '../lib/tagLabel'
 import type { GoalPublic } from '../types/goal'
 import type { AttachmentPublic, MoodEntryPublic } from '../types/mood'
 import type { AchievementPublic } from '../types/achievement'
@@ -163,6 +164,8 @@ export function MoodEntryForm({
     initialEntry?.goals.filter((goal) => goal.partial).map((goal) => goal.id) ?? [],
   )
   const [tagGroups, setTagGroups] = useState<TagGroupPublic[]>([])
+  const [isCreatingTag, setIsCreatingTag] = useState(false)
+  const [createTagError, setCreateTagError] = useState<string | null>(null)
   const [frequentTags, setFrequentTags] = useState<TagPublic[]>([])
   const [goals, setGoals] = useState<GoalPublic[]>([])
   const [noteTemplates, setNoteTemplates] = useState<NoteTemplatePublic[]>([])
@@ -419,26 +422,25 @@ export function MoodEntryForm({
   )
 
   const visibleFrequentTags = useMemo(() => {
-    const query = contextQuery.trim().toLowerCase()
+    const query = tagLabelKey(contextQuery)
     if (!query) {
       return frequentTags
     }
     return frequentTags.filter(
       (tag) =>
-        tag.label.toLowerCase().includes(query) || tag.slug.toLowerCase().includes(query),
+        tagLabelKey(tag.label).includes(query) || tag.slug.toLowerCase().includes(query),
     )
   }, [frequentTags, contextQuery])
 
   const visiblePrimaryGroups = useMemo(() => {
-    const query = contextQuery.trim().toLowerCase()
+    const query = tagLabelKey(contextQuery)
     return primaryGroups
       .map((group) => ({
         ...group,
         tags: query
           ? group.tags.filter(
               (tag) =>
-                tag.label.toLowerCase().includes(query) ||
-                tag.slug.toLowerCase().includes(query),
+                tagLabelKey(tag.label).includes(query) || tag.slug.toLowerCase().includes(query),
             )
           : group.tags,
       }))
@@ -446,15 +448,14 @@ export function MoodEntryForm({
   }, [primaryGroups, contextQuery])
 
   const visibleOtherGroups = useMemo(() => {
-    const query = contextQuery.trim().toLowerCase()
+    const query = tagLabelKey(contextQuery)
     return otherGroups
       .map((group) => ({
         ...group,
         tags: query
           ? group.tags.filter(
               (tag) =>
-                tag.label.toLowerCase().includes(query) ||
-                tag.slug.toLowerCase().includes(query),
+                tagLabelKey(tag.label).includes(query) || tag.slug.toLowerCase().includes(query),
             )
           : group.tags,
       }))
@@ -467,6 +468,34 @@ export function MoodEntryForm({
     setSelectedTagIds((current) =>
       current.includes(tagId) ? current.filter((id) => id !== tagId) : [...current, tagId],
     )
+  }
+
+  const newTagName = contextQuery.replace(/\s+/g, ' ').trim()
+  const canCreateTag = useMemo(() => {
+    if (!newTagName) return false
+    const key = tagLabelKey(newTagName)
+    return !tagGroups.some((group) =>
+      group.tags.some((tag) =>
+        [tag.label, ...Object.values(tag.labels)].some((value) => tagLabelKey(value) === key),
+      ),
+    )
+  }, [newTagName, tagGroups])
+
+  const handleCreateTag = async () => {
+    if (!canCreateTag || isCreatingTag) return
+    setIsCreatingTag(true)
+    setCreateTagError(null)
+    try {
+      const { tag } = await quickCreateTag(newTagName)
+      const response = await listTagGroups()
+      setTagGroups(response.items)
+      setSelectedTagIds((current) => (current.includes(tag.id) ? current : [...current, tag.id]))
+      setContextQuery('')
+    } catch (err) {
+      setCreateTagError(formatApiError(err, t, 'errors.failedSave'))
+    } finally {
+      setIsCreatingTag(false)
+    }
   }
 
   const toggleGoal = (goal: GoalPublic) => {
@@ -1098,13 +1127,36 @@ export function MoodEntryForm({
                         type="search"
                         value={contextQuery}
                         onChange={(event) => setContextQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                          // Enter in the tag search adds the typed tag instead of submitting the entry.
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            if (canCreateTag) void handleCreateTag()
+                          }
+                        }}
                         placeholder={t('entries.searchContextPlaceholder')}
                         autoComplete="off"
                       />
+                      {canCreateTag ? (
+                        <button
+                          type="button"
+                          className="tag-chip tag-chip-create"
+                          onClick={() => void handleCreateTag()}
+                          disabled={isCreatingTag}
+                        >
+                          <span aria-hidden="true">＋</span>
+                          <span className="tag-chip-text">
+                            {t('entries.createTag', { name: newTagName })}
+                          </span>
+                        </button>
+                      ) : null}
+                      <PageErrorAlert error={createTagError} />
                       {visibleFrequentTags.length === 0 &&
                       visiblePrimaryGroups.length === 0 &&
                       visibleOtherGroups.length === 0 ? (
-                        <p className="muted entry-context-empty">{t('entries.noContextMatches')}</p>
+                        canCreateTag ? null : (
+                          <p className="muted entry-context-empty">{t('entries.noContextMatches')}</p>
+                        )
                       ) : (
                         <div className="entry-context-sections">
                           {renderFrequentTags()}

@@ -34,6 +34,7 @@ import {
   type DropEdge,
 } from '../lib/listReorder'
 import { isValidHexColor } from '../lib/moodScale'
+import { isNewTagsGroup } from '../lib/tagLabel'
 import { DEFAULT_TAG_STYLE, type TagGroupPublic, type TagPublic } from '../types/tag'
 
 type EditorMode =
@@ -55,6 +56,7 @@ export function TagsPage() {
   const [draftEmoji, setDraftEmoji] = useState(DEFAULT_TAG_STYLE.icon)
   const [pendingUpload, setPendingUpload] = useState<PendingIconUpload | null>(null)
   const [pendingCatalogIconId, setPendingCatalogIconId] = useState<string | null>(null)
+  const [draftGroupId, setDraftGroupId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null)
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
@@ -82,7 +84,9 @@ export function TagsPage() {
     setVisibleLimit(response.entry_visible_tag_group_limit)
   }
 
-  const visibleCount = groups.filter((group) => group.show_on_entry).length
+  const visibleCount = groups.filter(
+    (group) => group.show_on_entry && !isNewTagsGroup(group),
+  ).length
   const atVisibleLimit = visibleCount >= visibleLimit
   const editingTag = editor?.kind === 'edit-tag' || editor?.kind === 'create-tag'
 
@@ -120,6 +124,7 @@ export function TagsPage() {
       setPendingCatalogIconId(null)
     } else {
       setName(mode.tag.label)
+      setDraftGroupId(mode.group.id)
       setDraftColor(mode.tag.color)
       setDraftEmoji(mode.tag.icon_type === 'emoji' ? mode.tag.icon : DEFAULT_TAG_STYLE.icon)
       setPendingUpload(null)
@@ -199,6 +204,7 @@ export function TagsPage() {
         await patchTag(editor.group.id, editor.tag.id, {
           labels,
           color: draftColor,
+          ...(draftGroupId && draftGroupId !== editor.group.id ? { group_id: draftGroupId } : {}),
           ...(keepAssignedIcon ? {} : { icon_type: 'emoji' as const, icon: draftEmoji.trim() }),
         })
       }
@@ -448,6 +454,24 @@ export function TagsPage() {
             autoFocus
             maxLength={64}
           />
+          {editor?.kind === 'edit-tag' && groups.length > 1 ? (
+            <label className="form-field" htmlFor="tag-group">
+              <span className="form-label">{t('tagsPage.groupLabel')}</span>
+              <select
+                id="tag-group"
+                className="form-input"
+                value={draftGroupId ?? editor.group.id}
+                onChange={(event) => setDraftGroupId(event.target.value)}
+                disabled={isSaving}
+              >
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           {editingTag ? (
             <TagIconEditor
               color={draftColor}
@@ -632,6 +656,9 @@ export function TagsPage() {
                   />
                 </div>
               </div>
+              {isNewTagsGroup(group) ? (
+                <p className="muted tag-group-system-hint">{t('tagsPage.newTagsHint')}</p>
+              ) : null}
               <label className="tag-visibility-toggle">
                 <input
                   type="checkbox"

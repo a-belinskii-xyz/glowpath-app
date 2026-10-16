@@ -6,6 +6,7 @@ import { ApiError, parseApiError } from '../lib/errors'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../lib/storage'
 import type { TokenResponse } from '../types/auth'
 import type {
+  QuickTagResponse,
   ReorderRequest,
   TagGroupListResponse,
   TagGroupPatch,
@@ -116,6 +117,19 @@ export function createTag(groupId: string, body: TagWrite): Promise<TagPublic> {
     auth: true,
     headers: apiLocaleHeaders(),
     body,
+  })
+}
+
+/** Tag typed in an entry: the user's tag with this name, or a new one in «New tags». */
+export function quickCreateTag(label: string): Promise<QuickTagResponse> {
+  if (isGuestDiaryMode()) {
+    return guestStore.quickCreateGuestTag(label, getApiLocale())
+  }
+  return apiRequest<QuickTagResponse>('/v1/tag-groups/quick-tag', {
+    method: 'POST',
+    auth: true,
+    headers: apiLocaleHeaders(),
+    body: { label },
   })
 }
 

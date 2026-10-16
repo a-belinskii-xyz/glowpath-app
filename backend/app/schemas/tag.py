@@ -57,6 +57,7 @@ class TagGroupPublic(BaseModel):
     labels: dict[str, str]
     sort_order: int
     show_on_entry: bool
+    is_system: bool = False
     tags: list[TagPublic]
 
 
@@ -134,6 +135,7 @@ class TagPatch(BaseModel):
     color: Color | None = None
     icon_type: MoodScoreIconType | None = None
     icon: IconValue | None = None
+    group_id: uuid.UUID | None = None
 
     @field_validator("slug")
     @classmethod
@@ -180,3 +182,19 @@ class TagIconPublic(BaseModel):
 class TagIconListResponse(BaseModel):
     items: list[TagIconMetaPublic]
     max_per_tag: int = 3
+
+
+class QuickTagCreate(BaseModel):
+    label: Annotated[str, Field(min_length=1, max_length=64)]
+
+    @field_validator("label")
+    @classmethod
+    def label_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("label must be non-empty")
+        return value
+
+
+class QuickTagResponse(BaseModel):
+    tag: TagPublic
+    created: bool

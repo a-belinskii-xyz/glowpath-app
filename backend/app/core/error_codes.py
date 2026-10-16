@@ -45,6 +45,7 @@ class ErrorCode(StrEnum):
     TAG_GROUP_REORDER_MISMATCH = "tag_group_reorder_mismatch"
     TAG_GROUP_VISIBILITY_LIMIT = "tag_group_visibility_limit"
     TAG_SLUG_EXISTS = "tag_slug_exists"
+    TAG_LABEL_EXISTS = "tag_label_exists"
     TAG_NOT_FOUND = "tag_not_found"
     TAG_NOT_FOUND_IN_GROUP = "tag_not_found_in_group"
     TAG_IN_USE = "tag_in_use"

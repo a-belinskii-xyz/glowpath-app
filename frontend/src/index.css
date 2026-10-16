@@ -5578,6 +5578,28 @@ code {
   cursor: pointer;
 }
 
+.tag-chip-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-self: start;
+  align-self: flex-start;
+  border-style: dashed;
+  border-color: var(--chrome-action-primary);
+  color: var(--chrome-action-primary);
+  font: inherit;
+}
+
+.tag-chip-create:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.tag-group-system-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+}
+
 .tag-chip-iconic {
   display: inline-flex;
   align-items: center;

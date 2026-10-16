@@ -31,6 +31,8 @@ export type TagGroupPublic = {
   labels: Record<string, string>
   sort_order: number
   show_on_entry: boolean
+  /** The «New tags» group that collects tags typed in an entry. */
+  is_system?: boolean
   tags: TagPublic[]
 }
 
@@ -70,6 +72,13 @@ export type TagPatch = {
   color?: string
   icon_type?: MoodScoreIconType
   icon?: string
+  /** Move the tag to this group. */
+  group_id?: string
+}
+
+export type QuickTagResponse = {
+  tag: TagPublic
+  created: boolean
 }
 
 export type ReorderRequest = {

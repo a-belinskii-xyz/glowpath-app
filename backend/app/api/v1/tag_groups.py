@@ -16,6 +16,8 @@ from app.models.tag_group import TagGroup
 from app.models.user import User
 from app.models.user_tag_icon import UserTagIcon
 from app.schemas.tag import (
+    QuickTagCreate,
+    QuickTagResponse,
     TagCreate,
     TagGroupCreate,
     TagGroupListResponse,
@@ -45,16 +47,19 @@ from app.services.tag_service import (
     create_tag_group,
     delete_tag,
     delete_tag_group,
+    ensure_unique_tag_label,
     get_owned_tag,
     list_tag_groups,
     patch_tag,
     patch_tag_group,
+    quick_create_tag,
     reorder_tag_groups,
     reorder_tags,
     serialize_frequent_tags,
     serialize_tag,
     serialize_tag_group,
     serialize_tag_groups,
+    tag_label_key,
 )
 
 router = APIRouter(tags=["tag-groups"])
@@ -154,6 +159,21 @@ def create_group(
         _handle_tag_error(exc)
         raise
     return _to_group_public(group, locale=locale)
+
+
+@router.post("/quick-tag", response_model=QuickTagResponse)
+def create_quick_tag(
+    body: QuickTagCreate,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+    locale: str = Depends(get_locale),
+) -> QuickTagResponse:
+    """Tag typed in the entry form: reuse the user's tag with this name or add it to «New tags»."""
+    tag, created = quick_create_tag(db, user_id=current_user.id, label=body.label, locale=locale)
+    if created:
+        response.status_code = status.HTTP_201_CREATED
+    return QuickTagResponse(tag=_to_tag_public(tag, locale=locale), created=created)
 
 
 @router.put("/reorder", response_model=TagGroupListResponse)
@@ -311,6 +331,7 @@ def create_group_tag(
     locale: str = Depends(get_locale),
 ) -> TagPublic:
     try:
+        ensure_unique_tag_label(db, user_id=current_user.id, labels=body.labels)
         tag = create_tag(
             db,
             user_id=current_user.id,
@@ -448,6 +469,16 @@ def update_group_tag(
     locale: str = Depends(get_locale),
 ) -> TagPublic:
     try:
+        if body.labels is not None:
+            current = get_owned_tag(db, user_id=current_user.id, tag_id=tag_id)
+            renamed = {
+                key: value
+                for key, value in body.labels.items()
+                if tag_label_key(current.labels.get(key, "")) != tag_label_key(value)
+            }
+            ensure_unique_tag_label(
+                db, user_id=current_user.id, labels=renamed, exclude_tag_id=tag_id
+            )
         tag = patch_tag(
             db,
             user_id=current_user.id,
@@ -459,6 +490,7 @@ def update_group_tag(
             color=body.color,
             icon_type=body.icon_type.value if body.icon_type is not None else None,
             icon=body.icon,
+            target_group_id=body.group_id,
         )
     except TagError as exc:
         _handle_tag_error(exc)
