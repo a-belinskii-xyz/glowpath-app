@@ -34,6 +34,7 @@ class ArchiveAccount(_ArchiveModel):
     created_at: datetime | None = None
     theme_preference: str | None = None
     time_format: str | None = None
+    display_name: str | None = None
     telegram_linked: bool = False
 
 

@@ -19,6 +19,7 @@ def to_user_public(user: User) -> UserPublic:
         is_staff=bool(user.is_staff),
         theme_preference=user.theme_preference,
         time_format=user.time_format,
+        display_name=user.display_name,
         locale=user.locale,
         telegram_linked=user.telegram_linked,
         can_unlink_telegram=user.telegram_linked and not telegram_is_only_auth_method(user),

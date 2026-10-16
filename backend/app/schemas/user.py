@@ -21,6 +21,7 @@ class UserPublic(BaseModel):
     is_staff: bool = False
     theme_preference: ThemePreference = "system"
     time_format: TimeFormat = "auto"
+    display_name: str | None = None
     locale: UserLocale | None = None
     telegram_linked: bool = False
     can_unlink_telegram: bool = False
@@ -35,6 +36,8 @@ class UserUpdate(BaseModel):
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
     theme_preference: ThemePreference | None = None
     time_format: TimeFormat | None = None
+    # An empty or blank string clears the name.
+    display_name: str | None = Field(default=None, max_length=40)
     locale: UserLocale | None = None
 
     @model_validator(mode="after")
@@ -43,6 +46,7 @@ class UserUpdate(BaseModel):
             self.timezone is None
             and self.theme_preference is None
             and self.time_format is None
+            and self.display_name is None
             and self.locale is None
         ):
             raise ValueError("At least one field must be provided")

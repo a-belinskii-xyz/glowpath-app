@@ -6,6 +6,7 @@ import {
   getOnboardingCatalog,
   getOnboardingSuggestions,
 } from '../api/onboarding'
+import { DisplayNameInput } from '../components/DisplayNameInput'
 import { MarkdownNote } from '../components/MarkdownNote'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -21,15 +22,19 @@ import type {
   OnboardingSuggestions,
 } from '../types/onboarding'
 
-type Phase = 'questions' | 'suggestions'
+type Phase = 'name' | 'questions' | 'suggestions'
 
 export function OnboardingPage() {
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, updateDisplayName } = useAuth()
   const { guestOnboardingCompleted, refreshGuestMeta } = useGuestExperiment()
   const { locale, t } = useLocale()
   const navigate = useNavigate()
   const [questions, setQuestions] = useState<OnboardingQuestion[]>([])
-  const [phase, setPhase] = useState<Phase>('questions')
+  // Guests have no account to keep a name on, so they start with the questions (GP-57).
+  const showNameStep = !isGuestDiaryMode()
+  const [phase, setPhase] = useState<Phase>(showNameStep ? 'name' : 'questions')
+  const [nameDraft, setNameDraft] = useState(user?.display_name ?? '')
+  const [isSavingName, setIsSavingName] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
   const [selected, setSelected] = useState<Record<string, string[]>>({})
   const [suggestions, setSuggestions] = useState<OnboardingSuggestions | null>(null)
@@ -105,7 +110,8 @@ export function OnboardingPage() {
   const current = questions[stepIndex] ?? null
   const currentSelected = current ? (selected[current.block_id] ?? []) : []
   const isLastQuestion = stepIndex >= questions.length - 1 && questions.length > 0
-  const questionStepTotal = questions.length + 1
+  const nameStepOffset = showNameStep ? 1 : 0
+  const questionStepTotal = questions.length + 1 + nameStepOffset
   const currentHasAnswer = currentSelected.length > 0
 
   const selectedCountLabel = useMemo(() => {
@@ -125,6 +131,23 @@ export function OnboardingPage() {
     setError(t('onboarding.selectAtLeastOne'))
     return false
   }, [currentHasAnswer, t])
+
+  const submitName = useCallback(async () => {
+    const trimmed = nameDraft.trim()
+    if (trimmed !== (user?.display_name ?? '')) {
+      setError(null)
+      setIsSavingName(true)
+      try {
+        await updateDisplayName(trimmed)
+      } catch (err) {
+        setError(formatApiError(err, t, 'errors.failedSave'))
+        return
+      } finally {
+        setIsSavingName(false)
+      }
+    }
+    setPhase('questions')
+  }, [nameDraft, t, updateDisplayName, user?.display_name])
 
   const goNextQuestion = useCallback(() => {
     if (!ensureCurrentAnswer()) {
@@ -191,6 +214,10 @@ export function OnboardingPage() {
   )
 
   const onMainButton = useCallback(() => {
+    if (phase === 'name') {
+      void submitName()
+      return
+    }
     if (phase === 'suggestions') {
       void finish(false)
       return
@@ -200,18 +227,20 @@ export function OnboardingPage() {
       return
     }
     goNextQuestion()
-  }, [finish, goNextQuestion, goToSuggestions, isLastQuestion, phase])
+  }, [finish, goNextQuestion, goToSuggestions, isLastQuestion, phase, submitName])
 
   const mainButtonVisible =
     isTelegramMiniApp() &&
     !isLoading &&
     !user?.onboarding_completed &&
     !(isGuestDiaryMode() && guestOnboardingCompleted) &&
-    ((phase === 'questions' && Boolean(current)) || phase === 'suggestions')
+    (phase === 'name' || (phase === 'questions' && Boolean(current)) || phase === 'suggestions')
   const mainButtonEnabled =
     !isSubmitting &&
     !isLoadingSuggestions &&
-    (phase === 'suggestions' ? Boolean(suggestions) : currentHasAnswer)
+    !isSavingName &&
+    (phase === 'name' ||
+      (phase === 'suggestions' ? Boolean(suggestions) : currentHasAnswer))
   const mainButtonText =
     phase === 'suggestions'
       ? isSubmitting
@@ -225,7 +254,10 @@ export function OnboardingPage() {
     visible: mainButtonVisible,
     text: mainButtonText,
     enabled: mainButtonEnabled,
-    progress: isSubmitting || (phase === 'questions' && isLastQuestion && isLoadingSuggestions),
+    progress:
+      isSubmitting ||
+      isSavingName ||
+      (phase === 'questions' && isLastQuestion && isLoadingSuggestions),
     onClick: onMainButton,
   })
 
@@ -282,12 +314,35 @@ export function OnboardingPage() {
           <p className="muted">{t('common.loading')}</p>
         ) : null}
 
+        {!isLoading && phase === 'name' ? (
+          <div className="onboarding-step">
+            <div className="onboarding-step-meta">
+              <p className="onboarding-progress">
+                {t('onboarding.step', { current: '1', total: String(questionStepTotal) })}
+              </p>
+            </div>
+            <h2 className="onboarding-question">
+              <label htmlFor="onboarding-display-name">{t('onboarding.nameTitle')}</label>
+            </h2>
+            <p className="muted">{t('onboarding.nameHint')}</p>
+            <div className="onboarding-name-field">
+              <DisplayNameInput
+                id="onboarding-display-name"
+                value={nameDraft}
+                disabled={isSavingName || isSubmitting}
+                onChange={setNameDraft}
+                onSubmit={() => void submitName()}
+              />
+            </div>
+          </div>
+        ) : null}
+
         {!isLoading && phase === 'questions' && current ? (
           <div className="onboarding-step">
             <div className="onboarding-step-meta">
               <p className="onboarding-progress">
                 {t('onboarding.step', {
-                  current: String(stepIndex + 1),
+                  current: String(stepIndex + 1 + nameStepOffset),
                   total: String(questionStepTotal),
                 })}
               </p>
@@ -460,13 +515,35 @@ export function OnboardingPage() {
       {!isLoading ? (
         <div className="onboarding-sticky-bar">
           <div className="onboarding-sticky-actions">
+            {phase === 'name' ? (
+              <div className="button-row onboarding-actions">
+                <button
+                  type="button"
+                  className="button button-block"
+                  disabled={isSavingName || isSubmitting}
+                  onClick={() => void submitName()}
+                >
+                  <StableButtonLabel
+                    active={isSavingName ? t('common.saving') : t('common.next')}
+                    labels={[t('common.next'), t('common.saving')]}
+                  />
+                </button>
+              </div>
+            ) : null}
+
             {phase === 'questions' && current ? (
               <div className="button-row onboarding-actions">
                 <button
                   type="button"
                   className="button button-secondary"
-                  disabled={stepIndex === 0 || isSubmitting || isLoadingSuggestions}
-                  onClick={() => setStepIndex((value) => Math.max(0, value - 1))}
+                  disabled={
+                    (stepIndex === 0 && !showNameStep) || isSubmitting || isLoadingSuggestions
+                  }
+                  onClick={() =>
+                    stepIndex === 0
+                      ? setPhase('name')
+                      : setStepIndex((value) => Math.max(0, value - 1))
+                  }
                 >
                   {t('common.previous')}
                 </button>
@@ -515,7 +592,7 @@ export function OnboardingPage() {
               </div>
             ) : null}
 
-            {phase === 'questions' ? (
+            {phase !== 'suggestions' ? (
               <>
                 <button
                   type="button"

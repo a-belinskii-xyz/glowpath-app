@@ -71,6 +71,8 @@ class User(TimestampMixin, Base):
     theme_preference: Mapped[str] = mapped_column(String(16), server_default="system")
     # "auto" follows the device; "24h" / "12h" force a clock everywhere the user sees a time.
     time_format: Mapped[str] = mapped_column(String(8), server_default="auto")
+    # How the app addresses the user ("Доброе утро, Аня."); null means neutral phrases only.
+    display_name: Mapped[str | None] = mapped_column(String(40))
     # Interface language picked on the site or in the Mini App; null until the app sends it.
     locale: Mapped[str | None] = mapped_column(String(16))
     # Where the account came from (link label like "tiktok", or "direct"); null before GP-21.

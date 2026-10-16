@@ -143,3 +143,33 @@ def test_time_format_defaults_to_auto_and_can_be_changed(
         "/v1/auth/me", json={"time_format": "ampm"}, headers=_auth_headers(token)
     )
     assert invalid.status_code == 422
+
+
+def test_display_name_is_trimmed_and_cleared_with_blank(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "display-name@example.com")
+    me = auth_client.get("/v1/auth/me", headers=_auth_headers(token))
+    assert me.json()["display_name"] is None
+
+    response = auth_client.patch(
+        "/v1/auth/me", json={"display_name": "  Аня   Ли \n"}, headers=_auth_headers(token)
+    )
+    assert response.status_code == 200
+    assert response.json()["display_name"] == "Аня Ли"
+    kept = auth_client.patch(
+        "/v1/auth/me", json={"theme_preference": "dark"}, headers=_auth_headers(token)
+    )
+    assert kept.json()["display_name"] == "Аня Ли"
+
+    cleared = auth_client.patch(
+        "/v1/auth/me", json={"display_name": "   "}, headers=_auth_headers(token)
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["display_name"] is None
+
+    too_long = auth_client.patch(
+        "/v1/auth/me", json={"display_name": "x" * 41}, headers=_auth_headers(token)
+    )
+    assert too_long.status_code == 422

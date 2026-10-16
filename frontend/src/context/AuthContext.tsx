@@ -46,6 +46,8 @@ type AuthContextValue = {
   updateTimezone: (timezone: string) => Promise<void>
   updateThemePreference: (themePreference: ThemePreference) => Promise<void>
   updateTimeFormat: (timeFormat: TimeFormat) => Promise<void>
+  /** Saves how the app addresses the user; an empty string clears it. */
+  updateDisplayName: (displayName: string) => Promise<void>
   completeLogin: (accessToken: string, refreshToken: string, userCreated?: boolean) => Promise<void>
   retryBootstrap: () => void
   /** Guest entries waiting for the person to move them into an existing account. */
@@ -141,6 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateTimeFormat = useCallback(async (timeFormat: TimeFormat) => {
     setUser(await authApi.updateMe({ time_format: timeFormat }))
+  }, [])
+
+  const updateDisplayName = useCallback(async (displayName: string) => {
+    setUser(await authApi.updateMe({ display_name: displayName }))
   }, [])
 
   const retryBootstrap = useCallback(() => {
@@ -282,6 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateTimezone,
       updateThemePreference,
       updateTimeFormat,
+      updateDisplayName,
       completeLogin,
       retryBootstrap,
       pendingGuestImport,
@@ -299,6 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateTimezone,
       updateThemePreference,
       updateTimeFormat,
+      updateDisplayName,
       completeLogin,
       retryBootstrap,
       pendingGuestImport,

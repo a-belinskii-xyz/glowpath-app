@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -23,6 +24,7 @@ def daily_mood_reminder_message(
     unsubscribe_token: str | None = None,
     tracking_token: str | None = None,
     variant_seed: str = "",
+    display_name: str | None = None,
 ) -> NotificationMessage:
     source = format_mood_entry_source(
         channel=channel.value,
@@ -32,7 +34,7 @@ def daily_mood_reminder_message(
         _link_params(source=source, tracking_token=tracking_token)
     )
     subject = daily_reminder_subject(hour=hour, locale=locale)
-    intro = daily_reminder_intro(hour=hour, locale=locale, seed=variant_seed)
+    intro = daily_reminder_intro(hour=hour, locale=locale, seed=variant_seed, name=display_name)
 
     if channel is NotificationChannel.TELEGRAM:
         prompt = notification_text(T.DAILY_PROMPT, locale)
@@ -54,12 +56,13 @@ def daily_mood_reminder_message(
             },
         )
 
-    greeting = notification_text(T.GREETING, locale)
+    greeting = _greeting(locale, display_name)
     link_label = notification_text(T.DAILY_LINK, locale)
     footer = notification_text(T.DAILY_FOOTER, locale)
     body = f"{greeting}\n\n{intro}\n\n{link_label}: {log_url}\n\n{footer}\n"
     html_body = (
-        f'<p>{greeting}</p><p>{intro}</p><p><a href="{log_url}">{link_label}</a></p><p>{footer}</p>'
+        f"<p>{html.escape(greeting)}</p><p>{html.escape(intro)}</p>"
+        f'<p><a href="{log_url}">{link_label}</a></p><p>{footer}</p>'
     )
     body, html_body, metadata = _with_unsubscribe(
         body=body,
@@ -75,6 +78,14 @@ def daily_mood_reminder_message(
     return NotificationMessage(subject=subject, body=body, html_body=html_body, metadata=metadata)
 
 
+def _greeting(locale: str, display_name: str | None) -> str:
+    """'Hi,' on its own, or 'Hi, Anna,' when the user gave a name."""
+    greeting = notification_text(T.GREETING, locale)
+    if not display_name:
+        return greeting
+    return f"{greeting.rstrip(',')}, {display_name},"
+
+
 def goal_reminder_message(
     *,
     channel: NotificationChannel,
@@ -82,6 +93,7 @@ def goal_reminder_message(
     locale: str = DEFAULT_LOCALE,
     unsubscribe_token: str | None = None,
     tracking_token: str | None = None,
+    display_name: str | None = None,
 ) -> NotificationMessage:
     source = format_mood_entry_source(
         channel=channel.value,
@@ -115,14 +127,14 @@ def goal_reminder_message(
             },
         )
 
-    greeting = notification_text(T.GREETING, locale)
+    greeting = _greeting(locale, display_name)
     lead = notification_text(T.GOAL_EMAIL_LEAD, locale)
     link_label = notification_text(T.GOAL_LINK, locale)
     footer = notification_text(T.GOAL_FOOTER, locale)
     body = f"{greeting}\n\n{lead}\n\n{bullet_lines}\n\n{link_label}: {goals_url}\n\n{footer}\n"
     items = "".join(f"<li>{label}</li>" for label in goal_labels)
     html_body = (
-        f"<p>{greeting}</p>"
+        f"<p>{html.escape(greeting)}</p>"
         f"<p>{lead}</p>"
         f"<ul>{items}</ul>"
         f'<p><a href="{goals_url}">{link_label}</a></p>'

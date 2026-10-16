@@ -89,14 +89,24 @@ export function pickCompanionVariant(seed: string, count: number): number {
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
 
+/** Slots with one extra phrasing that addresses the user by name (GP-57). */
+const NAMED_SLOTS: ReadonlySet<CompanionSlot> = new Set(['greeting', 'howAreYou'])
+
 export function companionLine(
   t: Translate,
   slot: CompanionSlot,
   daypart: CompanionDaypart,
   seed: string,
+  name?: string | null,
 ): string {
-  const count = COMPANION_VARIANT_COUNTS[slot]
+  // With a name, the named phrasing joins the pool, so it shows up some days, not every day.
+  const withName = Boolean(name) && NAMED_SLOTS.has(slot)
+  const baseCount = COMPANION_VARIANT_COUNTS[slot]
+  const count = baseCount + (withName ? 1 : 0)
   const variant = pickCompanionVariant(`${seed}:${slot}:${daypart}`, count)
+  if (withName && variant === baseCount) {
+    return t(`companion.${slot}Named.${daypart}`, { name: name ?? '' })
+  }
   const key = `companion.${slot}.${daypart}.${variant}`
   const value = t(key)
   return value === key ? t(SLOT_FALLBACK[slot]) : value

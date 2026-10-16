@@ -352,6 +352,7 @@ def build_account_export_parts(
             created_at=user.created_at,
             theme_preference=user.theme_preference,
             time_format=user.time_format,
+            display_name=user.display_name,
             telegram_linked=user.telegram_linked,
         ),
         tag_groups=_tag_groups_payload(db, user.id),
