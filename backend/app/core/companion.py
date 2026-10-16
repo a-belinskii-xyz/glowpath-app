@@ -175,6 +175,36 @@ _DAILY_REMINDER_INTRO: dict[CompanionStyle, dict[CompanionDaypart, tuple[LocaleL
 }
 
 
+# One extra phrasing per daypart that addresses the user by name; used only when a name is set.
+# The name always stands after a comma or at the start, so Russian needs no case forms.
+_DAILY_REMINDER_INTRO_NAMED: dict[CompanionDaypart, LocaleLabels] = {
+    CompanionDaypart.LATE_NIGHT: {
+        "en": "Still up, {name}? A few words are enough.",
+        "ru": "Ещё не спишь, {name}? Можно оставить пару слов.",
+    },
+    CompanionDaypart.MORNING: {
+        "en": "Good morning, {name}. How are you today?",
+        "ru": "Доброе утро, {name}. Как ты?",
+    },
+    CompanionDaypart.MIDDAY: {
+        "en": "How’s the day going, {name}? A short note is plenty.",
+        "ru": "Как день идёт, {name}? Короткой записи хватит.",
+    },
+    CompanionDaypart.AFTERNOON: {
+        "en": "How are you, {name}? One line is enough.",
+        "ru": "Как ты, {name}? Хватит одной строчки.",
+    },
+    CompanionDaypart.EVENING: {
+        "en": "Evening, {name}. How did today go?",
+        "ru": "Вечер, {name}. Как прошёл день?",
+    },
+    CompanionDaypart.NIGHT: {
+        "en": "{name}, the day is almost done. A last note, if you want.",
+        "ru": "{name}, день почти закончился. Последняя заметка — если хочется.",
+    },
+}
+
+
 def daily_reminder_subject(
     *,
     hour: int,
@@ -192,13 +222,20 @@ def daily_reminder_intro(
     locale: str = DEFAULT_LOCALE,
     seed: str = "",
     style: CompanionStyle = CompanionStyle.DEFAULT,
+    name: str | None = None,
 ) -> str:
-    """Pick one phrasing for the daypart; the same *seed* always gives the same one."""
+    """Pick one phrasing for the daypart; the same *seed* always gives the same one.
+
+    With a *name*, one more phrasing that uses it joins the pool, so the name shows up
+    now and then rather than in every reminder.
+    """
     part = companion_daypart_for_hour(hour)
     phrases = _DAILY_REMINDER_INTRO.get(style) or _DAILY_REMINDER_INTRO[CompanionStyle.DEFAULT]
     variants = phrases[part]
+    if name:
+        variants = (*variants, _DAILY_REMINDER_INTRO_NAMED[part])
     index = pick_companion_variant(f"{seed}:intro:{part.value}", len(variants)) if seed else 0
-    return _label(variants[index], locale)
+    return _label(variants[index], locale).replace("{name}", name or "")
 
 
 def _label(labels: LocaleLabels, locale: str) -> str:

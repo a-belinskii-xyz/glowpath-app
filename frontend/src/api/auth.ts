@@ -64,6 +64,8 @@ export function updateMe(body: {
   timezone?: string
   theme_preference?: ThemePreference
   time_format?: TimeFormat
+  /** An empty string clears the name. */
+  display_name?: string
   locale?: ApiLocale
 }): Promise<UserPublic> {
   return apiRequest<UserPublic>('/v1/auth/me', {

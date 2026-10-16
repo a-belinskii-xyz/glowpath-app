@@ -1,5 +1,6 @@
 from app.core.companion import (
     _DAILY_REMINDER_INTRO,
+    _DAILY_REMINDER_INTRO_NAMED,
     CompanionDaypart,
     companion_daypart_for_hour,
     daily_reminder_intro,
@@ -75,3 +76,29 @@ def test_every_companion_and_notification_phrase_has_ru_and_en() -> None:
         en = notification_text(key, "en")
         ru = notification_text(key, "ru")
         assert en and ru and en != ru
+
+
+def test_named_reminder_intro_appears_only_with_a_name() -> None:
+    plain = {
+        daily_reminder_intro(hour=8, locale="ru", seed=f"user:2026-10-{day:02d}")
+        for day in range(1, 29)
+    }
+    named = {
+        daily_reminder_intro(hour=8, locale="ru", seed=f"user:2026-10-{day:02d}", name="Аня")
+        for day in range(1, 29)
+    }
+    assert not any("Аня" in phrase or "{name}" in phrase for phrase in plain)
+    assert "Доброе утро, Аня. Как ты?" in named
+    assert not any("{name}" in phrase for phrase in named)
+    for labels in _DAILY_REMINDER_INTRO_NAMED.values():
+        assert set(labels) == {"en", "ru"}
+        assert all("{name}" in text for text in labels.values())
+
+
+def test_email_greeting_uses_the_name() -> None:
+    message = daily_mood_reminder_message(
+        channel=NotificationChannel.EMAIL, hour=8, locale="ru", display_name="Аня <3"
+    )
+    assert message.body.startswith("Привет, Аня <3,")
+    assert message.html_body is not None
+    assert "<p>Привет, Аня &lt;3,</p>" in message.html_body

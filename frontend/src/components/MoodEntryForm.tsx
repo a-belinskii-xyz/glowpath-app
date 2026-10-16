@@ -396,7 +396,7 @@ export function MoodEntryForm({
   const liveDaypart = companionDaypartForHour(hourFromDatetimeLocal(recordedAtLocal))
   const companionSeed = entryDate || todayKey(timeZone)
   const liveLine = (slot: CompanionSlot) =>
-    companionLine(t, slot, liveDaypart, companionSeed)
+    companionLine(t, slot, liveDaypart, companionSeed, user?.display_name)
   const entryDateLabel = useMemo(
     () => (entryDate ? formatCalendarDate(entryDate, intlLocale(locale)) : ''),
     [entryDate, locale],

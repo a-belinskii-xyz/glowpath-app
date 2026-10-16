@@ -7,8 +7,11 @@ type MoodPhrases = { '1': string; '2': string; '3': string; '4': string; '5': st
 
 export type CompanionMessages = {
   greeting: DaypartMap<Variant3>
+  /** Used now and then instead of a greeting when the user gave a name; keep {name} after a comma or first. */
+  greetingNamed: DaypartMap<string>
   kicker: DaypartMap<Variant2>
   howAreYou: DaypartMap<Variant3>
+  howAreYouNamed: DaypartMap<string>
   pickMoodHint: DaypartMap<Variant2>
   whatsOnYourMind: DaypartMap<Variant2>
   notePlaceholder: DaypartMap<Variant2>
@@ -52,6 +55,14 @@ export const companionEn: CompanionMessages = {
       '1': 'A last note, if you want one.',
       '2': 'How are you tonight?',
     },
+  },
+  greetingNamed: {
+    lateNight: 'Still awake, {name}? You can leave a note if you like.',
+    morning: 'Good morning, {name}.',
+    midday: 'How’s the day going, {name}?',
+    afternoon: 'How’s the afternoon, {name}?',
+    evening: 'Evening, {name}. How did today go?',
+    night: '{name}, the day is almost done.',
   },
   kicker: {
     lateNight: {
@@ -110,6 +121,14 @@ export const companionEn: CompanionMessages = {
       '1': 'How did today go?',
       '2': 'How are you this late?',
     },
+  },
+  howAreYouNamed: {
+    lateNight: 'How are you this late, {name}?',
+    morning: 'How’s your morning, {name}?',
+    midday: 'How are you right now, {name}?',
+    afternoon: 'How’s the day going, {name}?',
+    evening: 'How did today go, {name}?',
+    night: 'How are you tonight, {name}?',
   },
   pickMoodHint: {
     lateNight: {
@@ -398,6 +417,14 @@ export const companionRu: CompanionMessages = {
       '2': 'Как ты сегодня вечером?',
     },
   },
+  greetingNamed: {
+    lateNight: 'Ещё не спишь, {name}? Можно оставить пару слов.',
+    morning: 'Доброе утро, {name}.',
+    midday: 'Как день идёт, {name}?',
+    afternoon: 'Как там день, {name}?',
+    evening: 'Вечер, {name}. Как прошёл день?',
+    night: '{name}, день почти кончился.',
+  },
   kicker: {
     lateNight: {
       '0': 'Пары слов хватит.',
@@ -455,6 +482,14 @@ export const companionRu: CompanionMessages = {
       '1': 'Как прошёл день?',
       '2': 'Уже поздно. Как ты?',
     },
+  },
+  howAreYouNamed: {
+    lateNight: 'Как ты в этот час, {name}?',
+    morning: 'Как утро, {name}?',
+    midday: 'Как ты сейчас, {name}?',
+    afternoon: 'Как день идёт, {name}?',
+    evening: 'Как прошёл день, {name}?',
+    night: 'Как ты, {name}?',
   },
   pickMoodHint: {
     lateNight: {

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.auth_token_purpose import AuthTokenPurpose
+from app.core.display_name import normalize_display_name
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
 from app.core.identity import user_has_verified_identity
@@ -445,6 +446,7 @@ def update_user_settings(
     timezone: str | None = None,
     theme_preference: str | None = None,
     time_format: str | None = None,
+    display_name: str | None = None,
     locale: str | None = None,
 ) -> User:
     timezone_name: str | None = None
@@ -464,6 +466,8 @@ def update_user_settings(
         user.theme_preference = theme_preference
     if time_format is not None:
         user.time_format = time_format
+    if display_name is not None:
+        user.display_name = normalize_display_name(display_name)
     if locale is not None:
         user.locale = locale
     db.commit()

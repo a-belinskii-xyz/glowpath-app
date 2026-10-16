@@ -15,6 +15,8 @@ export type UserPublic = {
   theme_preference: ThemePreference
   /** Clock shown and typed everywhere: device default, 24-hour or AM/PM. */
   time_format: TimeFormat
+  /** How the app addresses the user; null means neutral phrases only (GP-57). */
+  display_name: string | null
   /** Interface language saved on the account; null until the app has sent it. */
   locale: ApiLocale | null
   telegram_linked: boolean

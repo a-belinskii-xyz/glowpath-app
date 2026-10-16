@@ -6,6 +6,7 @@ import { forgotPassword } from '../api/auth'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { DiaryRestoreCard } from '../components/DiaryRestoreCard'
+import { DisplayNameSetting } from '../components/DisplayNameSetting'
 import { PageErrorAlert } from '../components/PageErrorAlert'
 import { SettingsSection } from '../components/SettingsSection'
 import { StableButtonLabel } from '../components/StableButtonLabel'
@@ -131,6 +132,8 @@ export function AccountSettingsPage() {
       {resetMessage ? <Alert variant="success">{resetMessage}</Alert> : null}
 
       <div className="settings-stack">
+        <DisplayNameSetting />
+
         <section className="card profile-account" aria-labelledby="settings-signin-heading">
           <h2 id="settings-signin-heading" className="profile-settings-subheading">
             {t('settings.signInTitle')}

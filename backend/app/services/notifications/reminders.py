@@ -277,6 +277,7 @@ def _deliver_schedule(
                     unsubscribe_token=_unsubscribe_token(user, channel),
                     tracking_token=tracking_token,
                     variant_seed=f"{user.id}:{local_day.isoformat()}",
+                    display_name=user.display_name,
                 ),
             )
         return True
@@ -296,6 +297,7 @@ def _deliver_schedule(
                     locale=locale,
                     unsubscribe_token=_unsubscribe_token(user, channel),
                     tracking_token=tracking_token,
+                    display_name=user.display_name,
                 ),
             )
         return True

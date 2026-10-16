@@ -42,6 +42,7 @@ export async function completeOnboarding(body: OnboardingCompleteRequest): Promi
       has_password: false,
       theme_preference: getThemePreference(),
       time_format: 'auto',
+      display_name: null,
       locale: getApiLocale(),
       telegram_linked: false,
       can_unlink_telegram: false,

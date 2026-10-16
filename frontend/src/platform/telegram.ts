@@ -285,6 +285,11 @@ export function isTelegramMiniApp(): boolean {
   return getTelegramWebApp() !== null
 }
 
+/** First name from the Telegram profile, only inside the Mini App. */
+export function getTelegramFirstName(): string | null {
+  return getTelegramWebApp()?.initDataUnsafe.user?.first_name?.trim() || null
+}
+
 export function getTelegramStartParam(): string | null {
   const webApp = getTelegramWebApp()
   if (!webApp) {

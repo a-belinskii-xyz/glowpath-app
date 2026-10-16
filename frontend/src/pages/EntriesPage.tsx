@@ -198,8 +198,14 @@ export function EntriesPage() {
       return null
     }
     const dateKey = todayKey(timeZone)
-    return companionLine(t, 'greeting', companionDaypartForHour(localHour(timeZone)), dateKey)
-  }, [isCurrentMonthView, isSearchMode, t, timeZone])
+    return companionLine(
+      t,
+      'greeting',
+      companionDaypartForHour(localHour(timeZone)),
+      dateKey,
+      user?.display_name,
+    )
+  }, [isCurrentMonthView, isSearchMode, t, timeZone, user?.display_name])
   const emptyMonthCopy = useMemo(() => {
     if (!isCurrentMonthView) {
       return t('entries.noEntriesThisMonth')

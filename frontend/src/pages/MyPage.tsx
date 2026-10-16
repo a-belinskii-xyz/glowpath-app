@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMoodPreferences } from '../context/MoodPreferencesContext'
 import { intlLocale, tp } from '../i18n/t'
+import { pickCompanionVariant } from '../lib/companion'
 import {
   dayKey,
   formatCalendarDate,
@@ -90,6 +91,7 @@ export function MyPage() {
   const timeZone = user?.timezone ?? 'UTC'
   const dateLocale = intlLocale(locale)
   const today = todayKey(timeZone)
+  const displayName = user?.display_name ?? null
   const [weekRef, setWeekRef] = useState(today)
   const week = getIsoWeekBounds(weekRef, timeZone)
   const isCurrentWeek = week.period_start <= today && today < week.period_end
@@ -307,7 +309,13 @@ export function MyPage() {
         </div>
       </header>
 
-      {isCurrentWeek ? <p className="my-hello">{t('myPage.hello')}</p> : null}
+      {isCurrentWeek ? (
+        <p className="my-hello">
+          {displayName && pickCompanionVariant(`${today}:myHello`, 2) === 1
+            ? t('myPage.helloNamed', { name: displayName })
+            : t('myPage.hello')}
+        </p>
+      ) : null}
       <PageErrorAlert error={error} />
 
       <section className="card my-card" aria-labelledby="my-goals-title">
