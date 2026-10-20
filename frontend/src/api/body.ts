@@ -10,6 +10,8 @@ const DEFAULT_SETTINGS: BodySettings = {
   show_sleep: false,
   height_cm: null,
   show_workouts: false,
+  sleep_norm_min: 420,
+  sleep_norm_max: 540,
 }
 
 /** Body notes live on the server only; the guest diary never shows them. */

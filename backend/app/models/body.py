@@ -90,6 +90,9 @@ class BodySettings(TimestampMixin, Base):
     # Only for BMI next to the weight; nothing is shown without it (GP-48).
     height_cm: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
     show_workouts: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    # The person's own sleep range in minutes for colouring nights (GP-61); null turns it off.
+    sleep_norm_min: Mapped[int | None] = mapped_column(Integer, server_default="420", nullable=True)
+    sleep_norm_max: Mapped[int | None] = mapped_column(Integer, server_default="540", nullable=True)
 
 
 class BodyFoodGoal(Base):

@@ -11,6 +11,9 @@ export type BodySettings = {
   /** Centimetres; only used to show BMI next to the weight. */
   height_cm: number | null
   show_workouts: boolean
+  /** Minutes; both null when the sleep norm is off (GP-61). */
+  sleep_norm_min: number | null
+  sleep_norm_max: number | null
 }
 
 export type WeightPoint = {

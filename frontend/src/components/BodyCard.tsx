@@ -25,6 +25,7 @@ import { useLocale } from '../context/LocaleContext'
 import { intlLocale } from '../i18n/t'
 import { dayNumber, formatDay, weekAverage } from '../lib/bodyFormat'
 import { shiftDateKey } from '../lib/datetime'
+import { sleepNormOf } from '../lib/sleep'
 import { formatApiError } from '../lib/errors'
 import {
   type FoodInputMode,
@@ -49,6 +50,24 @@ const HISTORY_DAYS = 365
 const SPARK_DAYS = 60
 const MIN_HEIGHT = 100
 const MAX_HEIGHT = 250
+// The usual adult range, a starting point the person can change (GP-61).
+const DEFAULT_SLEEP_NORM = { min: 7 * 60, max: 9 * 60 }
+const MIN_SLEEP_NORM_HOURS = 3
+const MAX_SLEEP_NORM_HOURS = 15
+
+/** Minutes as "7" or "7,5" hours for the norm inputs, with the locale's decimal mark. */
+function hoursText(minutes: number, locale: string): string {
+  const value = String(Math.round((minutes / 60) * 10) / 10)
+  return locale === 'ru' ? value.replace('.', ',') : value
+}
+
+/** "7,5" hours to minutes, rounded to 5 minutes; null if empty or out of range. */
+function parseNormHours(raw: string): number | null {
+  const value = Number.parseFloat(raw.replace(',', '.'))
+  if (!Number.isFinite(value) || value < MIN_SLEEP_NORM_HOURS || value > MAX_SLEEP_NORM_HOURS) return null
+  return Math.round((value * 60) / 5) * 5
+}
+
 // Food items from this many days back are offered again while writing (GP-59).
 const SUGGESTION_DAYS = 90
 const FREQUENT_FOODS = 8
@@ -163,6 +182,7 @@ export function BodyCard({
   }, [foodTarget, foodHistory, today])
 
   const foodSuggestions = useMemo(() => buildFoodSuggestions(foodHistory ?? []), [foodHistory])
+  const sleepNorm = sleepNormOf(settings)
 
   useEffect(() => {
     if (!settings.show_food) return
@@ -254,6 +274,7 @@ export function BodyCard({
           asOf={asOf}
           today={today}
           weekDays={weekDays}
+          norm={sleepNorm}
           onRecord={() => setSleepTarget({ day: today, fromStats: false })}
           onOpenStats={() => setSleepStatsOpen(true)}
         />
@@ -363,6 +384,7 @@ export function BodyCard({
         open={sleepStatsOpen}
         today={today}
         logs={sleep}
+        norm={sleepNorm}
         onClose={() => setSleepStatsOpen(false)}
         onRecord={(day) => {
           setSleepStatsOpen(false)
@@ -844,15 +866,33 @@ type BodySettingsDrawerProps = {
 
 /** Turn weight, sleep, workouts and food on or off for «Моё»; all start off. */
 export function BodySettingsDrawer({ open, settings, goals, onClose, onSettingsChange }: BodySettingsDrawerProps) {
-  const { t } = useLocale()
+  const { locale, t } = useLocale()
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const binaryGoals = goals.filter((goal) => goal.tracking_kind === 'binary')
   const [height, setHeight] = useState('')
+  const [normFrom, setNormFrom] = useState('')
+  const [normTo, setNormTo] = useState('')
 
   useEffect(() => {
     if (open) setHeight(settings.height_cm === null ? '' : String(settings.height_cm))
   }, [open, settings.height_cm])
+
+  useEffect(() => {
+    if (!open) return
+    setNormFrom(settings.sleep_norm_min === null ? '' : hoursText(settings.sleep_norm_min, locale))
+    setNormTo(settings.sleep_norm_max === null ? '' : hoursText(settings.sleep_norm_max, locale))
+  }, [open, settings.sleep_norm_min, settings.sleep_norm_max, locale])
+
+  const normMin = parseNormHours(normFrom)
+  const normMax = parseNormHours(normTo)
+  const normValid = normMin !== null && normMax !== null && normMin < normMax
+  const saveNorm = () => {
+    if (!normValid) return
+    if (normMin !== settings.sleep_norm_min || normMax !== settings.sleep_norm_max) {
+      void save({ sleep_norm_min: normMin, sleep_norm_max: normMax })
+    }
+  }
 
   const parsedHeight = Number.parseFloat(height.replace(',', '.'))
   const heightValid = height === '' || (Number.isFinite(parsedHeight) && parsedHeight >= MIN_HEIGHT && parsedHeight <= MAX_HEIGHT)
@@ -924,6 +964,59 @@ export function BodySettingsDrawer({ open, settings, goals, onClose, onSettingsC
             <span className="my-level-hint">{t('body.showSleepHint')}</span>
           </span>
         </label>
+        {settings.show_sleep ? (
+          <div className="body-sleep-norm">
+            <label className="body-check">
+              <input
+                type="checkbox"
+                checked={settings.sleep_norm_min !== null}
+                disabled={isSaving}
+                onChange={(event) =>
+                  void save(
+                    event.target.checked
+                      ? { sleep_norm_min: DEFAULT_SLEEP_NORM.min, sleep_norm_max: DEFAULT_SLEEP_NORM.max }
+                      : { sleep_norm_min: null, sleep_norm_max: null },
+                  )
+                }
+              />
+              <span>
+                <strong>{t('body.sleepNormTitle')}</strong>
+                <span className="my-level-hint">{t('body.sleepNormHint')}</span>
+              </span>
+            </label>
+            {settings.sleep_norm_min !== null ? (
+              <span className="my-amount-row body-sleep-norm-range">
+                <input
+                  className="form-input"
+                  inputMode="decimal"
+                  value={normFrom}
+                  aria-label={t('body.sleepNormFrom')}
+                  onChange={(event) => setNormFrom(event.target.value.replace(/[^0-9.,]/g, ''))}
+                  onBlur={saveNorm}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') saveNorm()
+                  }}
+                />
+                <span className="muted">—</span>
+                <input
+                  className="form-input"
+                  inputMode="decimal"
+                  value={normTo}
+                  aria-label={t('body.sleepNormTo')}
+                  onChange={(event) => setNormTo(event.target.value.replace(/[^0-9.,]/g, ''))}
+                  onBlur={saveNorm}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') saveNorm()
+                  }}
+                />
+                <span className="muted">{t('body.hoursShort')}</span>
+              </span>
+            ) : null}
+            {settings.sleep_norm_min !== null && !normValid ? (
+              <span className="my-level-hint">{t('body.sleepNormRange')}</span>
+            ) : null}
+          </div>
+        ) : null}
         <label className="body-check">
           <input
             type="checkbox"
