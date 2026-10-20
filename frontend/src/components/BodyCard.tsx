@@ -20,7 +20,7 @@ import { PageErrorAlert } from './PageErrorAlert'
 import { SleepDrawer, SleepSection, SleepStatsDrawer } from './SleepSection'
 import { StableButtonLabel } from './StableButtonLabel'
 import { WeightChart, WeightStatsDrawer } from './WeightStats'
-import { ExerciseDrawer, WorkoutDrawer, WorkoutSection, type WorkoutTarget } from './WorkoutSection'
+import { WorkoutDrawer, WorkoutSection, type WorkoutTarget } from './WorkoutSection'
 import { useLocale } from '../context/LocaleContext'
 import { intlLocale } from '../i18n/t'
 import { dayNumber, formatDay, weekAverage } from '../lib/bodyFormat'
@@ -131,8 +131,7 @@ export function BodyCard({
   const [sleepTarget, setSleepTarget] = useState<{ day: string; fromStats: boolean } | null>(null)
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [workoutSets, setWorkoutSets] = useState<WorkoutSet[]>([])
-  const [workoutTarget, setWorkoutTarget] = useState<(WorkoutTarget & { fromExercise: boolean }) | null>(null)
-  const [exerciseId, setExerciseId] = useState<string | null>(null)
+  const [workoutTarget, setWorkoutTarget] = useState<WorkoutTarget | null>(null)
   // Past food notes for suggestions; loaded the first time the food drawer opens.
   const [foodHistory, setFoodHistory] = useState<FoodLog[] | null>(null)
 
@@ -183,7 +182,6 @@ export function BodyCard({
   }, [foodTarget, foodHistory, today])
 
   const foodSuggestions = useMemo(() => buildFoodSuggestions(foodHistory ?? []), [foodHistory])
-  const openExercise = exercises.find((exercise) => exercise.id === exerciseId) ?? null
   const sleepNorm = sleepNormOf(settings)
 
   useEffect(() => {
@@ -288,8 +286,7 @@ export function BodyCard({
           sets={workoutSets}
           today={today}
           weekDays={weekDays}
-          onRecord={() => setWorkoutTarget({ day: today, exerciseId: null, fromExercise: false })}
-          onOpenExercise={(exercise) => setExerciseId(exercise.id)}
+          onRecord={() => setWorkoutTarget({ day: today, exerciseId: null })}
         />
       ) : null}
 
@@ -404,24 +401,12 @@ export function BodyCard({
         }}
         onChanged={loadSleep}
       />
-      <ExerciseDrawer
-        exercise={workoutTarget ? null : openExercise}
-        sets={workoutSets}
-        today={today}
-        onClose={() => setExerciseId(null)}
-        onRecord={(id, day) => setWorkoutTarget({ day, exerciseId: id, fromExercise: true })}
-        onChanged={loadWorkouts}
-      />
       <WorkoutDrawer
         target={workoutTarget}
         today={today}
         exercises={exercises}
         sets={workoutSets}
-        onClose={() => {
-          // Back to the exercise it was opened from, if any.
-          if (!workoutTarget?.fromExercise) setExerciseId(null)
-          setWorkoutTarget(null)
-        }}
+        onClose={() => setWorkoutTarget(null)}
         onChanged={loadWorkouts}
       />
       <BodyCopyDrawer
