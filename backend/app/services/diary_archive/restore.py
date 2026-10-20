@@ -13,18 +13,18 @@ import contextlib
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import IO, Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.attachment_kind import AttachmentKind
 from app.core.default_tag_groups import DEFAULT_TAG_COLOR, DEFAULT_TAG_ICON
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
-from app.models.body import FoodLog, Measurement, SleepLog
+from app.models.body import Exercise, FoodLog, Measurement, SleepLog, WorkoutSet
 from app.models.diary_restore import DiaryRestore, DiaryRestoreStatus
 from app.models.goal import DEFAULT_GOAL_COLOR, DEFAULT_GOAL_ICON, Goal
 from app.models.goal_checkin import GoalCheckin
@@ -544,6 +544,43 @@ def _restore_body(db: Session, archive: DiaryArchive, *, user_id: uuid.UUID) -> 
                 note=night.note,
             )
         )
+    _restore_workouts(db, archive, user_id=user_id)
+
+
+def _restore_workouts(db: Session, archive: DiaryArchive, *, user_id: uuid.UUID) -> None:
+    """Match exercises by name; add an exercise's sets only for days it has none on."""
+    for data in archive.exercises:
+        name = " ".join(data.name.split())
+        exercise = db.scalar(
+            select(Exercise).where(
+                Exercise.user_id == user_id, func.lower(Exercise.name) == name.lower()
+            )
+        )
+        if exercise is None:
+            exercise = Exercise(user_id=user_id, name=name, with_weight=data.with_weight)
+            db.add(exercise)
+            db.flush()
+        done = set(db.scalars(select(WorkoutSet.day).where(WorkoutSet.exercise_id == exercise.id)))
+        positions: dict[date, int] = {}
+        for item in data.sets:
+            if item.day in done:
+                continue
+            position = positions.get(item.day, 0)
+            positions[item.day] = position + 1
+            db.add(
+                WorkoutSet(
+                    user_id=user_id,
+                    exercise_id=exercise.id,
+                    day=item.day,
+                    position=position,
+                    weight_kg=(
+                        Decimal(str(round(item.weight_kg, 2)))
+                        if item.weight_kg is not None and exercise.with_weight
+                        else None
+                    ),
+                    reps=item.reps,
+                )
+            )
 
 
 def _restore_setup(

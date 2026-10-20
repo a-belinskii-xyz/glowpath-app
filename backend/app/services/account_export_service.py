@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.i18n import resolve_label
-from app.models.body import FoodLog, Measurement, SleepLog
+from app.models.body import Exercise, FoodLog, Measurement, SleepLog, WorkoutSet
 from app.models.goal import Goal
 from app.models.mood_entry import MoodEntry
 from app.models.mood_entry_attachment import MoodEntryAttachment
@@ -36,6 +36,7 @@ from app.services.diary_archive.schema import (
     ArchiveEntry,
     ArchiveEntryGoal,
     ArchiveEntryTag,
+    ArchiveExercise,
     ArchiveFoodLog,
     ArchiveGoal,
     ArchiveGoalCheckin,
@@ -45,6 +46,7 @@ from app.services.diary_archive.schema import (
     ArchiveTag,
     ArchiveTagGroup,
     ArchiveWeight,
+    ArchiveWorkoutSet,
     DiaryArchive,
 )
 from app.services.storage import ObjectStorage, StorageError
@@ -233,6 +235,32 @@ def _sleep_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveSleep]:
     ]
 
 
+def _exercises_payload(db: Session, user_id: uuid.UUID) -> list[ArchiveExercise]:
+    exercises = list(
+        db.scalars(select(Exercise).where(Exercise.user_id == user_id).order_by(Exercise.name))
+    )
+    sets: dict[uuid.UUID, list[ArchiveWorkoutSet]] = {exercise.id: [] for exercise in exercises}
+    rows = db.scalars(
+        select(WorkoutSet)
+        .where(WorkoutSet.user_id == user_id)
+        .order_by(WorkoutSet.day, WorkoutSet.position)
+    )
+    for row in rows:
+        sets[row.exercise_id].append(
+            ArchiveWorkoutSet(
+                day=row.day,
+                weight_kg=float(row.weight_kg) if row.weight_kg is not None else None,
+                reps=row.reps,
+            )
+        )
+    return [
+        ArchiveExercise(
+            name=exercise.name, with_weight=exercise.with_weight, sets=sets[exercise.id]
+        )
+        for exercise in exercises
+    ]
+
+
 def _entry_payload(
     entry: MoodEntry,
     files: dict[uuid.UUID, str | None],
@@ -362,6 +390,7 @@ def build_account_export_parts(
         weights=_weights_payload(db, user.id),
         food=_food_payload(db, user.id),
         sleep=_sleep_payload(db, user.id),
+        exercises=_exercises_payload(db, user.id),
     )
     entries_csv = _entries_csv(
         entries, zone=_user_zone(user), locale=locale, time_format=user.time_format

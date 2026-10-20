@@ -1,5 +1,7 @@
 /** Day helpers shared by the body card, the sleep section and the copy drawer. */
 
+import type { WeightPoint } from '../types/body'
+
 export function dayNumber(day: string): number {
   const [year, month, date] = day.split('-').map(Number)
   return Date.UTC(year, month - 1, date) / 86_400_000
@@ -33,4 +35,15 @@ export async function copyToClipboard(text: string): Promise<void> {
     document.execCommand('copy')
     area.remove()
   }
+}
+
+/** The average of the measurements in the 7 days ending on ``day``, or null if there are none. */
+export function weekAverage(points: WeightPoint[], day: string): number | null {
+  const end = dayNumber(day)
+  const window = points.filter((point) => {
+    const n = dayNumber(point.day)
+    return n <= end && n > end - 7
+  })
+  if (window.length === 0) return null
+  return window.reduce((sum, point) => sum + point.value, 0) / window.length
 }

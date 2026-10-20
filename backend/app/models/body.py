@@ -89,6 +89,7 @@ class BodySettings(TimestampMixin, Base):
     show_sleep: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     # Only for BMI next to the weight; nothing is shown without it (GP-48).
     height_cm: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
+    show_workouts: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
 
 class BodyFoodGoal(Base):
@@ -139,3 +140,57 @@ class SleepLog(TimestampMixin, Base):
     up_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     quality: Mapped[str | None] = mapped_column(String(8), nullable=True)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class Exercise(TimestampMixin, Base):
+    """An exercise the person tracks, such as "Жим лёжа" (GP-58). Names are unique per person."""
+
+    __tablename__ = table_name("exercises")
+    __table_args__ = (UniqueConstraint("user_id", "name"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("users"), ondelete="CASCADE"),
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(80))
+    # Bodyweight exercises (pull-ups) keep only reps.
+    with_weight: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+
+
+class WorkoutSet(TimestampMixin, Base):
+    """One set of an exercise on a local day: an optional weight and the reps (GP-58)."""
+
+    __tablename__ = table_name("workout_sets")
+    __table_args__ = (
+        CheckConstraint("reps > 0", name="workout_set_reps_positive"),
+        CheckConstraint(
+            "weight_kg IS NULL OR weight_kg >= 0", name="workout_set_weight_non_negative"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("users"), ondelete="CASCADE"),
+        index=True,
+    )
+    exercise_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(fk_column("exercises"), ondelete="CASCADE"),
+        index=True,
+    )
+    day: Mapped[date] = mapped_column(Date)
+    # Order of the set within the exercise on that day, from 0.
+    position: Mapped[int] = mapped_column(Integer)
+    weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    reps: Mapped[int] = mapped_column(Integer)

@@ -2,7 +2,15 @@ from app.db.base import Base
 from app.models.achievement import Achievement
 from app.models.achievement_reward import AchievementReward
 from app.models.auth_token import AuthToken
-from app.models.body import BodyFoodGoal, BodySettings, FoodLog, Measurement, SleepLog
+from app.models.body import (
+    BodyFoodGoal,
+    BodySettings,
+    Exercise,
+    FoodLog,
+    Measurement,
+    SleepLog,
+    WorkoutSet,
+)
 from app.models.catalog_icon import CatalogIcon
 from app.models.catalog_icon_search_tag import CatalogIconSearchTag
 from app.models.diary_restore import DiaryRestore
@@ -49,6 +57,7 @@ __all__ = [
     "CatalogIcon",
     "CatalogIconSearchTag",
     "DiaryRestore",
+    "Exercise",
     "Goal",
     "FoodLog",
     "GoalCheckin",
@@ -84,4 +93,5 @@ __all__ = [
     "UserWallet",
     "Visitor",
     "WalletLedger",
+    "WorkoutSet",
 ]

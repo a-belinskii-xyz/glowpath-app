@@ -1,25 +1,26 @@
 import { useEffect, useState } from 'react'
 
-import { listFood, listSleep, listWeights } from '../api/body'
+import { listExercises, listFood, listSleep, listWeights, listWorkoutSets } from '../api/body'
 import { listMoodEntries } from '../api/moodEntries'
 import { EditorDrawer } from './EditorDrawer'
 import { PageErrorAlert } from './PageErrorAlert'
 import { StableButtonLabel } from './StableButtonLabel'
 import { useLocale } from '../context/LocaleContext'
 import { intlLocale } from '../i18n/t'
-import { bodyMassIndex, copyToClipboard, dayNumber, formatDay } from '../lib/bodyFormat'
+import { bodyMassIndex, copyToClipboard, dayNumber, formatDay, weekAverage } from '../lib/bodyFormat'
 import { dayKey, getDayBounds, shiftDateKey } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
 import { formatDuration, toNight } from '../lib/sleep'
 import { formatClockString } from '../lib/timeFormat'
-import type { BodySettings, Meal, WeightPoint } from '../types/body'
+import { formatSets, sessionsOf } from '../lib/workouts'
+import type { BodySettings, Meal } from '../types/body'
 
 const MEALS: Meal[] = ['morning', 'day', 'evening', 'snack']
 const MAX_DAYS = 365
 type CopyPeriod = 'today' | 'week' | 'month' | 'custom'
 const COPY_PERIODS: CopyPeriod[] = ['today', 'week', 'month', 'custom']
-type Part = 'food' | 'sleep' | 'weight' | 'bmi' | 'mood'
-const PARTS: Part[] = ['food', 'sleep', 'weight', 'bmi', 'mood']
+type Part = 'food' | 'sleep' | 'workouts' | 'weight' | 'bmi' | 'mood'
+const PARTS: Part[] = ['food', 'sleep', 'workouts', 'weight', 'bmi', 'mood']
 const MOOD_PAGE = 100
 const MOOD_PAGES_MAX = 20
 
@@ -38,14 +39,6 @@ async function loadMoodLabels(from: string, to: string, timeZone: string): Promi
   // The list is newest first; read each day from morning to evening.
   for (const labels of byDay.values()) labels.reverse()
   return byDay
-}
-
-/** The average of the weights in the 7 days ending on ``day``. */
-function weekAverage(points: WeightPoint[], day: string): number | null {
-  const end = dayNumber(day)
-  const window = points.filter((point) => dayNumber(point.day) <= end && dayNumber(point.day) > end - 7)
-  if (window.length === 0) return null
-  return window.reduce((sum, point) => sum + point.value, 0) / window.length
 }
 
 type BodyCopyDrawerProps = {
@@ -72,6 +65,7 @@ export function BodyCopyDrawer({ open, today, timeZone, settings, onClose }: Bod
   const offered = PARTS.filter((part) => {
     if (part === 'food') return settings.show_food
     if (part === 'sleep') return settings.show_sleep
+    if (part === 'workouts') return settings.show_workouts
     if (part === 'weight') return settings.show_weight
     if (part === 'bmi') return settings.show_weight && settings.height_cm !== null
     return true
@@ -103,14 +97,18 @@ export function BodyCopyDrawer({ open, today, timeZone, settings, onClose }: Bod
       setError(null)
       try {
         // BMI uses the week before the period too, so its first days have an average.
-        const [food, sleep, weights, moods] = await Promise.all([
+        const [food, sleep, workoutSets, exercises, weights, moods] = await Promise.all([
           has('food') ? listFood(from, to) : Promise.resolve([]),
           has('sleep') ? listSleep(from, to) : Promise.resolve([]),
+          has('workouts') ? listWorkoutSets(from, to) : Promise.resolve([]),
+          has('workouts') ? listExercises() : Promise.resolve([]),
           has('weight') || has('bmi') ? listWeights(shiftDateKey(from, -6), to) : Promise.resolve([]),
           has('mood') ? loadMoodLabels(from, to, timeZone) : Promise.resolve(new Map<string, string[]>()),
         ])
         if (cancelled) return
         const numberFormat = new Intl.NumberFormat(dateLocale, { maximumFractionDigits: 1 })
+        const setNumbers = new Intl.NumberFormat(dateLocale, { maximumFractionDigits: 2 })
+        const setWords = { kg: t('body.kg'), reps: (list: string) => t('body.repsList', { list }) }
         const rangeFormat = new Intl.DateTimeFormat(dateLocale, {
           day: 'numeric',
           month: 'long',
@@ -144,6 +142,7 @@ export function BodyCopyDrawer({ open, today, timeZone, settings, onClose }: Bod
           ...new Set([
             ...food.map((log) => log.day),
             ...sleep.map((log) => log.day),
+            ...workoutSets.map((set) => set.day),
             ...(has('weight') ? inPeriod.map((point) => point.day) : []),
             ...[...moods.keys()].filter((day) => day >= from && day <= to),
           ]),
@@ -164,6 +163,13 @@ export function BodyCopyDrawer({ open, today, timeZone, settings, onClose }: Bod
             if (night.note) line += `. ${night.note}`
             lines.push(line)
           }
+          const workout = exercises
+            .map((exercise) => {
+              const session = sessionsOf(workoutSets, exercise.id).find((item) => item.day === day)
+              return session ? `${exercise.name} ${formatSets(session.sets, exercise.with_weight, setNumbers, setWords)}` : null
+            })
+            .filter((item): item is string => item !== null)
+          if (workout.length > 0) lines.push(t('body.copyWorkout', { items: workout.join('; ') }))
           const meals = food
             .filter((log) => log.day === day)
             .sort((a, b) => (a.meal ? MEALS.indexOf(a.meal) : MEALS.length) - (b.meal ? MEALS.indexOf(b.meal) : MEALS.length))

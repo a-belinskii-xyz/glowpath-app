@@ -12412,7 +12412,8 @@ html[data-color-scheme='dark'] .my-primary {
 }
 
 .body-food,
-.body-sleep {
+.body-sleep,
+.body-workouts {
   display: grid;
   gap: 0.5rem;
   margin-top: 0.9rem;
@@ -12768,7 +12769,8 @@ html[data-color-scheme='dark'] .my-primary {
   cursor: pointer;
 }
 
-.body-sleep > p.body-label {
+.body-sleep > p.body-label,
+.body-sleep-summary > p.body-label {
   margin: 0;
 }
 
@@ -12961,4 +12963,280 @@ html[data-color-scheme='dark'] .my-primary {
 
 .onboarding-name-field {
   margin-top: 1rem;
+}
+
+/* GP-60: the weight and sleep summaries open their stats. */
+.body-stats-open {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.body-stats-open:focus-visible {
+  outline: 2px solid var(--chrome-focus-ring);
+  outline-offset: 4px;
+  border-radius: 0.5rem;
+}
+
+.body-weight-text {
+  display: grid;
+  flex: 1;
+  gap: 0.1rem;
+}
+
+.body-chevron {
+  flex: none;
+  color: var(--chrome-text-secondary);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.body-sleep-summary {
+  position: relative;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.body-sleep-summary.body-stats-open {
+  padding-right: 1.2rem;
+}
+
+.body-sleep-chevron {
+  position: absolute;
+  top: 0.6rem;
+  right: 0;
+}
+
+.body-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.body-stats {
+  cursor: pointer;
+}
+
+.body-stats > span,
+.body-stats > div {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.75rem;
+  background: var(--chrome-surface-inset);
+}
+
+.body-stats strong {
+  font-size: 1.05rem;
+}
+
+.body-stats.is-hidden strong,
+.body-history .is-hidden,
+.body-chart-svg.is-hidden {
+  filter: blur(7px);
+}
+
+.body-history ul {
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.body-history button {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.55rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--chrome-border-subtle);
+  background: none;
+  color: var(--chrome-text-secondary);
+  font: inherit;
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.body-history button span:last-child {
+  color: var(--chrome-text-primary);
+  text-align: right;
+}
+
+/* GP-58: workouts. */
+.body-workout-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.body-workout-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--chrome-border-subtle);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.body-workout-list li:last-child .body-workout-row {
+  border-bottom: 0;
+}
+
+.body-workout-text {
+  display: grid;
+  flex: 1;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.body-workout-spark {
+  flex: none;
+  width: 4.5rem;
+}
+
+.body-progress-dot {
+  fill: var(--body-line, #7c86b8);
+}
+
+.body-workouts .body-food-add {
+  justify-self: start;
+}
+
+.body-sets {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.body-set {
+  display: grid;
+  grid-template-columns: 1.2rem minmax(0, 1fr) auto minmax(0, 1fr) 2rem;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.body-set.is-bodyweight {
+  grid-template-columns: 1.2rem minmax(0, 1fr) 2rem;
+}
+
+.body-set-number,
+.body-set-times {
+  color: var(--chrome-text-secondary);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.body-set-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.body-set-field .form-input {
+  width: 100%;
+  min-width: 0;
+  text-align: right;
+}
+
+.body-set-field .muted {
+  font-size: 0.85rem;
+}
+
+.body-sets .body-food-add {
+  justify-self: start;
+}
+
+.body-saved {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--chrome-surface-inset);
+  font-size: 0.9rem;
+}
+
+.body-exercise-select {
+  width: auto;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--chrome-radius-pill);
+  font-size: 0.9rem;
+}
+
+.body-exercise-edit summary {
+  color: var(--chrome-text-secondary);
+  cursor: pointer;
+}
+
+.body-exercise-edit[open] {
+  display: grid;
+  gap: 0.6rem;
+}
+
+/* GP-59: food from past notes. */
+.body-food-frequent {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.body-food-item {
+  position: relative;
+}
+
+.body-food-suggest {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 2.4rem;
+  left: 0;
+  z-index: 5;
+  margin: 0;
+  padding: 0.25rem 0;
+  border: 1px solid var(--chrome-border-default);
+  border-radius: 0.75rem;
+  background: var(--chrome-surface-elevated);
+  box-shadow: var(--chrome-shadow-soft);
+  list-style: none;
+}
+
+.body-food-suggest button {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0.8rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.body-history button span:first-child {
+  flex: none;
+  white-space: nowrap;
+}
+
+.body-workout-next {
+  justify-self: start;
+}
+
+.body-set.is-bodyweight {
+  grid-template-columns: 1.2rem minmax(0, 10rem) 2rem;
 }

@@ -7,11 +7,15 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_verified_user
 from app.core.errors import raise_http_error
 from app.db.session import get_db
-from app.models.body import BodySettings, FoodLog, Measurement, SleepLog
+from app.models.body import BodySettings, Exercise, FoodLog, Measurement, SleepLog, WorkoutSet
 from app.models.user import User
 from app.schemas.body import (
     BodySettingsPatch,
     BodySettingsPublic,
+    ExerciseCreate,
+    ExerciseListResponse,
+    ExercisePatch,
+    ExercisePublic,
     FoodLogCreate,
     FoodLogListResponse,
     FoodLogPatch,
@@ -22,22 +26,31 @@ from app.schemas.body import (
     WeightListResponse,
     WeightPublic,
     WeightWrite,
+    WorkoutListResponse,
+    WorkoutSetPublic,
+    WorkoutWrite,
 )
 from app.services.body_service import (
     BodyError,
+    add_exercise,
     add_food,
+    delete_exercise,
     delete_food,
     delete_sleep,
     delete_weight,
     food_goal_ids,
     get_settings,
+    list_exercises,
     list_food,
     list_sleep,
     list_weights,
+    list_workout_sets,
+    patch_exercise,
     patch_food,
     patch_settings,
     set_sleep,
     set_weight,
+    set_workout,
 )
 
 router = APIRouter(tags=["body"])
@@ -50,6 +63,7 @@ def _settings_public(db: Session, settings: BodySettings) -> BodySettingsPublic:
         hide_weight=settings.hide_weight,
         show_sleep=settings.show_sleep,
         height_cm=float(settings.height_cm) if settings.height_cm is not None else None,
+        show_workouts=settings.show_workouts,
         food_goal_ids=food_goal_ids(db, user_id=settings.user_id),
     )
 
@@ -87,6 +101,7 @@ def update_settings(
             show_sleep=body.show_sleep,
             height_cm=body.height_cm,
             height_set="height_cm" in body.model_fields_set,
+            show_workouts=body.show_workouts,
         )
     except BodyError as exc:
         raise_http_error(exc)
@@ -242,3 +257,122 @@ def remove_sleep(
 ) -> Response:
     delete_sleep(db, user_id=current_user.id, day=day)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _exercise_public(
+    exercise: Exercise, last_day: date | None = None, recent_days: int = 0
+) -> ExercisePublic:
+    return ExercisePublic(
+        id=exercise.id,
+        name=exercise.name,
+        with_weight=exercise.with_weight,
+        last_day=last_day,
+        recent_days=recent_days,
+    )
+
+
+def _set_public(row: WorkoutSet) -> WorkoutSetPublic:
+    return WorkoutSetPublic(
+        exercise_id=row.exercise_id,
+        day=row.day,
+        position=row.position,
+        weight_kg=float(row.weight_kg) if row.weight_kg is not None else None,
+        reps=row.reps,
+    )
+
+
+@router.get("/exercises", response_model=ExerciseListResponse)
+def read_exercises(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> ExerciseListResponse:
+    rows = list_exercises(db, user=current_user)
+    return ExerciseListResponse(items=[_exercise_public(*row) for row in rows])
+
+
+@router.post("/exercises", response_model=ExercisePublic, status_code=status.HTTP_201_CREATED)
+def create_exercise(
+    body: ExerciseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> ExercisePublic:
+    exercise = add_exercise(
+        db, user_id=current_user.id, name=body.name, with_weight=body.with_weight
+    )
+    return _exercise_public(exercise)
+
+
+@router.patch("/exercises/{exercise_id}", response_model=ExercisePublic)
+def update_exercise(
+    exercise_id: uuid.UUID,
+    body: ExercisePatch,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> ExercisePublic:
+    try:
+        exercise = patch_exercise(
+            db,
+            user_id=current_user.id,
+            exercise_id=exercise_id,
+            name=body.name,
+            with_weight=body.with_weight,
+        )
+    except BodyError as exc:
+        raise_http_error(exc)
+    return _exercise_public(exercise)
+
+
+@router.delete("/exercises/{exercise_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_exercise(
+    exercise_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> Response:
+    try:
+        delete_exercise(db, user_id=current_user.id, exercise_id=exercise_id)
+    except BodyError as exc:
+        raise_http_error(exc)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/workouts", response_model=WorkoutListResponse)
+def read_workouts(
+    date_from: date = Query(alias="from"),
+    date_to: date = Query(alias="to"),
+    exercise_id: uuid.UUID | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> WorkoutListResponse:
+    try:
+        rows = list_workout_sets(
+            db,
+            user_id=current_user.id,
+            date_from=date_from,
+            date_to=date_to,
+            exercise_id=exercise_id,
+        )
+    except BodyError as exc:
+        raise_http_error(exc)
+    return WorkoutListResponse(items=[_set_public(row) for row in rows])
+
+
+@router.put("/workouts/{day}/{exercise_id}", response_model=WorkoutListResponse)
+def put_workout(
+    day: date,
+    exercise_id: uuid.UUID,
+    body: WorkoutWrite,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+) -> WorkoutListResponse:
+    """Replace the sets of one exercise on ``day``; no sets removes that exercise from the day."""
+    try:
+        rows = set_workout(
+            db,
+            user=current_user,
+            day=day,
+            exercise_id=exercise_id,
+            sets=[(item.weight_kg, item.reps) for item in body.sets],
+        )
+    except BodyError as exc:
+        raise_http_error(exc)
+    return WorkoutListResponse(items=[_set_public(row) for row in rows])

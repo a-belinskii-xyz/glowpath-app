@@ -1,6 +1,7 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, type KeyboardEvent, useEffect, useState } from 'react'
 
 import { deleteSleep, setSleep } from '../api/body'
+import { BODY_RANGES, type BodyRange, BodyRangeSwitch } from './BodyRange'
 import { ClockField } from './ClockField'
 import { EditorDrawer } from './EditorDrawer'
 import { PageErrorAlert } from './PageErrorAlert'
@@ -14,8 +15,6 @@ import { type Night, averageNights, formatDuration, nightClock, normalizeClock, 
 import type { SleepLog, SleepQuality } from '../types/body'
 
 const QUALITIES: SleepQuality[] = ['hard', 'ok', 'good']
-const RANGES = { month: 31, quarter: 92, year: 365 } as const
-type Range = keyof typeof RANGES
 
 /** A big clock with "AM" / "PM" set small, so it stays on one line. */
 function bigClock(clock: string) {
@@ -46,10 +45,11 @@ type SleepSectionProps = {
   today: string
   weekDays: string[]
   onRecord: () => void
+  onOpenStats: () => void
 }
 
 /** Sleep on «Моё» (GP-48): averages for the last 7 nights and the week as bars, no "8 hours" norm. */
-export function SleepSection({ logs, asOf, today, weekDays, onRecord }: SleepSectionProps) {
+export function SleepSection({ logs, asOf, today, weekDays, onRecord, onOpenStats }: SleepSectionProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
   const nights = logs.map(toNight)
@@ -58,6 +58,12 @@ export function SleepSection({ logs, asOf, today, weekDays, onRecord }: SleepSec
   const week = nights.filter((night) => night.day >= weekDays[0] && night.day <= weekDays[6])
   const scale = week.length > 0 ? hourTicks(week) : null
   const at = (minutes: number) => scale ? ((minutes - scale.start) / (scale.end - scale.start)) * 100 : 0
+  const openOnKey = (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onOpenStats()
+    }
+  }
 
   return (
     <div className="body-sleep">
@@ -65,6 +71,15 @@ export function SleepSection({ logs, asOf, today, weekDays, onRecord }: SleepSec
         <strong>{t('body.sleepTitle')}</strong>
         {average ? <span className="body-label">{t('body.sleepAverage')}</span> : null}
       </div>
+      {/* The averages and the week open the stats (GP-60). */}
+      <div
+        className={logs.length > 0 ? 'body-sleep-summary body-stats-open' : 'body-sleep-summary'}
+        role={logs.length > 0 ? 'button' : undefined}
+        tabIndex={logs.length > 0 ? 0 : undefined}
+        aria-label={logs.length > 0 ? t('body.statsOpen', { title: t('body.sleepTitle') }) : undefined}
+        onClick={logs.length > 0 ? onOpenStats : undefined}
+        onKeyDown={logs.length > 0 ? openOnKey : undefined}
+      >
       {average ? (
         <>
           <div className="body-sleep-times">
@@ -135,6 +150,12 @@ export function SleepSection({ logs, asOf, today, weekDays, onRecord }: SleepSec
           </div>
         </div>
       ) : null}
+      {logs.length > 0 ? (
+        <span className="body-chevron body-sleep-chevron" aria-hidden>
+          ›
+        </span>
+      ) : null}
+      </div>
       <button type="button" className="button button-secondary body-wide" onClick={onRecord}>
         {t('body.sleepRecord')}
       </button>
@@ -193,7 +214,8 @@ function SleepChart({ nights, from, to }: { nights: Night[]; from: string; to: s
 }
 
 type SleepDrawerProps = {
-  open: boolean
+  /** The morning to record or edit; null keeps the drawer closed. */
+  target: string | null
   today: string
   logs: SleepLog[]
   onClose: () => void
@@ -202,26 +224,26 @@ type SleepDrawerProps = {
 
 const DEFAULT_TIMES = { bed: '23:00', wake: '07:00', up: '' }
 
-export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDrawerProps) {
+export function SleepDrawer({ target, today, logs, onClose, onChanged }: SleepDrawerProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
+  const open = target !== null
   const [day, setDay] = useState(today)
   const [bed, setBed] = useState(DEFAULT_TIMES.bed)
   const [wake, setWake] = useState(DEFAULT_TIMES.wake)
   const [up, setUp] = useState(DEFAULT_TIMES.up)
   const [quality, setQuality] = useState<SleepQuality | null>(null)
   const [note, setNote] = useState('')
-  const [range, setRange] = useState<Range>('month')
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const existing = logs.find((log) => log.day === day) ?? null
 
   useEffect(() => {
-    if (!open) return
-    setDay(today)
+    if (target === null) return
+    setDay(target)
     setError(null)
-  }, [open, today])
+  }, [target])
 
   useEffect(() => {
     if (!open) return
@@ -247,8 +269,6 @@ export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDraw
       ? toNight({ day, bed_time: bedClock, wake_time: wakeClock, up_time: upClock, quality: null, note: null })
       : null
   const canSave = draft !== null && upValid && !isSaving
-  const rangeStart = shiftDateKey(today, -RANGES[range] + 1)
-  const chartNights = logs.filter((log) => log.day >= rangeStart).map(toNight)
 
   const run = async (action: () => Promise<unknown>) => {
     setIsSaving(true)
@@ -365,32 +385,98 @@ export function SleepDrawer({ open, today, logs, onClose, onChanged }: SleepDraw
           onChange={(event) => setNote(event.target.value)}
         />
 
-        {logs.length > 0 ? (
-          <div className="body-chart">
-            <div className="body-range" role="radiogroup" aria-label={t('body.chartRange')}>
-              {(Object.keys(RANGES) as Range[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={range === key}
-                  className={range === key ? 'is-selected' : ''}
-                  onClick={() => setRange(key)}
-                >
-                  {t(`body.range.${key}`)}
-                </button>
-              ))}
-            </div>
-            {chartNights.length > 0 ? (
-              <SleepChart nights={chartNights} from={rangeStart} to={today} />
-            ) : (
-              <p className="my-empty">{t('body.sleepChartFew')}</p>
-            )}
-            <p className="my-level-hint">{t('body.sleepChartHint')}</p>
-          </div>
-        ) : null}
         <p className="my-gentle muted">{t('body.sleepGentle')}</p>
       </form>
+    </EditorDrawer>
+  )
+}
+
+type SleepStatsDrawerProps = {
+  open: boolean
+  today: string
+  logs: SleepLog[]
+  onClose: () => void
+  onRecord: (day: string) => void
+}
+
+/** Sleep over a month to a year (GP-60): the nights as bars, averages for the period and every night. */
+export function SleepStatsDrawer({ open, today, logs, onClose, onRecord }: SleepStatsDrawerProps) {
+  const { locale, t } = useLocale()
+  const dateLocale = intlLocale(locale)
+  const [range, setRange] = useState<BodyRange>('month')
+  const from = shiftDateKey(today, -BODY_RANGES[range] + 1)
+  const nights = logs.filter((log) => log.day >= from && log.day <= today).map(toNight)
+  const average = averageNights(nights)
+  const byDay = new Map(logs.map((log) => [log.day, log]))
+
+  return (
+    <EditorDrawer
+      open={open}
+      title={t('body.sleepTitle')}
+      onClose={onClose}
+      footer={
+        <div className="button-row">
+          <button type="button" className="button my-primary" onClick={() => onRecord(today)}>
+            {t('body.sleepRecord')}
+          </button>
+        </div>
+      }
+    >
+      <div className="form">
+        <div className="body-chart">
+          <BodyRangeSwitch value={range} onChange={setRange} />
+          {nights.length > 0 ? (
+            <SleepChart nights={nights} from={from} to={today} />
+          ) : (
+            <p className="my-empty">{t('body.sleepChartFew')}</p>
+          )}
+          <p className="my-level-hint">{t('body.sleepChartHint')}</p>
+        </div>
+
+        {average ? (
+          <div className="body-stats">
+            <span>
+              <span className="body-label">{t('body.statsBed')}</span>
+              <strong>{nightClock(average.bed)}</strong>
+            </span>
+            <span>
+              <span className="body-label">{t('body.statsWake')}</span>
+              <strong>{nightClock(average.wake)}</strong>
+            </span>
+            <span>
+              <span className="body-label">{t('body.statsSleep')}</span>
+              <strong>{formatDuration(t, average.sleep)}</strong>
+            </span>
+            <span>
+              <span className="body-label">{t('body.statsNights')}</span>
+              <strong>{nights.length}</strong>
+            </span>
+          </div>
+        ) : null}
+
+        {nights.length > 0 ? (
+          <div className="body-history">
+            <span className="form-label">{t('body.statsNightsList')}</span>
+            <ul>
+              {[...nights].reverse().map((night) => {
+                const quality = byDay.get(night.day)?.quality
+                return (
+                  <li key={night.day}>
+                    <button type="button" onClick={() => onRecord(night.day)}>
+                      <span>{formatDay(night.day, dateLocale, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                      <span>
+                        {nightClock(night.bed)}–{nightClock(night.wake)} · {formatDuration(t, night.sleep)}
+                        {quality ? ` · ${t(`body.quality.${quality}`)}` : ''}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ) : null}
+        <p className="my-gentle muted">{t('body.sleepStatsGentle')}</p>
+      </div>
     </EditorDrawer>
   )
 }
