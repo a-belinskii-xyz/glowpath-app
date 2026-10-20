@@ -13121,6 +13121,57 @@ button.body-stats {
   justify-self: start;
 }
 
+/* GP-62: the workouts screen, one card per exercise. */
+.body-workouts-open {
+  padding: 0.2rem 0;
+  border-bottom: 0;
+  text-decoration: none;
+}
+
+.body-workouts-open:focus-visible {
+  outline: 2px solid var(--chrome-focus-ring);
+  outline-offset: 4px;
+  border-radius: 0.5rem;
+}
+
+.body-workouts-count {
+  flex: none;
+}
+
+.workouts-toolbar {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.body-exercise-card {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.body-exercise-open {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.body-exercise-open strong {
+  font-size: 1.1rem;
+}
+
+.body-exercise-chart {
+  display: block;
+}
+
+.body-exercise-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.body-exercise-stats strong {
+  font-size: 0.98rem;
+  overflow-wrap: anywhere;
+}
+
 .body-sets {
   display: grid;
   gap: 0.45rem;
