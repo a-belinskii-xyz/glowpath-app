@@ -64,6 +64,8 @@ def _settings_public(db: Session, settings: BodySettings) -> BodySettingsPublic:
         show_sleep=settings.show_sleep,
         height_cm=float(settings.height_cm) if settings.height_cm is not None else None,
         show_workouts=settings.show_workouts,
+        sleep_norm_min=settings.sleep_norm_min,
+        sleep_norm_max=settings.sleep_norm_max,
         food_goal_ids=food_goal_ids(db, user_id=settings.user_id),
     )
 
@@ -102,6 +104,11 @@ def update_settings(
             height_cm=body.height_cm,
             height_set="height_cm" in body.model_fields_set,
             show_workouts=body.show_workouts,
+            sleep_norm=(
+                (body.sleep_norm_min, body.sleep_norm_max)
+                if "sleep_norm_min" in body.model_fields_set
+                else None
+            ),
         )
     except BodyError as exc:
         raise_http_error(exc)

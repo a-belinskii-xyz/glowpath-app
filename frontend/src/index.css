@@ -12342,6 +12342,9 @@ html[data-color-scheme='dark'] .my-primary {
 /* GP-47: weight and food on «Моё». One neutral colour, nothing that reads as good or bad. */
 .body-card {
   --body-line: color-mix(in oklab, var(--chrome-action-quiet) 75%, #7c86b8);
+  /* GP-61: shorter and longer than the person's own norm; calm tones, nothing red. */
+  --sleep-short: #d4a24c;
+  --sleep-long: #3ea6a0;
 }
 
 .body-weight {
@@ -12688,11 +12691,11 @@ html[data-color-scheme='dark'] .my-primary {
   top: 0;
   bottom: 0;
   border-radius: 999px;
-  background: var(--body-line, #7c86b8);
+  background: var(--sleep-color, var(--body-line, #7c86b8));
 }
 
 .body-sleep-tail {
-  background: color-mix(in oklab, var(--body-line, #7c86b8) 35%, transparent);
+  background: color-mix(in oklab, var(--sleep-color, var(--body-line, #7c86b8)) 35%, transparent);
   border-radius: 0 999px 999px 0;
 }
 
@@ -12801,11 +12804,11 @@ html[data-color-scheme='dark'] .my-primary {
 }
 
 .body-sleep-bar-svg {
-  fill: var(--body-line, #7c86b8);
+  fill: var(--sleep-color, var(--body-line, #7c86b8));
 }
 
 .body-sleep-tail-svg {
-  fill: color-mix(in oklab, var(--body-line, #7c86b8) 35%, transparent);
+  fill: color-mix(in oklab, var(--sleep-color, var(--body-line, #7c86b8)) 35%, transparent);
 }
 
 .body-bmi {
@@ -13239,4 +13242,56 @@ button.body-stats {
 
 .body-set.is-bodyweight {
   grid-template-columns: 1.2rem minmax(0, 10rem) 2rem;
+}
+
+/* GP-61: nights coloured against the person's own sleep norm. */
+.is-short {
+  --sleep-color: var(--sleep-short, #d4a24c);
+}
+
+.is-long {
+  --sleep-color: var(--sleep-long, #3ea6a0);
+}
+
+.body-sleep-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  color: var(--chrome-text-secondary);
+  font-size: 0.8rem;
+}
+
+.body-sleep-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.body-sleep-swatch {
+  display: inline-block;
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--sleep-color, var(--body-line, #7c86b8));
+  vertical-align: 0.05em;
+}
+
+.body-sleep-legend .body-sleep-swatch {
+  margin-right: 0;
+}
+
+.body-sleep-in-norm {
+  margin: 0;
+}
+
+.body-sleep-norm {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.body-sleep-norm-range .form-input {
+  width: 4.5rem;
+  text-align: center;
 }

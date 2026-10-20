@@ -43,6 +43,8 @@ def get_settings(db: Session, *, user_id: uuid.UUID) -> BodySettings:
             hide_weight=False,
             show_sleep=False,
             show_workouts=False,
+            sleep_norm_min=420,
+            sleep_norm_max=540,
         )
     return settings
 
@@ -69,6 +71,7 @@ def patch_settings(
     height_cm: Decimal | None = None,
     height_set: bool = False,
     show_workouts: bool | None = None,
+    sleep_norm: tuple[int | None, int | None] | None = None,
 ) -> BodySettings:
     settings = db.get(BodySettings, user_id)
     if settings is None:
@@ -79,6 +82,8 @@ def patch_settings(
             hide_weight=False,
             show_sleep=False,
             show_workouts=False,
+            sleep_norm_min=420,
+            sleep_norm_max=540,
         )
         db.add(settings)
     if show_weight is not None:
@@ -91,6 +96,8 @@ def patch_settings(
         settings.show_sleep = show_sleep
     if show_workouts is not None:
         settings.show_workouts = show_workouts
+    if sleep_norm is not None:
+        settings.sleep_norm_min, settings.sleep_norm_max = sleep_norm
     if height_set:
         settings.height_cm = height_cm
     if goal_ids is not None:

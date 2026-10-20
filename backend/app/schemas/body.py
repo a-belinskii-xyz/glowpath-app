@@ -3,7 +3,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 MIN_WEIGHT_KG = Decimal("20")
 MAX_WEIGHT_KG = Decimal("400")
@@ -16,6 +16,9 @@ MAX_EXERCISE_NAME_LENGTH = 80
 MAX_SETS_PER_EXERCISE = 30
 MAX_SET_WEIGHT_KG = Decimal("999")
 MAX_SET_REPS = 1000
+# The sleep norm can be set from 3 to 15 hours, in minutes (GP-61).
+MIN_SLEEP_NORM = 180
+MAX_SLEEP_NORM = 900
 
 Meal = Literal["morning", "day", "evening", "snack"]
 WeightKg = Annotated[Decimal, Field(ge=MIN_WEIGHT_KG, le=MAX_WEIGHT_KG, decimal_places=1)]
@@ -39,6 +42,9 @@ class BodySettingsPublic(BaseModel):
     show_sleep: bool = False
     height_cm: float | None = None
     show_workouts: bool = False
+    # Minutes; both null when the person turned the norm off.
+    sleep_norm_min: int | None = 420
+    sleep_norm_max: int | None = 540
     # Goals the food drawer offers to mark, in the order of the settings slots.
     food_goal_ids: list[uuid.UUID] = Field(default_factory=list)
 
@@ -49,9 +55,26 @@ class BodySettingsPatch(BaseModel):
     hide_weight: bool | None = None
     show_sleep: bool | None = None
     show_workouts: bool | None = None
+    # Send both as null to turn the sleep norm off.
+    sleep_norm_min: int | None = Field(default=None, ge=MIN_SLEEP_NORM, le=MAX_SLEEP_NORM)
+    sleep_norm_max: int | None = Field(default=None, ge=MIN_SLEEP_NORM, le=MAX_SLEEP_NORM)
     # Send null to forget the height.
     height_cm: HeightCm | None = None
     food_goal_ids: list[uuid.UUID] | None = Field(default=None, max_length=MAX_FOOD_GOALS)
+
+    @model_validator(mode="after")
+    def _sleep_norm_together(self) -> "BodySettingsPatch":
+        sent = {"sleep_norm_min", "sleep_norm_max"} & self.model_fields_set
+        if not sent:
+            return self
+        if len(sent) == 1:
+            raise ValueError("sleep_norm_min and sleep_norm_max are sent together")
+        low, high = self.sleep_norm_min, self.sleep_norm_max
+        if (low is None) != (high is None):
+            raise ValueError("Both sleep norm bounds must be set, or both null")
+        if low is not None and high is not None and low >= high:
+            raise ValueError("sleep_norm_min must be less than sleep_norm_max")
+        return self
 
 
 class WeightPublic(BaseModel):
