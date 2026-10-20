@@ -1,6 +1,6 @@
 import { apiRequest } from './client'
 import { isGuestDiaryMode } from '../lib/guestMode'
-import type { BodySettings, FoodLog, Meal, SleepLog, WeightPoint } from '../types/body'
+import type { BodySettings, Exercise, FoodLog, Meal, SleepLog, WeightPoint, WorkoutSet } from '../types/body'
 
 const DEFAULT_SETTINGS: BodySettings = {
   show_weight: false,
@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS: BodySettings = {
   food_goal_ids: [],
   show_sleep: false,
   height_cm: null,
+  show_workouts: false,
 }
 
 /** Body notes live on the server only; the guest diary never shows them. */
@@ -73,4 +74,42 @@ export function setSleep(day: string, body: Omit<SleepLog, 'day'>): Promise<Slee
 
 export function deleteSleep(day: string): Promise<void> {
   return apiRequest<void>(`/v1/body/sleep/${day}`, { method: 'DELETE', auth: true })
+}
+
+export async function listExercises(): Promise<Exercise[]> {
+  const response = await apiRequest<{ items: Exercise[] }>('/v1/body/exercises', { auth: true })
+  return response.items
+}
+
+/** Creates the exercise, or returns the one already called so in any letter case. */
+export function createExercise(body: { name: string; with_weight: boolean }): Promise<Exercise> {
+  return apiRequest<Exercise>('/v1/body/exercises', { method: 'POST', auth: true, body })
+}
+
+export function updateExercise(id: string, body: { name?: string; with_weight?: boolean }): Promise<Exercise> {
+  return apiRequest<Exercise>(`/v1/body/exercises/${id}`, { method: 'PATCH', auth: true, body })
+}
+
+export function deleteExercise(id: string): Promise<void> {
+  return apiRequest<void>(`/v1/body/exercises/${id}`, { method: 'DELETE', auth: true })
+}
+
+export async function listWorkoutSets(from: string, to: string): Promise<WorkoutSet[]> {
+  const query = new URLSearchParams({ from, to })
+  const response = await apiRequest<{ items: WorkoutSet[] }>(`/v1/body/workouts?${query}`, { auth: true })
+  return response.items
+}
+
+/** Replaces the sets of one exercise on a day; no sets clears that day. */
+export async function setWorkout(
+  day: string,
+  exerciseId: string,
+  sets: { weight_kg: number | null; reps: number }[],
+): Promise<WorkoutSet[]> {
+  const response = await apiRequest<{ items: WorkoutSet[] }>(`/v1/body/workouts/${day}/${exerciseId}`, {
+    method: 'PUT',
+    auth: true,
+    body: { sets },
+  })
+  return response.items
 }

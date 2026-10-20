@@ -1,15 +1,23 @@
-"""Weight, food and sleep on «Моё» (GP-47, GP-48): gentle records with no targets."""
+"""Weight, food, sleep and workouts on «Моё» (GP-47, GP-48, GP-58): gentle records, no targets."""
 
 import uuid
 from datetime import date, time, timedelta
 from decimal import Decimal
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import AppError
-from app.models.body import BodyFoodGoal, BodySettings, FoodLog, Measurement, SleepLog
+from app.models.body import (
+    BodyFoodGoal,
+    BodySettings,
+    Exercise,
+    FoodLog,
+    Measurement,
+    SleepLog,
+    WorkoutSet,
+)
 from app.models.goal import Goal
 from app.models.user import User
 from app.services.goal_service import user_today
@@ -17,6 +25,8 @@ from app.services.goal_service import user_today
 WEIGHT = "weight"
 # Enough for the "year" chart with a little room; keeps one request bounded.
 MAX_RANGE_DAYS = 400
+# The window for "how often" an exercise is done, which orders the exercise chips.
+RECENT_DAYS = 90
 
 
 class BodyError(AppError):
@@ -32,6 +42,7 @@ def get_settings(db: Session, *, user_id: uuid.UUID) -> BodySettings:
             show_food=False,
             hide_weight=False,
             show_sleep=False,
+            show_workouts=False,
         )
     return settings
 
@@ -57,6 +68,7 @@ def patch_settings(
     show_sleep: bool | None = None,
     height_cm: Decimal | None = None,
     height_set: bool = False,
+    show_workouts: bool | None = None,
 ) -> BodySettings:
     settings = db.get(BodySettings, user_id)
     if settings is None:
@@ -66,6 +78,7 @@ def patch_settings(
             show_food=False,
             hide_weight=False,
             show_sleep=False,
+            show_workouts=False,
         )
         db.add(settings)
     if show_weight is not None:
@@ -76,6 +89,8 @@ def patch_settings(
         settings.hide_weight = hide_weight
     if show_sleep is not None:
         settings.show_sleep = show_sleep
+    if show_workouts is not None:
+        settings.show_workouts = show_workouts
     if height_set:
         settings.height_cm = height_cm
     if goal_ids is not None:
@@ -244,3 +259,140 @@ def set_sleep(
 def delete_sleep(db: Session, *, user_id: uuid.UUID, day: date) -> None:
     db.execute(delete(SleepLog).where(SleepLog.user_id == user_id, SleepLog.day == day))
     db.commit()
+
+
+def list_exercises(db: Session, *, user: User) -> list[tuple[Exercise, date | None, int]]:
+    """Exercises with their last day and recent days, most recently done first."""
+    since = user_today(user.timezone) - timedelta(days=RECENT_DAYS - 1)
+    usage = (
+        select(
+            WorkoutSet.exercise_id,
+            func.max(WorkoutSet.day).label("last_day"),
+            func.count(func.distinct(WorkoutSet.day))
+            .filter(WorkoutSet.day >= since)
+            .label("recent_days"),
+        )
+        .where(WorkoutSet.user_id == user.id)
+        .group_by(WorkoutSet.exercise_id)
+        .subquery()
+    )
+    rows = db.execute(
+        select(Exercise, usage.c.last_day, usage.c.recent_days)
+        .outerjoin(usage, usage.c.exercise_id == Exercise.id)
+        .where(Exercise.user_id == user.id)
+        .order_by(usage.c.last_day.desc().nulls_last(), Exercise.name)
+    ).all()
+    return [(exercise, last_day, recent_days or 0) for exercise, last_day, recent_days in rows]
+
+
+def _find_exercise_by_name(db: Session, *, user_id: uuid.UUID, name: str) -> Exercise | None:
+    return db.scalar(
+        select(Exercise).where(
+            Exercise.user_id == user_id, func.lower(Exercise.name) == name.lower()
+        )
+    )
+
+
+def _get_exercise(db: Session, *, user_id: uuid.UUID, exercise_id: uuid.UUID) -> Exercise:
+    exercise = db.scalar(
+        select(Exercise).where(Exercise.id == exercise_id, Exercise.user_id == user_id)
+    )
+    if exercise is None:
+        raise BodyError("Exercise not found", code=ErrorCode.EXERCISE_NOT_FOUND, status_code=404)
+    return exercise
+
+
+def add_exercise(db: Session, *, user_id: uuid.UUID, name: str, with_weight: bool) -> Exercise:
+    """Create an exercise, or return the one already named so (in any letter case)."""
+    existing = _find_exercise_by_name(db, user_id=user_id, name=name)
+    if existing is not None:
+        return existing
+    exercise = Exercise(user_id=user_id, name=name, with_weight=with_weight)
+    db.add(exercise)
+    db.commit()
+    db.refresh(exercise)
+    return exercise
+
+
+def patch_exercise(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    exercise_id: uuid.UUID,
+    name: str | None,
+    with_weight: bool | None,
+) -> Exercise:
+    exercise = _get_exercise(db, user_id=user_id, exercise_id=exercise_id)
+    if name is not None and name != exercise.name:
+        other = _find_exercise_by_name(db, user_id=user_id, name=name)
+        if other is not None and other.id != exercise.id:
+            raise BodyError(
+                "An exercise with this name already exists",
+                code=ErrorCode.EXERCISE_NAME_TAKEN,
+                status_code=409,
+            )
+        exercise.name = name
+    if with_weight is not None:
+        exercise.with_weight = with_weight
+    db.commit()
+    db.refresh(exercise)
+    return exercise
+
+
+def delete_exercise(db: Session, *, user_id: uuid.UUID, exercise_id: uuid.UUID) -> None:
+    """Remove an exercise together with all its sets."""
+    db.delete(_get_exercise(db, user_id=user_id, exercise_id=exercise_id))
+    db.commit()
+
+
+def list_workout_sets(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    date_from: date,
+    date_to: date,
+    exercise_id: uuid.UUID | None = None,
+) -> list[WorkoutSet]:
+    _ensure_range(date_from, date_to)
+    query = select(WorkoutSet).where(
+        WorkoutSet.user_id == user_id, WorkoutSet.day >= date_from, WorkoutSet.day <= date_to
+    )
+    if exercise_id is not None:
+        query = query.where(WorkoutSet.exercise_id == exercise_id)
+    return list(db.scalars(query.order_by(WorkoutSet.day, WorkoutSet.position)))
+
+
+def set_workout(
+    db: Session,
+    *,
+    user: User,
+    day: date,
+    exercise_id: uuid.UUID,
+    sets: list[tuple[Decimal | None, int]],
+) -> list[WorkoutSet]:
+    """Replace the sets of one exercise on one day; an empty list removes them."""
+    _ensure_not_future(user, day)
+    exercise = _get_exercise(db, user_id=user.id, exercise_id=exercise_id)
+    db.execute(
+        delete(WorkoutSet).where(
+            WorkoutSet.user_id == user.id,
+            WorkoutSet.exercise_id == exercise.id,
+            WorkoutSet.day == day,
+        )
+    )
+    rows = [
+        WorkoutSet(
+            user_id=user.id,
+            exercise_id=exercise.id,
+            day=day,
+            position=index,
+            weight_kg=weight if exercise.with_weight else None,
+            reps=reps,
+        )
+        for index, (weight, reps) in enumerate(sets)
+    ]
+    db.add_all(rows)
+    db.commit()
+    for row in rows:
+        db.refresh(row)
+    return rows

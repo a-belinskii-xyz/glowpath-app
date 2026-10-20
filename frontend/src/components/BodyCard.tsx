@@ -5,9 +5,11 @@ import {
   createFood,
   deleteFood,
   deleteWeight,
+  listExercises,
   listFood,
   listSleep,
   listWeights,
+  listWorkoutSets,
   setWeight,
   updateBodySettings,
   updateFood,
@@ -15,59 +17,41 @@ import {
 import { BodyCopyDrawer } from './BodyCopyDrawer'
 import { EditorDrawer } from './EditorDrawer'
 import { PageErrorAlert } from './PageErrorAlert'
-import { SleepDrawer, SleepSection } from './SleepSection'
+import { SleepDrawer, SleepSection, SleepStatsDrawer } from './SleepSection'
 import { StableButtonLabel } from './StableButtonLabel'
+import { WeightChart, WeightStatsDrawer } from './WeightStats'
+import { ExerciseDrawer, WorkoutDrawer, WorkoutSection, type WorkoutTarget } from './WorkoutSection'
 import { useLocale } from '../context/LocaleContext'
 import { intlLocale } from '../i18n/t'
-import { bodyMassIndex, dayNumber, formatDay } from '../lib/bodyFormat'
+import { dayNumber, formatDay, weekAverage } from '../lib/bodyFormat'
 import { shiftDateKey } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
 import {
   type FoodInputMode,
   type FoodItem,
   emptyItem,
+  formatFoodLine,
   parseFoodItems,
   readFoodInputMode,
   saveFoodInputMode,
   serializeFoodItems,
 } from '../lib/foodItems'
-import type { BodySettings, FoodLog, Meal, SleepLog, WeightPoint } from '../types/body'
+import { type FoodSuggestion, buildFoodSuggestions, hasFoodItem, matchFoodSuggestions } from '../lib/foodSuggestions'
+import type { BodySettings, Exercise, FoodLog, Meal, SleepLog, WeightPoint, WorkoutSet } from '../types/body'
 import type { GoalPublic } from '../types/goal'
 
 const MEALS: Meal[] = ['morning', 'day', 'evening', 'snack']
 const MIN_WEIGHT = 20
 const MAX_WEIGHT = 400
 const MAX_FOOD_GOALS = 3
-// The chart's longest range; the card reads its summary from the same points.
+// The longest chart range; the card reads its summary from the same points.
 const HISTORY_DAYS = 365
 const SPARK_DAYS = 60
-const RANGES = { month: 31, quarter: 92, year: HISTORY_DAYS } as const
-type Range = keyof typeof RANGES
 const MIN_HEIGHT = 100
 const MAX_HEIGHT = 250
-// The BMI scale runs over this span; marks at the usual 18.5 / 25 / 30 cut-offs, without their names.
-const BMI_SCALE = { min: 15, max: 40 }
-const BMI_MARKS = [18.5, 25, 30]
-
-/** The average of the measurements in the 7 days ending on ``day``, or null if there are none. */
-function weekAverage(points: WeightPoint[], day: string): number | null {
-  const end = dayNumber(day)
-  const window = points.filter((point) => {
-    const n = dayNumber(point.day)
-    return n <= end && n > end - 7
-  })
-  if (window.length === 0) return null
-  return window.reduce((sum, point) => sum + point.value, 0) / window.length
-}
-
-/** A trend through each measurement: the mean of everything within a week on either side. */
-function smoothed(points: WeightPoint[]): WeightPoint[] {
-  return points.map((point) => {
-    const center = dayNumber(point.day)
-    const near = points.filter((other) => Math.abs(dayNumber(other.day) - center) <= 7)
-    return { day: point.day, value: near.reduce((sum, other) => sum + other.value, 0) / near.length }
-  })
-}
+// Food items from this many days back are offered again while writing (GP-59).
+const SUGGESTION_DAYS = 90
+const FREQUENT_FOODS = 8
 
 function parseWeight(raw: string): number | null {
   const value = Number.parseFloat(raw.replace(',', '.'))
@@ -84,55 +68,6 @@ function mealNow(): Meal {
   return 'snack'
 }
 
-type ChartProps = {
-  points: WeightPoint[]
-  width: number
-  height: number
-  showDots?: boolean
-  className?: string
-}
-
-/** A quiet trend line in one neutral colour, with single measurements as dots behind it. */
-function WeightChart({ points, width, height, showDots = false, className }: ChartProps) {
-  if (points.length < 2) return null
-  const line = smoothed(points)
-  const values = points.map((point) => point.value)
-  const low = Math.min(...values)
-  const high = Math.max(...values)
-  // At least a 2 kg band, so a 0.3 kg wobble does not look like a cliff.
-  const pad = Math.max(1 - (high - low) / 2, 0.3)
-  const min = low - pad
-  const max = high + pad
-  const first = dayNumber(points[0].day)
-  const span = Math.max(dayNumber(points[points.length - 1].day) - first, 1)
-  const x = (day: string) => 4 + ((dayNumber(day) - first) / span) * (width - 8)
-  const y = (value: number) => 4 + ((max - value) / (max - min)) * (height - 8)
-  const path = line.map((point, index) => `${index ? 'L' : 'M'}${x(point.day).toFixed(1)},${y(point.value).toFixed(1)}`)
-  return (
-    <svg
-      className={className}
-      viewBox={`0 0 ${width} ${height}`}
-      width="100%"
-      height={height}
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      {showDots
-        ? points.map((point) => (
-            <circle
-              key={point.day}
-              className="body-chart-dot"
-              cx={x(point.day)}
-              cy={y(point.value)}
-              r={2.6}
-            />
-          ))
-        : null}
-      <path className="body-chart-line" d={path.join(' ')} vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
-}
-
 type BodyCardProps = {
   settings: BodySettings
   today: string
@@ -145,7 +80,7 @@ type BodyCardProps = {
   onOpenSettings: () => void
 }
 
-/** Weight, sleep and food on «Моё» (GP-47, GP-48): no targets, no calories, nothing to fall behind on. */
+/** Weight, sleep, workouts and food on «Моё» (GP-47, GP-48, GP-58): no targets, no calories, nothing to fall behind on. */
 export function BodyCard({
   settings,
   today,
@@ -166,13 +101,21 @@ export function BodyCard({
   const [weights, setWeights] = useState<WeightPoint[]>([])
   const [food, setFood] = useState<FoodLog[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [revealed, setRevealed] = useState(false)
-  const [weightOpen, setWeightOpen] = useState(false)
+  const [weightStatsOpen, setWeightStatsOpen] = useState(false)
+  // The day the weight drawer edits, and whether closing it goes back to the stats.
+  const [weightTarget, setWeightTarget] = useState<{ day: string; fromStats: boolean } | null>(null)
   const [foodTarget, setFoodTarget] = useState<{ day: string; log: FoodLog | null } | null>(null)
   const [foodDay, setFoodDay] = useState(asOf)
   const [copyOpen, setCopyOpen] = useState(false)
   const [sleep, setSleepLogs] = useState<SleepLog[]>([])
-  const [sleepOpen, setSleepOpen] = useState(false)
+  const [sleepStatsOpen, setSleepStatsOpen] = useState(false)
+  const [sleepTarget, setSleepTarget] = useState<{ day: string; fromStats: boolean } | null>(null)
+  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [workoutSets, setWorkoutSets] = useState<WorkoutSet[]>([])
+  const [workoutTarget, setWorkoutTarget] = useState<(WorkoutTarget & { fromExercise: boolean }) | null>(null)
+  const [exerciseId, setExerciseId] = useState<string | null>(null)
+  // Past food notes for suggestions; loaded the first time the food drawer opens.
+  const [foodHistory, setFoodHistory] = useState<FoodLog[] | null>(null)
 
   useEffect(() => setFoodDay(asOf), [asOf])
 
@@ -197,6 +140,31 @@ export function BodyCard({
     if (!settings.show_sleep) return
     void loadSleep().catch((err) => setError(formatApiError(err, t, 'errors.requestFailed')))
   }, [settings.show_sleep, loadSleep, t])
+
+  const loadWorkouts = useCallback(async () => {
+    const [nextExercises, nextSets] = await Promise.all([
+      listExercises(),
+      listWorkoutSets(shiftDateKey(today, -HISTORY_DAYS), today),
+    ])
+    setExercises(nextExercises)
+    setWorkoutSets(nextSets)
+  }, [today])
+
+  useEffect(() => {
+    if (!settings.show_workouts) return
+    void loadWorkouts().catch((err) => setError(formatApiError(err, t, 'errors.requestFailed')))
+  }, [settings.show_workouts, loadWorkouts, t])
+
+  useEffect(() => {
+    if (foodTarget === null || foodHistory !== null) return
+    // Suggestions are a nicety: without them the drawer works as before.
+    void listFood(shiftDateKey(today, -SUGGESTION_DAYS + 1), today)
+      .then(setFoodHistory)
+      .catch(() => setFoodHistory([]))
+  }, [foodTarget, foodHistory, today])
+
+  const foodSuggestions = useMemo(() => buildFoodSuggestions(foodHistory ?? []), [foodHistory])
+  const openExercise = exercises.find((exercise) => exercise.id === exerciseId) ?? null
 
   useEffect(() => {
     if (!settings.show_food) return
@@ -244,31 +212,39 @@ export function BodyCard({
           {shown === null ? (
             <p className="my-empty">{t('body.weightEmpty')}</p>
           ) : (
-            <div className="body-weight-summary">
-              <div>
+            // The whole summary opens the stats (GP-60); a hidden number stays hidden until revealed there.
+            <button
+              type="button"
+              className="body-weight-summary body-stats-open"
+              aria-label={t('body.statsOpen', { title: t('body.weightTitle') })}
+              onClick={() => setWeightStatsOpen(true)}
+            >
+              <span className="body-weight-text">
                 <span className="body-label">
                   {average !== null ? t('body.weightAverage') : t('body.weightLast')}
                 </span>
-                <button
-                  type="button"
-                  className={`body-weight-value${settings.hide_weight && !revealed ? ' is-hidden' : ''}`}
-                  aria-label={settings.hide_weight && !revealed ? t('body.reveal') : undefined}
-                  onClick={() => setRevealed((value) => !value)}
-                >
+                <span className={`body-weight-value${settings.hide_weight ? ' is-hidden' : ''}`}>
                   {numberFormat.format(shown)} <small>{t('body.kg')}</small>
-                </button>
+                </span>
                 {latest ? (
                   <span className="body-label">
                     {t('body.lastMeasured', { date: latestLabel(latest.day) })}
                   </span>
                 ) : null}
-              </div>
-              {!settings.hide_weight || revealed ? (
+              </span>
+              {!settings.hide_weight ? (
                 <WeightChart points={spark} width={120} height={48} className="body-spark" />
               ) : null}
-            </div>
+              <span className="body-chevron" aria-hidden>
+                ›
+              </span>
+            </button>
           )}
-          <button type="button" className="button button-secondary body-wide" onClick={() => setWeightOpen(true)}>
+          <button
+            type="button"
+            className="button button-secondary body-wide"
+            onClick={() => setWeightTarget({ day: today, fromStats: false })}
+          >
             {t('body.recordWeight')}
           </button>
         </div>
@@ -280,7 +256,19 @@ export function BodyCard({
           asOf={asOf}
           today={today}
           weekDays={weekDays}
-          onRecord={() => setSleepOpen(true)}
+          onRecord={() => setSleepTarget({ day: today, fromStats: false })}
+          onOpenStats={() => setSleepStatsOpen(true)}
+        />
+      ) : null}
+
+      {settings.show_workouts ? (
+        <WorkoutSection
+          exercises={exercises}
+          sets={workoutSets}
+          today={today}
+          weekDays={weekDays}
+          onRecord={() => setWorkoutTarget({ day: today, exerciseId: null, fromExercise: false })}
+          onOpenExercise={(exercise) => setExerciseId(exercise.id)}
         />
       ) : null}
 
@@ -348,20 +336,72 @@ export function BodyCard({
         </div>
       ) : null}
 
-      <WeightDrawer
-        open={weightOpen}
+      <WeightStatsDrawer
+        open={weightStatsOpen}
         today={today}
         weights={weights}
         settings={settings}
-        onClose={() => setWeightOpen(false)}
-        onChanged={loadWeights}
+        onClose={() => setWeightStatsOpen(false)}
+        onRecord={(day) => {
+          setWeightStatsOpen(false)
+          setWeightTarget({ day, fromStats: true })
+        }}
         onSettingsChange={onSettingsChange}
         onOpenSettings={() => {
-          setWeightOpen(false)
+          setWeightStatsOpen(false)
           onOpenSettings()
         }}
       />
-      <SleepDrawer open={sleepOpen} today={today} logs={sleep} onClose={() => setSleepOpen(false)} onChanged={loadSleep} />
+      <WeightDrawer
+        target={weightTarget?.day ?? null}
+        today={today}
+        weights={weights}
+        onClose={() => {
+          if (weightTarget?.fromStats) setWeightStatsOpen(true)
+          setWeightTarget(null)
+        }}
+        onChanged={loadWeights}
+      />
+      <SleepStatsDrawer
+        open={sleepStatsOpen}
+        today={today}
+        logs={sleep}
+        onClose={() => setSleepStatsOpen(false)}
+        onRecord={(day) => {
+          setSleepStatsOpen(false)
+          setSleepTarget({ day, fromStats: true })
+        }}
+      />
+      <SleepDrawer
+        target={sleepTarget?.day ?? null}
+        today={today}
+        logs={sleep}
+        onClose={() => {
+          if (sleepTarget?.fromStats) setSleepStatsOpen(true)
+          setSleepTarget(null)
+        }}
+        onChanged={loadSleep}
+      />
+      <ExerciseDrawer
+        exercise={workoutTarget ? null : openExercise}
+        sets={workoutSets}
+        today={today}
+        onClose={() => setExerciseId(null)}
+        onRecord={(id, day) => setWorkoutTarget({ day, exerciseId: id, fromExercise: true })}
+        onChanged={loadWorkouts}
+      />
+      <WorkoutDrawer
+        target={workoutTarget}
+        today={today}
+        exercises={exercises}
+        sets={workoutSets}
+        onClose={() => {
+          // Back to the exercise it was opened from, if any.
+          if (!workoutTarget?.fromExercise) setExerciseId(null)
+          setWorkoutTarget(null)
+        }}
+        onChanged={loadWorkouts}
+      />
       <BodyCopyDrawer
         open={copyOpen}
         today={today}
@@ -373,9 +413,12 @@ export function BodyCard({
         target={foodTarget}
         today={today}
         goals={foodGoals}
+        suggestions={foodSuggestions}
         onClose={() => setFoodTarget(null)}
         onSaved={async () => {
           setFoodTarget(null)
+          // The next drawer offers what was just written too.
+          setFoodHistory(null)
           await loadFood()
         }}
         onGoalChange={onGoalChange}
@@ -385,47 +428,31 @@ export function BodyCard({
 }
 
 type WeightDrawerProps = {
-  open: boolean
+  /** The day to record or edit; null keeps the drawer closed. */
+  target: string | null
   today: string
   weights: WeightPoint[]
-  settings: BodySettings
   onClose: () => void
   onChanged: () => Promise<void>
-  onSettingsChange: (settings: BodySettings) => void
-  onOpenSettings: () => void
 }
 
-function WeightDrawer({
-  open,
-  today,
-  weights,
-  settings,
-  onClose,
-  onChanged,
-  onSettingsChange,
-  onOpenSettings,
-}: WeightDrawerProps) {
+/** Only the input: the chart, BMI and the list live in the weight stats drawer (GP-60). */
+function WeightDrawer({ target, today, weights, onClose, onChanged }: WeightDrawerProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
+  const open = target !== null
   const [day, setDay] = useState(today)
   const [raw, setRaw] = useState('')
-  const [range, setRange] = useState<Range>('quarter')
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [bmiRevealed, setBmiRevealed] = useState(false)
 
   const existing = weights.find((point) => point.day === day) ?? null
-  const bmiWeight = weekAverage(weights, today) ?? (weights.length > 0 ? weights[weights.length - 1].value : null)
-  const bmi = settings.height_cm !== null && bmiWeight !== null ? bodyMassIndex(bmiWeight, settings.height_cm) : null
-  const bmiAt = (value: number) =>
-    (Math.min(Math.max(value, BMI_SCALE.min), BMI_SCALE.max) - BMI_SCALE.min) / (BMI_SCALE.max - BMI_SCALE.min) * 100
 
   useEffect(() => {
-    if (!open) return
-    setDay(today)
+    if (target === null) return
+    setDay(target)
     setError(null)
-    setBmiRevealed(false)
-  }, [open, today])
+  }, [target])
 
   useEffect(() => {
     if (!open) return
@@ -436,8 +463,6 @@ function WeightDrawer({
   }, [open, day])
 
   const value = parseWeight(raw)
-  const rangeStart = shiftDateKey(today, -RANGES[range])
-  const chartPoints = weights.filter((point) => point.day >= rangeStart)
 
   const run = async (action: () => Promise<unknown>) => {
     setIsSaving(true)
@@ -450,14 +475,6 @@ function WeightDrawer({
       setError(formatApiError(err, t, 'errors.failedSave'))
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const toggleHidden = async (hide: boolean) => {
-    try {
-      onSettingsChange(await updateBodySettings({ hide_weight: hide }))
-    } catch (err) {
-      setError(formatApiError(err, t, 'errors.failedSave'))
     }
   }
 
@@ -523,73 +540,6 @@ function WeightDrawer({
         {raw && value === null ? (
           <span className="my-level-hint">{t('body.weightRange', { min: MIN_WEIGHT, max: MAX_WEIGHT })}</span>
         ) : null}
-
-        {weights.length >= 2 ? (
-          <div className="body-chart">
-            <div className="body-range" role="radiogroup" aria-label={t('body.chartRange')}>
-              {(Object.keys(RANGES) as Range[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={range === key}
-                  className={range === key ? 'is-selected' : ''}
-                  onClick={() => setRange(key)}
-                >
-                  {t(`body.range.${key}`)}
-                </button>
-              ))}
-            </div>
-            {chartPoints.length >= 2 ? (
-              <WeightChart points={chartPoints} width={360} height={150} showDots className="body-chart-svg" />
-            ) : (
-              <p className="my-empty">{t('body.chartFew')}</p>
-            )}
-            <p className="my-level-hint">{t('body.chartHint')}</p>
-          </div>
-        ) : null}
-
-        <div className="body-bmi">
-          <span className="form-label">{t('body.bmiTitle')}</span>
-          {bmi === null ? (
-            <p className="my-level-hint">
-              {settings.height_cm === null ? (
-                <button type="button" className="link-button" onClick={onOpenSettings}>
-                  {t('body.bmiNeedsHeight')}
-                </button>
-              ) : (
-                t('body.bmiNeedsWeight')
-              )}
-            </p>
-          ) : (
-            <button
-              type="button"
-              className={`body-bmi-scale${settings.hide_weight && !bmiRevealed ? ' is-hidden' : ''}`}
-              aria-label={settings.hide_weight && !bmiRevealed ? t('body.reveal') : undefined}
-              onClick={() => setBmiRevealed((value) => !value)}
-            >
-              <span className="body-bmi-value">
-                {t('body.bmiValue', {
-                  value: new Intl.NumberFormat(dateLocale, { maximumFractionDigits: 1 }).format(bmi),
-                })}
-              </span>
-              <span className="body-bmi-track">
-                {BMI_MARKS.map((mark) => (
-                  <span key={mark} className="body-bmi-mark" style={{ left: `${bmiAt(mark)}%` }}>
-                    <span>{new Intl.NumberFormat(dateLocale).format(mark)}</span>
-                  </span>
-                ))}
-                <span className="body-bmi-dot" style={{ left: `${bmiAt(bmi)}%` }} />
-              </span>
-            </button>
-          )}
-          <p className="my-level-hint">{t('body.bmiNote')}</p>
-        </div>
-
-        <label className="body-check">
-          <input type="checkbox" checked={settings.hide_weight} onChange={(event) => void toggleHidden(event.target.checked)} />
-          <span>{t('body.hideWeight')}</span>
-        </label>
         <p className="my-gentle muted">{t('body.weightGentle')}</p>
       </form>
     </EditorDrawer>
@@ -600,12 +550,14 @@ type FoodDrawerProps = {
   target: { day: string; log: FoodLog | null } | null
   today: string
   goals: GoalPublic[]
+  /** Items from past notes, most frequent first (GP-59). */
+  suggestions: FoodSuggestion[]
   onClose: () => void
   onSaved: () => Promise<void>
   onGoalChange: (goal: GoalPublic) => void
 }
 
-function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: FoodDrawerProps) {
+function FoodDrawer({ target, today, goals, suggestions, onClose, onSaved, onGoalChange }: FoodDrawerProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
   const [meal, setMeal] = useState<Meal | null>(null)
@@ -613,6 +565,8 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
   const [mode, setMode] = useState<FoodInputMode>(readFoodInputMode)
   const [items, setItems] = useState<FoodItem[]>([emptyItem()])
   const [focusRow, setFocusRow] = useState<number | null>(null)
+  // The list row being typed in, whose matches show under it.
+  const [activeRow, setActiveRow] = useState<number | null>(null)
   const [marked, setMarked] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -623,6 +577,7 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
     setText(target.log?.text ?? '')
     setItems(parseFoodItems(target.log?.text ?? ''))
     setFocusRow(null)
+    setActiveRow(null)
     setMarked([])
     setError(null)
   }, [target, today])
@@ -659,6 +614,23 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
   const addItem = () => {
     setItems((current) => [...current, emptyItem()])
     setFocusRow(items.length)
+  }
+
+  const written = mode === 'list' ? items.map((item) => item.name) : parseFoodItems(text).map((item) => item.name)
+  const frequent = suggestions.filter((item) => !hasFoodItem(written, item)).slice(0, FREQUENT_FOODS)
+
+  const pickFrequent = (suggestion: FoodSuggestion) => {
+    const picked = { name: suggestion.name, grams: suggestion.grams }
+    if (mode === 'text') {
+      const line = formatFoodLine(picked, unit)
+      setText((current) => (current.trim() ? `${current.replace(/\s+$/, '')}\n${line}` : line))
+      return
+    }
+    setItems((current) => {
+      const empty = current.findIndex((item) => !item.name.trim())
+      if (empty === -1) return [...current, picked]
+      return current.map((item, i) => (i === empty ? { name: picked.name, grams: item.grams || picked.grams } : item))
+    })
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -751,6 +723,18 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
             </button>
           ))}
         </div>
+        {frequent.length > 0 ? (
+          <div className="body-food-frequent">
+            <span className="body-label">{t('body.foodFrequent')}</span>
+            <div className="body-meals">
+              {frequent.map((item) => (
+                <button key={item.name} type="button" className="body-meal" onClick={() => pickFrequent(item)}>
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {mode === 'text' ? (
           <textarea
             className="form-input my-win-input"
@@ -764,11 +748,16 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
           />
         ) : (
           <div className="body-food-items">
-            {items.map((item, index) => (
+            {items.map((item, index) => {
+              const matches = activeRow === index ? matchFoodSuggestions(suggestions, item.name) : []
+              return (
               <div key={index} className="body-food-item">
                 <input
                   className="form-input"
                   value={item.name}
+                  autoComplete="off"
+                  onFocus={() => setActiveRow(index)}
+                  onBlur={() => setActiveRow((current) => (current === index ? null : current))}
                   placeholder={index === 0 ? t('body.foodItemPlaceholder') : ''}
                   aria-label={t('body.foodItem', { number: index + 1 })}
                   maxLength={200}
@@ -806,8 +795,33 @@ function FoodDrawer({ target, today, goals, onClose, onSaved, onGoalChange }: Fo
                     ×
                   </button>
                 ) : null}
+                {matches.length > 0 ? (
+                  <ul className="body-food-suggest" role="listbox" aria-label={t('body.foodSuggestions')}>
+                    {matches.map((match) => (
+                      <li key={match.name}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={false}
+                          // Keep focus in the field so the list does not close before the tap lands.
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => {
+                            changeItem(index, { name: match.name, grams: item.grams || match.grams })
+                            setActiveRow(null)
+                          }}
+                        >
+                          <span>{match.name}</span>
+                          {match.grams ? (
+                            <span className="body-label">{t('body.foodUsually', { grams: match.grams, unit })}</span>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
-            ))}
+              )
+            })}
             <button type="button" className="link-button body-food-add" onClick={addItem}>
               ＋ {t('body.foodItemAdd')}
             </button>
@@ -843,7 +857,7 @@ type BodySettingsDrawerProps = {
   onSettingsChange: (settings: BodySettings) => void
 }
 
-/** Turn weight, sleep and food on or off for «Моё»; all start off. */
+/** Turn weight, sleep, workouts and food on or off for «Моё»; all start off. */
 export function BodySettingsDrawer({ open, settings, goals, onClose, onSettingsChange }: BodySettingsDrawerProps) {
   const { t } = useLocale()
   const [error, setError] = useState<string | null>(null)
@@ -923,6 +937,18 @@ export function BodySettingsDrawer({ open, settings, goals, onClose, onSettingsC
           <span>
             <strong>{t('body.showSleep')}</strong>
             <span className="my-level-hint">{t('body.showSleepHint')}</span>
+          </span>
+        </label>
+        <label className="body-check">
+          <input
+            type="checkbox"
+            checked={settings.show_workouts}
+            disabled={isSaving}
+            onChange={(event) => void save({ show_workouts: event.target.checked })}
+          />
+          <span>
+            <strong>{t('body.showWorkouts')}</strong>
+            <span className="my-level-hint">{t('body.showWorkoutsHint')}</span>
           </span>
         </label>
         <label className="body-check">

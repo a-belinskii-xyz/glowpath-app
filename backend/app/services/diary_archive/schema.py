@@ -162,6 +162,19 @@ class ArchiveSleep(_ArchiveModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class ArchiveWorkoutSet(_ArchiveModel):
+    day: date
+    weight_kg: float | None = Field(default=None, ge=0, le=999)
+    reps: int = Field(ge=1, le=1000)
+
+
+class ArchiveExercise(_ArchiveModel):
+    name: str = Field(min_length=1, max_length=80)
+    with_weight: bool = True
+    # In order within each day.
+    sets: list[ArchiveWorkoutSet] = Field(default_factory=list)
+
+
 class DiaryArchive(_ArchiveModel):
     format_version: Literal[2] = 2
     exported_at: datetime
@@ -176,3 +189,5 @@ class DiaryArchive(_ArchiveModel):
     food: list[ArchiveFoodLog] = Field(default_factory=list)
     # Sleep log (GP-48).
     sleep: list[ArchiveSleep] = Field(default_factory=list)
+    # Exercises with their sets (GP-58).
+    exercises: list[ArchiveExercise] = Field(default_factory=list)

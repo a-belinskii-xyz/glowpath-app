@@ -1,4 +1,4 @@
-"""Weight, food and sleep on «Моё» (GP-47, GP-48)."""
+"""Weight, food, sleep and workouts on «Моё» (GP-47, GP-48, GP-58)."""
 
 import io
 import json
@@ -6,7 +6,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from app.models.body import FoodLog, Measurement, SleepLog
+from app.models.body import Exercise, FoodLog, Measurement, SleepLog, WorkoutSet
 from app.models.user import User
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -39,6 +39,7 @@ def test_settings_start_off_and_link_up_to_three_own_goals(
         "hide_weight": False,
         "show_sleep": False,
         "height_cm": None,
+        "show_workouts": False,
         "food_goal_ids": [],
     }
 
@@ -342,3 +343,183 @@ def test_sleep_is_one_night_per_day_and_height_can_be_forgotten(
         "/v1/body/settings", json={"height_cm": None}, headers=_auth(token)
     )
     assert forgotten.json()["height_cm"] is None
+
+
+def test_workouts_replace_sets_per_exercise_and_day(
+    auth_client: TestClient, mailer: FakeEmailService, db: Session
+) -> None:
+    email = "body-workouts@example.com"
+    token = register_verify_and_login(auth_client, mailer, email)
+    other = register_verify_and_login(auth_client, mailer, "body-workouts-other@example.com")
+    today = _today(db, email)
+    yesterday = today - timedelta(days=1)
+
+    shown = auth_client.patch(
+        "/v1/body/settings", json={"show_workouts": True}, headers=_auth(token)
+    )
+    assert shown.json()["show_workouts"] is True
+
+    bench = auth_client.post(
+        "/v1/body/exercises", json={"name": "  Жим   лёжа "}, headers=_auth(token)
+    )
+    assert bench.status_code == 201
+    assert bench.json()["name"] == "Жим лёжа"
+    assert bench.json()["with_weight"] is True
+    bench_id = bench.json()["id"]
+    same = auth_client.post("/v1/body/exercises", json={"name": "жим лёжа"}, headers=_auth(token))
+    assert same.json()["id"] == bench_id
+    pullups = auth_client.post(
+        "/v1/body/exercises",
+        json={"name": "Подтягивания", "with_weight": False},
+        headers=_auth(token),
+    ).json()
+
+    saved = auth_client.put(
+        f"/v1/body/workouts/{yesterday}/{bench_id}",
+        json={"sets": [{"weight_kg": 60, "reps": 8}, {"weight_kg": 62.5, "reps": 6}]},
+        headers=_auth(token),
+    )
+    assert saved.status_code == 200, saved.text
+    assert [
+        (item["position"], item["weight_kg"], item["reps"]) for item in saved.json()["items"]
+    ] == [
+        (0, 60.0, 8),
+        (1, 62.5, 6),
+    ]
+    replaced = auth_client.put(
+        f"/v1/body/workouts/{yesterday}/{bench_id}",
+        json={"sets": [{"weight_kg": 65, "reps": 5}]},
+        headers=_auth(token),
+    )
+    assert [item["reps"] for item in replaced.json()["items"]] == [5]
+    # Bodyweight exercises drop any weight sent.
+    bodyweight = auth_client.put(
+        f"/v1/body/workouts/{today}/{pullups['id']}",
+        json={"sets": [{"weight_kg": 10, "reps": 7}, {"reps": 6}]},
+        headers=_auth(token),
+    )
+    assert [item["weight_kg"] for item in bodyweight.json()["items"]] == [None, None]
+
+    listed = auth_client.get(
+        "/v1/body/workouts",
+        params={"from": yesterday.isoformat(), "to": today.isoformat()},
+        headers=_auth(token),
+    ).json()["items"]
+    assert [(item["day"], item["reps"]) for item in listed] == [
+        (yesterday.isoformat(), 5),
+        (today.isoformat(), 7),
+        (today.isoformat(), 6),
+    ]
+    only_bench = auth_client.get(
+        "/v1/body/workouts",
+        params={"from": yesterday.isoformat(), "to": today.isoformat(), "exercise_id": bench_id},
+        headers=_auth(token),
+    ).json()["items"]
+    assert len(only_bench) == 1
+
+    exercises = auth_client.get("/v1/body/exercises", headers=_auth(token)).json()["items"]
+    assert [(item["name"], item["last_day"], item["recent_days"]) for item in exercises] == [
+        ("Подтягивания", today.isoformat(), 1),
+        ("Жим лёжа", yesterday.isoformat(), 1),
+    ]
+
+    future = auth_client.put(
+        f"/v1/body/workouts/{today + timedelta(days=3)}/{bench_id}",
+        json={"sets": [{"weight_kg": 60, "reps": 8}]},
+        headers=_auth(token),
+    )
+    assert future.status_code == 400
+    zero = auth_client.put(
+        f"/v1/body/workouts/{today}/{bench_id}",
+        json={"sets": [{"weight_kg": 60, "reps": 0}]},
+        headers=_auth(token),
+    )
+    assert zero.status_code == 422
+    stranger = auth_client.put(
+        f"/v1/body/workouts/{today}/{bench_id}",
+        json={"sets": [{"weight_kg": 60, "reps": 8}]},
+        headers=_auth(other),
+    )
+    assert stranger.status_code == 404
+    assert auth_client.get("/v1/body/exercises", headers=_auth(other)).json()["items"] == []
+
+    cleared = auth_client.put(
+        f"/v1/body/workouts/{yesterday}/{bench_id}", json={"sets": []}, headers=_auth(token)
+    )
+    assert cleared.json()["items"] == []
+
+    taken = auth_client.patch(
+        f"/v1/body/exercises/{bench_id}", json={"name": "подтягивания"}, headers=_auth(token)
+    )
+    assert taken.status_code == 409
+    renamed = auth_client.patch(
+        f"/v1/body/exercises/{bench_id}",
+        json={"name": "Жим лёжа узким", "with_weight": True},
+        headers=_auth(token),
+    )
+    assert renamed.json()["name"] == "Жим лёжа узким"
+
+    removed = auth_client.delete(f"/v1/body/exercises/{pullups['id']}", headers=_auth(token))
+    assert removed.status_code == 204
+    user = db.scalar(select(User).where(User.email == email))
+    assert user is not None
+    assert db.scalars(select(WorkoutSet).where(WorkoutSet.user_id == user.id)).all() == []
+
+
+def test_workouts_survive_export_and_restore(
+    auth_client: TestClient, mailer: FakeEmailService, db: Session
+) -> None:
+    source_email = "body-workouts-export@example.com"
+    source = register_verify_and_login(auth_client, mailer, source_email)
+    today = _today(db, source_email)
+    squat = auth_client.post(
+        "/v1/body/exercises", json={"name": "Присед"}, headers=_auth(source)
+    ).json()
+    auth_client.put(
+        f"/v1/body/workouts/{today}/{squat['id']}",
+        json={"sets": [{"weight_kg": 80, "reps": 5}, {"weight_kg": 80, "reps": 4}]},
+        headers=_auth(source),
+    )
+
+    exported = auth_client.get("/v1/account/export", headers=_auth(source))
+    payload = json.loads(zipfile.ZipFile(io.BytesIO(exported.content)).read("diary.json"))
+    assert payload["exercises"] == [
+        {
+            "name": "Присед",
+            "with_weight": True,
+            "sets": [
+                {"day": today.isoformat(), "weight_kg": 80.0, "reps": 5},
+                {"day": today.isoformat(), "weight_kg": 80.0, "reps": 4},
+            ],
+        }
+    ]
+
+    target_email = "body-workouts-import@example.com"
+    target = register_verify_and_login(auth_client, mailer, target_email)
+    for _ in range(2):
+        preview = auth_client.post(
+            "/v1/account/restores",
+            headers=_auth(target),
+            files=[("files", ("part1.zip", exported.content, "application/zip"))],
+        )
+        assert preview.status_code == 201, preview.text
+        applied = auth_client.post(
+            f"/v1/account/restores/{preview.json()['id']}/apply", headers=_auth(target)
+        )
+        assert applied.status_code == 200, applied.text
+
+    target_user = db.scalar(select(User).where(User.email == target_email))
+    assert target_user is not None
+    exercises = list(db.scalars(select(Exercise).where(Exercise.user_id == target_user.id)))
+    assert [item.name for item in exercises] == ["Присед"]
+    sets = list(
+        db.scalars(
+            select(WorkoutSet)
+            .where(WorkoutSet.user_id == target_user.id)
+            .order_by(WorkoutSet.position)
+        )
+    )
+    assert [(item.day, item.position, float(item.weight_kg or 0), item.reps) for item in sets] == [
+        (today, 0, 80.0, 5),
+        (today, 1, 80.0, 4),
+    ]

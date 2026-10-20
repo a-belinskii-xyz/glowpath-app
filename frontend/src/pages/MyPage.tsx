@@ -421,7 +421,7 @@ export function MyPage() {
         )}
       </section>
 
-      {body && (body.show_weight || body.show_food || body.show_sleep) ? (
+      {body && (body.show_weight || body.show_food || body.show_sleep || body.show_workouts) ? (
         <BodyCard
           settings={body}
           today={today}
@@ -496,7 +496,7 @@ export function MyPage() {
         )}
       </section>
 
-      {body && !body.show_weight && !body.show_food && !body.show_sleep ? (
+      {body && !body.show_weight && !body.show_food && !body.show_sleep && !body.show_workouts ? (
         <button type="button" className="link-button body-offer" onClick={() => setBodySettingsOpen(true)}>
           {t('body.offer')}
         </button>

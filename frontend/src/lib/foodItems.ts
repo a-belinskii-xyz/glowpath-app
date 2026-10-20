@@ -12,28 +12,33 @@ export function emptyItem(): FoodItem {
   return { name: "", grams: "" };
 }
 
+/** One line of a note: "Гречка — 200 г" gives the name and grams, anything else is just a name. */
+export function parseFoodLine(line: string): FoodItem {
+  const match = LINE_WITH_GRAMS.exec(line);
+  return match
+    ? { name: match[1].trim(), grams: match[2] }
+    : { name: line, grams: "" };
+}
+
+export function formatFoodLine(item: FoodItem, unit: string): string {
+  return item.grams
+    ? `${item.name.trim()} — ${item.grams} ${unit}`
+    : item.name.trim();
+}
+
 export function parseFoodItems(text: string): FoodItem[] {
   const items = text
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => {
-      const match = LINE_WITH_GRAMS.exec(line);
-      return match
-        ? { name: match[1].trim(), grams: match[2] }
-        : { name: line, grams: "" };
-    });
+    .map(parseFoodLine);
   return items.length > 0 ? items : [emptyItem()];
 }
 
 export function serializeFoodItems(items: FoodItem[], unit: string): string {
   return items
     .filter((item) => item.name.trim())
-    .map((item) =>
-      item.grams
-        ? `${item.name.trim()} — ${item.grams} ${unit}`
-        : item.name.trim(),
-    )
+    .map((item) => formatFoodLine(item, unit))
     .join("\n");
 }
 

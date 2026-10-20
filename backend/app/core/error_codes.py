@@ -77,6 +77,8 @@ class ErrorCode(StrEnum):
     BODY_DAY_IN_FUTURE = "body_day_in_future"
     INVALID_BODY_RANGE = "invalid_body_range"
     FOOD_LOG_NOT_FOUND = "food_log_not_found"
+    EXERCISE_NOT_FOUND = "exercise_not_found"
+    EXERCISE_NAME_TAKEN = "exercise_name_taken"
     PERIOD_END_BEFORE_START = "period_end_before_start"
     ENDS_ON_BEFORE_STARTS_ON = "ends_on_before_starts_on"
 
