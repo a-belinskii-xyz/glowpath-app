@@ -40,6 +40,8 @@ def test_settings_start_off_and_link_up_to_three_own_goals(
         "show_sleep": False,
         "height_cm": None,
         "show_workouts": False,
+        "sleep_norm_min": 420,
+        "sleep_norm_max": 540,
         "food_goal_ids": [],
     }
 
@@ -523,3 +525,36 @@ def test_workouts_survive_export_and_restore(
         (today, 0, 80.0, 5),
         (today, 1, 80.0, 4),
     ]
+
+
+def test_sleep_norm_defaults_to_7_to_9_hours_and_can_be_changed_or_turned_off(
+    auth_client: TestClient, mailer: FakeEmailService
+) -> None:
+    token = register_verify_and_login(auth_client, mailer, "body-sleep-norm@example.com")
+
+    changed = auth_client.patch(
+        "/v1/body/settings",
+        json={"sleep_norm_min": 390, "sleep_norm_max": 480},
+        headers=_auth(token),
+    )
+    assert changed.status_code == 200, changed.text
+    assert (changed.json()["sleep_norm_min"], changed.json()["sleep_norm_max"]) == (390, 480)
+
+    kept = auth_client.patch("/v1/body/settings", json={"show_sleep": True}, headers=_auth(token))
+    assert (kept.json()["sleep_norm_min"], kept.json()["sleep_norm_max"]) == (390, 480)
+
+    for bad in (
+        {"sleep_norm_min": 480, "sleep_norm_max": 420},
+        {"sleep_norm_min": 420},
+        {"sleep_norm_min": 420, "sleep_norm_max": None},
+        {"sleep_norm_min": 60, "sleep_norm_max": 480},
+    ):
+        rejected = auth_client.patch("/v1/body/settings", json=bad, headers=_auth(token))
+        assert rejected.status_code == 422, bad
+
+    off = auth_client.patch(
+        "/v1/body/settings",
+        json={"sleep_norm_min": None, "sleep_norm_max": None},
+        headers=_auth(token),
+    )
+    assert (off.json()["sleep_norm_min"], off.json()["sleep_norm_max"]) == (None, None)

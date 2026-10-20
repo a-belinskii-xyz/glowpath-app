@@ -11,7 +11,16 @@ import { intlLocale } from '../i18n/t'
 import { dayNumber, formatDay } from '../lib/bodyFormat'
 import { shiftDateKey } from '../lib/datetime'
 import { formatApiError } from '../lib/errors'
-import { type Night, averageNights, formatDuration, nightClock, normalizeClock, toNight } from '../lib/sleep'
+import {
+  type Night,
+  type SleepNorm,
+  averageNights,
+  formatDuration,
+  nightClock,
+  normalizeClock,
+  sleepBand,
+  toNight,
+} from '../lib/sleep'
 import type { SleepLog, SleepQuality } from '../types/body'
 
 const QUALITIES: SleepQuality[] = ['hard', 'ok', 'good']
@@ -26,6 +35,37 @@ function bigClock(clock: string) {
     </>
   ) : (
     clock
+  )
+}
+
+/** "7 h" or "7.5 h" for the legend. */
+function normHours(minutes: number, dateLocale: string, unit: string): string {
+  return `${new Intl.NumberFormat(dateLocale, { maximumFractionDigits: 1 }).format(minutes / 60)} ${unit}`
+}
+
+/** Three colours against the person's own norm (GP-61); nothing reads as a grade. */
+function SleepLegend({ norm }: { norm: SleepNorm }) {
+  const { locale, t } = useLocale()
+  const dateLocale = intlLocale(locale)
+  const unit = t('body.hoursShort')
+  return (
+    <div className="body-sleep-legend">
+      <span>
+        <i className="body-sleep-swatch is-short" />
+        {t('body.sleepNormShort', { hours: normHours(norm.min, dateLocale, unit) })}
+      </span>
+      <span>
+        <i className="body-sleep-swatch is-normal" />
+        {t('body.sleepNormIn', {
+          from: normHours(norm.min, dateLocale, '').trim(),
+          to: normHours(norm.max, dateLocale, unit),
+        })}
+      </span>
+      <span>
+        <i className="body-sleep-swatch is-long" />
+        {t('body.sleepNormLong', { hours: normHours(norm.max, dateLocale, unit) })}
+      </span>
+    </div>
   )
 }
 
@@ -44,12 +84,13 @@ type SleepSectionProps = {
   asOf: string
   today: string
   weekDays: string[]
+  norm: SleepNorm | null
   onRecord: () => void
   onOpenStats: () => void
 }
 
 /** Sleep on «Моё» (GP-48): averages for the last 7 nights and the week as bars, no "8 hours" norm. */
-export function SleepSection({ logs, asOf, today, weekDays, onRecord, onOpenStats }: SleepSectionProps) {
+export function SleepSection({ logs, asOf, today, weekDays, norm, onRecord, onOpenStats }: SleepSectionProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
   const nights = logs.map(toNight)
@@ -113,7 +154,7 @@ export function SleepSection({ logs, asOf, today, weekDays, onRecord, onOpenStat
             .map((day) => {
               const night = week.find((item) => item.day === day)
               return (
-                <div key={day} className="body-sleep-row">
+                <div key={day} className={`body-sleep-row${night && norm ? ` is-${sleepBand(night.sleep, norm)}` : ''}`}>
                   <span className="body-sleep-day">{formatDay(day, dateLocale, { weekday: 'short' })}</span>
                   <span className="body-sleep-track">
                     {night ? (
@@ -150,6 +191,7 @@ export function SleepSection({ logs, asOf, today, weekDays, onRecord, onOpenStat
           </div>
         </div>
       ) : null}
+      {scale && norm ? <SleepLegend norm={norm} /> : null}
       {logs.length > 0 ? (
         <span className="body-chevron body-sleep-chevron" aria-hidden>
           ›
@@ -164,7 +206,7 @@ export function SleepSection({ logs, asOf, today, weekDays, onRecord, onOpenStat
 }
 
 /** Nights as vertical bars over a month to a year: asleep in one tone, lying after waking lighter. */
-function SleepChart({ nights, from, to }: { nights: Night[]; from: string; to: string }) {
+function SleepChart({ nights, from, to, norm }: { nights: Night[]; from: string; to: string; norm: SleepNorm | null }) {
   if (nights.length === 0) return null
   const { start, end, ticks } = hourTicks(nights)
   const width = 360
@@ -188,7 +230,7 @@ function SleepChart({ nights, from, to }: { nights: Night[]; from: string; to: s
         </g>
       ))}
       {nights.map((night) => (
-        <g key={night.day}>
+        <g key={night.day} className={norm ? `is-${sleepBand(night.sleep, norm)}` : undefined}>
           <rect
             className="body-sleep-bar-svg"
             x={x(night.day)}
@@ -395,18 +437,20 @@ type SleepStatsDrawerProps = {
   open: boolean
   today: string
   logs: SleepLog[]
+  norm: SleepNorm | null
   onClose: () => void
   onRecord: (day: string) => void
 }
 
 /** Sleep over a month to a year (GP-60): the nights as bars, averages for the period and every night. */
-export function SleepStatsDrawer({ open, today, logs, onClose, onRecord }: SleepStatsDrawerProps) {
+export function SleepStatsDrawer({ open, today, logs, norm, onClose, onRecord }: SleepStatsDrawerProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
   const [range, setRange] = useState<BodyRange>('month')
   const from = shiftDateKey(today, -BODY_RANGES[range] + 1)
   const nights = logs.filter((log) => log.day >= from && log.day <= today).map(toNight)
   const average = averageNights(nights)
+  const inNorm = norm ? nights.filter((night) => sleepBand(night.sleep, norm) === 'normal').length : 0
   const byDay = new Map(logs.map((log) => [log.day, log]))
 
   return (
@@ -426,10 +470,11 @@ export function SleepStatsDrawer({ open, today, logs, onClose, onRecord }: Sleep
         <div className="body-chart">
           <BodyRangeSwitch value={range} onChange={setRange} />
           {nights.length > 0 ? (
-            <SleepChart nights={nights} from={from} to={today} />
+            <SleepChart nights={nights} from={from} to={today} norm={norm} />
           ) : (
             <p className="my-empty">{t('body.sleepChartFew')}</p>
           )}
+          {nights.length > 0 && norm ? <SleepLegend norm={norm} /> : null}
           <p className="my-level-hint">{t('body.sleepChartHint')}</p>
         </div>
 
@@ -454,6 +499,10 @@ export function SleepStatsDrawer({ open, today, logs, onClose, onRecord }: Sleep
           </div>
         ) : null}
 
+        {norm && nights.length > 0 ? (
+          <p className="body-label body-sleep-in-norm">{t('body.sleepInNorm', { count: inNorm, total: nights.length })}</p>
+        ) : null}
+
         {nights.length > 0 ? (
           <div className="body-history">
             <span className="form-label">{t('body.statsNightsList')}</span>
@@ -465,6 +514,7 @@ export function SleepStatsDrawer({ open, today, logs, onClose, onRecord }: Sleep
                     <button type="button" onClick={() => onRecord(night.day)}>
                       <span>{formatDay(night.day, dateLocale, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                       <span>
+                        {norm ? <i className={`body-sleep-swatch is-${sleepBand(night.sleep, norm)}`} /> : null}
                         {nightClock(night.bed)}–{nightClock(night.wake)} · {formatDuration(t, night.sleep)}
                         {quality ? ` · ${t(`body.quality.${quality}`)}` : ''}
                       </span>

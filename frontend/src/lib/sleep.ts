@@ -103,3 +103,21 @@ export function normalizeClock(value: string): string | null {
   if (hours > 23 || minutes > 59) return null
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
+
+/** The person's own sleep range in minutes (GP-61). */
+export type SleepNorm = { min: number; max: number }
+export type SleepBand = 'short' | 'normal' | 'long'
+
+export function sleepNormOf(settings: { sleep_norm_min: number | null; sleep_norm_max: number | null }): SleepNorm | null {
+  return settings.sleep_norm_min !== null && settings.sleep_norm_max !== null
+    ? { min: settings.sleep_norm_min, max: settings.sleep_norm_max }
+    : null
+}
+
+/** Where a night falls against the norm; null when no norm is set. */
+export function sleepBand(minutes: number, norm: SleepNorm | null): SleepBand | null {
+  if (!norm) return null
+  if (minutes < norm.min) return 'short'
+  if (minutes > norm.max) return 'long'
+  return 'normal'
+}
