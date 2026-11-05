@@ -1,3 +1,6 @@
+import './instrument'
+
+import * as Sentry from '@sentry/react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
@@ -13,6 +16,8 @@ initAppTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Sentry.ErrorBoundary>
+      <App />
+    </Sentry.ErrorBoundary>
   </StrictMode>,
 )

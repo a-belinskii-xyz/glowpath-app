@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +27,24 @@ class Settings(BaseSettings):
     telegram_mini_app_url: str = Field(default="", validation_alias="TELEGRAM_MINI_APP_URL")
     host: str = Field(default="0.0.0.0", validation_alias="BOT_HOST")
     port: int = Field(default=8081, validation_alias="BOT_PORT")
+
+    # Sentry error + trace reporting. Empty DSN disables it (local dev, tests).
+    sentry_dsn: str = Field(default="", validation_alias="SENTRY_DSN")
+    sentry_environment: str = Field(
+        default="development",
+        validation_alias="SENTRY_ENVIRONMENT",
+    )
+    # Render sets RENDER_GIT_COMMIT on every deploy; it doubles as the release name.
+    sentry_release: str = Field(
+        default="",
+        validation_alias=AliasChoices("SENTRY_RELEASE", "RENDER_GIT_COMMIT"),
+    )
+    sentry_traces_sample_rate: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        validation_alias="SENTRY_TRACES_SAMPLE_RATE",
+    )
 
 
 settings = Settings()

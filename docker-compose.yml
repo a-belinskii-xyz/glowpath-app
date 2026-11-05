@@ -129,6 +129,8 @@ services:
     environment:
       API_BASE_URL: http://app:8000
       BOT_HOST: 0.0.0.0
+      # backend/.env holds the API's SENTRY_DSN; the bot reports to its own project.
+      SENTRY_DSN: ${BOT_SENTRY_DSN:-}
       BOT_PORT: 8081
     depends_on:
       app:

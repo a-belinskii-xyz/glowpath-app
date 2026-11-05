@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppBootGate } from './components/AppBootGate'
@@ -50,6 +51,9 @@ import { UnsubscribePage } from './pages/UnsubscribePage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { TelegramNavigation } from './platform/TelegramNavigation'
 
+// Names page-load / navigation traces after the route pattern (e.g. /entries/:id).
+const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes)
+
 function App() {
   useKeepServerAwake()
 
@@ -64,7 +68,7 @@ function App() {
                 <TelegramNavigation />
                 <NotificationLinkTracker />
                 <GuestImportPrompt />
-                <Routes>
+                <SentryRoutes>
                   <Route element={<Layout />}>
                     <Route index element={<HomePage />} />
                     <Route element={<BillingOnly />}>
@@ -121,7 +125,7 @@ function App() {
 
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Route>
-                </Routes>
+                </SentryRoutes>
               </BrowserRouter>
             </AmbientGlowProvider>
           </MoodPreferencesProvider>

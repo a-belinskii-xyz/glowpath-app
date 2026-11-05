@@ -20,6 +20,7 @@ import sys
 import time
 
 from app.config import settings
+from app.core.sentry import init_sentry
 from app.db.session import SessionLocal
 from app.services.notifications.factory import build_notification_dispatcher
 from app.services.notifications.tick import run_reminder_tick
@@ -57,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    init_sentry()
 
     if args.once:
         return run_once()

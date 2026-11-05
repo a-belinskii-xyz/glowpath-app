@@ -14,6 +14,17 @@ COPY src ./src
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Sentry: empty DSN disables the SDK. Render passes service env vars and
+# RENDER_GIT_COMMIT as build args. The auth token only uploads source maps
+# from this build stage; it never reaches the nginx image.
+ARG VITE_SENTRY_DSN=
+ARG VITE_SENTRY_ENVIRONMENT=production
+ARG RENDER_GIT_COMMIT=
+ARG SENTRY_AUTH_TOKEN=
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN \
+    VITE_SENTRY_ENVIRONMENT=$VITE_SENTRY_ENVIRONMENT \
+    VITE_SENTRY_RELEASE=$RENDER_GIT_COMMIT
+
 RUN npm run build
 
 FROM nginx:1.27-alpine
