@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 
+import { Link } from 'react-router-dom'
+
 import { createExercise, deleteExercise, setWorkout, updateExercise } from '../api/body'
 import { BODY_RANGES, type BodyRange, BodyRangeSwitch } from './BodyRange'
 import { EditorDrawer } from './EditorDrawer'
@@ -22,14 +24,12 @@ import {
 } from '../lib/workouts'
 import type { Exercise, WorkoutSet } from '../types/body'
 
-const SHOWN_EXERCISES = 4
-const SPARK_DAYS = 90
 const CHIP_EXERCISES = 8
 
 type Point = { day: string; value: number }
 
 /** A plain line with a dot per session; the band is padded so small steps do not look like jumps. */
-function ProgressChart({ points, height, showDots, className }: { points: Point[]; height: number; showDots?: boolean; className?: string }) {
+export function ProgressChart({ points, height, showDots, className }: { points: Point[]; height: number; showDots?: boolean; className?: string }) {
   if (points.length < 2) return null
   const width = 360
   const values = points.map((point) => point.value)
@@ -73,19 +73,17 @@ type WorkoutSectionProps = {
   today: string
   weekDays: string[]
   onRecord: () => void
-  onOpenExercise: (exercise: Exercise) => void
 }
 
-/** Workouts on «Моё» (GP-58): the latest sets per exercise and a quiet line of how they grow. */
-export function WorkoutSection({ exercises, sets, today, weekDays, onRecord, onOpenExercise }: WorkoutSectionProps) {
+/** Workouts on «Моё» (GP-62): one line on the latest workout; the exercises live on their own screen. */
+export function WorkoutSection({ exercises, sets, today, weekDays, onRecord }: WorkoutSectionProps) {
   const { locale, t } = useLocale()
   const dateLocale = intlLocale(locale)
-  const { describe } = useSetWords()
-  const [expanded, setExpanded] = useState(false)
   const weekCount = new Set(sets.filter((set) => set.day >= weekDays[0] && set.day <= weekDays[6]).map((set) => set.day)).size
-  const done = exercises.filter((exercise) => exercise.last_day !== null)
-  const shown = expanded ? done : done.slice(0, SHOWN_EXERCISES)
-  const sparkFrom = shiftDateKey(today, -SPARK_DAYS)
+  const lastDay = sets.reduce<string | null>((latest, set) => (latest === null || set.day > latest ? set.day : latest), null)
+  const lastNames = lastDay
+    ? exercises.filter((exercise) => sets.some((set) => set.day === lastDay && set.exercise_id === exercise.id)).map((exercise) => exercise.name)
+    : []
 
   return (
     <div className="body-workouts">
@@ -101,50 +99,113 @@ export function WorkoutSection({ exercises, sets, today, weekDays, onRecord, onO
           </span>
         ) : null}
       </div>
-      {done.length === 0 ? (
-        <p className="my-empty">{t('body.workoutsEmpty')}</p>
-      ) : (
-        <ul className="body-workout-list">
-          {shown.map((exercise) => {
-            const sessions = sessionsOf(sets, exercise.id)
-            const last = sessions[sessions.length - 1]
-            const spark = sessions
-              .filter((session) => session.day >= sparkFrom)
-              .map((session) => ({ day: session.day, value: sessionValue(session, exercise, 'best') }))
-            return (
-              <li key={exercise.id}>
-                <button type="button" className="body-workout-row" onClick={() => onOpenExercise(exercise)}>
-                  <span className="body-workout-text">
-                    <strong>{exercise.name}</strong>
-                    {last ? (
-                      <span className="body-label">
-                        {last.day === today
-                          ? t('body.today')
-                          : formatDay(last.day, dateLocale, { weekday: 'short', day: 'numeric', month: 'short' })}
-                        {' · '}
-                        {describe(last.sets, exercise.with_weight)}
-                      </span>
-                    ) : null}
-                  </span>
-                  <ProgressChart points={spark} height={28} className="body-workout-spark" />
-                  <span className="body-chevron" aria-hidden>
-                    ›
-                  </span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {done.length > SHOWN_EXERCISES ? (
-        <button type="button" className="link-button body-food-add" onClick={() => setExpanded((value) => !value)}>
-          {expanded ? t('body.workoutsLess') : t('body.workoutsMore', { count: done.length })}
-        </button>
-      ) : null}
+      <Link to="/me/workouts" className="body-workout-row body-workouts-open">
+        <span className="body-workout-text">
+          {lastDay ? (
+            <>
+              <span className="body-label">
+                {t('body.workoutsLast', {
+                  date:
+                    lastDay === today
+                      ? t('body.today')
+                      : formatDay(lastDay, dateLocale, { weekday: 'short', day: 'numeric', month: 'short' }),
+                })}
+              </span>
+              <strong>{lastNames.join(', ')}</strong>
+            </>
+          ) : (
+            <span className="body-label">{t('body.workoutsOpenEmpty')}</span>
+          )}
+        </span>
+        <span className="body-label body-workouts-count">
+          {exercises.length > 0
+            ? tp(locale, exercises.length, {
+                one: 'body.workoutsExercisesOne',
+                few: 'body.workoutsExercisesFew',
+                many: 'body.workoutsExercisesMany',
+              })
+            : null}
+        </span>
+        <span className="body-chevron" aria-hidden>
+          ›
+        </span>
+      </Link>
       <button type="button" className="button button-secondary body-wide" onClick={onRecord}>
         {t('body.workoutRecord')}
       </button>
     </div>
+  )
+}
+
+type ExerciseCardProps = {
+  exercise: Exercise
+  sets: WorkoutSet[]
+  today: string
+  range: BodyRange
+  onOpen: () => void
+  onRecord: () => void
+}
+
+/** One exercise on the workouts screen (GP-62): its line, a few plain numbers, and a way to add sets. */
+export function ExerciseCard({ exercise, sets, today, range, onOpen, onRecord }: ExerciseCardProps) {
+  const { locale, t } = useLocale()
+  const dateLocale = intlLocale(locale)
+  const { numbers, describe } = useSetWords()
+  const sessions = sessionsOf(sets, exercise.id)
+  const last = sessions[sessions.length - 1]
+  const from = shiftDateKey(today, -BODY_RANGES[range] + 1)
+  const inRange = sessions.filter((session) => session.day >= from)
+  const points = inRange.map((session) => ({ day: session.day, value: sessionValue(session, exercise, 'best') }))
+  const best = bestSet(inRange.flatMap((session) => session.sets))
+  const change = points.length >= 2 ? points[points.length - 1].value - points[0].value : null
+  const changeLabel = (value: number) => {
+    if (Math.abs(value) < 0.01) return t('body.exerciseSame')
+    const amount = numbers.format(Math.abs(value))
+    return `${value > 0 ? '+' : '−'}${exercise.with_weight ? `${amount} ${t('body.kg')}` : t('body.repsList', { list: amount })}`
+  }
+
+  return (
+    <article className="card my-card body-card body-exercise-card">
+      <button type="button" className="body-exercise-open body-stats-open" onClick={onOpen}>
+        <span className="body-workout-text">
+          <strong>{exercise.name}</strong>
+          <span className="body-label">
+            {last
+              ? `${
+                  last.day === today
+                    ? t('body.today')
+                    : formatDay(last.day, dateLocale, { weekday: 'short', day: 'numeric', month: 'short' })
+                } · ${describe(last.sets, exercise.with_weight)}`
+              : t('body.exerciseNever')}
+          </span>
+        </span>
+        <span className="body-chevron" aria-hidden>
+          ›
+        </span>
+      </button>
+      {points.length >= 2 ? (
+        <ProgressChart points={points} height={72} showDots className="body-exercise-chart" />
+      ) : null}
+      {inRange.length > 0 ? (
+        <div className="body-stats body-exercise-stats">
+          <div>
+            <span className="body-label">{t('body.exerciseBest')}</span>
+            <strong>{best ? describe([best], exercise.with_weight) : '—'}</strong>
+          </div>
+          <div>
+            <span className="body-label">{t('body.exerciseChange')}</span>
+            <strong>{change === null ? '—' : changeLabel(change)}</strong>
+          </div>
+          <div>
+            <span className="body-label">{t('body.exerciseSessions')}</span>
+            <strong>{inRange.length}</strong>
+          </div>
+        </div>
+      ) : null}
+      <button type="button" className="link-button body-food-add" onClick={onRecord}>
+        {t('body.exerciseAddSets')}
+      </button>
+    </article>
   )
 }
 
