@@ -1,10 +1,8 @@
 """Endpoints for trusted infrastructure callers, not for app users."""
 
 import hmac
-from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from sentry_sdk.crons import monitor
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -16,21 +14,7 @@ from app.services.notifications.dispatcher import NotificationDispatcher
 from app.services.notifications.factory import build_notification_dispatcher
 from app.services.notifications.tick import run_reminder_tick
 
-if TYPE_CHECKING:
-    from sentry_sdk._types import MonitorConfig
-
 router = APIRouter(tags=["internal"])
-
-# Sentry Crons heartbeat: cron-job.org ticks every 5 minutes, so missing
-# check-ins mean reminders stopped, or Sentry stopped receiving events.
-# Two misses in a row open an issue (one cold start alone does not).
-_TICK_MONITOR_CONFIG: "MonitorConfig" = {
-    "schedule": {"type": "interval", "value": 5, "unit": "minute"},
-    "checkin_margin": 5,
-    "max_runtime": 5,
-    "failure_issue_threshold": 2,
-    "recovery_threshold": 1,
-}
 
 
 def require_cron_secret(authorization: str | None = Header(default=None)) -> None:
@@ -65,8 +49,7 @@ def reminders_tick(
     dispatcher: NotificationDispatcher = Depends(get_notification_dispatcher),
 ) -> ReminderTickResponse:
     """Send due reminders once. Called every few minutes by cron-job.org."""
-    with monitor(monitor_slug="reminders-tick", monitor_config=_TICK_MONITOR_CONFIG):
-        result = run_reminder_tick(db, dispatcher)
+    result = run_reminder_tick(db, dispatcher)
     stats = result.stats
     return ReminderTickResponse(
         outcome=result.outcome,
