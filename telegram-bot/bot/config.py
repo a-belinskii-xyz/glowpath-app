@@ -1,5 +1,6 @@
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sentry_sdk.utils import BadDsn, Dsn
 
 
 class Settings(BaseSettings):
@@ -45,6 +46,18 @@ class Settings(BaseSettings):
         le=1.0,
         validation_alias="SENTRY_TRACES_SAMPLE_RATE",
     )
+
+    @field_validator("sentry_dsn")
+    @classmethod
+    def _check_sentry_dsn(cls, value: str) -> str:
+        # A malformed DSN fails startup loudly instead of silently dropping telemetry.
+        value = value.strip()
+        if value:
+            try:
+                Dsn(value)
+            except BadDsn as exc:
+                raise ValueError(f"SENTRY_DSN is not a valid Sentry DSN: {exc}") from exc
+        return value
 
 
 settings = Settings()

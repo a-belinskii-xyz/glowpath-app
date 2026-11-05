@@ -55,6 +55,19 @@ A request every 5 minutes also keeps the free API instance awake around the
 clock (about 720 instance hours a month). Check the free-hours usage in the
 Render dashboard, because the web and bot services share the same allowance.
 
+## Sentry heartbeat
+
+Each tick reports a check-in to the Sentry Cron Monitor `reminders-tick`
+(project `glowpath-api`). The monitor is created from code on the first
+check-in, with a 5-minute interval and a 5-minute margin. After two missed or
+failed ticks in a row Sentry opens an issue and sends a notification. Causes
+include cron-job.org stopping, the API being down, or Sentry receiving nothing
+from the API at all.
+
+Check-ins are counted per `SENTRY_ENVIRONMENT`. Triggering the endpoint
+locally adds a `development` environment to the monitor, which will then
+report missed check-ins; delete that environment in Sentry afterwards.
+
 ## Local development
 
 `docker compose up` still runs the `reminders` worker, which polls every

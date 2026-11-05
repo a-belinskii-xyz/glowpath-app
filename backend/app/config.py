@@ -1,5 +1,6 @@
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sentry_sdk.utils import BadDsn, Dsn
 
 from app.db.postgres_url import normalize_postgres_url
 
@@ -298,6 +299,18 @@ class Settings(BaseSettings):
         if not isinstance(value, str):
             return value
         return normalize_postgres_url(value)
+
+    @field_validator("sentry_dsn")
+    @classmethod
+    def _check_sentry_dsn(cls, value: str) -> str:
+        # A malformed DSN fails startup loudly instead of silently dropping telemetry.
+        value = value.strip()
+        if value:
+            try:
+                Dsn(value)
+            except BadDsn as exc:
+                raise ValueError(f"SENTRY_DSN is not a valid Sentry DSN: {exc}") from exc
+        return value
 
     @property
     def migration_database_url(self) -> str:
