@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import sentry_sdk
+from sentry_sdk.integrations.logging import ignore_logger
 
 from app.config import settings
 
+if TYPE_CHECKING:
+    from sentry_sdk._types import Hint, Log
+
 logger = logging.getLogger(__name__)
 
-# Render probes /health every few seconds; tracing those only burns quota.
-_UNTRACED_TRANSACTIONS = frozenset({"/health"})
+# Render probes /health and the SPA keep-alive (useKeepServerAwake) pings
+# /v1/health; tracing those only burns quota.
+_UNTRACED_TRANSACTIONS = frozenset({"/health", "/v1/health"})
 
 SentryStatus = Literal["off", "on", "failed"]
 _status: SentryStatus = "off"
@@ -22,13 +27,28 @@ def sentry_status() -> SentryStatus:
 
 
 def _traces_sampler(context: dict[str, Any]) -> float:
-    parent_sampled = context.get("parent_sampled")
-    if parent_sampled is not None:
-        return float(parent_sampled)
+    # Checked before parent_sampled: the browser SDK's sampling decision would
+    # otherwise pull keep-alive pings into traces.
     name = context.get("transaction_context", {}).get("name", "")
     if name in _UNTRACED_TRANSACTIONS:
         return 0.0
+    parent_sampled = context.get("parent_sampled")
+    if parent_sampled is not None:
+        return float(parent_sampled)
     return settings.sentry_traces_sample_rate
+
+
+# Access log lines carry client IPs and full URLs with one-time tokens
+# (?token=, OAuth ?code=).
+_PRIVATE_LOGGERS = frozenset({"uvicorn.access"})
+
+
+def _before_send_log(log: Log, _hint: Hint) -> Log | None:
+    # Logs are off (no enable_logs); this keeps access lines out if they are
+    # ever turned on. ignore_logger() alone does not cover Sentry Logs.
+    if log["attributes"].get("logger.name") in _PRIVATE_LOGGERS:
+        return None
+    return log
 
 
 def init_sentry() -> None:
@@ -49,8 +69,11 @@ def init_sentry() -> None:
             max_request_body_size="never",
             include_local_variables=False,
             traces_sampler=_traces_sampler,
-            enable_logs=True,
+            before_send_log=_before_send_log,
         )
+        # No error events or breadcrumbs from access lines either.
+        for name in _PRIVATE_LOGGERS:
+            ignore_logger(name)
     except Exception:
         _status = "failed"
         logger.exception("Sentry init failed; running without it")

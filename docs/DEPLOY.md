@@ -88,6 +88,24 @@ In BotFather set **Menu Button** and **Main Mini App** to the frontend URL, then
 curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
 ```
 
+## Sentry
+
+Projects `glowpath-api`, `glowpath-web`, `glowpath-bot` (org `andrei-belinskii`, DE region). DSNs, `SENTRY_ENVIRONMENT=production` and the trace rates (`0.2`) are set in `render.yaml`. An empty DSN turns Sentry off; a malformed one stops the service on start. The release is `RENDER_GIT_COMMIT`.
+
+| Service | Variables |
+|---------|-----------|
+| API | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE` |
+| Bot | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE` |
+| Frontend (build-time) | `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_AUTH_TOKEN` |
+
+`SENTRY_AUTH_TOKEN` (org token, `sync: false`) is used only during the frontend build to upload source maps; the maps are deleted from the image. Without it, production JS stack traces stay minified.
+
+PII, request bodies, local variables and logs are not sent: they would carry diary text and one-time tokens from URLs.
+
+After a deploy, `GET /health` on the API and bot should show `"sentry": "on"`.
+
+Do not use a Sentry uptime monitor as a keep-alive: pinging the API around the clock uses nearly all of the workspace's 750 free Render hours. An hourly check as an alert only is acceptable.
+
 ## Catalog data
 
 Marketplace packs and achievements are loaded by seed commands, not by migrations, and have not been run in production yet:

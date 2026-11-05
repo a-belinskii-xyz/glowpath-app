@@ -71,6 +71,8 @@ services:
         value: https://668979d6ce6e9d0bfaa990b8d8a3f3bc@o4512376555700224.ingest.de.sentry.io/4512376624250960
       - key: SENTRY_ENVIRONMENT
         value: production
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0.2"
 
   - type: web
     name: glowpath-web
@@ -90,6 +92,8 @@ services:
         value: https://1a1b4f16385eb13c5a93ebedf2307833@o4512376555700224.ingest.de.sentry.io/4512376624316496
       - key: VITE_SENTRY_ENVIRONMENT
         value: production
+      - key: VITE_SENTRY_TRACES_SAMPLE_RATE
+        value: "0.2"
       # Org token (Settings → Auth Tokens) for source map upload; optional.
       - key: SENTRY_AUTH_TOKEN
         sync: false
@@ -127,3 +131,5 @@ services:
         value: https://5f166c01fd7262d020b619ab8027531e@o4512376555700224.ingest.de.sentry.io/4512376624382032
       - key: SENTRY_ENVIRONMENT
         value: production
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0.2"

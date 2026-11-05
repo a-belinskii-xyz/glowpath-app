@@ -41,7 +41,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SENTRY_RELEASE", "RENDER_GIT_COMMIT"),
     )
     sentry_traces_sample_rate: float = Field(
-        default=1.0,
+        default=0.2,
         ge=0.0,
         le=1.0,
         validation_alias="SENTRY_TRACES_SAMPLE_RATE",

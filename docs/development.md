@@ -164,6 +164,23 @@ curl -s -X POST http://localhost:8000/v1/auth/google \
 
 "Continue with Telegram" uses OpenID Connect from BotFather → Login Widget. Set `TELEGRAM_OIDC_CLIENT_ID`, `TELEGRAM_OIDC_CLIENT_SECRET`, `TELEGRAM_OIDC_REDIRECT_URI` and register the redirect URI as an allowed URL. The `id` claim is the Telegram user id, the same as in Mini App `initData`.
 
+## Sentry
+
+Three projects in the `andrei-belinskii` org, DE region: `glowpath-api` (API and reminders worker), `glowpath-web`, `glowpath-bot`. An empty DSN turns Sentry off, so tests and fresh checkouts send nothing; `backend/conftest.py` forces it empty for pytest.
+
+| Variable | Where | Notes |
+|----------|-------|-------|
+| `SENTRY_DSN` | `backend/.env` | API DSN. Validated on start: a malformed value stops the service. |
+| `BOT_SENTRY_DSN` | root `.env` | Compose passes it to the bot as `SENTRY_DSN` (the bot shares `backend/.env`). |
+| `SENTRY_ENVIRONMENT` | `backend/.env` | `development` locally. |
+| `SENTRY_TRACES_SAMPLE_RATE` | `backend/.env` | Default `0.2`. `/health` and `/v1/health` are never traced. |
+| `VITE_SENTRY_DSN`, `VITE_SENTRY_TRACES_SAMPLE_RATE` | `frontend/.env` | Baked into the bundle at build time. |
+| `SENTRY_AUTH_TOKEN` | `frontend/.env`, optional | Build only: uploads hidden source maps on `npm run build`. |
+
+Not sent, on purpose: PII (IPs, cookies, headers), request bodies, stack-frame local variables, and logs. Diary text and one-time tokens in URLs (`?token=`, OAuth `?code=`) would otherwise end up in Sentry. `uvicorn.access` is filtered even if logs are turned on later; `tests/test_sentry.py` checks it.
+
+`GET /health` reports `"sentry": "on" | "off" | "failed"`.
+
 ## Reminders
 
 Delivery is off unless `FEATURE_NOTIFICATIONS_ENABLED=true`; with it off the settings UI is locked. `NOTIFICATIONS_WORKER_ENABLED=false` pauses sending without stopping the worker.

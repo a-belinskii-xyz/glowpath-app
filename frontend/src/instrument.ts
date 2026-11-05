@@ -24,19 +24,11 @@ try {
         createRoutesFromChildren,
         matchRoutes,
       }),
-      // Diary text and photos stay masked in recordings.
-      Sentry.replayIntegration({
-        maskAllText: true,
-        maskAllInputs: true,
-        blockAllMedia: true,
-      }),
     ],
 
     // API calls go to same-origin /v1, which the SDK traces by default.
-    tracesSampleRate: 1.0,
-
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
+    // `||`, not `??`: an empty variable must not turn into Number('') === 0.
+    tracesSampleRate: Number(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE || 0.2),
   })
 } catch (error) {
   console.error('Sentry init failed; running without it', error)
