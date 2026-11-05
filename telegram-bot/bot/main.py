@@ -9,9 +9,13 @@ from fastapi import FastAPI, Header, HTTPException, Request, status
 
 from bot.config import settings
 from bot.handlers import handle_update
+from bot.sentry import init_sentry, sentry_status
 from bot.telegram_api import set_my_commands, set_webhook
 
 logger = logging.getLogger(__name__)
+
+# Before FastAPI() so the Starlette/FastAPI integrations hook the app.
+init_sentry()
 
 
 async def _register_telegram() -> None:
@@ -51,7 +55,7 @@ app = FastAPI(
 @app.get("/health")
 def health() -> dict[str, str]:
     configured = "yes" if settings.telegram_bot_token else "no"
-    return {"status": "ok", "bot_token_configured": configured}
+    return {"status": "ok", "bot_token_configured": configured, "sentry": sentry_status()}
 
 
 @app.post(settings.telegram_webhook_path)

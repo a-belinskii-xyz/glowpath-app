@@ -6,6 +6,10 @@ from app.api.v1.router import api_v1_router
 from app.config import settings
 from app.core.cors import cors_allow_origin_regex, cors_allow_origins
 from app.core.marketplace import ICON_CROP_HEADER
+from app.core.sentry import init_sentry, sentry_status
+
+# Before FastAPI() so the Starlette/FastAPI integrations hook the app.
+init_sentry()
 
 app = FastAPI(
     title=settings.app_name,
@@ -32,4 +36,4 @@ app.include_router(api_v1_router, prefix="/v1")
 
 @app.get("/health", tags=["health"])
 def root_health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "sentry": sentry_status()}

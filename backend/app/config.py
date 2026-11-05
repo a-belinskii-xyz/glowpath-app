@@ -1,5 +1,6 @@
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sentry_sdk.utils import BadDsn, Dsn
 
 from app.db.postgres_url import normalize_postgres_url
 
@@ -99,6 +100,24 @@ class Settings(BaseSettings):
     reminders_cron_secret: str = Field(
         default="",
         validation_alias="REMINDERS_CRON_SECRET",
+    )
+
+    # Sentry error + trace reporting. Empty DSN disables it (local dev, tests).
+    sentry_dsn: str = Field(default="", validation_alias="SENTRY_DSN")
+    sentry_environment: str = Field(
+        default="development",
+        validation_alias="SENTRY_ENVIRONMENT",
+    )
+    # Render sets RENDER_GIT_COMMIT on every deploy; it doubles as the release name.
+    sentry_release: str = Field(
+        default="",
+        validation_alias=AliasChoices("SENTRY_RELEASE", "RENDER_GIT_COMMIT"),
+    )
+    sentry_traces_sample_rate: float = Field(
+        default=0.2,
+        ge=0.0,
+        le=1.0,
+        validation_alias="SENTRY_TRACES_SAMPLE_RATE",
     )
 
     # Max tag groups a user can pin to the entry form (rest under "Other")
@@ -280,6 +299,18 @@ class Settings(BaseSettings):
         if not isinstance(value, str):
             return value
         return normalize_postgres_url(value)
+
+    @field_validator("sentry_dsn")
+    @classmethod
+    def _check_sentry_dsn(cls, value: str) -> str:
+        # A malformed DSN fails startup loudly instead of silently dropping telemetry.
+        value = value.strip()
+        if value:
+            try:
+                Dsn(value)
+            except BadDsn as exc:
+                raise ValueError(f"SENTRY_DSN is not a valid Sentry DSN: {exc}") from exc
+        return value
 
     @property
     def migration_database_url(self) -> str:

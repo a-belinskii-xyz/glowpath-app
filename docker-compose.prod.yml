@@ -75,6 +75,9 @@ services:
       context: ./frontend
       args:
         VITE_API_BASE_URL: ""
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
     ports:
       - "${HTTP_PORT:-8080}:80"
     depends_on:
@@ -89,6 +92,8 @@ services:
     environment:
       API_BASE_URL: http://app:8000
       BOT_HOST: 0.0.0.0
+      # backend/.env holds the API's SENTRY_DSN; the bot reports to its own project.
+      SENTRY_DSN: ${BOT_SENTRY_DSN:-}
       BOT_PORT: 8081
       TELEGRAM_MINI_APP_URL: ${PUBLIC_URL:-http://localhost:8080}
     ports:

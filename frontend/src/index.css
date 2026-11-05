@@ -13346,3 +13346,21 @@ button.body-stats {
   width: 4.5rem;
   text-align: center;
 }
+
+/* Root error boundary fallback (CrashFallback) */
+.app-crash {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.app-crash-title {
+  margin: 0;
+  color: var(--chrome-text-primary);
+  font-size: 1.125rem;
+}
