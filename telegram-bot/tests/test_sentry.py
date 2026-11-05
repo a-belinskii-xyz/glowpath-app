@@ -5,6 +5,8 @@ from typing import Any
 import pytest
 import sentry_sdk
 from bot import sentry as bot_sentry
+from bot.main import app
+from fastapi.testclient import TestClient
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.transport import Transport
 
@@ -86,19 +88,48 @@ def test_access_logs_stay_out_if_logs_get_enabled(
     assert "secret-token" not in transport.payload()
 
 
-@pytest.mark.parametrize("name", ["/health", "/v1/health"])
+def _context(path: str, parent_sampled: bool | None) -> dict[str, Any]:
+    # Shape the ASGI integration really passes: full URL as the name, clean path in the scope.
+    return {
+        "asgi_scope": {"path": path},
+        "transaction_context": {"name": f"http://testserver{path}"},
+        "parent_sampled": parent_sampled,
+    }
+
+
+@pytest.mark.parametrize("path", ["/health", "/v1/health"])
 @pytest.mark.parametrize("parent_sampled", [None, True])
-def test_sampler_drops_health_checks(name: str, parent_sampled: bool | None) -> None:
-    context = {"transaction_context": {"name": name}, "parent_sampled": parent_sampled}
+def test_sampler_drops_health_checks(path: str, parent_sampled: bool | None) -> None:
+    assert bot_sentry._traces_sampler(_context(path, parent_sampled)) == 0.0
+
+
+def test_sampler_falls_back_to_url_path_without_asgi_scope() -> None:
+    context = {"transaction_context": {"name": "http://testserver/v1/health?x=1"}}
     assert bot_sentry._traces_sampler(context) == 0.0
 
 
 def test_sampler_uses_configured_rate(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(bot_sentry.settings, "sentry_traces_sample_rate", 0.2)
-    context = {"transaction_context": {"name": "/v1/entries"}, "parent_sampled": None}
-    assert bot_sentry._traces_sampler(context) == 0.2
+    assert bot_sentry._traces_sampler(_context("/v1/entries", None)) == 0.2
 
 
 def test_sampler_follows_parent_for_regular_paths() -> None:
-    context = {"transaction_context": {"name": "/v1/entries"}, "parent_sampled": True}
-    assert bot_sentry._traces_sampler(context) == 1.0
+    assert bot_sentry._traces_sampler(_context("/v1/entries", True)) == 1.0
+
+
+def test_health_requests_are_not_traced(
+    transport: CaptureTransport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(bot_sentry.settings, "sentry_traces_sample_rate", 1.0)
+    sentry_sdk.init(dsn=FAKE_DSN, traces_sampler=bot_sentry._traces_sampler)
+    client = TestClient(app)
+
+    client.get("/health")
+    client.get("/v1/health")
+    sentry_sdk.flush()
+    assert "transaction" not in transport.item_types()
+
+    # Control: any other endpoint is traced, so the empty result above is meaningful.
+    client.get("/openapi.json")
+    sentry_sdk.flush()
+    assert "transaction" in transport.item_types()

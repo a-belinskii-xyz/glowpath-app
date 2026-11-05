@@ -90,13 +90,15 @@ curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
 
 ## Sentry
 
-Projects `glowpath-api`, `glowpath-web`, `glowpath-bot` (org `andrei-belinskii`, DE region). DSNs, `SENTRY_ENVIRONMENT=production` and the trace rates (`0.2`) are set in `render.yaml`. An empty DSN turns Sentry off; a malformed one stops the service on start. The release is `RENDER_GIT_COMMIT`.
+Projects `glowpath-api`, `glowpath-web`, `glowpath-bot` (org `andrei-belinskii`, DE region). DSNs, `SENTRY_ENVIRONMENT=production` and the trace rates (`0.2`) are set in Render Dashboard → Environment of each service; `render.yaml` only describes them (the production services were created by hand, the Blueprint is not applied). An empty DSN turns Sentry off; a malformed one stops the service on start. The release is `RENDER_GIT_COMMIT`.
 
 | Service | Variables |
 |---------|-----------|
 | API | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE` |
 | Bot | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE` |
 | Frontend (build-time) | `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_AUTH_TOKEN` |
+
+Frontend variables are baked into the bundle at build time: after changing them, trigger a new deploy, a restart is not enough.
 
 `SENTRY_AUTH_TOKEN` (org token, `sync: false`) is used only during the frontend build to upload source maps; the maps are deleted from the image. Without it, production JS stack traces stay minified.
 

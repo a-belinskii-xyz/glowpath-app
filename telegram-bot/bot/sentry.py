@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Any, Literal
+from urllib.parse import urlsplit
 
 import sentry_sdk
 from sentry_sdk.integrations.logging import ignore_logger
@@ -26,11 +27,20 @@ def sentry_status() -> SentryStatus:
     return _status
 
 
+def _request_path(context: dict[str, Any]) -> str:
+    # At sampling time the transaction name is the full URL
+    # (http://host/health), so prefer the ASGI path.
+    path = context.get("asgi_scope", {}).get("path")
+    if isinstance(path, str):
+        return path
+    name = context.get("transaction_context", {}).get("name", "")
+    return urlsplit(str(name)).path
+
+
 def _traces_sampler(context: dict[str, Any]) -> float:
     # Checked before parent_sampled: the browser SDK's sampling decision would
     # otherwise pull keep-alive pings into traces.
-    name = context.get("transaction_context", {}).get("name", "")
-    if name in _UNTRACED_TRANSACTIONS:
+    if _request_path(context) in _UNTRACED_TRANSACTIONS:
         return 0.0
     parent_sampled = context.get("parent_sampled")
     if parent_sampled is not None:
