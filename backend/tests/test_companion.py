@@ -1,9 +1,12 @@
 from app.core.companion import (
     _DAILY_REMINDER_INTRO,
     _DAILY_REMINDER_INTRO_NAMED,
+    _DAILY_REMINDER_QUESTION,
+    _DAILY_REMINDER_QUESTION_NAMED,
     CompanionDaypart,
     companion_daypart_for_hour,
     daily_reminder_intro,
+    daily_reminder_question,
     daily_reminder_subject,
     pick_companion_variant,
 )
@@ -50,8 +53,8 @@ def test_daily_mood_reminder_uses_local_hour() -> None:
     assert "morning" in morning.subject.lower()
     assert "log your mood" in morning.body.lower()
     assert evening.html_body is None
-    assert "evening" in evening.subject.lower() or "today" in evening.body.lower()
-    assert "log your mood" in evening.body.lower()
+    assert "evening" in evening.subject.lower()
+    assert evening.body == daily_reminder_question(hour=20, locale="en")
 
 
 def test_daily_reminder_intro_is_stable_per_seed_and_varies_across_days() -> None:
@@ -102,3 +105,43 @@ def test_email_greeting_uses_the_name() -> None:
     assert message.body.startswith("Привет, Аня <3,")
     assert message.html_body is not None
     assert "<p>Привет, Аня &lt;3,</p>" in message.html_body
+
+
+def test_reminder_questions_cover_every_daypart_in_both_languages() -> None:
+    for phrases in _DAILY_REMINDER_QUESTION.values():
+        assert set(phrases) == set(CompanionDaypart)
+        for variants in phrases.values():
+            for labels in variants:
+                assert set(labels) == {"en", "ru"}
+                assert all(text.endswith("?") for text in labels.values())
+    assert set(_DAILY_REMINDER_QUESTION_NAMED) == set(CompanionDaypart)
+    for labels in _DAILY_REMINDER_QUESTION_NAMED.values():
+        assert set(labels) == {"en", "ru"}
+        assert all("{name}" in text and text.endswith("?") for text in labels.values())
+
+
+def test_reminder_questions_do_not_ask_for_a_note() -> None:
+    """The buttons answer the question, so it must not push toward writing."""
+    texts = [
+        text
+        for phrases in _DAILY_REMINDER_QUESTION.values()
+        for variants in phrases.values()
+        for labels in variants
+        for text in labels.values()
+    ] + [text for labels in _DAILY_REMINDER_QUESTION_NAMED.values() for text in labels.values()]
+    for text in texts:
+        lowered = text.lower()
+        for word in ("note", "word", "line", "заметк", "слов", "строчк", "запиш"):
+            assert word not in lowered, text
+
+
+def test_reminder_question_is_stable_per_seed_and_uses_the_name_only_sometimes() -> None:
+    first = daily_reminder_question(hour=8, locale="ru", seed="user:2026-10-01")
+    assert first == daily_reminder_question(hour=8, locale="ru", seed="user:2026-10-01")
+    named = {
+        daily_reminder_question(hour=8, locale="ru", seed=f"user:2026-10-{day:02d}", name="Аня")
+        for day in range(1, 29)
+    }
+    assert "Доброе утро, Аня. Как ты?" in named
+    assert any("Аня" not in phrase for phrase in named)
+    assert not any("{name}" in phrase for phrase in named)

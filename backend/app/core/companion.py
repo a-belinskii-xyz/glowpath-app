@@ -205,6 +205,77 @@ _DAILY_REMINDER_INTRO_NAMED: dict[CompanionDaypart, LocaleLabels] = {
 }
 
 
+# Telegram reminders end in a row of mood buttons, so their opening is a short question
+# the buttons answer, with no call to write a note.
+_DAILY_REMINDER_QUESTION: dict[CompanionStyle, dict[CompanionDaypart, tuple[LocaleLabels, ...]]] = {
+    CompanionStyle.DEFAULT: {
+        CompanionDaypart.LATE_NIGHT: (
+            {"en": "Still up? How are you right now?", "ru": "Ещё не спишь? Как ты сейчас?"},
+            {"en": "Late hour. How are you?", "ru": "Поздний час. Как ты?"},
+            {"en": "It’s quiet out. How’s your mood?", "ru": "Тихо вокруг. Как настроение?"},
+        ),
+        CompanionDaypart.MORNING: (
+            {"en": "Good morning. How are you?", "ru": "Доброе утро. Как ты?"},
+            {"en": "New day. How did you wake up?", "ru": "Новый день. Какое настроение с утра?"},
+            {"en": "Morning. How are you today?", "ru": "Утро. Как ты сегодня?"},
+        ),
+        CompanionDaypart.MIDDAY: (
+            {"en": "Middle of the day. How are you holding up?", "ru": "Середина дня. Как ты там?"},
+            {"en": "How’s the day going?", "ru": "Как день идёт?"},
+            {"en": "Around lunch. How’s your mood?", "ru": "Время обеда. Как настроение?"},
+        ),
+        CompanionDaypart.AFTERNOON: (
+            {"en": "Afternoon already. How are you?", "ru": "Уже вторая половина дня. Как ты?"},
+            {"en": "How’s the afternoon going?", "ru": "Как там день?"},
+            {"en": "A short pause for yourself. How are you?", "ru": "Маленькая пауза. Как ты?"},
+        ),
+        CompanionDaypart.EVENING: (
+            {"en": "It’s evening already. How are you?", "ru": "Уже вечер. Как ты?"},
+            {
+                "en": "The day is slowing down. How did it go?",
+                "ru": "День затихает. Как он прошёл?",
+            },
+            {"en": "Evening. How’s your mood?", "ru": "Вечер. Как настроение?"},
+        ),
+        CompanionDaypart.NIGHT: (
+            {"en": "Before bed: how was today?", "ru": "Перед сном: каким был сегодняшний день?"},
+            {"en": "Time to wind down. How are you?", "ru": "Пора выдохнуть. Как ты сейчас?"},
+            {
+                "en": "The day is almost done. How did it go?",
+                "ru": "День почти кончился. Как он прошёл?",
+            },
+        ),
+    },
+}
+
+_DAILY_REMINDER_QUESTION_NAMED: dict[CompanionDaypart, LocaleLabels] = {
+    CompanionDaypart.LATE_NIGHT: {
+        "en": "Still up, {name}? How are you?",
+        "ru": "Ещё не спишь, {name}? Как ты?",
+    },
+    CompanionDaypart.MORNING: {
+        "en": "Good morning, {name}. How are you?",
+        "ru": "Доброе утро, {name}. Как ты?",
+    },
+    CompanionDaypart.MIDDAY: {
+        "en": "How’s the day going, {name}?",
+        "ru": "Как день идёт, {name}?",
+    },
+    CompanionDaypart.AFTERNOON: {
+        "en": "How are you, {name}?",
+        "ru": "Как ты, {name}?",
+    },
+    CompanionDaypart.EVENING: {
+        "en": "Evening, {name}. How did today go?",
+        "ru": "Вечер, {name}. Как прошёл день?",
+    },
+    CompanionDaypart.NIGHT: {
+        "en": "{name}, the day is almost done. How are you?",
+        "ru": "{name}, день почти закончился. Как ты?",
+    },
+}
+
+
 def daily_reminder_subject(
     *,
     hour: int,
@@ -229,12 +300,59 @@ def daily_reminder_intro(
     With a *name*, one more phrasing that uses it joins the pool, so the name shows up
     now and then rather than in every reminder.
     """
-    part = companion_daypart_for_hour(hour)
     phrases = _DAILY_REMINDER_INTRO.get(style) or _DAILY_REMINDER_INTRO[CompanionStyle.DEFAULT]
+    return _pick_phrase(
+        phrases,
+        _DAILY_REMINDER_INTRO_NAMED,
+        hour=hour,
+        locale=locale,
+        seed=seed,
+        seed_key="intro",
+        name=name,
+    )
+
+
+def daily_reminder_question(
+    *,
+    hour: int,
+    locale: str = DEFAULT_LOCALE,
+    seed: str = "",
+    style: CompanionStyle = CompanionStyle.DEFAULT,
+    name: str | None = None,
+) -> str:
+    """Opening of a Telegram reminder: a short question its mood buttons answer.
+
+    Picked like ``daily_reminder_intro``: stable per *seed*, the name only now and then.
+    """
+    phrases = (
+        _DAILY_REMINDER_QUESTION.get(style) or _DAILY_REMINDER_QUESTION[CompanionStyle.DEFAULT]
+    )
+    return _pick_phrase(
+        phrases,
+        _DAILY_REMINDER_QUESTION_NAMED,
+        hour=hour,
+        locale=locale,
+        seed=seed,
+        seed_key="question",
+        name=name,
+    )
+
+
+def _pick_phrase(
+    phrases: dict[CompanionDaypart, tuple[LocaleLabels, ...]],
+    named: dict[CompanionDaypart, LocaleLabels],
+    *,
+    hour: int,
+    locale: str,
+    seed: str,
+    seed_key: str,
+    name: str | None,
+) -> str:
+    part = companion_daypart_for_hour(hour)
     variants = phrases[part]
     if name:
-        variants = (*variants, _DAILY_REMINDER_INTRO_NAMED[part])
-    index = pick_companion_variant(f"{seed}:intro:{part.value}", len(variants)) if seed else 0
+        variants = (*variants, named[part])
+    index = pick_companion_variant(f"{seed}:{seed_key}:{part.value}", len(variants)) if seed else 0
     return _label(variants[index], locale).replace("{name}", name or "")
 
 

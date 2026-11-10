@@ -39,18 +39,26 @@ export function routeForStartParam(param: string): string | null {
     return '/achievements'
   }
   if (value.startsWith('entry_')) {
-    const hex = value.slice('entry_'.length)
-    if (!UUID_HEX.test(hex)) {
-      return null
-    }
-    const id = [
-      hex.slice(0, 8),
-      hex.slice(8, 12),
-      hex.slice(12, 16),
-      hex.slice(16, 20),
-      hex.slice(20),
-    ].join('-')
-    return `/entries/${id}`
+    const id = uuidFromHex(value.slice('entry_'.length))
+    return id ? `/entries/${id}` : null
+  }
+  // "Note and tags" under a mood logged from the Telegram chat (GP-65).
+  if (value.startsWith('edit_')) {
+    const id = uuidFromHex(value.slice('edit_'.length))
+    return id ? `/entries/${id}/edit` : null
   }
   return null
+}
+
+function uuidFromHex(hex: string): string | null {
+  if (!UUID_HEX.test(hex)) {
+    return null
+  }
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join('-')
 }
