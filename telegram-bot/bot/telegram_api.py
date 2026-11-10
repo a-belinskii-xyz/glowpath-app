@@ -154,6 +154,37 @@ async def answer_callback_query(
             )
 
 
+async def edit_message_text(
+    *,
+    chat_id: int,
+    message_id: int,
+    text: str,
+    reply_markup: dict[str, Any] | None = None,
+) -> None:
+    """Replace a message's text and buttons; no ``reply_markup`` removes the buttons."""
+    if not settings.telegram_bot_token:
+        return
+    payload: dict[str, Any] = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text,
+    }
+    if reply_markup is not None:
+        payload["reply_markup"] = reply_markup
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(_bot_url("editMessageText"), json=payload)
+    if response.status_code < 400:
+        return
+    # Re-rendering the same state (a tap on the face already chosen) is not an error.
+    if "message is not modified" in response.text:
+        return
+    logger.error(
+        "editMessageText failed status=%s body=%s",
+        response.status_code,
+        response.text,
+    )
+
+
 async def edit_message_reply_markup(
     *,
     chat_id: int,

@@ -268,11 +268,11 @@ curl http://localhost:8081/health
 ### New user flow
 
 1. Send `/start` to the bot and tap **Open App**. The Mini App signs in from `initData` and opens `/onboarding`.
-2. After onboarding, `/start` shows **Log mood** and **Open App**.
-3. `/log` or **Log mood** opens the create screen (`startapp=create`). Save with the Telegram Main Button.
+2. After onboarding, `/start` and `/log` ask "How are you right now?" with five mood buttons. One tap logs the mood and edits the same message: the chosen face is marked, another face changes the score, **Note and tags** opens the entry's edit form (`startapp=edit_<id>`) and **Undo** removes the entry for 10 minutes while nothing was added to it. **Log in detail** opens the create screen (`startapp=create`).
+3. Daily reminders in Telegram end in the same buttons; a tap there counts as an answer to that reminder (see `services/notifications/backoff.py`).
 4. Optional: add an email in Profile to also sign in on the website.
 
-Old links with `?start=log` open the Mini App create screen; the chat wizard is retired.
+The bot only relays taps: the API builds the buttons, reads them back and renders the message (`app/core/telegram_quick_log.py`, `app/services/telegram_quick_log_service.py`, `POST /v1/telegram/bot/quick-log/tap`). One message makes at most one entry, found through `mood_entries.client_key` (`tg:<chat_id>:<message_id>`). Old links with `?start=log` show the same buttons; the chat wizard (08.09) is retired and its old buttons answer with a hint to send `/log`.
 
 ### Linking an existing website account
 

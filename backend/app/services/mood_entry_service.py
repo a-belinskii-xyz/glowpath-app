@@ -333,6 +333,7 @@ def create_mood_entry(
     is_win: bool = False,
     partial_goal_ids: list[uuid.UUID] | None = None,
     locale: str = "en",
+    client_key: str | None = None,
 ) -> tuple[MoodEntry, list[dict[str, Any]]]:
     recorded_at_utc = _to_utc(recorded_at)
     timezone_name = _user_timezone(db, user_id=user_id)
@@ -362,6 +363,7 @@ def create_mood_entry(
         note=note,
         source=source,
         is_win=is_win,
+        client_key=client_key,
     )
     db.add(entry)
     db.flush()

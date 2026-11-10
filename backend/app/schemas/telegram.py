@@ -114,6 +114,30 @@ class TelegramBotEntryCreate(BaseModel):
     source: MoodEntrySource | None = None
 
 
+class TelegramBotQuickLogPromptPublic(BaseModel):
+    text: str
+    reply_markup: dict[str, Any]
+
+
+class TelegramBotQuickTapRequest(BaseModel):
+    """A tap on a mood button, as the bot got it from Telegram."""
+
+    telegram_user_id: int = Field(gt=0)
+    # Negative for groups; mood buttons are only sent in private chats, but stay neutral.
+    chat_id: int
+    message_id: int = Field(gt=0)
+    data: str = Field(min_length=1, max_length=64)
+    message_text: str | None = Field(default=None, max_length=4096)
+    locale: str | None = Field(default=None, max_length=16)
+
+
+class TelegramBotQuickTapReply(BaseModel):
+    text: str | None = None
+    reply_markup: dict[str, Any] | None = None
+    toast: str | None = None
+    alert: bool = False
+
+
 class TelegramBotSessionPublic(BaseModel):
     telegram_user_id: int
     state: dict[str, Any] = Field(default_factory=dict)

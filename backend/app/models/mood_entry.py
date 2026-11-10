@@ -22,7 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.mood_scale import MAX_MOOD_SCORE, MIN_MOOD_SCORE
 from app.db.base import Base
 from app.db.mixins import TimestampMixin
-from app.db.names import fk_column, index_name, table_name
+from app.db.names import fk_column, index_name, table_name, unique_index_name
 
 EMBEDDING_DIMS = 384
 # Text search config for notes; also stems Latin words via english_stem.
@@ -76,6 +76,13 @@ class MoodEntry(TimestampMixin, Base):
             "search_tsv",
             postgresql_using="gin",
         ),
+        Index(
+            unique_index_name("mood_entries", "user_id__client_key"),
+            "user_id",
+            "client_key",
+            unique=True,
+            postgresql_where=text("client_key IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -119,6 +126,10 @@ class MoodEntry(TimestampMixin, Base):
     )
     # Id the entry had in the archive it was restored from; restores skip it next time.
     origin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # The message the entry was made from, so a repeated tap on it updates this entry
+    # instead of adding one: ``tg:<chat_id>:<message_id>`` for a tap in the Telegram chat.
+    # Internal; not part of the diary export.
+    client_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # Semantic search vector (fastembed); null when entry has no searchable text.
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMS), nullable=True)
     # Full-text search vector over the note, maintained by Postgres.

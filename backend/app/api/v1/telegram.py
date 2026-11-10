@@ -20,6 +20,9 @@ from app.schemas.telegram import (
     TelegramBotLinkRequest,
     TelegramBotLoginConfirmRequest,
     TelegramBotMePublic,
+    TelegramBotQuickLogPromptPublic,
+    TelegramBotQuickTapReply,
+    TelegramBotQuickTapRequest,
     TelegramBotSessionPublic,
     TelegramBotSessionUpsert,
     TelegramBotUnlinkRequest,
@@ -56,6 +59,7 @@ from app.services.telegram_link_service import (
     unlink_by_telegram_user_id,
     unlink_telegram_account,
 )
+from app.services.telegram_quick_log_service import handle_quick_tap, quick_log_prompt
 
 router = APIRouter(tags=["telegram"])
 bot_router = APIRouter(
@@ -236,6 +240,50 @@ def bot_create_entry(
             label_overrides=label_overrides,
             color_settings=get_color_display_settings(db, user_id=user.id),
         )
+    )
+
+
+@bot_router.get("/quick-log", response_model=TelegramBotQuickLogPromptPublic)
+def bot_quick_log_prompt(
+    telegram_user_id: int = Query(gt=0),
+    db: Session = Depends(get_db),
+) -> TelegramBotQuickLogPromptPublic:
+    """The ``/log`` message: a question and mood buttons that log with one tap."""
+    try:
+        user = require_linked_user(db, telegram_user_id=telegram_user_id)
+    except TelegramBotError as exc:
+        _handle_bot_error(exc)
+        raise
+    prompt = quick_log_prompt(db, user=user)
+    return TelegramBotQuickLogPromptPublic(text=prompt.text, reply_markup=prompt.reply_markup)
+
+
+@bot_router.post("/quick-log/tap", response_model=TelegramBotQuickTapReply)
+def bot_quick_log_tap(
+    body: TelegramBotQuickTapRequest,
+    db: Session = Depends(get_db),
+    storage: ObjectStorage = Depends(get_storage_service),
+) -> TelegramBotQuickTapReply:
+    """Apply a tap on a mood button; the bot edits the message to the reply."""
+    try:
+        reply = handle_quick_tap(
+            db,
+            telegram_user_id=body.telegram_user_id,
+            chat_id=body.chat_id,
+            message_id=body.message_id,
+            data=body.data,
+            message_text=body.message_text,
+            locale=body.locale,
+            storage=storage,
+        )
+    except MoodEntryError as exc:
+        _handle_mood_error(exc)
+        raise
+    return TelegramBotQuickTapReply(
+        text=reply.text,
+        reply_markup=reply.reply_markup,
+        toast=reply.toast,
+        alert=reply.alert,
     )
 
 

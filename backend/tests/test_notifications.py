@@ -449,12 +449,14 @@ def test_daily_mood_reminder_message_telegram_is_plain() -> None:
     message = daily_mood_reminder_message(channel=NotificationChannel.TELEGRAM)
     assert message.html_body is None
     assert (message.metadata or {}).get("source") == "telegram:daily_mood_reminder"
-    assert "log your mood" in message.body.lower()
+    # A short question; the mood buttons under it are the answer.
+    assert message.body.endswith("?")
+    assert "\n" not in message.body
     assert "http://" not in message.body
     assert "https://" not in message.body
 
 
-def test_daily_mood_reminder_telegram_uses_web_app_button(
+def test_daily_mood_reminder_telegram_has_mood_buttons_and_detail_button(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.config import settings
@@ -462,14 +464,24 @@ def test_daily_mood_reminder_telegram_uses_web_app_button(
 
     monkeypatch.setattr(settings, "telegram_mini_app_url", "https://app.example")
     monkeypatch.setattr(settings, "telegram_bot_username", "glowpath_bot")
-    message = daily_mood_reminder_message(channel=NotificationChannel.TELEGRAM)
+    message = daily_mood_reminder_message(
+        channel=NotificationChannel.TELEGRAM,
+        tracking_token="tok123",
+        score_faces={1: "😭", 2: "😞", 3: "😐", 4: "🙂", 5: "🤩"},
+    )
     markup = (message.metadata or {}).get("telegram_reply_markup")
     assert isinstance(markup, dict)
-    button = markup["inline_keyboard"][0][0]
-    assert button["text"] == "Log mood"
-    assert button["web_app"] == {
-        "url": "https://app.example?tgWebAppStartParam=create_daily",
-    }
+    faces, detail = markup["inline_keyboard"]
+    assert [button["text"] for button in faces] == ["😭", "😞", "😐", "🙂", "🤩"]
+    assert [button["callback_data"] for button in faces] == [
+        f"q:{score}:tok123" for score in range(1, 6)
+    ]
+    assert detail == [
+        {
+            "text": "✏️ Log in detail",
+            "web_app": {"url": "https://app.example?tgWebAppStartParam=create_daily&n=tok123"},
+        }
+    ]
     assert "start=log" not in message.body
 
 
@@ -484,8 +496,30 @@ def test_daily_mood_reminder_telegram_falls_back_to_startapp_url(
     message = daily_mood_reminder_message(channel=NotificationChannel.TELEGRAM)
     markup = (message.metadata or {}).get("telegram_reply_markup")
     assert isinstance(markup, dict)
-    button = markup["inline_keyboard"][0][0]
+    assert [button["text"] for button in markup["inline_keyboard"][0]] == [
+        "😢",
+        "😞",
+        "😐",
+        "🙂",
+        "😄",
+    ]
+    button = markup["inline_keyboard"][1][0]
     assert button["url"] == "https://t.me/glowpath_bot?startapp=create_daily"
+
+
+def test_daily_mood_reminder_telegram_keeps_mood_buttons_without_mini_app(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.config import settings
+    from app.services.notifications.messages import daily_mood_reminder_message
+
+    monkeypatch.setattr(settings, "telegram_mini_app_url", "")
+    monkeypatch.setattr(settings, "telegram_bot_username", "")
+    message = daily_mood_reminder_message(channel=NotificationChannel.TELEGRAM)
+    markup = (message.metadata or {}).get("telegram_reply_markup")
+    assert isinstance(markup, dict)
+    assert len(markup["inline_keyboard"]) == 1
+    assert markup["inline_keyboard"][0][3]["callback_data"] == "q:4"
 
 
 def test_goal_reminder_telegram_opens_goals_screen(
@@ -741,11 +775,11 @@ def _due_telegram_daily_user(db: Session, **user_fields: object) -> tuple[User, 
 @pytest.mark.parametrize(
     ("user_fields", "expected_phrase"),
     [
-        ({"locale": "ru"}, "Запиши настроение"),
-        ({"locale": "ru", "telegram_locale": "en"}, "Запиши настроение"),
-        ({"locale": "en", "telegram_locale": "ru"}, "Log your mood"),
-        ({"telegram_locale": "ru"}, "Запиши настроение"),
-        ({}, "Log your mood"),
+        ({"locale": "ru"}, "запиши настроение"),
+        ({"locale": "ru", "telegram_locale": "en"}, "запиши настроение"),
+        ({"locale": "en", "telegram_locale": "ru"}, "log your mood"),
+        ({"telegram_locale": "ru"}, "запиши настроение"),
+        ({}, "log your mood"),
     ],
 )
 def test_reminder_language_prefers_app_locale_over_telegram(
@@ -766,7 +800,7 @@ def test_reminder_language_prefers_app_locale_over_telegram(
     )
 
     assert stats.daily_mood_sent == 1
-    assert expected_phrase in tg.outbox[0].body
+    assert expected_phrase in tg.outbox[0].subject.lower()
 
 
 def test_goal_reminder_email_is_localized() -> None:

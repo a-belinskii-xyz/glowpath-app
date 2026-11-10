@@ -9,17 +9,14 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
     "en": {
         "help": (
             "GlowPath bot\n\n"
-            "Open the app from the menu or the button below. New users set up "
+            "Log your mood right here: send /log and tap once. Notes, tags and photos "
+            "live in the app, open it from the menu or the button below. New users set up "
             "the tracker in the app — the website is optional.\n\n"
             "Commands:\n"
-            "/log — log your mood in the app\n"
+            "/log — log your mood with one tap\n"
             "/start <code> — link a website account\n"
             "/unlink — disconnect Telegram\n"
             "/help — show this message"
-        ),
-        "already_linked": (
-            "Your Telegram is already linked to GlowPath.\n"
-            "Open the app to check in."
         ),
         "need_link": (
             "Open GlowPath in Telegram with the button below.\n"
@@ -34,7 +31,8 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
         "open_app": "Open App",
         "log_mood": "Log mood",
         "log_prompt": "Log your mood in GlowPath.",
-        "wizard_retired": "Mood is logged in the app now. Tap the button to open it.",
+        "button_stale": "This button no longer works. Send /log to log your mood.",
+        "quick_log_failed": "Could not save that. Please try again.",
         "mini_app_not_configured": "The GlowPath app is not configured on this bot yet.",
         "linked_ok": (
             "Telegram is linked to your GlowPath account.\n"
@@ -80,45 +78,43 @@ _BASE_MESSAGES: dict[str, dict[str, str]] = {
     "ru": {
         "help": (
             "Бот GlowPath\n\n"
-            "Откройте приложение из меню или кнопкой ниже. Новые пользователи "
-            "настраивают трекер в приложении — сайт не обязателен.\n\n"
+            "Отмечай настроение прямо здесь: отправь /log и нажми одну кнопку. Заметки, "
+            "теги и фото — в приложении, открой его из меню или кнопкой ниже. Новые "
+            "пользователи настраивают трекер в приложении — сайт не обязателен.\n\n"
             "Команды:\n"
-            "/log — записать настроение в приложении\n"
+            "/log — записать настроение в один тап\n"
             "/start <код> — привязать аккаунт с сайта\n"
             "/unlink — отвязать Telegram\n"
             "/help — эта справка"
         ),
-        "already_linked": (
-            "Telegram уже привязан к GlowPath.\n"
-            "Откройте приложение, чтобы отметиться."
-        ),
         "need_link": (
-            "Откройте GlowPath кнопкой ниже.\n"
+            "Открой GlowPath кнопкой ниже.\n"
             "Чтобы связать уже существующий аккаунт с сайта, "
-            "откройте профиль и нажмите «Подключить Telegram»."
+            "открой профиль и нажми «Подключить Telegram»."
         ),
         "welcome": (
-            "Добро пожаловать в GlowPath. Откройте приложение, чтобы настроить "
+            "Добро пожаловать в GlowPath. Открой приложение, чтобы настроить "
             "трекер — сайт не нужен."
         ),
-        "continue_onboarding": "Завершите настройку в приложении, чтобы начать.",
+        "continue_onboarding": "Заверши настройку в приложении, чтобы начать.",
         "open_app": "Открыть приложение",
         "log_mood": "Записать настроение",
         "log_prompt": "Запиши настроение в GlowPath.",
-        "wizard_retired": (
-            "Настроение теперь отмечается в приложении. Нажмите кнопку, чтобы открыть."
+        "button_stale": (
+            "Эта кнопка больше не работает. Отправь /log, чтобы записать настроение."
         ),
+        "quick_log_failed": "Не получилось записать. Попробуй ещё раз.",
         "mini_app_not_configured": "Приложение GlowPath на этом боте ещё не настроено.",
         "linked_ok": (
             "Telegram привязан к аккаунту GlowPath.\n"
-            "Открывайте приложение в любой момент или ждите напоминания в этом чате."
+            "Открывай приложение в любой момент или жди напоминания в этом чате."
         ),
         "link_failed": "Не удалось привязать: {detail}",
-        "login_ok": "Вход подтверждён. Вернитесь в браузер, GlowPath уже открывается там.",
-        "login_failed": "Ссылка для входа устарела или уже использована. Начните заново на сайте.",
+        "login_ok": "Вход подтверждён. Вернись в браузер, GlowPath уже открывается там.",
+        "login_failed": "Ссылка для входа устарела или уже использована. Начни заново на сайте.",
         "unlinked_ok": "Telegram отвязан от GlowPath.",
         "unlink_failed": "Не удалось отвязать: {detail}",
-        "not_linked": "Откройте GlowPath кнопкой ниже, чтобы начать.",
+        "not_linked": "Открой GlowPath кнопкой ниже, чтобы начать.",
         "choose_score": "Как вы себя чувствуете?",
         "choose_tags": "Теги — {group}\nНажимайте, чтобы выбрать, затем «Далее».",
         "choose_frequent_tags": "Часто у вас\nНажимайте, чтобы выбрать, затем «Далее».",

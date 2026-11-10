@@ -13,7 +13,7 @@ from bot.keyboards import (
     linked_home_keyboard,
     mini_app_keyboard,
 )
-from bot.telegram_api import answer_callback_query, send_message
+from bot.telegram_api import answer_callback_query, edit_message_text, send_message
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 LOGIN_START_PREFIX = "login_"
 # Marketing links: /start src_<label>; the label rides into the Mini App as its start param.
 SIGNUP_SOURCE_PREFIX = "src_"
+# Mood buttons the API writes into reminders and /log messages. The bot only relays a
+# tap on them; their format lives in the API (app/core/telegram_quick_log.py).
+QUICK_LOG_CALLBACK_PREFIX = "q:"
 
 
 async def handle_update(update: dict[str, Any]) -> None:
@@ -61,17 +64,13 @@ async def handle_update(update: dict[str, Any]) -> None:
         await send_app_message(chat_id=chat_id, locale=locale, text=t(locale, "help"))
         return
     if command == "/log":
-        await _open_log(
-            chat_id=chat_id,
-            locale=locale,
-            start=START_CREATE,
-        )
+        await _send_quick_log(chat_id=chat_id, telegram_user_id=telegram_user_id, locale=locale)
         return
     if command == "/cancel":
         await send_app_message(
             chat_id=chat_id,
             locale=locale,
-            text=t(locale, "wizard_retired"),
+            text=t(locale, "nothing_to_cancel"),
         )
 
 
@@ -81,11 +80,120 @@ async def _handle_callback(callback: dict[str, Any]) -> None:
     locale = _locale_from_user(from_user)
     if not isinstance(callback_id, str):
         return
+    data = callback.get("data")
+    message = callback.get("message") or {}
+    chat_id = (message.get("chat") or {}).get("id")
+    message_id = message.get("message_id")
+    telegram_user_id = from_user.get("id")
+    if (
+        isinstance(data, str)
+        and data.startswith(QUICK_LOG_CALLBACK_PREFIX)
+        and isinstance(chat_id, int)
+        and isinstance(message_id, int)
+        and isinstance(telegram_user_id, int)
+    ):
+        text = message.get("text")
+        await _handle_quick_tap(
+            callback_id=callback_id,
+            telegram_user_id=telegram_user_id,
+            chat_id=chat_id,
+            message_id=message_id,
+            data=data,
+            message_text=text if isinstance(text, str) else None,
+            locale=locale,
+        )
+        return
+    # Buttons of the chat wizard (retired 08.09) still sit in old messages.
     await answer_callback_query(
         callback_query_id=callback_id,
-        text=t(locale, "wizard_retired"),
+        text=t(locale, "button_stale"),
         show_alert=True,
     )
+
+
+async def _handle_quick_tap(
+    *,
+    callback_id: str,
+    telegram_user_id: int,
+    chat_id: int,
+    message_id: int,
+    data: str,
+    message_text: str | None,
+    locale: str | None,
+) -> None:
+    try:
+        reply = await api_client.quick_log_tap(
+            telegram_user_id=telegram_user_id,
+            chat_id=chat_id,
+            message_id=message_id,
+            data=data,
+            message_text=message_text,
+            locale=locale,
+        )
+    except ApiClientError as exc:
+        logger.warning("quick log tap failed: %s", exc.message)
+        await answer_callback_query(
+            callback_query_id=callback_id,
+            text=t(locale, "quick_log_failed"),
+            show_alert=True,
+        )
+        return
+    toast = reply.get("toast")
+    await answer_callback_query(
+        callback_query_id=callback_id,
+        text=toast if isinstance(toast, str) else None,
+        show_alert=bool(reply.get("alert")),
+    )
+    text = reply.get("text")
+    if not isinstance(text, str) or not text:
+        return
+    markup = reply.get("reply_markup")
+    await edit_message_text(
+        chat_id=chat_id,
+        message_id=message_id,
+        text=text,
+        reply_markup=markup if isinstance(markup, dict) else None,
+    )
+
+
+async def _send_quick_log(
+    *,
+    chat_id: int,
+    telegram_user_id: int,
+    locale: str | None,
+    me: dict[str, Any] | None = None,
+) -> None:
+    """Ask "How are you?" with mood buttons, or send newcomers to set up the app first."""
+    if me is None:
+        try:
+            me = await api_client.me(telegram_user_id=telegram_user_id)
+        except ApiClientError as exc:
+            logger.warning("me failed: %s", exc.message)
+            await _open_log(chat_id=chat_id, locale=locale, start=START_CREATE)
+            return
+    if not me.get("linked"):
+        await _open_onboarding(chat_id=chat_id, locale=locale, text=t(locale, "welcome"))
+        return
+    linked_locale = normalize_bot_locale(me.get("locale") or locale)
+    if not me.get("onboarding_completed"):
+        await _open_onboarding(
+            chat_id=chat_id,
+            locale=linked_locale,
+            text=t(linked_locale, "continue_onboarding"),
+        )
+        return
+    try:
+        prompt = await api_client.quick_log_prompt(telegram_user_id=telegram_user_id)
+    except ApiClientError as exc:
+        logger.warning("quick log prompt failed: %s", exc.message)
+        await _open_log(chat_id=chat_id, locale=linked_locale, start=START_CREATE)
+        return
+    text = prompt.get("text")
+    markup = prompt.get("reply_markup")
+    if not isinstance(text, str) or not isinstance(markup, dict):
+        await _open_log(chat_id=chat_id, locale=linked_locale, start=START_CREATE)
+        return
+    await send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
 
 def _mini_app_url() -> str | None:
@@ -171,8 +279,7 @@ async def _handle_start(
     payload: str | None,
 ) -> None:
     if payload in {"log", "create", START_CREATE_DAILY}:
-        start = START_CREATE_DAILY if payload in {"log", START_CREATE_DAILY} else START_CREATE
-        await _open_log(chat_id=chat_id, locale=locale, start=start)
+        await _send_quick_log(chat_id=chat_id, telegram_user_id=telegram_user_id, locale=locale)
         return
 
     if payload and payload.startswith(LOGIN_START_PREFIX):
@@ -212,11 +319,11 @@ async def _handle_start(
             )
             return
         if me.get("linked") and me.get("onboarding_completed"):
-            linked_locale = normalize_bot_locale(me.get("locale") or locale)
-            await send_app_message(
+            await _send_quick_log(
                 chat_id=chat_id,
-                locale=linked_locale,
-                text=t(linked_locale, "already_linked"),
+                telegram_user_id=telegram_user_id,
+                locale=locale,
+                me=me,
             )
             return
         if me.get("linked"):

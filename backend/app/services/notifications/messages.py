@@ -1,19 +1,31 @@
 from __future__ import annotations
 
 import html
+import uuid
+from collections.abc import Mapping
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from app.config import settings
-from app.core.companion import daily_reminder_intro, daily_reminder_subject
+from app.core.companion import (
+    daily_reminder_intro,
+    daily_reminder_question,
+    daily_reminder_subject,
+)
 from app.core.i18n import DEFAULT_LOCALE
 from app.core.mood_entry_source import MoodEntryAttributionKind, format_mood_entry_source
+from app.core.mood_scale import MoodScore, mood_score_emoji
 from app.core.notification_copy import NotificationText as T
 from app.core.notification_copy import notification_text
+from app.core.telegram_quick_log import QuickTap, encode_quick_tap
 from app.services.notifications.base import NotificationChannel, NotificationMessage
 
+STARTAPP_CREATE = "create"
 STARTAPP_CREATE_DAILY = "create_daily"
 STARTAPP_GOAL_REMINDER = "goal_reminder"
+STARTAPP_ONBOARDING = "onboarding"
+# Opens the edit form of one entry; the Mini App reads it in platform/startParam.ts.
+STARTAPP_EDIT_ENTRY_PREFIX = "edit_"
 
 
 def daily_mood_reminder_message(
@@ -25,7 +37,14 @@ def daily_mood_reminder_message(
     tracking_token: str | None = None,
     variant_seed: str = "",
     display_name: str | None = None,
+    score_faces: Mapping[int, str] | None = None,
 ) -> NotificationMessage:
+    """Daily mood reminder.
+
+    In Telegram it is a short question with a row of mood buttons that log the mood
+    with one tap (see ``services/telegram_quick_log_service.py``); *score_faces* are the
+    person's emoji for the buttons. In email it is a greeting and a link to the form.
+    """
     source = format_mood_entry_source(
         channel=channel.value,
         kind=MoodEntryAttributionKind.DAILY_MOOD_REMINDER,
@@ -34,19 +53,20 @@ def daily_mood_reminder_message(
         _link_params(source=source, tracking_token=tracking_token)
     )
     subject = daily_reminder_subject(hour=hour, locale=locale)
-    intro = daily_reminder_intro(hour=hour, locale=locale, seed=variant_seed, name=display_name)
 
     if channel is NotificationChannel.TELEGRAM:
-        prompt = notification_text(T.DAILY_PROMPT, locale)
-        button = notification_text(T.DAILY_BUTTON, locale)
-        markup = _telegram_open_markup(
-            startapp=STARTAPP_CREATE_DAILY,
-            button_text=button,
-            tracking_token=tracking_token,
+        question = daily_reminder_question(
+            hour=hour, locale=locale, seed=variant_seed, name=display_name
+        )
+        markup = quick_log_keyboard(
+            locale=locale,
+            faces=score_faces or default_score_faces(),
+            token=tracking_token,
+            from_reminder=True,
         )
         return NotificationMessage(
             subject=subject,
-            body=f"{intro}\n\n{prompt}",
+            body=question,
             html_body=None,
             metadata={
                 "type": MoodEntryAttributionKind.DAILY_MOOD_REMINDER.value,
@@ -56,6 +76,7 @@ def daily_mood_reminder_message(
             },
         )
 
+    intro = daily_reminder_intro(hour=hour, locale=locale, seed=variant_seed, name=display_name)
     greeting = _greeting(locale, display_name)
     link_label = notification_text(T.DAILY_LINK, locale)
     footer = notification_text(T.DAILY_FOOTER, locale)
@@ -226,22 +247,101 @@ def _link_params(*, source: str, tracking_token: str | None) -> dict[str, str]:
     return params
 
 
+def default_score_faces() -> dict[int, str]:
+    return {score.value: mood_score_emoji(score) for score in MoodScore}
+
+
+def quick_log_keyboard(
+    *,
+    locale: str,
+    faces: Mapping[int, str],
+    token: str | None = None,
+    selected: int | None = None,
+    entry_id: uuid.UUID | None = None,
+    can_undo: bool = False,
+    from_reminder: bool | None = None,
+) -> dict[str, Any]:
+    """Mood buttons for logging with one tap, before or after the tap.
+
+    Before (*selected* is None): the faces, then "Log in detail" into the Mini App form.
+    After: the faces with the logged one marked, so another tap changes it, then "Note
+    and tags" into the entry's edit form and, while allowed, "Undo".
+
+    *token* is the reminder's delivery token. When *from_reminder* is not given, a
+    keyboard with a token is taken to be a reminder's and one without to be ``/log``'s.
+    """
+    reminder = bool(token) if from_reminder is None else from_reminder
+    faces_row = [
+        {
+            "text": f"•{faces[score.value]}•" if score.value == selected else faces[score.value],
+            "callback_data": encode_quick_tap(QuickTap(score=score.value, token=token)),
+        }
+        for score in MoodScore
+    ]
+    rows: list[list[dict[str, Any]]] = [faces_row]
+    if selected is None:
+        more = telegram_app_button(
+            startapp=STARTAPP_CREATE_DAILY if reminder else STARTAPP_CREATE,
+            text=notification_text(T.QUICK_MORE_BUTTON, locale),
+            tracking_token=token,
+        )
+        if more is not None:
+            rows.append([more])
+        return {"inline_keyboard": rows}
+
+    actions: list[dict[str, Any]] = []
+    if entry_id is not None:
+        note = telegram_app_button(
+            startapp=f"{STARTAPP_EDIT_ENTRY_PREFIX}{entry_id.hex}",
+            text=notification_text(T.QUICK_NOTE_BUTTON, locale),
+        )
+        if note is not None:
+            actions.append(note)
+    if can_undo:
+        actions.append(
+            {
+                "text": notification_text(T.QUICK_UNDO_BUTTON, locale),
+                "callback_data": encode_quick_tap(QuickTap(score=None, token=token)),
+            }
+        )
+    if actions:
+        rows.append(actions)
+    return {"inline_keyboard": rows}
+
+
+def telegram_app_button(
+    *,
+    startapp: str,
+    text: str,
+    tracking_token: str | None = None,
+) -> dict[str, Any] | None:
+    """A button that opens the Mini App at *startapp*; None when the bot has no app."""
+    mini = settings.telegram_mini_app_url.strip()
+    if mini:
+        url = _with_start_param(mini, startapp)
+        if tracking_token:
+            url = _with_query_param(url, "n", tracking_token)
+        return {"text": text, "web_app": {"url": url}}
+    deep = _telegram_mini_app_deep_link(startapp=startapp)
+    if deep:
+        return {"text": text, "url": deep}
+    return None
+
+
 def _telegram_open_markup(
     *,
     startapp: str,
     button_text: str,
     tracking_token: str | None = None,
 ) -> dict[str, Any] | None:
-    mini = settings.telegram_mini_app_url.strip()
-    if mini:
-        url = _with_start_param(mini, startapp)
-        if tracking_token:
-            url = _with_query_param(url, "n", tracking_token)
-        return {"inline_keyboard": [[{"text": button_text, "web_app": {"url": url}}]]}
-    deep = _telegram_mini_app_deep_link(startapp=startapp)
-    if deep:
-        return {"inline_keyboard": [[{"text": button_text, "url": deep}]]}
-    return None
+    button = telegram_app_button(
+        startapp=startapp,
+        text=button_text,
+        tracking_token=tracking_token,
+    )
+    if button is None:
+        return None
+    return {"inline_keyboard": [[button]]}
 
 
 def _with_start_param(url: str, start: str) -> str:

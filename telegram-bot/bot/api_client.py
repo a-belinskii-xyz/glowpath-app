@@ -102,6 +102,38 @@ class MoodTrackerApiClient:
             payload["source"] = source
         return await self._request("POST", "/v1/telegram/bot/entries", json=payload)
 
+    async def quick_log_prompt(self, *, telegram_user_id: int) -> dict[str, Any]:
+        """Text and mood buttons for ``/log``; the API owns their format."""
+        return await self._request(
+            "GET",
+            "/v1/telegram/bot/quick-log",
+            params={"telegram_user_id": telegram_user_id},
+        )
+
+    async def quick_log_tap(
+        self,
+        *,
+        telegram_user_id: int,
+        chat_id: int,
+        message_id: int,
+        data: str,
+        message_text: str | None,
+        locale: str | None,
+    ) -> dict[str, Any]:
+        """Forward a tap on a mood button; returns how the message should look now."""
+        return await self._request(
+            "POST",
+            "/v1/telegram/bot/quick-log/tap",
+            json={
+                "telegram_user_id": telegram_user_id,
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "data": data,
+                "message_text": message_text,
+                "locale": locale,
+            },
+        )
+
     async def upload_attachment(
         self,
         *,

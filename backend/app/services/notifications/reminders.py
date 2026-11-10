@@ -32,6 +32,7 @@ from app.services.notifications.messages import (
     goal_reminder_message,
     reminders_paused_message,
 )
+from app.services.score_faces import get_score_faces
 
 
 @dataclass(slots=True)
@@ -262,10 +263,11 @@ def _deliver_schedule(
     tz: ZoneInfo,
     tracking_token: str | None = None,
 ) -> bool:
-    locale = _user_locale(user)
+    locale = user_notification_locale(user)
     if schedule.kind == "daily_mood":
         if _has_mood_entry_on_local_day(db, user=user, local_day=local_day, tz=tz):
             return False
+        faces = get_score_faces(db, user_id=user.id)
         for channel in channels:
             dispatcher.send(
                 user=user,
@@ -278,6 +280,7 @@ def _deliver_schedule(
                     tracking_token=tracking_token,
                     variant_seed=f"{user.id}:{local_day.isoformat()}",
                     display_name=user.display_name,
+                    score_faces=faces,
                 ),
             )
         return True
@@ -325,7 +328,7 @@ def _pause_after_ignored(
     at: datetime,
 ) -> None:
     """Say goodbye once, then stop this schedule until the person turns it back on."""
-    locale = _user_locale(user)
+    locale = user_notification_locale(user)
     for channel in channels:
         dispatcher.send(
             user=user,
@@ -339,7 +342,7 @@ def _pause_after_ignored(
     pause_schedule(schedule, at=at)
 
 
-def _user_locale(user: User) -> str:
+def user_notification_locale(user: User) -> str:
     """Interface language from the app first, then the Telegram client language."""
     chosen = user.locale or user.telegram_locale
     return normalize_locale(chosen) if chosen else DEFAULT_LOCALE
