@@ -46,6 +46,10 @@ services:
       # Matches the cron-job.org interval so the worker status stays healthy.
       - key: NOTIFICATIONS_POLL_INTERVAL_SECONDS
         value: "300"
+      # Woken before Telegram reminders go out, so a tap does not hit a cold bot.
+      # Example: https://glowpath-bot.onrender.com/health (empty = off).
+      - key: TELEGRAM_BOT_HEALTH_URL
+        sync: false
       - key: TELEGRAM_BOT_SERVICE_TOKEN
         sync: false
       # Mail via Resend HTTPS API (Render free blocks SMTP ports).

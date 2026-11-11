@@ -258,6 +258,9 @@ class Settings(BaseSettings):
         validation_alias="TELEGRAM_INIT_DATA_MAX_AGE_SECONDS",
     )
     telegram_mini_app_url: str = Field(default="", validation_alias="TELEGRAM_MINI_APP_URL")
+    # GET before a pass sends Telegram reminders, so a sleeping bot (Render free) is up
+    # by the time someone taps a button. Empty disables it.
+    telegram_bot_health_url: str = Field(default="", validation_alias="TELEGRAM_BOT_HEALTH_URL")
     # Browser login (OpenID Connect). Client id/secret come from BotFather → Login Widget.
     telegram_oidc_client_id: str = Field(default="", validation_alias="TELEGRAM_OIDC_CLIENT_ID")
     telegram_oidc_client_secret: str = Field(

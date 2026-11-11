@@ -50,6 +50,10 @@ when the next reminder can be due:
   answered. Right after a deploy it can show "unavailable" until the first tick
   (at most 5 minutes).
 
+Before a pass sends Telegram reminders it GETs `TELEGRAM_BOT_HEALTH_URL` in the
+background (empty = off). On Render free the bot sleeps after ~15 minutes
+without traffic; this way it is awake by the time someone taps a mood button.
+
 ## Endpoint
 
 | | |
@@ -75,6 +79,7 @@ is enabled). Until then the answer is `idle` with zero counters.
 | `REMINDERS_CRON_SECRET` | long random string, e.g. `openssl rand -hex 32` |
 | `NOTIFICATIONS_POLL_INTERVAL_SECONDS` | `300` (the tick interval; drives the "sender is running" status in the UI) |
 | `NOTIFICATIONS_DUE_CACHE_TTL_SECONDS` | optional, default `21600` (6 h): longest time between full passes |
+| `TELEGRAM_BOT_HEALTH_URL` | `https://<bot service>.onrender.com/health`; wakes the bot before Telegram reminders |
 | `TELEGRAM_BOT_TOKEN` | required for the Telegram channel |
 | `SMTP_*`, `EMAIL_FROM` | required for the email channel |
 

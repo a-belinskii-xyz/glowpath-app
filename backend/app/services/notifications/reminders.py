@@ -26,6 +26,7 @@ from app.services.notifications.backoff import (
     record_delivery,
 )
 from app.services.notifications.base import NotificationChannel
+from app.services.notifications.bot_wakeup import wake_telegram_bot
 from app.services.notifications.dispatcher import NotificationDispatcher
 from app.services.notifications.messages import (
     daily_mood_reminder_message,
@@ -74,6 +75,7 @@ def process_due_reminders(
         .all()
     )
     window = timedelta(minutes=settings.notifications_match_window_minutes)
+    bot_woken = False
 
     for schedule in schedules:
         stats.users_considered += 1
@@ -136,6 +138,9 @@ def process_due_reminders(
                 db.commit()
                 continue
 
+            if NotificationChannel.TELEGRAM in deliverable and not bot_woken:
+                wake_telegram_bot()
+                bot_woken = True
             token = new_delivery_token()
             sent = _deliver_schedule(
                 db,
