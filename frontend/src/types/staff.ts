@@ -47,9 +47,32 @@ export type StaffWeekMetrics = {
   regular: number
 }
 
+/** Weeks W1–W4 after signup; `active` / `regular` are null until someone has lived through that week. */
+export type StaffRetention = {
+  size: number
+  eligible: number[]
+  active: (number | null)[]
+  regular: (number | null)[]
+}
+
+export type StaffSourceCohort = {
+  source: string
+  retention: StaffRetention
+}
+
+export type StaffWeekCohort = {
+  /** Monday 00:00 UTC of the signup week. */
+  week_start: string
+  retention: StaffRetention
+  sources: StaffSourceCohort[]
+}
+
 export type StaffMetricsResponse = {
   generated_at: string
   regular_min_days: number
+  cohort_weeks: number
   sources: StaffSignupSource[]
   weeks: StaffWeekMetrics[]
+  cohorts: StaffWeekCohort[]
+  cohort_total: StaffRetention
 }

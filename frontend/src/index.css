@@ -10413,6 +10413,68 @@ a.plans-cta:hover {
   font-weight: 500;
 }
 
+/* Cohort table (GP-68): scrolls sideways inside the card on narrow screens. */
+.staff-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.staff-cohorts-table {
+  min-width: 28rem;
+}
+
+.staff-cohorts-table th[scope='row'] {
+  vertical-align: top;
+}
+
+.staff-metrics-table .staff-cohort-source {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.staff-cohorts-table .is-source .staff-cohort-source {
+  padding-left: 0.75rem;
+  color: var(--chrome-text-secondary);
+}
+
+.staff-cohorts-table .is-summary td,
+.staff-cohorts-table tfoot th {
+  font-weight: 600;
+}
+
+.staff-cohorts-table tfoot th,
+.staff-cohorts-table tfoot td {
+  border-bottom: none;
+  border-top: 2px solid var(--chrome-border-default);
+}
+
+.staff-cohort-cell {
+  white-space: nowrap;
+}
+
+.staff-cohort-cell.is-empty {
+  color: var(--chrome-text-secondary);
+}
+
+.staff-cohort-main {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.staff-cohort-percent {
+  margin-left: 0.3rem;
+  color: var(--chrome-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.staff-cohort-any {
+  display: block;
+  color: var(--chrome-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
 .staff-search,
 .staff-inline-form {
   display: flex;

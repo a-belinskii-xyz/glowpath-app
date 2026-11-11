@@ -54,8 +54,31 @@ class StaffWeekMetricsPublic(BaseModel):
     regular: int
 
 
+class StaffRetentionPublic(BaseModel):
+    """Per week W1–W4 since signup; ``active``/``regular`` are null until ``eligible`` > 0."""
+
+    size: int
+    eligible: list[int]
+    active: list[int | None]
+    regular: list[int | None]
+
+
+class StaffSourceCohortPublic(BaseModel):
+    source: str
+    retention: StaffRetentionPublic
+
+
+class StaffWeekCohortPublic(BaseModel):
+    week_start: datetime
+    retention: StaffRetentionPublic
+    sources: list[StaffSourceCohortPublic]
+
+
 class StaffMetricsResponse(BaseModel):
     generated_at: datetime
     regular_min_days: int
+    cohort_weeks: int
     sources: list[StaffSignupSourcePublic]
     weeks: list[StaffWeekMetricsPublic]
+    cohorts: list[StaffWeekCohortPublic]
+    cohort_total: StaffRetentionPublic

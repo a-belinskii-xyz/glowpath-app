@@ -22,9 +22,12 @@ from app.schemas.staff import (
     StaffMetricsResponse,
     StaffPackCreate,
     StaffPackSortBody,
+    StaffRetentionPublic,
     StaffSignupSourcePublic,
+    StaffSourceCohortPublic,
     StaffUserListResponse,
     StaffUserPublic,
+    StaffWeekCohortPublic,
     StaffWeekMetricsPublic,
 )
 from app.services.marketplace_service import (
@@ -33,7 +36,12 @@ from app.services.marketplace_service import (
     serialize_icon,
     serialize_pack_card,
 )
-from app.services.metrics_service import REGULAR_MIN_DAYS, build_metrics_report
+from app.services.metrics_service import (
+    COHORT_WEEKS,
+    REGULAR_MIN_DAYS,
+    Retention,
+    build_metrics_report,
+)
 from app.services.preset_service import (
     PresetError,
     export_preset,
@@ -57,6 +65,15 @@ def _pack_detail(db: Session, *, staff: User, pack_id: uuid.UUID, locale: str) -
     card = serialize_pack_card(db, pack, user=staff, locale=locale)
     card["icons"] = [serialize_icon(icon, locale=locale) for icon in pack.icons]
     return PackDetailPublic.model_validate(card)
+
+
+def _retention(retention: Retention) -> StaffRetentionPublic:
+    return StaffRetentionPublic(
+        size=retention.size,
+        eligible=list(retention.eligible),
+        active=list(retention.active),
+        regular=list(retention.regular),
+    )
 
 
 @router.get("/users", response_model=StaffUserListResponse)
@@ -90,6 +107,7 @@ def get_metrics(
     return StaffMetricsResponse(
         generated_at=report.generated_at,
         regular_min_days=REGULAR_MIN_DAYS,
+        cohort_weeks=COHORT_WEEKS,
         sources=[
             StaffSignupSourcePublic(
                 source=item.source,
@@ -109,6 +127,18 @@ def get_metrics(
             )
             for week in report.weeks
         ],
+        cohorts=[
+            StaffWeekCohortPublic(
+                week_start=cohort.week_start,
+                retention=_retention(cohort.retention),
+                sources=[
+                    StaffSourceCohortPublic(source=row.source, retention=_retention(row.retention))
+                    for row in cohort.sources
+                ],
+            )
+            for cohort in report.cohorts
+        ],
+        cohort_total=_retention(report.cohort_total),
     )
 
 

@@ -5,6 +5,7 @@ import { useLocale } from '../../context/LocaleContext'
 import { formatApiError } from '../../lib/errors'
 import type { StaffMetricsResponse } from '../../types/staff'
 import { PageErrorAlert } from '../PageErrorAlert'
+import { StaffCohortsCard } from './StaffCohortsCard'
 
 export function StaffMetricsPanel() {
   const { t, locale } = useLocale()
@@ -36,12 +37,14 @@ export function StaffMetricsPanel() {
     <div className="staff-panel">
       <PageErrorAlert error={error} />
 
+      <StaffCohortsCard metrics={metrics} />
+
       <section className="card staff-card" aria-labelledby="staff-metrics-weeks-title">
         <h2 id="staff-metrics-weeks-title" className="staff-card-title">
           {t('staff.metricsWeeksTitle')}
         </h2>
         <p className="muted staff-card-meta">
-          {t('staff.metricsWeeksLead', { days: metrics?.regular_min_days ?? 3 })}
+          {t('staff.metricsWeeksLead', { days: metrics?.regular_min_days ?? 2 })}
         </p>
         {metrics ? (
           <table className="staff-metrics-table">

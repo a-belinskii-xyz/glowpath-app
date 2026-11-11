@@ -332,7 +332,7 @@ def test_staff_metrics_counts_sources_and_regular_writers(
                 )
             )
 
-    add_entries(regular, [0, 0, 2, 4])  # three distinct days this week
+    add_entries(regular, [0, 0, 2])  # two distinct days this week: regular
     add_entries(casual, [1, 10])  # one day this week, one the week before
     add_entries(staff, [0, 1, 2])  # staff are left out
     db.commit()
@@ -340,7 +340,8 @@ def test_staff_metrics_counts_sources_and_regular_writers(
     response = auth_client.get("/v1/staff/metrics", headers=_headers(staff_token))
     assert response.status_code == 200
     body = response.json()
-    assert body["regular_min_days"] == 3
+    assert body["regular_min_days"] == 2
+    assert body["cohort_weeks"] == 8
 
     sources = {row["source"]: row for row in body["sources"]}
     assert sources["tiktok"]["last_7_days"] >= 1
@@ -354,6 +355,19 @@ def test_staff_metrics_counts_sources_and_regular_writers(
     assert this_week["signups"] >= 2
     assert last_week["active"] == 1
     assert last_week["regular"] == 0
+
+    # Both signed up just now: their first week has not ended, so every cell is still empty.
+    cohort = body["cohorts"][0]
+    cohort_sources = {row["source"]: row["retention"] for row in cohort["sources"]}
+    assert {"tiktok", "direct"} <= set(cohort_sources)
+    assert cohort_sources["tiktok"] == {
+        "size": 1,
+        "eligible": [0, 0, 0, 0],
+        "active": [None, None, None, None],
+        "regular": [None, None, None, None],
+    }
+    assert cohort["retention"]["size"] >= 2
+    assert body["cohort_total"]["size"] >= cohort["retention"]["size"]
 
     user_token, _user = _login(auth_client, mailer, db, "metrics-guard")
     assert auth_client.get("/v1/staff/metrics", headers=_headers(user_token)).status_code == 403
