@@ -26,6 +26,7 @@ from app.services.notifications.backoff import (
     record_delivery,
 )
 from app.services.notifications.base import NotificationChannel
+from app.services.notifications.bot_wakeup import wake_telegram_bot
 from app.services.notifications.dispatcher import NotificationDispatcher
 from app.services.notifications.messages import (
     daily_mood_reminder_message,
@@ -42,6 +43,8 @@ class ReminderRunStats:
     goal_reminders_sent: int = 0
     paused: int = 0
     skipped: int = 0
+    # Deliveries that failed after the claim; the next run must look at them again.
+    released_claims: int = 0
     errors: list[str] = field(default_factory=list)
 
 
@@ -72,6 +75,7 @@ def process_due_reminders(
         .all()
     )
     window = timedelta(minutes=settings.notifications_match_window_minutes)
+    bot_woken = False
 
     for schedule in schedules:
         stats.users_considered += 1
@@ -88,7 +92,7 @@ def process_due_reminders(
 
         local_now = instant.astimezone(tz)
         try:
-            reminder_clock = _parse_time_of_day(schedule.time_of_day)
+            reminder_clock = parse_time_of_day(schedule.time_of_day)
         except ValueError:
             stats.errors.append(f"user={user.id}: bad time_of_day {schedule.time_of_day!r}")
             continue
@@ -134,6 +138,9 @@ def process_due_reminders(
                 db.commit()
                 continue
 
+            if NotificationChannel.TELEGRAM in deliverable and not bot_woken:
+                wake_telegram_bot()
+                bot_woken = True
             token = new_delivery_token()
             sent = _deliver_schedule(
                 db,
@@ -169,6 +176,7 @@ def process_due_reminders(
                 previous=previous_sent_at,
                 at=instant,
             )
+            stats.released_claims += 1
             stats.errors.append(f"user={user.id}: {exc}")
 
     return stats
@@ -243,7 +251,7 @@ def _schedule_is_due(
     return (local_day - last_local_day).days >= schedule.interval_days
 
 
-def _parse_time_of_day(value: str) -> time:
+def parse_time_of_day(value: str) -> time:
     from app.schemas.notification_settings import normalize_time_of_day
 
     normalized = normalize_time_of_day(value)

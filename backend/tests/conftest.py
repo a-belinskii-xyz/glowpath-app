@@ -7,6 +7,7 @@ from app.config import settings
 from app.db.session import get_db
 from app.main import app
 from app.services.email_service import EmailService, SentEmail
+from app.services.notifications.due_cache import reminder_due_cache
 from app.services.storage import FakeStorage, ObjectStorage
 from fastapi.testclient import TestClient
 from pgvector.psycopg import register_vector
@@ -23,6 +24,14 @@ TEST_DATABASE_URL = get_test_database_url()
 def _disable_embeddings_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """Avoid downloading fastembed models during the default test suite."""
     monkeypatch.setattr(settings, "embedding_enabled", False)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_reminder_due_cache() -> Generator[None, None, None]:
+    """The due cache is process-wide; start every test as after a restart."""
+    reminder_due_cache.reset()
+    yield
+    reminder_due_cache.reset()
 
 
 @pytest.fixture(scope="session", autouse=True)

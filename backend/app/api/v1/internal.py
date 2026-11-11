@@ -11,6 +11,7 @@ from app.core.errors import structured_detail
 from app.db.session import get_db
 from app.schemas.notification_settings import ReminderTickResponse
 from app.services.notifications.dispatcher import NotificationDispatcher
+from app.services.notifications.due_cache import reminder_due_cache
 from app.services.notifications.factory import build_notification_dispatcher
 from app.services.notifications.tick import run_reminder_tick
 
@@ -48,8 +49,12 @@ def reminders_tick(
     db: Session = Depends(get_db),
     dispatcher: NotificationDispatcher = Depends(get_notification_dispatcher),
 ) -> ReminderTickResponse:
-    """Send due reminders once. Called every few minutes by cron-job.org."""
-    result = run_reminder_tick(db, dispatcher)
+    """Send due reminders once. Called every few minutes by cron-job.org.
+
+    Until the next reminder can be due the answer is ``idle`` and no query runs:
+    the session is created lazily and never connects, so Neon can scale to zero.
+    """
+    result = run_reminder_tick(db, dispatcher, due_cache=reminder_due_cache)
     stats = result.stats
     return ReminderTickResponse(
         outcome=result.outcome,
@@ -58,4 +63,5 @@ def reminders_tick(
         goal_reminders_sent=stats.goal_reminders_sent,
         skipped=stats.skipped,
         errors=len(stats.errors),
+        next_due_at=result.next_due_at,
     )

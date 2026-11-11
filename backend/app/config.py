@@ -101,6 +101,14 @@ class Settings(BaseSettings):
         default="",
         validation_alias="REMINDERS_CRON_SECRET",
     )
+    # The HTTP tick remembers when the next reminder can be due and answers "idle"
+    # without touching the database until then. This TTL forces a fresh look anyway,
+    # in case a schedule changed somewhere the cache did not hear about.
+    notifications_due_cache_ttl_seconds: int = Field(
+        default=6 * 3600,
+        ge=60,
+        validation_alias="NOTIFICATIONS_DUE_CACHE_TTL_SECONDS",
+    )
 
     # Sentry error + trace reporting. Empty DSN disables it (local dev, tests).
     sentry_dsn: str = Field(default="", validation_alias="SENTRY_DSN")
@@ -250,6 +258,9 @@ class Settings(BaseSettings):
         validation_alias="TELEGRAM_INIT_DATA_MAX_AGE_SECONDS",
     )
     telegram_mini_app_url: str = Field(default="", validation_alias="TELEGRAM_MINI_APP_URL")
+    # GET before a pass sends Telegram reminders, so a sleeping bot (Render free) is up
+    # by the time someone taps a button. Empty disables it.
+    telegram_bot_health_url: str = Field(default="", validation_alias="TELEGRAM_BOT_HEALTH_URL")
     # Browser login (OpenID Connect). Client id/secret come from BotFather → Login Widget.
     telegram_oidc_client_id: str = Field(default="", validation_alias="TELEGRAM_OIDC_CLIENT_ID")
     telegram_oidc_client_secret: str = Field(

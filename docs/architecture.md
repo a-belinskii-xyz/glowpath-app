@@ -55,6 +55,7 @@ Users sign in through Telegram: `initData` inside the Mini App, Telegram OIDC in
 ### External cron instead of a background worker
 Render has no free background-worker plan, so cron-job.org calls `POST /v1/internal/reminders/tick` (Bearer secret) every 5 minutes. Docker Compose still runs a worker locally.
 - **Cost:** reminders are accurate to about 5 minutes, and the first tick after idle also wakes a sleeping API.
+- **Keeping Neon asleep:** a tick before the next due reminder answers `idle` from memory without touching the database. This relies on one API process (one Render instance, uvicorn without `--workers`); with more processes a settings change would reach the others only after `NOTIFICATIONS_DUE_CACHE_TTL_SECONDS`.
 
 ### Full-text search instead of vector search
 Search uses a Postgres `tsvector` column with a GIN index (`russian` configuration). The pgvector column and fastembed code stay in the repo, but `EMBEDDING_ENABLED=false` in production.

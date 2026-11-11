@@ -117,6 +117,8 @@ class ReminderTickResponse(BaseModel):
     goal_reminders_sent: int
     skipped: int
     errors: int
+    # Until then ticks answer "idle" without touching the database (null: no schedules).
+    next_due_at: datetime | None = None
 
 
 class UnsubscribeResponse(BaseModel):
