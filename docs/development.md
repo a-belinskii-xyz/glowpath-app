@@ -43,7 +43,7 @@ All backend settings live in `backend/app/config.py`; `backend/.env.example` lis
 |------|---------|----------|
 | `FEATURE_NOTIFICATIONS_ENABLED` | `false` | Reminder delivery and the settings UI |
 | `FEATURE_ICON_MARKETPLACE` | `true`, percent `100` | Market, wallet and token/pack rewards on achievements |
-| `FEATURE_BILLING` | `true`, percent `0` | Plans page and `/v1/billing/*` (webhooks stay open) |
+| `FEATURE_BILLING` | `false`, percent `0` | Plans page and `/v1/billing/*`, webhooks included |
 | `FEATURE_ACHIEVEMENTS` | `true` | Achievements |
 | `FEATURE_GUEST_LOCAL_DIARY` | `false` | Guest experiment |
 | `EMBEDDING_ENABLED` | `true` (`false` in the Docker image) | Semantic search |
@@ -228,7 +228,7 @@ FEATURE_ACHIEVEMENTS_PERCENT=20
 FEATURE_ACHIEVEMENTS=false
 ```
 
-The icon marketplace (`FEATURE_ICON_MARKETPLACE*`) is open to everyone; tokens come only from achievements and staff grants. Paid plans (`FEATURE_BILLING*`) default to percent `0`: only people in the `_EMAILS` / `_USER_IDS` allowlists see them. On every API start the container entrypoint adds the built-in achievements from `backend/app/data/achievements/catalog.json` whose slugs the database lacks (`python -m app.jobs.seed_builtin`, skip with `SKIP_BUILTIN_SEED=true`); staff edits and archived ones are kept. **Staff → Presets → Starter content** does the same by hand and also adds the Essentials pack.
+The icon marketplace (`FEATURE_ICON_MARKETPLACE*`) is open to everyone; tokens come only from achievements and staff grants. Paid plans (`FEATURE_BILLING*`) are off: every feature is free until the economy is designed (GP-67). The plans code stays in place; to show it to testers again set `FEATURE_BILLING=true` with percent `0` and the `_EMAILS` / `_USER_IDS` allowlists. On every API start the container entrypoint adds the built-in achievements from `backend/app/data/achievements/catalog.json` whose slugs the database lacks (`python -m app.jobs.seed_builtin`, skip with `SKIP_BUILTIN_SEED=true`); staff edits and archived ones are kept. **Staff → Presets → Starter content** does the same by hand and also adds the Essentials pack.
 
 The same pattern applies to `FEATURE_ICON_MARKETPLACE*`, `FEATURE_BILLING*` and `FEATURE_GUEST_LOCAL_DIARY*` (see [guest-local-diary-experiment.md](guest-local-diary-experiment.md)). All variables are listed in `backend/.env.example`.
 

@@ -168,9 +168,10 @@ class Settings(BaseSettings):
         validation_alias="FEATURE_ICON_MARKETPLACE_USER_IDS",
     )
 
-    # Plans page and billing API (Free / Plus / Pro). Testers only by default.
+    # Plans page and billing API (Free / Plus / Pro). Off until the economy is designed
+    # (GP-67): every feature is free. The master switch also closes billing webhooks.
     feature_billing: bool = Field(
-        default=True,
+        default=False,
         validation_alias="FEATURE_BILLING",
     )
     feature_billing_percent: int = Field(

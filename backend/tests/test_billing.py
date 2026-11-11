@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.config import settings
+from app.config import Settings, settings
 from app.core.billing import Entitlement, PlanSlug
 from app.core.error_codes import ErrorCode
 from app.models.payment import Payment
@@ -83,6 +83,70 @@ def test_billing_only_for_allowlisted_testers(
     assert me["features"]["billing"] is True
     plans = auth_client.get("/v1/billing/plans", headers=_auth_headers(tester))
     assert plans.status_code == 200
+
+
+def test_billing_is_off_by_default() -> None:
+    # GP-67: plans stay hidden until the economy is designed; every feature is free.
+    assert Settings.model_fields["feature_billing"].default is False
+
+
+def test_master_switch_off_closes_billing_for_everyone(
+    auth_client: TestClient,
+    mailer: FakeEmailService,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "feature_billing", False)
+    monkeypatch.setattr(settings, "feature_billing_emails", "plans-off@example.com")
+    token = register_verify_and_login(auth_client, mailer, "plans-off@example.com")
+
+    me = auth_client.get("/v1/auth/me", headers=_auth_headers(token)).json()
+    assert me["features"]["billing"] is False
+    for method, path, body in (
+        ("get", "/v1/billing/plans", None),
+        ("get", "/v1/billing/subscription", None),
+        ("post", "/v1/billing/checkout", {"plan_slug": "plus", "interval": "month"}),
+        ("post", "/v1/billing/cancel", None),
+    ):
+        response = auth_client.request(method, path, headers=_auth_headers(token), json=body)
+        assert response.status_code == 403, path
+        assert response.json()["detail"]["code"] == ErrorCode.BILLING_DISABLED.value
+
+    user = db.scalar(select(User).where(User.email == "plans-off@example.com"))
+    assert user is not None
+    payment = Payment(
+        user_id=user.id,
+        plan_slug="plus",
+        billing_interval="month",
+        provider="fake",
+        provider_session_id=f"fake_cs_{uuid.uuid4().hex}",
+        kind="checkout",
+        status="pending",
+        amount_minor=34900,
+        currency="RUB",
+        extra={},
+    )
+    db.add(payment)
+    db.flush()
+    hook = auth_client.post(
+        "/v1/billing/webhooks/fake",
+        content=json.dumps(
+            {
+                "id": "evt_off_1",
+                "type": "checkout.completed",
+                "session_id": payment.provider_session_id,
+                "metadata": {"payment_id": str(payment.id)},
+            }
+        ),
+        headers={"Content-Type": "application/json"},
+    )
+    assert hook.status_code == 403
+    assert hook.json()["detail"]["code"] == ErrorCode.BILLING_DISABLED.value
+    db.expire_all()
+    row = db.get(Payment, payment.id)
+    assert row is not None
+    assert row.status == "pending"
+    assert db.scalar(select(UserSubscription).where(UserSubscription.user_id == user.id)) is None
 
 
 def test_me_includes_free_plan_by_default(

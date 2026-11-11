@@ -58,7 +58,7 @@ All backend variables are defined in `backend/app/config.py` and documented in `
 
 Mail goes through the Resend HTTPS API whenever `RESEND_API_KEY` is set. Render free web services block outbound SMTP ports, so `SMTP_*` only matter for local MailHog or a self-hosted server. `EMAIL_FROM` must use the domain verified in Resend, e.g. `GlowPath <hello@mail.example.com>`. Reminder emails carry an unsubscribe link (`/unsubscribe`) and a one-click `List-Unsubscribe` header pointing at `FRONTEND_URL/v1/notification-settings/unsubscribe`, which the frontend proxies to the API.
 
-> **Billing:** the default provider is `fake`, which completes checkout instantly without payment and accepts unsigned webhooks. Do not leave `fake` enabled in production once paid plans are visible to users.
+> **Billing:** plans are off (`FEATURE_BILLING=false` by default, GP-67), which also closes `/v1/billing/webhooks/*`. The default provider is `fake`, which completes checkout instantly without payment and accepts unsigned webhooks. Do not leave `fake` enabled in production once paid plans are visible to users.
 
 Production redirect URIs:
 

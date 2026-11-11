@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_verified_user, get_optional_current_user
+from app.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import raise_http_error, structured_detail
 from app.core.feature_flags import FeatureFlag, is_feature_enabled_for_user
@@ -30,16 +31,17 @@ from app.services.payments.base import PaymentError
 router = APIRouter(tags=["billing"])
 
 
+def _billing_disabled(message: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=structured_detail(code=ErrorCode.BILLING_DISABLED, message=message),
+    )
+
+
 def _require_billing(user: User | None) -> None:
     """Plans and checkout are visible only to allowlisted testers (GP-15)."""
     if user is None or not is_feature_enabled_for_user(FeatureFlag.BILLING, user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=structured_detail(
-                code=ErrorCode.BILLING_DISABLED,
-                message="Plans are not enabled for this user",
-            ),
-        )
+        raise _billing_disabled("Plans are not enabled for this user")
 
 
 def _handle_billing_error(exc: BillingError | PaymentError) -> None:
@@ -138,6 +140,10 @@ async def billing_webhook(
     request: Request,
     db: Session = Depends(get_db),
 ) -> WebhookAcceptedResponse:
+    # With the master switch off nobody can start a checkout, so no provider has
+    # anything to report; the default `fake` provider accepts unsigned events (GP-67).
+    if not settings.feature_billing:
+        raise _billing_disabled("Billing is disabled")
     body = await request.body()
     headers = {key.lower(): value for key, value in request.headers.items()}
     try:
