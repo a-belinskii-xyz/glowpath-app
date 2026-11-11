@@ -101,6 +101,14 @@ class Settings(BaseSettings):
         default="",
         validation_alias="REMINDERS_CRON_SECRET",
     )
+    # The HTTP tick remembers when the next reminder can be due and answers "idle"
+    # without touching the database until then. This TTL forces a fresh look anyway,
+    # in case a schedule changed somewhere the cache did not hear about.
+    notifications_due_cache_ttl_seconds: int = Field(
+        default=6 * 3600,
+        ge=60,
+        validation_alias="NOTIFICATIONS_DUE_CACHE_TTL_SECONDS",
+    )
 
     # Sentry error + trace reporting. Empty DSN disables it (local dev, tests).
     sentry_dsn: str = Field(default="", validation_alias="SENTRY_DSN")

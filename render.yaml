@@ -5,7 +5,9 @@
 # receive private-network traffic. The reminder worker is not here: Render
 # has no free background-worker plan (it still runs in docker compose).
 # Instead cron-job.org calls POST /v1/internal/reminders/tick on the API every
-# 5 minutes (see docs/reminders-cron.md).
+# 5 minutes (see docs/reminders-cron.md). Until the next reminder is due a tick
+# answers "idle" from memory without touching Neon, so the database can sleep;
+# this relies on a single API process (no uvicorn --workers, one instance).
 services:
   - type: web
     name: glowpath-api

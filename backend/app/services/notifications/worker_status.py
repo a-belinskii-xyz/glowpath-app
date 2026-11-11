@@ -1,4 +1,9 @@
-"""Liveness of the reminders worker, based on its last heartbeat."""
+"""Liveness of the reminders worker, based on its last heartbeat.
+
+The heartbeat row is written by full passes only. Idle HTTP ticks skip the database
+on purpose, so this process also remembers its last tick (``DueCache.last_tick_at``)
+and the fresher of the two counts.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +21,7 @@ from app.schemas.notification_settings import (
     NotificationSystemStatus,
     WorkerLiveness,
 )
+from app.services.notifications.due_cache import reminder_due_cache
 
 REMINDERS_WORKER_NAME = "reminders"
 
@@ -99,7 +105,11 @@ def system_status(
     now: datetime | None = None,
 ) -> NotificationSystemStatus:
     row = db.get(SystemWorkerHeartbeat, REMINDERS_WORKER_NAME)
-    liveness = worker_liveness(None if row is None else row.last_heartbeat_at, now=now)
+    last_seen = _latest(
+        None if row is None else row.last_heartbeat_at,
+        reminder_due_cache.last_tick_at,
+    )
+    liveness = worker_liveness(last_seen, now=now)
     feature_on = settings.feature_notifications_enabled
     if not feature_on:
         code = NotificationStatusCode.DISABLED_STAGE_TESTING
@@ -113,3 +123,8 @@ def system_status(
         status_code=code,
         message=resolve_label(_STATUS_MESSAGES[code], locale),
     )
+
+
+def _latest(*moments: datetime | None) -> datetime | None:
+    known = [m if m.tzinfo is not None else m.replace(tzinfo=UTC) for m in moments if m]
+    return max(known, default=None)
